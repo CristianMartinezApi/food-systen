@@ -1,0 +1,49 @@
+services:
+  # Frontend (Vite)
+  frontend:
+    build:
+      context: ./apps/web
+      dockerfile: Dockerfile
+    ports:
+      - "8081:80"
+    depends_on:
+      - backend
+    networks:
+      - food-network
+
+  # Backend (Node.js/Express)
+  backend:
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile
+    command: sh -c "npx prisma db push && npm start"
+    ports:
+      - "3001:3001"
+    environment:
+      - PORT=3001
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/food_db
+    depends_on:
+      - db
+    networks:
+      - food-network
+
+  # Database (PostgreSQL)
+  db:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=food_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - food-network
+
+networks:
+  food-network:
+    driver: bridge
+
+volumes:
+  postgres_data:

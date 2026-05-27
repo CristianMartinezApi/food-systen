@@ -1,0 +1,64 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Category {
+  id        Int       @id @default(autoincrement())
+  name      String
+  slug      String    @unique
+  order     Int       @default(0)
+  status    String    @default("active")
+  products  Product[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model Product {
+  id          Int      @id @default(autoincrement())
+  name        String
+  description String?
+  price       Float
+  image       String?
+  status      String   @default("active")
+  categoryId  Int
+  category    Category @relation(fields: [categoryId], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Order {
+  id           Int      @id @default(autoincrement())
+  customerName String
+  phone        String
+  address      Json?
+  items        Json
+  total        Float
+  deliveryFee  Float    @default(0)
+  paymentMethod String
+  status       String   @default("new")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Settings {
+  id            Int     @id @default(1)
+  storeName     String  @default("FoodSystem Burger")
+  phone         String  @default("(11) 99999-9999")
+  address       String  @default("Rua das Flores, 123 - Centro")
+  bio           String? @default("O melhor hambúrguer artesanal da região!")
+  operatingHours Json?
+  deliveryFee   Float   @default(5.0)
+  minOrderValue Float   @default(20.0)
+  isOpen        Boolean @default(true)
+  primaryColor  String  @default("#ef4444")
+  logo          String?
+  instagram     String?
+  facebook      String?
+  latitude      Float?
+  longitude     Float?
+}
