@@ -6,6 +6,7 @@ import { getTenantSlug } from '../../shared/utils/tenant';
 export function useSettings() {
   const [settings, setSettings] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<boolean>(false);
   const [slug, setSlug] = useState<string>("");
 
   useEffect(() => {
@@ -13,9 +14,17 @@ export function useSettings() {
   }, []);
 
   const fetchSettings = async () => {
+    if (!slug) return;
+    
     try {
+      setError(false);
       const data = await api.get('/settings');
       
+      if (!data) {
+        setError(true);
+        return;
+      }
+
       // Garante estrutura básica de horários para evitar erros no form
       if (!data.operatingHours) {
         data.operatingHours = {
@@ -36,6 +45,7 @@ export function useSettings() {
       }
     } catch (error) {
       console.error('Falha ao buscar configurações:', error);
+      setError(true);
     } finally {
       setIsLoading(false);
     }
@@ -68,5 +78,5 @@ export function useSettings() {
     }
   };
 
-  return { settings, isLoading, updateSettings };
+  return { settings, isLoading, error, updateSettings };
 }

@@ -100,6 +100,18 @@ export function AdminLayout({ children }: AdminLayoutProps) {
           })}
         </nav>
 
+        {/* Ver Loja */}
+        <div className="px-6 mb-4">
+            <a 
+                href={storeUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="flex items-center justify-center gap-2 w-full h-12 bg-white border border-slate-100 text-slate-600 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-slate-50 hover:border-primary/20 hover:text-primary transition-all shadow-sm"
+            >
+                Ver Minha Loja <ExternalLink size={14} />
+            </a>
+        </div>
+
         <div className="p-4 border-t border-slate-50">
            <div className="bg-slate-50 rounded-2xl p-4 flex items-center gap-3 mb-4 border border-slate-100">
                 <div className="w-10 h-10 rounded-xl bg-white border flex items-center justify-center shadow-sm">

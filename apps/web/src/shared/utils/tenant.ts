@@ -3,12 +3,19 @@ export function getTenantSlug(): string {
 
   const pathParts = window.location.pathname.split('/');
   
-  // Se for o root literal, não tem tenant (é a Landing Page do SaaS)
-  if (pathParts.length <= 2 && pathParts[1] === '') {
-    return 'saas-system';
+  // Lista de slugs que não são tenants e nomes de páginas comuns
+  const reservedSlugs = [
+    'admin', 'login', 'register', 'checkout', 'orders', 
+    'settings', 'categories', 'products', 'dashboard', ''
+  ];
+  
+  // 1. TENTA PEGAR DA URL (Sempre prioridade se houver um slug válido no path)
+  const slugFromPath = pathParts.find(part => part && !reservedSlugs.includes(part));
+  if (slugFromPath) {
+    return slugFromPath;
   }
 
-  // Se estiver no admin, tenta pegar do localStorage primeiro
+  // 2. SE ESTIVER NO ADMIN E NÃO TIVER NA URL, TENTA LOCALSTORAGE
   if (pathParts.includes('admin')) {
     const restaurantData = localStorage.getItem('@FoodSystem:restaurant');
     if (restaurantData) {
@@ -21,20 +28,7 @@ export function getTenantSlug(): string {
     }
   }
 
-  // Lista de slugs que não são tenants e nomes de páginas comuns
-  const reservedSlugs = [
-    'admin', 'login', 'register', 'checkout', 'orders', 
-    'settings', 'categories', 'products', 'dashboard', ''
-  ];
-  
-  // Procura o primeiro segmento que não seja reservado
-  const slugFromPath = pathParts.find(part => part && !reservedSlugs.includes(part));
-  
-  if (slugFromPath) {
-    return slugFromPath;
-  }
-
-  // Tenta pegar do localStorage como fallback geral (ex: usuário estava navegando e mudou de rota)
+  // 3. FALLBACKS GERAIS
   const stored = localStorage.getItem('tenant_slug');
   if (stored) return stored;
 

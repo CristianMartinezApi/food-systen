@@ -1,6 +1,9 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Home, ShoppingBag, Utensils, Phone, MapPin, Clock } from "lucide-react";
 import { useSettings } from "../../../../core/hooks/useSettings";
+import { useLocationStore } from "../../../../core/stores/useLocationStore";
+import { AddressModal } from "../modals/AddressModal";
+import { useState } from "react";
 import { cn } from "../../../../shared/utils";
 
 interface NavSidebarProps {
@@ -13,6 +16,8 @@ interface NavSidebarProps {
 
 export function NavSidebar({ isOpen, onClose, categories, activeCategory, onCategorySelect }: NavSidebarProps) {
   const { settings } = useSettings();
+  const { address } = useLocationStore();
+  const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
 
   return (
     <AnimatePresence>
@@ -37,30 +42,49 @@ export function NavSidebar({ isOpen, onClose, categories, activeCategory, onCate
                <div className="flex items-center justify-between mb-8">
                   <div className="flex items-center gap-3">
                     {settings?.logo ? (
-                        <img src={settings.logo} alt="Logo" className="w-10 h-10 rounded-xl object-cover" />
+                        <img src={settings.logo} alt="Logo" className="w-12 h-12 rounded-2xl object-cover shadow-lg" />
                     ) : (
-                        <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center text-white">
-                            <Utensils size={20} />
+                        <div className="w-12 h-12 bg-slate-900 rounded-2xl flex items-center justify-center text-white">
+                            <Utensils size={24} />
                         </div>
                     )}
-                    <span className="text-xl font-black text-slate-800 tracking-tighter">
-                        {settings?.storeName || "FoodSystem"}
-                    </span>
+                    <div className="flex flex-col">
+                        <span className="text-xl font-black text-slate-800 tracking-tighter uppercase leading-none">
+                            {settings?.storeName?.replace(/\s/g, '') || "FOODSYSTEM"}
+                        </span>
+                        <div className="flex items-center gap-1.5 mt-1">
+                            <span className={cn(
+                                "w-1.5 h-1.5 rounded-full",
+                                settings?.isOpen ? "bg-emerald-500 animate-pulse" : "bg-rose-500"
+                            )} />
+                            <span className={cn(
+                                "text-[8px] font-black uppercase tracking-[0.2em]",
+                                settings?.isOpen ? "text-emerald-500" : "text-rose-500"
+                            )}>
+                            {settings?.isOpen ? 'Aberto' : 'Fechado'}
+                            </span>
+                        </div>
+                    </div>
                   </div>
-                  <button onClick={onClose} className="text-slate-400">
-                    <X size={24} />
+                  <button onClick={onClose} className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400">
+                    <X size={20} />
                   </button>
                </div>
-               
-               <div className="bg-emerald-50 p-4 rounded-2xl border border-emerald-100 flex items-center gap-3">
-                  <div className={cn(
-                    "w-2 h-2 rounded-full animate-pulse",
-                    settings?.isOpen ? "bg-emerald-500" : "bg-rose-500"
-                  )} />
-                  <span className="text-[10px] font-black uppercase text-emerald-700 tracking-wider">
-                    {settings?.isOpen ? "Aberto Agora" : "Fechado"}
-                  </span>
-               </div>
+
+               <button 
+                  onClick={() => setIsAddressModalOpen(true)}
+                  className="w-full mt-4 p-4 bg-slate-50 rounded-2xl border border-slate-100 flex items-center gap-3 text-left hover:bg-white transition-all group"
+               >
+                  <div className="w-10 h-10 rounded-xl bg-white shadow-sm flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
+                    <MapPin size={18} />
+                  </div>
+                  <div className="flex-1 overflow-hidden">
+                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Entregar em</p>
+                    <p className="text-xs font-bold text-slate-700 truncate">
+                        {address ? `${address.street}, ${address.number}` : "Selecione seu endereço..."}
+                    </p>
+                  </div>
+               </button>
             </div>
 
             {/* Menu Sections */}
@@ -138,6 +162,7 @@ export function NavSidebar({ isOpen, onClose, categories, activeCategory, onCate
           </motion.aside>
         </>
       )}
+      <AddressModal isOpen={isAddressModalOpen} onClose={() => setIsAddressModalOpen(false)} />
     </AnimatePresence>
   );
 }

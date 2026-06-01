@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCartStore } from "../../../core/stores/useCartStore";
+import { useLocationStore } from "../../../core/stores/useLocationStore";
 import { useSettings } from "../../../core/hooks/useSettings";
 import { useHasHydrated } from "../../../core/hooks/useHasHydrated";
 import { Footer } from "../components/layout/Footer";
@@ -47,6 +48,7 @@ export default function Checkout() {
   
   const hasHydrated = useHasHydrated();
   const { items, getSubtotal, clearCart } = useCartStore();
+  const { address: savedAddress } = useLocationStore();
   const cartItems = hasHydrated ? items : [];
   const { settings } = useSettings();
   const router = useRouter();
@@ -55,6 +57,21 @@ export default function Checkout() {
   useEffect(() => {
     setSlug(getTenantSlug());
   }, []);
+
+  // Pre-fill address if available in store
+  useEffect(() => {
+    if (hasHydrated && savedAddress) {
+      setFormData(prev => ({
+        ...prev,
+        zipCode: savedAddress.zipCode || "",
+        street: savedAddress.street || "",
+        number: savedAddress.number || "",
+        neighborhood: savedAddress.neighborhood || "",
+        city: savedAddress.city || "",
+        complement: savedAddress.complement || "",
+      }));
+    }
+  }, [hasHydrated, savedAddress]);
 
   const [deliveryMode, setDeliveryMode] = useState<DeliveryMode>("DELIVERY");
   
@@ -397,6 +414,19 @@ export default function Checkout() {
              <h1 className="font-black text-slate-900 uppercase tracking-tighter text-lg">
                 {step === "success" ? "Sucesso" : "Finalizar Pedido"}
              </h1>
+             <div className="flex gap-1.5 mt-1.5">
+                {stepsList.map((s, idx) => (
+                    <div 
+                        key={s.key}
+                        className={cn(
+                            "h-1 rounded-full transition-all duration-500",
+                            stepsList.findIndex(st => st.key === step) >= idx 
+                                ? "w-4 bg-primary" 
+                                : "w-2 bg-slate-100"
+                        )}
+                    />
+                ))}
+             </div>
           </div>
 
           <div className="w-12 h-12 flex items-center justify-center text-slate-200">
@@ -734,14 +764,19 @@ export default function Checkout() {
                         </div>
                         <div>
                             <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">Modo / Pagamento</h4>
-                            <div className="flex items-center gap-2 mb-1">
-                                <p className="font-black text-slate-800 text-sm uppercase">
-                                    {deliveryMode === 'DELIVERY' ? 'Entrega' : (deliveryMode === 'PICKUP' ? 'Retirada' : 'No Local')}
-                                </p>
-                                <span className="w-1 h-1 rounded-full bg-slate-300" />
-                                <p className="font-black text-primary text-sm uppercase">
-                                    {deliveryMode === 'DINE_IN' ? 'A Combinar' : formData.paymentMethod}
-                                </p>
+                            <div className="flex flex-col gap-1">
+                                <div className="flex items-center gap-2">
+                                    <p className="font-black text-slate-800 text-sm uppercase">
+                                        {deliveryMode === 'DELIVERY' ? 'Entrega' : (deliveryMode === 'PICKUP' ? 'Retirada' : 'No Local')}
+                                    </p>
+                                    <span className="w-1 h-1 rounded-full bg-slate-200" />
+                                    <p className="font-black text-primary text-sm uppercase tracking-tight">
+                                        {deliveryMode === 'DINE_IN' ? 'Pagamento na Mesa' : formData.paymentMethod}
+                                    </p>
+                                </div>
+                                {deliveryMode === 'DINE_IN' && (
+                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest italic">Acerto direto com o atendente</span>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -785,32 +820,45 @@ export default function Checkout() {
 
               {/* PASSO FINAL: SUCESSO */}
               {step === "success" && (
-                <motion.div key="success" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="py-10 text-center">
-                    <div className="w-24 h-24 bg-emerald-50 text-emerald-500 rounded-[2rem] flex items-center justify-center mx-auto mb-8 shadow-lg shadow-emerald-100 relative">
-                        <CheckCircle2 size={48} />
+                <motion.div key="success" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="py-12 text-center max-w-lg mx-auto">
+                    <div className="relative w-32 h-32 mx-auto mb-10">
                         <motion.div 
                             initial={{ scale: 0 }} animate={{ scale: 1.5, opacity: 0 }} transition={{ repeat: Infinity, duration: 2 }}
-                            className="absolute inset-0 rounded-[2rem] border-2 border-emerald-500" 
+                            className="absolute inset-0 rounded-[3rem] border-2 border-emerald-500/20" 
                         />
+                        <div className="relative w-full h-full bg-emerald-50 text-emerald-500 rounded-[3rem] flex items-center justify-center shadow-2xl shadow-emerald-100 border border-emerald-100/50">
+                            <CheckCircle2 size={56} strokeWidth={2.5} />
+                        </div>
                     </div>
-                    <h2 className="text-4xl font-black text-slate-900 uppercase tracking-tighter mb-4">Pedido Recebido!</h2>
-                    <p className="text-slate-500 font-medium text-lg max-w-sm mx-auto mb-10 leading-relaxed">
-                        Seu pedido <span className="text-slate-900 font-black">#{orderCreatedId}</span> já foi enviado para o restaurante. 
-                        Preparamos tudo com carinho!
+                    
+                    <h2 className="text-4xl md:text-5xl font-black text-slate-900 uppercase tracking-tighter mb-4 leading-none">
+                        Tudo Pronto!
+                    </h2>
+                    <p className="text-slate-500 font-medium text-lg mb-12 leading-relaxed">
+                        Seu pedido <span className="text-slate-900 font-black tracking-tight">#{orderCreatedId}</span> foi enviado com sucesso. 
+                        Agora é só relaxar!
                     </p>
-                    <div className="flex flex-col gap-4 max-w-xs mx-auto">
+                    
+                    <div className="grid grid-cols-1 gap-4">
                         <button 
                             onClick={handleWhatsAppNotify}
-                            className="h-16 flex items-center justify-center bg-emerald-500 text-white rounded-2xl font-black shadow-xl shadow-emerald-200 hover:bg-emerald-600 transition-all uppercase tracking-widest text-xs gap-3"
+                            className="h-20 flex flex-col items-center justify-center bg-emerald-500 text-white rounded-[2rem] font-black shadow-2xl shadow-emerald-200 hover:bg-emerald-600 active:scale-[0.98] transition-all"
                         >
-                            <MessageCircle size={20} /> NOTIFICAR WHATSAPP
+                            <span className="text-[10px] uppercase tracking-[0.2em] opacity-80 mb-1">Passo Importante</span>
+                            <div className="flex items-center gap-3">
+                                <MessageCircle size={22} strokeWidth={2.5} />
+                                <span className="text-sm uppercase tracking-widest">Enviar p/ WhatsApp</span>
+                            </div>
                         </button>
-                        <Link href={`/${slug}/orders`} className="h-16 flex items-center justify-center bg-primary text-white rounded-2xl font-black shadow-xl shadow-primary/30 hover:scale-[1.02] transition-all uppercase tracking-widest text-xs">
-                            ACOMPANHAR PEDIDO
-                        </Link>
-                        <Link href={`/${slug}`} className="h-16 flex items-center justify-center bg-white border border-slate-200 text-slate-500 rounded-2xl font-black hover:bg-slate-50 transition-all uppercase tracking-widest text-xs">
-                            VOLTAR PARA O INÍCIO
-                        </Link>
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <Link href={`/${slug}/orders`} className="h-16 flex items-center justify-center bg-slate-900 text-white rounded-2xl font-black shadow-xl shadow-slate-900/10 hover:bg-black transition-all uppercase tracking-widest text-[10px]">
+                                MEUS PEDIDOS
+                            </Link>
+                            <Link href={`/${slug}`} className="h-16 flex items-center justify-center bg-white border border-slate-200 text-slate-500 rounded-2xl font-black hover:bg-slate-50 transition-all uppercase tracking-widest text-[10px]">
+                                NOVO PEDIDO
+                            </Link>
+                        </div>
                     </div>
                 </motion.div>
               )}
