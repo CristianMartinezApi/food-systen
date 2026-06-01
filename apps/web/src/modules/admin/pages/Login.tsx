@@ -3,6 +3,7 @@ import { useRouter } from "next/navigation";
 import { api } from "../../../core/config/api";
 import { Lock, Mail, Loader2, Utensils } from "lucide-react";
 import toast from "react-hot-toast";
+import Link from "next/link";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -82,7 +83,7 @@ export default function Login() {
         </form>
 
         <p className="text-center mt-8 text-slate-400 text-sm">
-          Ainda não tem uma conta? <span className="text-primary font-bold cursor-pointer">Cadastre sua loja</span>
+          Ainda não tem uma conta? <Link href="/admin/register" className="text-primary font-bold cursor-pointer">Cadastre sua loja</Link>
         </p>
       </div>
     </div>

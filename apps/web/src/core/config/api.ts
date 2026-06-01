@@ -22,7 +22,10 @@ export const api = {
     const response = await fetch(`${API_URL}${endpoint}`, {
       headers: getHeaders()
     });
-    if (!response.ok) throw new Error('Network response was not ok');
+    if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Erro na requisição');
+    }
     return response.json();
   },
   post: async (endpoint: string, data: any) => {
@@ -31,7 +34,12 @@ export const api = {
       headers: getHeaders(),
       body: JSON.stringify(data),
     });
-    if (!response.ok) throw new Error('Network response was not ok');
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || 'Erro na requisição');
+    }
+    
     return response.json();
   },
   put: async (endpoint: string, data: any) => {
@@ -40,7 +48,10 @@ export const api = {
       headers: getHeaders(),
       body: JSON.stringify(data),
     });
-    if (!response.ok) throw new Error('Network response was not ok');
+    if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Erro na requisição');
+    }
     return response.json();
   },
   patch: async (endpoint: string, data: any) => {
@@ -49,7 +60,10 @@ export const api = {
       headers: getHeaders(),
       body: JSON.stringify(data),
     });
-    if (!response.ok) throw new Error('Network response was not ok');
+    if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Erro na requisição');
+    }
     return response.json();
   },
   delete: async (endpoint: string) => {
@@ -57,7 +71,10 @@ export const api = {
       method: 'DELETE',
       headers: getHeaders()
     });
-    if (!response.ok) throw new Error('Network response was not ok');
+    if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Erro na requisição');
+    }
     if (response.status === 204) return null;
     return response.json();
   }
