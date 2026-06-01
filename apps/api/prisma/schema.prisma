@@ -7,58 +7,282 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model Category {
-  id        Int       @id @default(autoincrement())
-  name      String
-  slug      String    @unique
-  order     Int       @default(0)
-  status    String    @default("active")
-  products  Product[]
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+//////////////////////////
+// ENUMS
+//////////////////////////
+
+enum PlanTier {
+  FREE
+  BASIC
+  PRO
+  ENTERPRISE
 }
 
-model Product {
+enum UserRole {
+  SUPER_ADMIN
+  OWNER
+  MANAGER
+  EMPLOYEE
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  PREPARING
+  READY
+  OUT_FOR_DELIVERY
+  DELIVERED
+  CANCELLED
+  REFUNDED
+}
+
+enum PaymentMethod {
+  PIX
+  CASH
+  CARD
+}
+
+//////////////////////////
+// RESTAURANT (TENANT)
+//////////////////////////
+
+model Plan {
+  id          Int        @id @default(autoincrement())
+  name        String     @unique
+  tier        PlanTier   @default(FREE)
+  price       Float
+  maxProducts Int        @default(10)
+  maxOrders   Int        @default(100)
+
+  restaurants Restaurant[]
+
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  @@map("plans")
+}
+
+model Restaurant {
   id          Int      @id @default(autoincrement())
   name        String
+  slug        String   @unique
+  logo        String?
   description String?
-  price       Float
-  image       String?
-  status      String   @default("active")
-  categoryId  Int
-  category    Category @relation(fields: [categoryId], references: [id])
+  phone       String?
+  isActive    Boolean  @default(true)
+
+  planId      Int?
+  plan        Plan?    @relation(fields: [planId], references: [id])
+  
+  subscriptionStatus String @default("active") // active, trialing, past_due, canceled
+
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  users       User[]
+  customers   Customer[]
+  categories  Category[]
+  products    Product[]
+  orders      Order[]
+  settings    Settings?
+
+  @@map("restaurants")
 }
+
+//////////////////////////
+// USERS
+//////////////////////////
+
+model User {
+  id           Int       @id @default(autoincrement())
+  name         String
+  email        String    @unique
+  password     String
+  role         UserRole  @default(OWNER)
+
+  restaurantId Int?
+  restaurant   Restaurant? @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([restaurantId])
+  @@map("users")
+}
+
+//////////////////////////
+// CUSTOMERS
+//////////////////////////
+
+model Customer {
+  id           Int       @id @default(autoincrement())
+  name         String
+  phone        String?
+  email        String?
+
+  restaurantId Int
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  orders       Order[]
+
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([restaurantId])
+  @@map("customers")
+}
+
+//////////////////////////
+// CATEGORIES
+//////////////////////////
+
+model Category {
+  id           Int       @id @default(autoincrement())
+  name         String
+  slug         String
+  order        Int       @default(0)
+  isActive     Boolean   @default(true)
+
+  restaurantId Int
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  products     Product[]
+
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([restaurantId])
+  @@unique([restaurantId, slug])
+  @@unique([id, restaurantId])
+  @@map("categories")
+}
+
+//////////////////////////
+// PRODUCTS
+//////////////////////////
+
+model Product {
+  id           Int       @id @default(autoincrement())
+  name         String
+  description  String?
+  price        Float
+  image        String?
+
+  isActive     Boolean   @default(true)
+  isFeatured   Boolean   @default(false)
+
+  restaurantId Int
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  categoryId   Int
+  category     Category  @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  orderItems   OrderItem[]
+
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([restaurantId])
+  @@index([categoryId])
+  @@unique([id, restaurantId])
+  @@map("products")
+}
+
+//////////////////////////
+// ORDERS
+//////////////////////////
 
 model Order {
-  id           Int      @id @default(autoincrement())
-  customerName String
-  phone        String
-  address      Json?
-  items        Json
-  total        Float
-  deliveryFee  Float    @default(0)
-  paymentMethod String
-  status       String   @default("new")
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id             Int            @id @default(autoincrement())
+
+  customerName   String
+  phone          String?
+
+  address        Json?
+
+  status         OrderStatus    @default(PENDING)
+  paymentMethod  PaymentMethod
+
+  subtotal       Float
+  deliveryFee    Float          @default(0)
+  total          Float
+
+  notes          String?
+
+  restaurantId   Int
+  restaurant     Restaurant     @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  customerId     Int?
+  customer       Customer?      @relation(fields: [customerId], references: [id], onDelete: SetNull)
+
+  items          OrderItem[]
+
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  @@index([restaurantId])
+  @@index([customerId])
+  @@map("orders")
 }
 
+//////////////////////////
+// ORDER ITEMS
+//////////////////////////
+
+model OrderItem {
+  id          Int       @id @default(autoincrement())
+
+  orderId     Int
+  order       Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  productId   Int
+  product     Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  quantity    Int
+  price       Float
+
+  createdAt   DateTime  @default(now())
+
+  @@index([orderId])
+  @@index([productId])
+  @@map("order_items")
+}
+
+//////////////////////////
+// SETTINGS
+//////////////////////////
+
 model Settings {
-  id            Int     @id @default(1)
-  storeName     String  @default("FoodSystem Burger")
-  phone         String  @default("(11) 99999-9999")
-  address       String  @default("Rua das Flores, 123 - Centro")
-  bio           String? @default("O melhor hambúrguer artesanal da região!")
-  operatingHours Json?
-  deliveryFee   Float   @default(5.0)
-  minOrderValue Float   @default(20.0)
-  isOpen        Boolean @default(true)
-  primaryColor  String  @default("#ef4444")
-  logo          String?
-  instagram     String?
-  facebook      String?
-  latitude      Float?
-  longitude     Float?
+  id              Int        @id @default(autoincrement())
+
+  restaurantId    Int        @unique
+  restaurant      Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  storeName       String
+  bio             String?
+
+  phone           String?
+  address         String?
+
+  deliveryFee     Float      @default(5)
+  minOrderValue   Float      @default(20)
+
+  isOpen          Boolean    @default(true)
+
+  primaryColor    String     @default("#ef4444")
+
+  logo            String?
+
+  instagram       String?
+  facebook        String?
+
+  operatingHours  Json?
+
+  latitude        Float?
+  longitude       Float?
+
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  @@map("settings")
 }
