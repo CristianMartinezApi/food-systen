@@ -97,7 +97,7 @@ export function NavSidebar({ isOpen, onClose, categories, activeCategory, onCate
                     >
                       <span className="flex items-center gap-3">
                         <Utensils size={16} className={activeCategory === cat.id ? "text-primary" : "text-slate-300"} />
-                        {cat.name}
+                        <span className="uppercase">{cat.name}</span>
                       </span>
                       <span className="text-[10px] font-black bg-slate-100 text-slate-400 px-2 py-0.5 rounded-lg">
                         {cat.products?.length || 0}

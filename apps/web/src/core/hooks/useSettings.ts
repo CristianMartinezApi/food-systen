@@ -6,7 +6,11 @@ import { getTenantSlug } from '../../shared/utils/tenant';
 export function useSettings() {
   const [settings, setSettings] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const slug = getTenantSlug();
+  const [slug, setSlug] = useState<string>("");
+
+  useEffect(() => {
+    setSlug(getTenantSlug());
+  }, []);
 
   const fetchSettings = async () => {
     try {

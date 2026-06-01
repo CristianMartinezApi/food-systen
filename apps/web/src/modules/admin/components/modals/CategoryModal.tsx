@@ -40,7 +40,11 @@ export function CategoryModal({ isOpen, onClose, onSave, category }: CategoryMod
     try {
       const slug = formData.slug || formData.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, '-');
       const { status, ...rest } = formData; // Remove status if it exists from older data
-      const payload = { ...rest, slug };
+      const payload = { 
+        ...rest, 
+        name: formData.name.toUpperCase().trim(),
+        slug 
+      };
 
       if (category?.id) {
         await api.patch(`/categories/${category.id}`, payload);

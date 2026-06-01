@@ -1,8 +1,13 @@
-export const getTenantSlug = () => {
-  if (typeof window === 'undefined') return 'foodsystem-burger';
+export function getTenantSlug(): string {
+  if (typeof window === 'undefined') return 'saas-system';
 
   const pathParts = window.location.pathname.split('/');
   
+  // Se for o root literal, não tem tenant (é a Landing Page do SaaS)
+  if (pathParts.length <= 2 && pathParts[1] === '') {
+    return 'saas-system';
+  }
+
   // Se estiver no admin, tenta pegar do localStorage primeiro
   if (pathParts.includes('admin')) {
     const restaurantData = localStorage.getItem('@FoodSystem:restaurant');
@@ -29,6 +34,9 @@ export const getTenantSlug = () => {
     return slugFromPath;
   }
 
-  // Fallback para desenvolvimento
-  return 'foodsystem-burger';
-};
+  // Tenta pegar do localStorage como fallback geral (ex: usuário estava navegando e mudou de rota)
+  const stored = localStorage.getItem('tenant_slug');
+  if (stored) return stored;
+
+  return 'foodsystem-main';
+}

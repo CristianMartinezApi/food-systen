@@ -2,6 +2,7 @@
 import { useProducts } from "../hooks/useProducts";
 import { Header } from "../components/layout/Header";
 import { NavSidebar } from "../components/layout/NavSidebar";
+import { Footer } from "../components/layout/Footer";
 import { ProductCard } from "../components/product/ProductCard";
 import { Button } from "../../../shared/components/ui/button";
 import { useSettings } from "../../../core/hooks/useSettings";
@@ -21,7 +22,7 @@ export default function Home() {
     : products.filter(p => p.categoryId === activeCategory);
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC]">
+    <div className="min-h-screen bg-[#F8FAFC] flex flex-col">
       <Header onOpenMenu={() => setIsMenuOpen(true)} />
 
       <NavSidebar 
@@ -32,7 +33,7 @@ export default function Home() {
         onCategorySelect={setActiveCategory}
       />
       
-      <main className="container px-4 py-8 mx-auto max-w-7xl">
+      <main className="container px-4 py-8 mx-auto max-w-7xl flex-1">
         {/* Hero Section Modernizada */}
         <section className="mb-12">
           <motion.div 
@@ -209,6 +210,8 @@ export default function Home() {
             </div>
         )}
       </main>
+
+      <Footer />
     </div>
   );
 }
@@ -218,7 +221,7 @@ function CategoryTab({ active, onClick, label, icon: Icon }: any) {
     <button 
       onClick={onClick}
       className={cn(
-        "flex items-center gap-2 px-6 h-12 rounded-2xl font-bold transition-all shrink-0 border-2",
+        "flex items-center gap-2 px-6 h-12 rounded-2xl font-bold transition-all shrink-0 border-2 uppercase",
         active 
           ? "bg-primary border-primary text-white shadow-lg shadow-primary/20 scale-105" 
           : "bg-white border-transparent text-slate-600 hover:border-slate-200 hover:bg-slate-50"

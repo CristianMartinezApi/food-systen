@@ -8,6 +8,9 @@ export interface Product {
   isActive: boolean;
   isFeatured?: boolean;
   slug: string;
+  sizes?: { name: string; price: number }[];
+  addons?: { name: string; price: number }[];
+  ingredients?: string[];
 }
 
 export interface Category {
@@ -39,8 +42,8 @@ export interface OrderItem {
   quantity: number;
   price: number;
   variation?: string;
-  additionals?: string[];
-  removedIngredients?: string[];
+  addons?: { name: string; price: number }[];
+  removals?: string[];
   observations?: string;
 }
 

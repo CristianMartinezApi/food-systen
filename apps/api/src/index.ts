@@ -83,6 +83,39 @@ const seedSettings = async () => {
       }
     });
     console.log('✅ Restaurante e Settings inicializados');
+
+    // Adicionar categorias e produtos se não existirem
+    const category = await prisma.category.create({
+      data: {
+        name: 'Hambúrgueres',
+        slug: 'hamburgueres',
+        restaurantId: restaurant.id,
+        order: 1
+      }
+    });
+
+    await prisma.product.create({
+      data: {
+        name: 'Classic Burger',
+        description: 'Pão brioche, blend 180g, queijo cheddar e maionese da casa.',
+        price: 32.0,
+        categoryId: category.id,
+        restaurantId: restaurant.id,
+        isActive: true,
+        isFeatured: true,
+        ingredients: ['Alface', 'Tomate', 'Cebola Roxa'],
+        sizes: [
+          { name: 'Individual', price: 32.0 },
+          { name: 'Duplo', price: 45.0 }
+        ],
+        addons: [
+          { name: 'Bacon Extra', price: 4.5 },
+          { name: 'Ovo Frito', price: 3.0 },
+          { name: 'Queijo Cheddar', price: 2.5 }
+        ]
+      }
+    });
+    console.log('✅ Categorias e Produtos iniciais criados');
   }
 };
 seedSettings();
@@ -219,6 +252,11 @@ app.get('/api/categories', async (req: TenantRequest, res) => {
 app.post('/api/categories', authMiddleware, async (req: AuthRequest, res) => {
   try {
     const { id, restaurantId, status, ...categoryData } = req.body;
+    
+    if (categoryData.name) {
+      categoryData.name = categoryData.name.toUpperCase().trim();
+    }
+
     const category = await prisma.category.create({ 
       data: { ...categoryData, restaurantId: req.restaurantId } 
     });
@@ -233,6 +271,10 @@ app.patch('/api/categories/:id', authMiddleware, async (req: AuthRequest, res) =
   try {
     const id = parseInt(req.params.id);
     const { id: bodyId, restaurantId, products, status, createdAt, updatedAt, ...updateData } = req.body;
+
+    if (updateData.name) {
+      updateData.name = updateData.name.toUpperCase().trim();
+    }
 
     const result = await prisma.category.updateMany({
       where: { 
@@ -291,6 +333,17 @@ app.get('/api/products', async (req: TenantRequest, res) => {
 app.post('/api/products', authMiddleware, async (req: AuthRequest, res) => {
   try {
     const { id, restaurantId, status, ...productData } = req.body;
+    
+    // Converter categoryId para Int se vier como string
+    if (productData.categoryId) {
+        productData.categoryId = parseInt(productData.categoryId);
+    }
+
+    // Normalizar para CAIXA ALTA
+    if (productData.name) productData.name = productData.name.toUpperCase().trim();
+    if (productData.addons) productData.addons = (productData.addons as any[]).map(a => ({ ...a, name: a.name.toUpperCase().trim() }));
+    if (productData.sizes) productData.sizes = (productData.sizes as any[]).map(s => ({ ...s, name: s.name.toUpperCase().trim() }));
+    if (productData.ingredients) productData.ingredients = (productData.ingredients as string[]).map(i => i.toUpperCase().trim());
 
     // Verificar limite de produtos do plano
     const productCount = await prisma.product.count({
@@ -322,6 +375,17 @@ app.patch('/api/products/:id', authMiddleware, async (req: AuthRequest, res) => 
     const id = parseInt(req.params.id);
     const { id: bodyId, restaurantId, createdAt, updatedAt, category, status, ...updateData } = req.body;
     
+    // Converter categoryId para Int se vier como string
+    if (updateData.categoryId) {
+        updateData.categoryId = parseInt(updateData.categoryId);
+    }
+
+    // Normalizar para CAIXA ALTA
+    if (updateData.name) updateData.name = updateData.name.toUpperCase().trim();
+    if (updateData.addons) updateData.addons = (updateData.addons as any[]).map(a => ({ ...a, name: a.name.toUpperCase().trim() }));
+    if (updateData.sizes) updateData.sizes = (updateData.sizes as any[]).map(s => ({ ...s, name: s.name.toUpperCase().trim() }));
+    if (updateData.ingredients) updateData.ingredients = (updateData.ingredients as string[]).map(i => i.toUpperCase().trim());
+
     // Usamos updateMany para garantir que o produto pertence ao restaurante
     const result = await prisma.product.updateMany({
       where: { 
@@ -364,6 +428,29 @@ app.delete('/api/products/:id', authMiddleware, async (req: AuthRequest, res) =>
 });
 
 // Orders
+app.get('/api/customer/orders/:phone', async (req: TenantRequest, res) => {
+  try {
+    const { phone } = req.params;
+    const orders = await prisma.order.findMany({
+      where: {
+        phone,
+        restaurantId: req.restaurantId
+      },
+      orderBy: { createdAt: 'desc' },
+      include: {
+        items: {
+          include: {
+            product: true
+          }
+        }
+      }
+    });
+    res.json(orders);
+  } catch (error) {
+    res.status(500).json({ error: 'Erro ao buscar pedidos' });
+  }
+});
+
 app.get('/api/orders', authMiddleware, async (req: AuthRequest, res) => {
   const orders = await prisma.order.findMany({ 
     where: { restaurantId: req.restaurantId },
@@ -374,7 +461,7 @@ app.get('/api/orders', authMiddleware, async (req: AuthRequest, res) => {
 
 app.post('/api/orders', async (req: TenantRequest, res) => {
   try {
-    const { customerName, phone, address, paymentMethod, items, subtotal, deliveryFee, total, notes } = req.body;
+    const { customerName, phone, address, paymentMethod, items, subtotal, deliveryFee, total, notes, cpf, changeFor } = req.body;
 
     const order = await prisma.order.create({
       data: {
@@ -382,6 +469,8 @@ app.post('/api/orders', async (req: TenantRequest, res) => {
         phone,
         address,
         paymentMethod,
+        cpf,
+        changeFor,
         subtotal: subtotal || (total - (deliveryFee || 0)),
         deliveryFee: deliveryFee || 0,
         total,
@@ -390,9 +479,14 @@ app.post('/api/orders', async (req: TenantRequest, res) => {
         status: 'PENDING',
         items: {
           create: items.map((item: any) => ({
-            productId: item.productId || item.id, // Suporte a 'id' vindo do frontend
+            productId: item.productId || item.id,
+            name: item.name,
+            variation: item.variation,
             quantity: item.quantity,
-            price: item.price
+            price: item.price,
+            observations: item.observations,
+            addons: item.addons,
+            removals: item.removals
           }))
         }
       },

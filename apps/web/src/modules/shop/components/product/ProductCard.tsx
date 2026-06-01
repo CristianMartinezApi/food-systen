@@ -5,16 +5,10 @@ import { useCartStore } from "../../../../core/stores/useCartStore";
 import { motion } from "framer-motion";
 import toast from "react-hot-toast";
 import { ProductModal } from "./ProductModal";
+import type { Product } from "../../../../core/types";
 
 interface ProductCardProps {
-  product: {
-    id: number;
-    name: string;
-    description: string;
-    price: number;
-    image: string;
-    category?: { name: string };
-  };
+  product: Product;
 }
 
 export function ProductCard({ product }: ProductCardProps) {
@@ -23,8 +17,15 @@ export function ProductCard({ product }: ProductCardProps) {
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.stopPropagation();
+    
+    // Se o produto tiver múltiplos tamanhos, obriga a abrir o modal para escolha
+    if (product.sizes && product.sizes.length > 1) {
+      setIsModalOpen(true);
+      return;
+    }
+
     addItem({
-        productId: product.id,
+        productId: product.id!,
         name: product.name,
         price: product.price,
         quantity: 1

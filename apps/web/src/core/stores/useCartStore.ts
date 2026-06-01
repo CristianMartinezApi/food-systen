@@ -7,6 +7,7 @@ interface CartState {
   addItem: (item: OrderItem) => void;
   removeItem: (index: number) => void;
   updateQuantity: (index: number, quantity: number) => void;
+  updateItem: (index: number, item: Partial<OrderItem>) => void;
   clearCart: () => void;
   getTotalItems: () => number;
   getSubtotal: () => number;
@@ -20,7 +21,9 @@ export const useCartStore = create<CartState>()(
         const existingItemIndex = state.items.findIndex(
           (i) => i.productId === item.productId && 
                  i.variation === item.variation && 
-                 JSON.stringify(i.additionals) === JSON.stringify(item.additionals)
+                 JSON.stringify(i.addons) === JSON.stringify(item.addons) &&
+                 JSON.stringify(i.removals) === JSON.stringify(item.removals) &&
+                 i.observations === item.observations
         );
 
         if (existingItemIndex > -1) {
@@ -35,6 +38,9 @@ export const useCartStore = create<CartState>()(
       })),
       updateQuantity: (index, quantity) => set((state) => ({
         items: state.items.map((item, i) => i === index ? { ...item, quantity } : item)
+      })),
+      updateItem: (index, updatedItem) => set((state) => ({
+        items: state.items.map((item, i) => i === index ? { ...item, ...updatedItem } : item)
       })),
       clearCart: () => set({ items: [] }),
       getTotalItems: () => get().items.reduce((acc, item) => acc + item.quantity, 0),

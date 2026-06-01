@@ -1,7 +1,7 @@
 "use client";
 
-import Home from "../src/modules/shop/pages/Home";
+import LandingPage from "../src/modules/saas/pages/LandingPage";
 
 export default function Page() {
-  return <Home />;
+  return <LandingPage />;
 }

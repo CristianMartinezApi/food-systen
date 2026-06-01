@@ -20,10 +20,18 @@ import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import Link from "next/link";
 import { motion } from "framer-motion";
+import toast from "react-hot-toast";
 
 export default function Dashboard() {
   const [stats, setStats] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [slug, setSlug] = useState<string>("");
+
+  useEffect(() => {
+    setSlug(getTenantSlug());
+  }, []);
+
+  const storeUrl = typeof window !== 'undefined' ? `${window.location.origin}/${slug}` : '';
 
   const fetchStats = async () => {
     try {
@@ -63,7 +71,54 @@ export default function Dashboard() {
     <>
       <div className="mb-10">
         <h1 className="text-3xl font-black text-slate-900 tracking-tight">Painel de Controle</h1>
-        <p className="text-slate-500 font-medium">Bem-vindo de volta! Veja como está sua operação hoje.</p>
+        <p className="text-slate-500 font-medium tracking-tight">Bem-vindo de volta! Veja como está sua operação hoje.</p>
+      </div>
+
+      {/* Card de Link da Loja - Super Visível */}
+      <div className="mb-10 bg-gradient-to-r from-slate-900 to-slate-800 rounded-[2.5rem] p-8 text-white shadow-2xl shadow-slate-900/20 relative overflow-hidden group">
+        <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:scale-110 transition-transform duration-500">
+          <ExternalLink size={120} />
+        </div>
+        
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-8">
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
+              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Sua loja está online</span>
+            </div>
+            <h2 className="text-2xl font-black mb-1">Link do seu Cardápio Digital</h2>
+            <p className="text-slate-400 font-medium">Compartilhe este link com seus clientes para receber pedidos.</p>
+          </div>
+
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+             <div className="bg-white/10 backdrop-blur-md border border-white/10 px-6 py-4 rounded-2xl flex items-center gap-3 group/link cursor-pointer hover:bg-white/15 transition-all">
+                <code className="text-emerald-400 font-bold text-lg tracking-tight">
+                  {storeUrl.replace('http://', '').replace('https://', '')}
+                </code>
+             </div>
+             
+             <button 
+                onClick={() => {
+                  navigator.clipboard.writeText(storeUrl);
+                  toast.success("Link copiado com sucesso!");
+                }}
+                className="bg-primary text-white font-black px-8 py-4 rounded-2xl hover:scale-105 active:scale-95 transition-all shadow-lg shadow-primary/30 flex items-center justify-center gap-2"
+             >
+                <Plus size={20} />
+                COPIAR LINK
+             </button>
+
+             <a 
+                href={storeUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="bg-white text-slate-900 font-black px-8 py-4 rounded-2xl hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-2"
+             >
+                <ExternalLink size={20} />
+                ABRIR LOJA
+             </a>
+          </div>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">

@@ -10,12 +10,14 @@ import {
   ChevronRight,
   Bell,
   User,
-  Tags
+  Tags,
+  ExternalLink
 } from "lucide-react";
 import { cn } from "../../../../shared/utils";
 import { motion } from "framer-motion";
-
+import { getTenantSlug } from "../../../../shared/utils/tenant";
 import { useSettings } from "../../../../core/hooks/useSettings";
+import { useState, useEffect } from "react";
 
 interface AdminLayoutProps {
   children: ReactNode;
@@ -25,6 +27,11 @@ export function AdminLayout({ children }: AdminLayoutProps) {
   const pathname = usePathname();
   const router = useRouter();
   const { settings } = useSettings();
+  const [slug, setSlug] = useState<string>("");
+
+  useEffect(() => {
+    setSlug(getTenantSlug());
+  }, []);
 
   const handleLogout = () => {
     localStorage.removeItem("@FoodSystem:token");
@@ -40,6 +47,8 @@ export function AdminLayout({ children }: AdminLayoutProps) {
     { icon: Tags, label: "Categorias", path: "/admin/categories" },
     { icon: Settings, label: "Configurações", path: "/admin/settings" },
   ];
+
+  const storeUrl = typeof window !== 'undefined' ? `${window.location.origin}/${slug}` : '';
 
   return (
     <div className="min-h-screen bg-[#FDFDFD] flex">
@@ -119,11 +128,23 @@ export function AdminLayout({ children }: AdminLayoutProps) {
                 <h2 className="text-sm font-black text-slate-400 uppercase tracking-widest">Painel Administrativo</h2>
                 <ChevronRight size={14} className="text-slate-300" />
                 <span className="text-sm font-black text-slate-900 uppercase">
-                    {menuItems.find(m => m.path === location.pathname)?.label || "Início"}
+                    {menuItems.find(m => m.path === pathname)?.label || "Início"}
                 </span>
             </div>
 
             <div className="flex items-center gap-4">
+                <a 
+                    href={storeUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 h-10 px-4 bg-emerald-500 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-600 transition-all shadow-lg shadow-emerald-500/20"
+                >
+                    <ExternalLink size={14} />
+                    Ver minha Loja
+                </a>
+
+                <div className="h-8 w-px bg-slate-100 mx-2" />
+
                 <button className="relative w-11 h-11 rounded-xl bg-slate-50 flex items-center justify-center border hover:border-primary/20 transition-all group">
                     <Bell size={20} className="text-slate-500 group-hover:text-primary transition-colors" />
                     <span className="absolute top-2 right-2 w-2 h-2 bg-primary rounded-full border-2 border-white" />
@@ -136,15 +157,25 @@ export function AdminLayout({ children }: AdminLayoutProps) {
             </div>
         </header>
 
-        <div className="p-8 max-w-7xl mx-auto w-full">
+        <div className="p-8 max-w-7xl mx-auto w-full flex-1 flex flex-col justify-between">
           <motion.div
-            key={location.pathname}
+            key={pathname}
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4 }}
           >
             {children}
           </motion.div>
+
+          <footer className="mt-12 pt-8 border-t border-slate-100 flex flex-col md:flex-row justify-between items-center gap-4 text-slate-400">
+            <p className="text-xs font-medium">
+              &copy; {new Date().getFullYear()} {settings?.storeName || 'FoodSystem'}. Painel Administrativo.
+            </p>
+            <div className="flex items-center gap-1 text-xs font-bold uppercase tracking-widest">
+              <span>POWERED BY</span>
+              <span className="text-slate-900 ml-1">FOODSYSTEM.SaaS</span>
+            </div>
+          </footer>
         </div>
       </main>
     </div>

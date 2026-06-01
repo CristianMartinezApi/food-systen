@@ -18,7 +18,8 @@ import {
   Phone,
   Truck,
   DollarSign,
-  Map as MapIcon
+  Map as MapIcon,
+  Navigation
 } from "lucide-react";
 import { useSettings } from "../../../../core/hooks/useSettings";
 import { cn } from "../../../../shared/utils";
@@ -55,6 +56,23 @@ export default function SettingsPage() {
     const val = e.target.value;
     setValue(val);
     setFormData((prev: any) => ({ ...prev, address: val }));
+  };
+
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let val = e.target.value.replace(/\D/g, "");
+    if (val.length > 11) val = val.slice(0, 11);
+    
+    // Mask (11) 99999-9999
+    if (val.length > 10) {
+      val = val.replace(/^(\d{2})(\d{5})(\d{4}).*/, "($1) $2-$3");
+    } else if (val.length > 6) {
+      val = val.replace(/^(\d{2})(\d{4})(\d{0,4}).*/, "($1) $2-$3");
+    } else if (val.length > 2) {
+      val = val.replace(/^(\d{2})(\d{0,5}).*/, "($1) $2");
+    } else if (val.length > 0) {
+      val = val.replace(/^(\d{2}).*/, "($1");
+    }
+    setFormData({ ...formData, phone: val });
   };
 
   const handleSelect = async (address: string) => {
@@ -206,7 +224,7 @@ export default function SettingsPage() {
                             <Phone className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
                             <input 
                                 value={formData.phone}
-                                onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                                onChange={handlePhoneChange}
                                 placeholder="(11) 99999-9999"
                                 className="w-full h-14 pl-14 pr-5 bg-slate-50 border-2 border-transparent focus:border-primary/20 focus:bg-white rounded-2xl transition-all font-bold text-slate-700 outline-none"
                             />
@@ -266,8 +284,9 @@ export default function SettingsPage() {
                         />
                         
                         {/* Lista de Sugestões */}
+...
                         {status === "OK" && (
-                            <div className="absolute z-100 w-full mt-2 bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden animate-in fade-in zoom-in duration-200">
+                            <div className="absolute z-[100] w-full mt-2 bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden animate-in fade-in zoom-in duration-200">
                                 {data.map(({ place_id, description }) => (
                                     <button
                                         key={place_id}
@@ -285,6 +304,22 @@ export default function SettingsPage() {
                                 ))}
                             </div>
                         )}
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-2">
+                            <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Raio de Entrega Máximo (KM)</label>
+                            <div className="relative">
+                                <Navigation className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
+                                <input 
+                                    type="number"
+                                    value={formData.deliveryRadius}
+                                    onChange={(e) => setFormData({...formData, deliveryRadius: Number(e.target.value)})}
+                                    className="w-full h-14 pl-14 pr-5 bg-slate-50 border-2 border-transparent focus:border-primary/20 focus:bg-white rounded-2xl transition-all font-bold text-slate-700 outline-none"
+                                />
+                            </div>
+                            <p className="text-[10px] text-slate-400 font-bold uppercase mt-1 ml-1">Até quantos KM da sua loja você realiza entregas?</p>
+                        </div>
                     </div>
 
                     {formData.address ? (

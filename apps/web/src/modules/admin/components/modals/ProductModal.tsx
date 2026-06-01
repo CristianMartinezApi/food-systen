@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
-import { X, ImagePlus, Loader2, Save } from "lucide-react";
+import { X, ImagePlus, Loader2, Save, Plus, Trash2 } from "lucide-react";
 import { api } from "../../../../core/config/api";
+import { formatCurrency } from "../../../../shared/utils";
 
 interface ProductModalProps {
   isOpen: boolean;
@@ -16,12 +17,29 @@ export function ProductModal({ isOpen, onClose, onSave, product }: ProductModalP
     price: 0,
     categoryId: "",
     image: "",
-    isActive: true
+    isActive: true,
+    addons: [],
+    sizes: [],
+    ingredients: []
   });
+
+  const [newAddon, setNewAddon] = useState({ name: "", price: "" });
+  const [newSize, setNewSize] = useState({ name: "", price: "" });
+  const [newIngredient, setNewIngredient] = useState("");
+
   const [categories, setCategories] = useState<any[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [isLoadingCats, setIsLoadingCats] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Lógica para esconder campos extras em categorias específicas (Bebidas, etc)
+  const selectedCategory = categories.find(c => c.id.toString() === formData.categoryId?.toString());
+  const isSimpleProduct = selectedCategory?.slug?.toLowerCase().includes('bebida') || 
+                          selectedCategory?.name?.toLowerCase().includes('bebida') ||
+                          selectedCategory?.name?.toLowerCase().includes('suco') ||
+                          selectedCategory?.name?.toLowerCase().includes('cerveja') ||
+                          selectedCategory?.name?.toLowerCase().includes('agua') ||
+                          selectedCategory?.name?.toLowerCase().includes('água');
 
   const fetchCategories = async () => {
     try {
@@ -48,7 +66,10 @@ export function ProductModal({ isOpen, onClose, onSave, product }: ProductModalP
       setFormData({
         ...product,
         categoryId: product.categoryId?.toString() || "",
-        isActive: product.isActive !== undefined ? product.isActive : true
+        isActive: product.isActive !== undefined ? product.isActive : true,
+        addons: product.addons || [],
+        sizes: product.sizes || [],
+        ingredients: product.ingredients || []
       });
     } else if (isOpen) {
       setFormData({
@@ -57,10 +78,64 @@ export function ProductModal({ isOpen, onClose, onSave, product }: ProductModalP
         price: "" as any,
         categoryId: "",
         image: "",
-        isActive: true
+        isActive: true,
+        addons: [],
+        sizes: [],
+        ingredients: []
       });
     }
   }, [product, isOpen]);
+
+  const addAddon = () => {
+    if (newAddon.name && newAddon.price) {
+      setFormData({
+        ...formData,
+        addons: [...formData.addons, { name: newAddon.name, price: parseFloat(newAddon.price) }]
+      });
+      setNewAddon({ name: "", price: "" });
+    }
+  };
+
+  const removeAddon = (index: number) => {
+    setFormData({
+      ...formData,
+      addons: formData.addons.filter((_: any, i: number) => i !== index)
+    });
+  };
+
+  const addSize = () => {
+    if (newSize.name && newSize.price) {
+      setFormData({
+        ...formData,
+        sizes: [...formData.sizes, { name: newSize.name, price: parseFloat(newSize.price) }]
+      });
+      setNewSize({ name: "", price: "" });
+    }
+  };
+
+  const removeSize = (index: number) => {
+    setFormData({
+      ...formData,
+      sizes: formData.sizes.filter((_: any, i: number) => i !== index)
+    });
+  };
+
+  const addIngredient = () => {
+    if (newIngredient) {
+      setFormData({
+        ...formData,
+        ingredients: [...formData.ingredients, newIngredient]
+      });
+      setNewIngredient("");
+    }
+  };
+
+  const removeIngredient = (index: number) => {
+    setFormData({
+      ...formData,
+      ingredients: formData.ingredients.filter((_: any, i: number) => i !== index)
+    });
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -86,8 +161,12 @@ export function ProductModal({ isOpen, onClose, onSave, product }: ProductModalP
       const { status, ...rest } = formData;
       const payload = {
         ...rest,
+        name: formData.name.toUpperCase().trim(),
         price: parseFloat(formData.price) || 0,
-        categoryId: parseInt(formData.categoryId)
+        categoryId: parseInt(formData.categoryId),
+        addons: formData.addons?.map((a: any) => ({ ...a, name: a.name.toUpperCase().trim() })),
+        sizes: formData.sizes?.map((s: any) => ({ ...s, name: s.name.toUpperCase().trim() })),
+        ingredients: formData.ingredients?.map((i: string) => i.toUpperCase().trim())
       };
 
       if (product?.id) {
@@ -239,6 +318,121 @@ export function ProductModal({ isOpen, onClose, onSave, product }: ProductModalP
                         className="w-full h-32 p-5 bg-slate-50 border-2 border-transparent focus:border-primary/20 focus:bg-white rounded-2xl transition-all font-bold text-slate-700 outline-none resize-none"
                     />
                 </div>
+
+                {!isSimpleProduct && (
+                  <>
+                    {/* Tamanhos / Variações */}
+                    <div className="md:col-span-2 space-y-4">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Tamanhos / Variações (Opcional)</label>
+                        <div className="flex gap-2">
+                            <input 
+                                value={newSize.name}
+                                onChange={(e) => setNewSize({...newSize, name: e.target.value})}
+                                placeholder="Nome (Ex: P, M, G, 200g...)"
+                                className="flex-1 h-12 px-4 bg-slate-50 rounded-xl font-bold text-sm outline-none border-2 border-transparent focus:border-primary/10"
+                            />
+                            <input 
+                                type="number"
+                                value={newSize.price}
+                                onChange={(e) => setNewSize({...newSize, price: e.target.value})}
+                                placeholder="Preço R$"
+                                className="w-32 h-12 px-4 bg-slate-50 rounded-xl font-bold text-sm outline-none border-2 border-transparent focus:border-primary/10"
+                            />
+                            <button 
+                                type="button"
+                                onClick={addSize}
+                                className="w-12 h-12 bg-slate-900 text-white rounded-xl flex items-center justify-center hover:bg-black transition-all"
+                            >
+                                <Plus size={20} />
+                            </button>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                            {formData.sizes.map((size: any, idx: number) => (
+                                <div key={idx} className="flex items-center gap-3 bg-white border border-slate-100 px-4 py-2 rounded-xl shadow-sm group">
+                                    <div className="text-left">
+                                        <p className="text-[10px] font-black text-slate-900 uppercase tracking-tight">{size.name}</p>
+                                        <p className="text-[10px] font-bold text-primary">{formatCurrency(size.price)}</p>
+                                    </div>
+                                    <button type="button" onClick={() => removeSize(idx)} className="text-slate-300 hover:text-rose-500 transition-all">
+                                        <Trash2 size={14} />
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Adicionais */}
+                    <div className="md:col-span-2 space-y-4">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Adicionais (Ex: Bacon, Queijo Extra...)</label>
+                        <div className="flex gap-2">
+                            <input 
+                                value={newAddon.name}
+                                onChange={(e) => setNewAddon({...newAddon, name: e.target.value})}
+                                placeholder="Nome do adicional"
+                                className="flex-1 h-12 px-4 bg-slate-50 rounded-xl font-bold text-sm outline-none border-2 border-transparent focus:border-primary/10"
+                            />
+                            <input 
+                                type="number"
+                                value={newAddon.price}
+                                onChange={(e) => setNewAddon({...newAddon, price: e.target.value})}
+                                placeholder="Preço R$"
+                                className="w-32 h-12 px-4 bg-slate-50 rounded-xl font-bold text-sm outline-none border-2 border-transparent focus:border-primary/10"
+                            />
+                            <button 
+                                type="button"
+                                onClick={addAddon}
+                                className="w-12 h-12 bg-slate-900 text-white rounded-xl flex items-center justify-center hover:bg-black transition-all"
+                            >
+                                <Plus size={20} />
+                            </button>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                            {formData.addons.map((addon: any, idx: number) => (
+                                <div key={idx} className="flex items-center gap-3 bg-white border border-slate-100 px-4 py-2 rounded-xl shadow-sm">
+                                    <div className="text-left">
+                                        <p className="text-[10px] font-black text-slate-900 uppercase tracking-tight">{addon.name}</p>
+                                        <p className="text-[10px] font-bold text-emerald-500">+{formatCurrency(addon.price)}</p>
+                                    </div>
+                                    <button type="button" onClick={() => removeAddon(idx)} className="text-slate-300 hover:text-rose-500 transition-all">
+                                        <Trash2 size={14} />
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Ingredientes para Remoção */}
+                    <div className="md:col-span-2 space-y-4">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Ingredientes (Permite que o cliente remova no pedido)</label>
+                        <div className="flex gap-2">
+                            <input 
+                                value={newIngredient}
+                                onChange={(e) => setNewIngredient(e.target.value)}
+                                placeholder="Ex: Cebola, Picles, Molho Especial..."
+                                className="flex-1 h-12 px-4 bg-slate-50 rounded-xl font-bold text-sm outline-none border-2 border-transparent focus:border-primary/10"
+                                onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addIngredient())}
+                            />
+                            <button 
+                                type="button"
+                                onClick={addIngredient}
+                                className="w-12 h-12 bg-slate-900 text-white rounded-xl flex items-center justify-center hover:bg-black transition-all"
+                            >
+                                <Plus size={20} />
+                            </button>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                            {formData.ingredients.map((ing: string, idx: number) => (
+                                <div key={idx} className="flex items-center gap-2 bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200">
+                                    <span className="text-[10px] font-black text-slate-600 uppercase tracking-tight">{ing}</span>
+                                    <button type="button" onClick={() => removeIngredient(idx)} className="text-slate-400 hover:text-rose-500 transition-all">
+                                        <X size={12} strokeWidth={3} />
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                  </>
+                )}
             </div>
         </form>
 

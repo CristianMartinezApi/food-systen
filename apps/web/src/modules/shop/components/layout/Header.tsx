@@ -1,20 +1,29 @@
-﻿import { ShoppingCart, Menu, User, Search, MapPin, Utensils } from "lucide-react";
+﻿import { ShoppingCart, Menu, User, Search, MapPin, Utensils, ShoppingBag } from "lucide-react";
 import { Button } from "../../../../shared/components/ui/button";
 import { useCartStore } from "../../../../core/stores/useCartStore";
 import { useSettings } from "../../../../core/hooks/useSettings";
-import { useState } from "react";
+import { useHasHydrated } from "../../../../core/hooks/useHasHydrated";
+import { getTenantSlug } from "../../../../shared/utils/tenant";
+import { useState, useEffect } from "react";
 import { CartSidebar } from "../cart/CartSidebar";
 import { cn } from "../../../../shared/utils";
+import Link from "next/link";
 
 interface HeaderProps {
   onOpenMenu?: () => void;
 }
 
 export function Header({ onOpenMenu }: HeaderProps) {
+  const hasHydrated = useHasHydrated();
   const { getTotalItems } = useCartStore();
-  const totalItems = getTotalItems();
+  const totalItems = hasHydrated ? getTotalItems() : 0;
   const { settings } = useSettings();
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const [slug, setSlug] = useState<string>("");
+
+  useEffect(() => {
+    setSlug(getTenantSlug());
+  }, []);
 
   return (
     <>
@@ -30,7 +39,7 @@ export function Header({ onOpenMenu }: HeaderProps) {
             >
                 <Menu className="h-6 w-6" />
             </Button>
-            <div className="flex items-center gap-3 group cursor-pointer">
+            <Link href={`/${slug}`} className="flex items-center gap-3 group cursor-pointer">
                 {settings?.logo ? (
                     <img src={settings.logo} alt="Logo" className="w-10 h-10 md:w-12 md:h-12 rounded-2xl object-cover shadow-lg group-hover:scale-105 transition-transform" />
                 ) : (
@@ -38,7 +47,7 @@ export function Header({ onOpenMenu }: HeaderProps) {
                         <Utensils className="text-white" size={24} />
                     </div>
                 )}
-                <div className="flex flex-col">
+                <div className="flex flex-col text-left">
                     <span className="text-xl md:text-2xl font-black tracking-tighter text-slate-900 leading-tight">
                         {settings?.storeName?.split(' ')[0] || "Food"}<span className="text-primary">{settings?.storeName?.split(' ')[1] || "System."}</span>
                     </span>
@@ -52,7 +61,7 @@ export function Header({ onOpenMenu }: HeaderProps) {
                         </span>
                     </div>
                 </div>
-            </div>
+            </Link>
             </div>
 
             {/* Localização (Visual Only) */}
@@ -89,9 +98,13 @@ export function Header({ onOpenMenu }: HeaderProps) {
                     {totalItems}
                     </span>
                 )}
-                {/* Efeito de brilho no hover */}
                 <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
             </button>
+
+            <Link href={`/${slug}/orders`} className="hidden sm:flex w-12 h-12 md:w-14 md:h-14 bg-white border border-slate-100 rounded-2xl items-center justify-center text-slate-400 hover:text-primary hover:border-primary transition-all shadow-sm">
+                <ShoppingBag size={24} />
+            </Link>
+
             <div className="w-[1px] h-8 bg-slate-100 mx-1 hidden sm:block" />
             <button className="hidden sm:flex w-12 h-12 md:w-14 md:h-14 bg-white border border-slate-100 rounded-2xl items-center justify-center text-slate-400 hover:text-primary hover:border-primary transition-all shadow-sm">
                 <User size={24} />

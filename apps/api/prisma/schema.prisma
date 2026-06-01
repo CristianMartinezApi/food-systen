@@ -170,6 +170,10 @@ model Product {
 
   isActive     Boolean   @default(true)
   isFeatured   Boolean   @default(false)
+  
+  sizes        Json?     // [{ name: 'P', price: 10 }, { name: 'G', price: 15 }]
+  addons       Json?     // [{ name: 'Bacon', price: 2 }, { name: 'Ovo', price: 1.5 }]
+  ingredients  Json?     // ['Alface', 'Tomate', 'Maionese']
 
   restaurantId Int
   restaurant   Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
@@ -202,6 +206,8 @@ model Order {
 
   status         OrderStatus    @default(PENDING)
   paymentMethod  PaymentMethod
+  changeFor      String?
+  cpf            String?
 
   subtotal       Float
   deliveryFee    Float          @default(0)
@@ -238,8 +244,13 @@ model OrderItem {
   productId   Int
   product     Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
 
+  name        String?
+  variation   String?
   quantity    Int
   price       Float
+  observations String?
+  addons      Json?
+  removals    Json?
 
   createdAt   DateTime  @default(now())
 
@@ -280,6 +291,7 @@ model Settings {
 
   latitude        Float?
   longitude       Float?
+  deliveryRadius  Float?     @default(5) // Em KM
 
   createdAt       DateTime   @default(now())
   updatedAt       DateTime   @updatedAt
