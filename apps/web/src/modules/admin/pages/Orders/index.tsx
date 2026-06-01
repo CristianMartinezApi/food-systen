@@ -1,5 +1,4 @@
 ﻿import { useState, useEffect } from "react";
-import { AdminLayout } from "../../components/layout/AdminLayout";
 import { 
   Loader2,
   Clock,
@@ -10,6 +9,7 @@ import {
 } from "lucide-react";
 import { api } from "../../../../core/config/api";
 import { socket } from "../../../../core/config/socket";
+import { getTenantSlug } from "../../../../shared/utils/tenant";
 import { formatCurrency, cn } from "../../../../shared/utils";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -18,7 +18,7 @@ import { motion, AnimatePresence } from "framer-motion";
 export default function OrdersPage() {
   const [orders, setOrders] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("ALL");
 
   const fetchOrders = async () => {
     try {
@@ -42,18 +42,21 @@ export default function OrdersPage() {
 
   useEffect(() => {
     fetchOrders();
-    socket.on('new_order', () => fetchOrders());
+    const slug = getTenantSlug();
+    const eventName = `new_order_${slug}`;
+    
+    socket.on(eventName, () => fetchOrders());
     return () => {
-      socket.off('new_order');
+      socket.off(eventName);
     };
   }, []);
 
   const filteredOrders = orders.filter(o => 
-    statusFilter === "all" ? true : o.status === statusFilter
+    statusFilter === "ALL" ? true : o.status === statusFilter
   );
 
   return (
-    <AdminLayout>
+    <>
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
         <div>
           <h1 className="text-3xl font-black text-slate-900 tracking-tight">Gerenciamento de Pedidos</h1>
@@ -61,16 +64,21 @@ export default function OrdersPage() {
         </div>
         
         <div className="flex bg-white p-1.5 rounded-2xl border border-slate-100 shadow-sm">
-            {['all', 'new', 'preparing', 'delivered'].map((f) => (
+            {[
+              { id: 'ALL', label: 'Todos' },
+              { id: 'PENDING', label: 'Novos' },
+              { id: 'PREPARING', label: 'Preparo' },
+              { id: 'DELIVERED', label: 'Finalizados' }
+            ].map((f) => (
                 <button
-                    key={f}
-                    onClick={() => setStatusFilter(f)}
+                    key={f.id}
+                    onClick={() => setStatusFilter(f.id)}
                     className={cn(
                         "px-6 h-11 rounded-xl text-xs font-black uppercase tracking-widest transition-all",
-                        statusFilter === f ? "bg-slate-900 text-white shadow-lg" : "text-slate-400 hover:text-slate-600"
+                        statusFilter === f.id ? "bg-slate-900 text-white shadow-lg" : "text-slate-400 hover:text-slate-600"
                     )}
                 >
-                    {f === 'all' ? 'Todos' : f === 'new' ? 'Novos' : f === 'preparing' ? 'Preparo' : 'Finalizados'}
+                    {f.label}
                 </button>
             ))}
         </div>
@@ -119,11 +127,11 @@ export default function OrdersPage() {
                                    </span>
                                    <span className={cn(
                                       "text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-lg",
-                                      order.status === 'new' ? 'bg-amber-100 text-amber-700' :
-                                      order.status === 'delivered' ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'
+                                      order.status === 'PENDING' ? 'bg-amber-100 text-amber-700' :
+                                      order.status === 'DELIVERED' ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'
                                    )}>
-                                      {order.status === 'new' ? 'Aguardando Aprovação' : 
-                                       order.status === 'delivered' ? 'Pedido Entregue' : 'Em Preparação'}
+                                      {order.status === 'PENDING' ? 'Aguardando Aprovação' : 
+                                       order.status === 'DELIVERED' ? 'Pedido Entregue' : 'Em Preparação'}
                                    </span>
                                 </div>
                              </div>
@@ -137,7 +145,7 @@ export default function OrdersPage() {
                              </div>
                              <div className="flex items-center gap-4">
                                 <CreditCard size={18} className="text-slate-400" />
-                                <p className="text-xs font-black uppercase tracking-widest text-slate-500">{order.paymentMethod === 'pix' ? 'Pagamento via PIX' : 'Cartão / Dinheiro'}</p>
+                                <p className="text-xs font-black uppercase tracking-widest text-slate-500">{order.paymentMethod === 'PIX' ? 'Pagamento via PIX' : 'Cartão / Dinheiro'}</p>
                              </div>
                           </div>
 
@@ -149,17 +157,17 @@ export default function OrdersPage() {
                              </div>
                              
                              <div className="flex gap-2">
-                                {order.status === 'new' && (
+                                {order.status === 'PENDING' && (
                                     <button 
-                                      onClick={() => updateStatus(order.id, 'preparing')}
+                                      onClick={() => updateStatus(order.id, 'PREPARING')}
                                       className="h-12 px-6 bg-blue-600 text-white rounded-xl font-black text-xs uppercase tracking-widest shadow-lg shadow-blue-200 hover:scale-105 active:scale-95 transition-all"
                                     >
                                         ACEITAR PEDIDO
                                     </button>
                                 )}
-                                {order.status === 'preparing' && (
+                                {(order.status === 'PREPARING' || order.status === 'READY') && (
                                     <button 
-                                      onClick={() => updateStatus(order.id, 'delivered')}
+                                      onClick={() => updateStatus(order.id, 'DELIVERED')}
                                       className="h-12 px-6 bg-emerald-600 text-white rounded-xl font-black text-xs uppercase tracking-widest shadow-lg shadow-emerald-200 hover:scale-105 active:scale-95 transition-all"
                                     >
                                         FINALIZAR / ENTREGAR
@@ -178,6 +186,6 @@ export default function OrdersPage() {
           </AnimatePresence>
         </div>
       )}
-    </AdminLayout>
+    </>
   );
 }

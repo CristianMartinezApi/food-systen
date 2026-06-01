@@ -1,10 +1,12 @@
 ﻿import { useState, useEffect } from 'react';
 import { api } from '../config/api';
 import { socket } from '../config/socket';
+import { getTenantSlug } from '../../shared/utils/tenant';
 
 export function useSettings() {
   const [settings, setSettings] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const slug = getTenantSlug();
 
   const fetchSettings = async () => {
     try {
@@ -38,7 +40,8 @@ export function useSettings() {
   useEffect(() => {
     fetchSettings();
 
-    socket.on('settings_updated', (newSettings) => {
+    const eventName = `settings_updated_${slug}`;
+    socket.on(eventName, (newSettings) => {
       setSettings(newSettings);
       if (newSettings.primaryColor) {
         document.documentElement.style.setProperty('--color-primary', newSettings.primaryColor);
@@ -46,9 +49,9 @@ export function useSettings() {
     });
 
     return () => {
-      socket.off('settings_updated');
+      socket.off(eventName);
     };
-  }, []);
+  }, [slug]);
 
   const updateSettings = async (newSettings: any) => {
     try {

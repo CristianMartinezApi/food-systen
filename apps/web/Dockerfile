@@ -1,20 +1,30 @@
-# Build stage
-FROM node:20-alpine as build
+# Etapa de Build
+FROM node:20-alpine AS builder
 
 WORKDIR /app
 
+# Instalar dependências primeiro para aproveitar o cache do Docker
 COPY package*.json ./
 RUN npm install
 
+# Copiar o restante e compilar
 COPY . .
 RUN npm run build
 
-# Production stage
-FROM nginx:stable-alpine
+# Etapa de Produção
+FROM node:20-alpine AS runner
 
-COPY --from=build /app/dist /usr/share/nginx/html
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+WORKDIR /app
 
-EXPOSE 80
+ENV NODE_ENV=production
 
-CMD ["nginx", "-g", "daemon off;"]
+# Copiar arquivos necessários da etapa de build
+COPY --from=builder /app/package*.json ./
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/.next ./.next
+COPY --from=builder /app/public ./public
+COPY --from=builder /app/next.config.js ./
+
+EXPOSE 3000
+
+CMD ["npm", "start"]

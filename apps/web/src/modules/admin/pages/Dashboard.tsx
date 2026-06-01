@@ -1,5 +1,4 @@
 ﻿import { useState, useEffect } from "react";
-import { AdminLayout } from "../components/layout/AdminLayout";
 import { 
   TrendingUp, 
   ShoppingBag, 
@@ -16,9 +15,10 @@ import {
 import { formatCurrency, cn } from "../../../shared/utils";
 import { api } from "../../../core/config/api";
 import { socket } from "../../../core/config/socket";
+import { getTenantSlug } from "../../../shared/utils/tenant";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Link } from "react-router-dom";
+import Link from "next/link";
 import { motion } from "framer-motion";
 
 export default function Dashboard() {
@@ -38,26 +38,29 @@ export default function Dashboard() {
 
   useEffect(() => {
     fetchStats();
-    socket.on('new_order', () => fetchStats());
-    socket.on('order_status_updated', () => fetchStats());
+    const slug = getTenantSlug();
+    const newOrderEvent = `new_order_${slug}`;
+    const statusUpdateEvent = `order_status_updated_${slug}`;
+
+    socket.on(newOrderEvent, () => fetchStats());
+    socket.on(statusUpdateEvent, () => fetchStats());
+    
     return () => {
-      socket.off('new_order');
-      socket.off('order_status_updated');
+      socket.off(newOrderEvent);
+      socket.off(statusUpdateEvent);
     };
   }, []);
 
   if (isLoading) {
     return (
-      <AdminLayout>
-        <div className="h-96 flex items-center justify-center">
-            <Loader2 className="animate-spin text-primary" size={40} />
-        </div>
-      </AdminLayout>
+      <div className="h-96 flex items-center justify-center">
+          <Loader2 className="animate-spin text-primary" size={40} />
+      </div>
     );
   }
 
   return (
-    <AdminLayout>
+    <>
       <div className="mb-10">
         <h1 className="text-3xl font-black text-slate-900 tracking-tight">Painel de Controle</h1>
         <p className="text-slate-500 font-medium">Bem-vindo de volta! Veja como está sua operação hoje.</p>
@@ -102,7 +105,7 @@ export default function Dashboard() {
                 <h3 className="font-black text-xl text-slate-900 uppercase tracking-tighter">Pedidos Recentes</h3>
                 <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Últimas 5 movimentações</p>
             </div>
-            <Link to="/admin/orders" className="h-10 px-4 rounded-xl border-2 border-slate-50 text-xs font-black text-slate-600 hover:bg-slate-50 transition-all flex items-center gap-2">
+            <Link href="/admin/orders" className="h-10 px-4 rounded-xl border-2 border-slate-50 text-xs font-black text-slate-600 hover:bg-slate-50 transition-all flex items-center gap-2">
               GERENCIAR TODOS <ExternalLink size={14} />
             </Link>
           </div>
@@ -263,13 +266,13 @@ export default function Dashboard() {
             </div>
         </div>
       </div>
-    </AdminLayout>
+    </>
   );
 }
 
 function QuickAction({ icon: Icon, label, path, color }: any) {
     return (
-        <Link to={path} className={cn(
+        <Link href={path} className={cn(
             "p-5 rounded-2xl flex flex-col items-center justify-center gap-3 transition-all hover:scale-105 active:scale-95 group",
             color
         )}>

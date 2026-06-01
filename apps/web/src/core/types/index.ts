@@ -5,57 +5,31 @@ export interface Product {
   price: number;
   categoryId: number;
   image: string;
-  images?: string[];
-  status: 'active' | 'inactive';
-  isNew?: boolean;
-  isPromotion?: boolean;
-  isBestSeller?: boolean;
-  preparationTime?: string;
-  ingredients?: string[];
-  nutritionalInfo?: string;
-  variations?: ProductVariation[];
-  additionals?: number[]; // IDs of additionals
-  removables?: string[];
-  rating?: number;
-  reviewsCount?: number;
+  isActive: boolean;
+  isFeatured?: boolean;
   slug: string;
-  seo?: {
-    metaTitle?: string;
-    metaDescription?: string;
-  };
-}
-
-export interface ProductVariation {
-  name: string;
-  price: number;
 }
 
 export interface Category {
   id?: number;
   name: string;
   slug: string;
-  icon?: string;
-  color?: string;
-  description?: string;
-  image?: string;
   order: number;
-  status: 'active' | 'inactive';
+  isActive: boolean;
+  products?: Product[];
 }
 
 export interface Order {
   id?: number;
   customerName: string;
   phone: string;
-  type: 'delivery' | 'pickup';
-  address?: Address;
+  address?: any;
   items: OrderItem[];
   subtotal: number;
   deliveryFee: number;
-  discount: number;
   total: number;
   paymentMethod: string;
-  change?: number;
-  status: 'new' | 'confirmed' | 'preparing' | 'on-way' | 'delivered' | 'cancelled';
+  status: 'PENDING' | 'CONFIRMED' | 'PREPARING' | 'READY' | 'OUT_FOR_DELIVERY' | 'DELIVERED' | 'CANCELLED' | 'REFUNDED';
   createdAt: string;
 }
 

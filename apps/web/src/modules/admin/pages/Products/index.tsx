@@ -1,5 +1,4 @@
 ﻿import { useState, useEffect } from "react";
-import { AdminLayout } from "../../components/layout/AdminLayout";
 import { 
   Plus, 
   Search, 
@@ -56,8 +55,7 @@ export default function ProductsPage() {
 
   return (
     <>
-      <AdminLayout>
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
           <div>
             <h1 className="text-3xl font-black text-slate-900 tracking-tight">Gestão de Produtos</h1>
             <p className="text-slate-500 font-medium">Cadastre, edite e organize o cardápio da sua loja.</p>
@@ -153,7 +151,7 @@ export default function ProductsPage() {
                       <h3 className="font-black text-lg text-slate-900 leading-tight uppercase tracking-tighter truncate flex-1 pr-2">
                         {product.name}
                       </h3>
-                      {product.status === 'active' ? (
+                      {product.isActive ? (
                         <CheckCircle2 size={20} className="text-emerald-500 shrink-0" />
                       ) : (
                         <XCircle size={20} className="text-rose-500 shrink-0" />
@@ -171,11 +169,11 @@ export default function ProductsPage() {
                           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Status</p>
                           <div className={cn(
                               "w-8 h-4 rounded-full mt-1 ml-auto transition-colors",
-                              product.status === 'active' ? "bg-emerald-100" : "bg-slate-100"
+                              product.isActive ? "bg-emerald-100" : "bg-slate-100"
                           )}>
                               <div className={cn(
                                   "w-4 h-4 rounded-full shadow-sm transition-all",
-                                  product.status === 'active' ? "bg-emerald-500 translate-x-4" : "bg-slate-400"
+                                  product.isActive ? "bg-emerald-500 translate-x-4" : "bg-slate-400"
                               )} />
                           </div>
                        </div>
@@ -193,7 +191,6 @@ export default function ProductsPage() {
           onSave={fetchProducts}
           product={selectedProduct}
         />
-      </AdminLayout>
     </>
   );
 }

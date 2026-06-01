@@ -1,5 +1,4 @@
 ﻿import { useState, useEffect, useRef } from "react";
-import { AdminLayout } from "../../components/layout/AdminLayout";
 import usePlacesAutocomplete, {
   getGeocode,
   getLatLng,
@@ -23,6 +22,7 @@ import {
 } from "lucide-react";
 import { useSettings } from "../../../../core/hooks/useSettings";
 import { cn } from "../../../../shared/utils";
+import toast from "react-hot-toast";
 
 export default function SettingsPage() {
   const { settings, updateSettings } = useSettings();
@@ -45,11 +45,17 @@ export default function SettingsPage() {
   });
 
   useEffect(() => {
-    if (settings) {
+    if (settings && !formData) {
       setFormData(settings);
       setValue(settings.address || "", false);
     }
-  }, [settings, setValue]);
+  }, [settings, setValue, formData]);
+
+  const handleManualAddressChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setValue(val);
+    setFormData((prev: any) => ({ ...prev, address: val }));
+  };
 
   const handleSelect = async (address: string) => {
     setValue(address, false);
@@ -86,7 +92,12 @@ export default function SettingsPage() {
     e.preventDefault();
     setIsSaving(true);
     try {
+      console.log("Enviando dados:", formData);
       await updateSettings(formData);
+      toast.success("Configurações atualizadas com sucesso!");
+    } catch (error) {
+      console.error("Erro ao salvar:", error);
+      toast.error("Erro ao salvar configurações.");
     } finally {
       setIsSaving(false);
     }
@@ -95,7 +106,7 @@ export default function SettingsPage() {
   if (!formData) return null;
 
   return (
-    <AdminLayout>
+    <>
       <div className="flex items-center justify-between mb-10">
         <div>
           <h1 className="text-3xl font-black text-slate-900 tracking-tight">Configurações da Loja</h1>
@@ -128,7 +139,7 @@ export default function SettingsPage() {
                         <div className="flex items-center gap-6">
                             <div 
                                 onClick={() => fileInputRef.current?.click()}
-                                className="relative w-32 h-32 bg-slate-50 rounded-[2rem] border-2 border-dashed border-slate-200 flex flex-col items-center justify-center cursor-pointer hover:border-primary/40 hover:bg-primary/[0.02] transition-all group overflow-hidden"
+                                className="relative w-32 h-32 bg-slate-50 rounded-4xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center cursor-pointer hover:border-primary/40 hover:bg-primary/2 transition-all group overflow-hidden"
                             >
                                 {formData.logo ? (
                                     <>
@@ -248,9 +259,7 @@ export default function SettingsPage() {
                             value={value}
                             onChange={(e) => {
                                 setValue(e.target.value);
-                                if (!e.target.value) {
-                                    setFormData({...formData, address: "", latitude: null, longitude: null});
-                                }
+                                setFormData((prev: any) => ({ ...prev, address: e.target.value }));
                             }}
                             placeholder="Ex: Rua das Flores, 123 - Centro, São Paulo - SP"
                             className="w-full h-14 px-5 bg-slate-50 border-2 border-transparent focus:border-primary/20 focus:bg-white rounded-2xl transition-all font-bold text-slate-700 outline-none"
@@ -258,7 +267,7 @@ export default function SettingsPage() {
                         
                         {/* Lista de Sugestões */}
                         {status === "OK" && (
-                            <div className="absolute z-[100] w-full mt-2 bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden animate-in fade-in zoom-in duration-200">
+                            <div className="absolute z-100 w-full mt-2 bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden animate-in fade-in zoom-in duration-200">
                                 {data.map(({ place_id, description }) => (
                                     <button
                                         key={place_id}
@@ -279,7 +288,7 @@ export default function SettingsPage() {
                     </div>
 
                     {formData.address ? (
-                        <div className="mt-4 overflow-hidden rounded-[2rem] border-4 border-slate-50 shadow-inner group relative">
+                        <div className="mt-4 overflow-hidden rounded-4xl border-4 border-slate-50 shadow-inner group relative">
                             <iframe
                                 width="100%"
                                 height="400"
@@ -317,9 +326,9 @@ export default function SettingsPage() {
                             )}
                         </div>
                     ) : (
-                        <div className="mt-4 h-48 bg-slate-50 rounded-[2rem] border-2 border-dashed border-slate-200 flex flex-col items-center justify-center text-center p-8">
+                        <div className="mt-4 h-48 bg-slate-50 rounded-4xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center text-center p-8">
                             <MapIcon className="text-slate-200 mb-3" size={40} />
-                            <p className="text-xs font-bold text-slate-400 max-w-[200px]">
+                            <p className="text-xs font-bold text-slate-400 max-w-50">
                                 Digite o endereço para gerar o mapa e capturar as coordenadas exatas.
                             </p>
                         </div>
@@ -526,6 +535,6 @@ export default function SettingsPage() {
             </div>
         </div>
       </div>
-    </AdminLayout>
+    </>
   );
 }

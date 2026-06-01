@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { AdminLayout } from "../../components/layout/AdminLayout";
 import { 
   Plus, 
   Edit2, 
@@ -46,7 +45,7 @@ export default function CategoriesPage() {
   };
 
   return (
-    <AdminLayout>
+    <>
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
         <div>
           <h1 className="text-3xl font-black text-slate-900 tracking-tight">Categorias</h1>
@@ -112,7 +111,7 @@ export default function CategoriesPage() {
                         </span>
                       </td>
                       <td className="px-8 py-6">
-                        {cat.status === 'active' ? (
+                        {cat.isActive ? (
                           <span className="flex items-center gap-2 text-emerald-500 text-xs font-bold uppercase">
                             <CheckCircle2 size={14} /> Ativo
                           </span>
@@ -156,6 +155,6 @@ export default function CategoriesPage() {
         onSave={fetchCategories}
         category={selectedCategory}
       />
-    </AdminLayout>
+    </>
   );
 }

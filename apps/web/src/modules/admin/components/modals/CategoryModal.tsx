@@ -14,19 +14,22 @@ export function CategoryModal({ isOpen, onClose, onSave, category }: CategoryMod
     name: "",
     slug: "",
     order: 0,
-    status: "active"
+    isActive: true
   });
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     if (category) {
-      setFormData(category);
+      setFormData({
+        ...category,
+        isActive: category.isActive !== undefined ? category.isActive : true
+      });
     } else {
       setFormData({
         name: "",
         slug: "",
         order: 0,
-        status: "active"
+        isActive: true
       });
     }
   }, [category, isOpen]);
@@ -36,7 +39,8 @@ export function CategoryModal({ isOpen, onClose, onSave, category }: CategoryMod
     setIsSaving(true);
     try {
       const slug = formData.slug || formData.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, '-');
-      const payload = { ...formData, slug };
+      const { status, ...rest } = formData; // Remove status if it exists from older data
+      const payload = { ...rest, slug };
 
       if (category?.id) {
         await api.patch(`/categories/${category.id}`, payload);
@@ -102,15 +106,15 @@ export function CategoryModal({ isOpen, onClose, onSave, category }: CategoryMod
                 <div className="flex gap-2 p-1 bg-slate-50 rounded-2xl">
                         <button 
                         type="button"
-                        onClick={() => setFormData({...formData, status: "active"})}
-                        className={`flex-1 h-12 rounded-xl text-[10px] font-black uppercase transition-all ${formData.status === 'active' ? 'bg-white text-emerald-500 shadow-sm' : 'text-slate-400'}`}
+                        onClick={() => setFormData({...formData, isActive: true})}
+                        className={`flex-1 h-12 rounded-xl text-[10px] font-black uppercase transition-all ${formData.isActive ? 'bg-white text-emerald-500 shadow-sm' : 'text-slate-400'}`}
                         >
                         Ativo
                         </button>
                         <button 
                         type="button"
-                        onClick={() => setFormData({...formData, status: "inactive"})}
-                        className={`flex-1 h-12 rounded-xl text-[10px] font-black uppercase transition-all ${formData.status === 'inactive' ? 'bg-white text-rose-500 shadow-sm' : 'text-slate-400'}`}
+                        onClick={() => setFormData({...formData, isActive: false})}
+                        className={`flex-1 h-12 rounded-xl text-[10px] font-black uppercase transition-all ${!formData.isActive ? 'bg-white text-rose-500 shadow-sm' : 'text-slate-400'}`}
                         >
                         Inativo
                         </button>

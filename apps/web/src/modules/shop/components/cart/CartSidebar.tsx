@@ -1,7 +1,7 @@
 ﻿import { useCartStore } from "../../../../core/stores/useCartStore";
 import { X, ShoppingBag, Trash2, Plus, Minus, ArrowRight, Package } from "lucide-react";
 import { formatCurrency } from "../../../../shared/utils";
-import { Link } from "react-router-dom";
+import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 
 export function CartSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
@@ -56,12 +56,12 @@ export function CartSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
                   <p className="text-sm font-medium text-slate-400 max-w-[200px] mt-2">Escolha seus pratos favoritos para começar o pedido.</p>
                 </div>
               ) : (
-                items.map((item: any) => (
+                items.map((item: any, index: number) => (
                   <motion.div 
                     layout
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    key={item.id} 
+                    key={`${item.productId}-${index}`} 
                     className="flex gap-4 group"
                   >
                     <div className="w-24 h-24 rounded-2xl bg-slate-100 overflow-hidden shrink-0 border border-slate-50">
@@ -71,7 +71,7 @@ export function CartSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
                       <div className="flex justify-between items-start mb-1">
                         <h4 className="font-black text-slate-900 uppercase tracking-tight leading-tight">{item.name}</h4>
                         <button 
-                          onClick={() => removeItem(item.id)}
+                          onClick={() => removeItem(index)}
                           className="text-slate-300 hover:text-red-500 transition-colors"
                         >
                           <Trash2 size={16} />
@@ -81,14 +81,14 @@ export function CartSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
                       
                       <div className="flex items-center gap-1 bg-slate-50 w-fit rounded-xl p-1 border border-slate-100">
                         <button 
-                          onClick={() => updateQuantity(item.id, Math.max(1, item.quantity - 1))}
+                          onClick={() => updateQuantity(index, Math.max(1, item.quantity - 1))}
                           className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-500 hover:bg-white transition-all shadow-sm"
                         >
                           <Minus size={14} />
                         </button>
                         <span className="w-10 text-center font-black text-slate-900 text-sm">{item.quantity}</span>
                         <button 
-                          onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                          onClick={() => updateQuantity(index, item.quantity + 1)}
                           className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-500 hover:bg-white transition-all shadow-sm"
                         >
                           <Plus size={14} />
@@ -120,7 +120,7 @@ export function CartSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
                 </div>
 
                 <Link 
-                  to="/checkout" 
+                  href="/checkout" 
                   onClick={onClose}
                   className="h-16 w-full bg-primary text-white rounded-2xl font-black flex items-center justify-center gap-3 shadow-xl shadow-primary/30 hover:scale-[1.02] active:scale-[0.98] transition-all group"
                 >

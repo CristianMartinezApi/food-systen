@@ -39,11 +39,11 @@ export default function Home() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
-            className="relative rounded-3xl overflow-hidden bg-slate-900 h-[300px] md:h-[350px] shadow-2xl"
+            className="relative rounded-3xl overflow-hidden bg-slate-900 h-75 md:h-87.5 shadow-2xl"
           >
             {/* Background com Overlay */}
             <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1550547660-d9450f859349?w=1200')] bg-cover bg-center opacity-40 mix-blend-overlay" />
-            <div className="absolute inset-0 bg-gradient-to-r from-slate-900 via-slate-900/60 to-transparent" />
+            <div className="absolute inset-0 bg-linear-to-r from-slate-900 via-slate-900/60 to-transparent" />
             
             <div className="relative h-full flex flex-col justify-center p-8 md:p-14 max-w-2xl">
               <motion.div 
@@ -134,7 +134,8 @@ export default function Home() {
                     </div>
                   )}
                </div>
-```,oldString:
+
+
                
                {/* Decoração sutil */}
                <div className="absolute -right-4 -bottom-4 opacity-[0.03] group-hover:scale-110 transition-transform duration-700">
@@ -145,7 +146,7 @@ export default function Home() {
         </section>
 
         {/* Categorias - Estilo Tabs Modernas */}
-        <section className="mb-10 sticky top-[80px] z-40 py-4 bg-[#F8FAFC]/80 backdrop-blur-md -mx-4 px-4">
+        <section className="mb-10 sticky top-20 z-40 py-4 bg-[#F8FAFC]/80 backdrop-blur-md -mx-4 px-4">
             <div className="flex gap-3 overflow-x-auto no-scrollbar scroll-smooth">
                 <CategoryTab 
                   active={activeCategory === 'all'} 

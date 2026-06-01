@@ -1,5 +1,6 @@
 ﻿import type { ReactNode } from "react";
-import { Link, useLocation } from "react-router-dom";
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
 import { 
   LayoutDashboard, 
   ShoppingBag, 
@@ -21,8 +22,16 @@ interface AdminLayoutProps {
 }
 
 export function AdminLayout({ children }: AdminLayoutProps) {
-  const location = useLocation();
+  const pathname = usePathname();
+  const router = useRouter();
   const { settings } = useSettings();
+
+  const handleLogout = () => {
+    localStorage.removeItem("@FoodSystem:token");
+    localStorage.removeItem("@FoodSystem:user");
+    localStorage.removeItem("@FoodSystem:restaurant");
+    router.push("/admin/login");
+  };
 
   const menuItems = [
     { icon: LayoutDashboard, label: "Dashboard", path: "/admin" },
@@ -53,11 +62,11 @@ export function AdminLayout({ children }: AdminLayoutProps) {
 
         <nav className="flex-1 px-4 space-y-1">
           {menuItems.map((item) => {
-            const isActive = location.pathname === item.path;
+            const isActive = pathname === item.path;
             return (
               <Link
                 key={item.path}
-                to={item.path}
+                href={item.path}
                 className={cn(
                   "flex items-center justify-between px-4 h-14 rounded-2xl transition-all group font-bold",
                   isActive 
@@ -92,7 +101,10 @@ export function AdminLayout({ children }: AdminLayoutProps) {
                     <p className="text-[10px] uppercase font-bold text-slate-400 tracking-wider truncate">{settings?.storeName || 'Unidade Matriz'}</p>
                 </div>
            </div>
-          <button className="flex items-center gap-3 w-full px-4 h-12 rounded-xl text-slate-500 hover:text-red-500 hover:bg-red-50 transition-all font-bold">
+          <button 
+            onClick={handleLogout}
+            className="flex items-center gap-3 w-full px-4 h-12 rounded-xl text-slate-500 hover:text-red-500 hover:bg-red-50 transition-all font-bold"
+          >
             <LogOut size={20} />
             <span>Sair do Painel</span>
           </button>
@@ -116,7 +128,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
                     <Bell size={20} className="text-slate-500 group-hover:text-primary transition-colors" />
                     <span className="absolute top-2 right-2 w-2 h-2 bg-primary rounded-full border-2 border-white" />
                 </button>
-                <div className="h-8 w-[1px] bg-slate-100 mx-2" />
+                <div className="h-8 w-px bg-slate-100 mx-2" />
                 <div className="flex items-center gap-2 bg-emerald-50 px-4 py-2 rounded-xl border border-emerald-100">
                     <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                     <span className="text-xs font-black text-emerald-600 uppercase">Loja On-line</span>

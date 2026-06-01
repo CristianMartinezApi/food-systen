@@ -1,5 +1,6 @@
 ﻿import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCartStore } from "../../../core/stores/useCartStore";
 import { useSettings } from "../../../core/hooks/useSettings";
 import { formatCurrency, cn } from "../../../shared/utils";
@@ -16,7 +17,7 @@ export default function Checkout() {
   const [orderCreatedId, setOrderCreatedId] = useState<number | null>(null);
   const { items, getSubtotal, clearCart } = useCartStore();
   const { settings } = useSettings();
-  const navigate = useNavigate();
+  const router = useRouter();
 
   const subtotal = getSubtotal();
   const deliveryFee = settings?.deliveryFee || 0;
@@ -32,7 +33,7 @@ export default function Checkout() {
     number: "",
     neighborhood: "",
     complement: "",
-    paymentMethod: "pix" as "pix" | "card" | "delivery"
+    paymentMethod: "PIX" as "PIX" | "CARD" | "CASH"
   });
 
   const handleNext = () => {
@@ -98,7 +99,7 @@ export default function Checkout() {
         <p className="text-slate-500 font-medium mb-8 text-center max-w-xs">
           Parece que você ainda não escolheu seus pratos favoritos.
         </p>
-        <Link to="/" className="h-14 px-8 bg-primary text-white rounded-2xl font-black flex items-center gap-3 shadow-xl shadow-primary/30">
+        <Link href="/" className="h-14 px-8 bg-primary text-white rounded-2xl font-black flex items-center gap-3 shadow-xl shadow-primary/30">
           VOLTAR AO CARDÁPIO
         </Link>
       </div>
@@ -188,20 +189,20 @@ export default function Checkout() {
 
                   <div className="grid grid-cols-1 gap-4">
                     <PaymentOption 
-                        active={formData.paymentMethod === 'pix'} 
-                        onClick={() => setFormData({...formData, paymentMethod: 'pix'})}
+                        active={formData.paymentMethod === 'PIX'} 
+                        onClick={() => setFormData({...formData, paymentMethod: 'PIX'})}
                         title="Pagar com PIX"
                         description="Aprovação instantânea e segura"
                     />
                     <PaymentOption 
-                        active={formData.paymentMethod === 'card'} 
-                        onClick={() => setFormData({...formData, paymentMethod: 'card'})}
+                        active={formData.paymentMethod === 'CARD'} 
+                        onClick={() => setFormData({...formData, paymentMethod: 'CARD'})}
                         title="Cartão de Crédito/Débito"
                         description="Pague na entrega pela maquininha"
                     />
                     <PaymentOption 
-                        active={formData.paymentMethod === 'delivery'} 
-                        onClick={() => setFormData({...formData, paymentMethod: 'delivery'})}
+                        active={formData.paymentMethod === 'CASH'} 
+                        onClick={() => setFormData({...formData, paymentMethod: 'CASH'})}
                         title="Dinheiro"
                         description="Pague em espécie ao receber"
                     />
@@ -233,7 +234,7 @@ export default function Checkout() {
                         Seu pedido <span className="text-slate-900 font-black">#{orderCreatedId}</span> já foi enviado para a cozinha. 
                         Acompanhe as notificações no seu WhatsApp!
                     </p>
-                    <Link to="/" className="h-16 inline-flex items-center px-10 bg-slate-900 text-white rounded-2xl font-black shadow-xl shadow-slate-900/10 hover:bg-black transition-all">
+                    <Link href="/" className="h-16 inline-flex items-center px-10 bg-slate-900 text-white rounded-2xl font-black shadow-xl shadow-slate-900/10 hover:bg-black transition-all">
                         VOLTAR PARA O INÍCIO
                     </Link>
                 </motion.div>

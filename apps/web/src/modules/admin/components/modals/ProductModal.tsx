@@ -16,36 +16,12 @@ export function ProductModal({ isOpen, onClose, onSave, product }: ProductModalP
     price: 0,
     categoryId: "",
     image: "",
-    status: "active"
+    isActive: true
   });
   const [categories, setCategories] = useState<any[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [isLoadingCats, setIsLoadingCats] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    if (isOpen) {
-      fetchCategories();
-    }
-  }, [isOpen]);
-
-  useEffect(() => {
-    if (product && isOpen) {
-      setFormData({
-        ...product,
-        categoryId: product.categoryId?.toString() || ""
-      });
-    } else if (isOpen) {
-      setFormData({
-        name: "",
-        description: "",
-        price: "" as any,
-        categoryId: "",
-        image: "",
-        status: "active"
-      });
-    }
-  }, [product, isOpen]);
 
   const fetchCategories = async () => {
     try {
@@ -60,6 +36,31 @@ export function ProductModal({ isOpen, onClose, onSave, product }: ProductModalP
       setIsLoadingCats(false);
     }
   };
+
+  useEffect(() => {
+    if (isOpen) {
+      fetchCategories();
+    }
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (product && isOpen) {
+      setFormData({
+        ...product,
+        categoryId: product.categoryId?.toString() || "",
+        isActive: product.isActive !== undefined ? product.isActive : true
+      });
+    } else if (isOpen) {
+      setFormData({
+        name: "",
+        description: "",
+        price: "" as any,
+        categoryId: "",
+        image: "",
+        isActive: true
+      });
+    }
+  }, [product, isOpen]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -82,8 +83,9 @@ export function ProductModal({ isOpen, onClose, onSave, product }: ProductModalP
 
     setIsSaving(true);
     try {
+      const { status, ...rest } = formData;
       const payload = {
-        ...formData,
+        ...rest,
         price: parseFloat(formData.price) || 0,
         categoryId: parseInt(formData.categoryId)
       };
@@ -106,7 +108,7 @@ export function ProductModal({ isOpen, onClose, onSave, product }: ProductModalP
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[999] flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-999 flex items-center justify-center p-4">
       <div 
         className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" 
         onClick={onClose}
@@ -133,7 +135,7 @@ export function ProductModal({ isOpen, onClose, onSave, product }: ProductModalP
                     <div className="flex items-center gap-6">
                         <div 
                             onClick={() => fileInputRef.current?.click()}
-                            className="relative w-40 h-40 bg-slate-50 rounded-[2.5rem] border-2 border-dashed border-slate-200 flex flex-col items-center justify-center cursor-pointer hover:border-primary/40 hover:bg-primary/[0.02] transition-all group overflow-hidden"
+                            className="relative w-40 h-40 bg-slate-50 rounded-[2.5rem] border-2 border-dashed border-slate-200 flex flex-col items-center justify-center cursor-pointer hover:border-primary/40 hover:bg-primary/2 transition-all group overflow-hidden"
                         >
                             {formData.image ? (
                                 <>
@@ -213,15 +215,15 @@ export function ProductModal({ isOpen, onClose, onSave, product }: ProductModalP
                     <div className="flex gap-2 p-1 bg-slate-50 rounded-2xl">
                          <button 
                             type="button"
-                            onClick={() => setFormData({...formData, status: "active"})}
-                            className={`flex-1 h-12 rounded-xl text-[10px] font-black uppercase transition-all ${formData.status === 'active' ? 'bg-white text-emerald-500 shadow-sm' : 'text-slate-400'}`}
+                            onClick={() => setFormData({...formData, isActive: true})}
+                            className={`flex-1 h-12 rounded-xl text-[10px] font-black uppercase transition-all ${formData.isActive ? 'bg-white text-emerald-500 shadow-sm' : 'text-slate-400'}`}
                          >
                             Ativo
                          </button>
                          <button 
                             type="button"
-                            onClick={() => setFormData({...formData, status: "inactive"})}
-                            className={`flex-1 h-12 rounded-xl text-[10px] font-black uppercase transition-all ${formData.status === 'inactive' ? 'bg-white text-rose-500 shadow-sm' : 'text-slate-400'}`}
+                            onClick={() => setFormData({...formData, isActive: false})}
+                            className={`flex-1 h-12 rounded-xl text-[10px] font-black uppercase transition-all ${!formData.isActive ? 'bg-white text-rose-500 shadow-sm' : 'text-slate-400'}`}
                          >
                             Pausado
                          </button>
@@ -251,7 +253,7 @@ export function ProductModal({ isOpen, onClose, onSave, product }: ProductModalP
             <button 
                 onClick={handleSubmit}
                 disabled={isSaving}
-                className="flex-[2] h-14 bg-primary text-white rounded-2xl font-black flex items-center justify-center gap-3 shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 uppercase tracking-widest text-xs"
+                className="flex-2 h-14 bg-primary text-white rounded-2xl font-black flex items-center justify-center gap-3 shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 uppercase tracking-widest text-xs"
             >
                 {isSaving ? <Loader2 className="animate-spin" /> : <Save size={20} />}
                 {product ? "Salvar Alterações" : "Cadastrar Produto"}
