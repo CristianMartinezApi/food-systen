@@ -1,6 +1,6 @@
 ﻿import { useState } from "react";
-import { Plus } from "lucide-react";
-import { formatCurrency } from "../../../../shared/utils";
+import { Plus, Flame, Star, ShoppingCart } from "lucide-react";
+import { formatCurrency, cn } from "../../../../shared/utils";
 import { useCartStore } from "../../../../core/stores/useCartStore";
 import { motion } from "framer-motion";
 import toast from "react-hot-toast";
@@ -18,7 +18,6 @@ export function ProductCard({ product }: ProductCardProps) {
   const handleAddToCart = (e: React.MouseEvent) => {
     e.stopPropagation();
     
-    // Se o produto tiver múltiplos tamanhos, obriga a abrir o modal para escolha
     if (product.sizes && product.sizes.length > 1) {
       setIsModalOpen(true);
       return;
@@ -28,15 +27,21 @@ export function ProductCard({ product }: ProductCardProps) {
         productId: product.id!,
         name: product.name,
         price: product.price,
-        quantity: 1
+        quantity: 1,
+        image: product.image
     });
-    toast.success(`${product.name} adicionado!`, {
-        icon: '🛒',
+    
+    toast.success(`${product.name.toUpperCase()} ADICIONADO!`, {
+        icon: '💎',
         style: {
-            borderRadius: '16px',
-            background: '#333',
+            borderRadius: '24px',
+            background: '#020617',
             color: '#fff',
-            fontWeight: 'bold'
+            fontSize: '10px',
+            fontWeight: '900',
+            letterSpacing: '0.2em',
+            padding: '20px 32px',
+            border: '1px solid rgba(255,255,255,0.1)'
         }
     });
   };
@@ -44,48 +49,76 @@ export function ProductCard({ product }: ProductCardProps) {
   return (
     <>
       <motion.div 
-        whileHover={{ y: -8 }}
+        whileHover={{ y: -12 }}
         onClick={() => setIsModalOpen(true)}
-        className="group bg-white rounded-[2.5rem] border border-slate-100 p-3 shadow-xl shadow-slate-200/50 hover:shadow-2xl hover:shadow-primary/10 transition-all duration-300 relative cursor-pointer"
+        className="group bg-white rounded-[2.5rem] md:rounded-[3.5rem] border border-slate-100 p-3 md:p-4 shadow-2xl shadow-slate-200/40 hover:shadow-primary/10 transition-all duration-700 relative cursor-pointer overflow-hidden"
       >
-        <div className="relative aspect-square overflow-hidden rounded-[2rem]">
+        {/* Glow de fundo no hover */}
+        <div className="absolute inset-x-0 bottom-0 h-1/2 bg-linear-to-t from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
+        
+        <div className="relative aspect-[4/5] overflow-hidden rounded-[2rem] md:rounded-[2.8rem] shadow-inner bg-slate-50">
           <img 
             src={product.image} 
             alt={product.name}
-            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000 ease-out"
           />
-          {/* Badge de preço flutuante */}
-          <div className="absolute top-4 right-4 bg-white/90 backdrop-blur-md px-4 py-2 rounded-2xl shadow-lg border border-white/20">
-              <span className="text-primary font-black text-lg">{formatCurrency(product.price)}</span>
+          
+          {/* Badge Superior */}
+          <div className="absolute top-4 md:top-6 left-4 md:left-6 flex flex-col gap-2">
+            <div className="bg-white/90 backdrop-blur-xl px-3 md:px-4 py-1.5 rounded-2xl shadow-lg border border-white/50 flex items-center gap-2">
+                <Star size={12} className="text-primary fill-primary" />
+                <span className="text-label font-body font-medium text-slate-900 uppercase tracking-[0.06em]">Escolha Premium</span>
+            </div>
+            {product.price > 40 && (
+                 <div className="bg-slate-900/90 backdrop-blur-xl px-3 md:px-4 py-1.5 rounded-2xl shadow-lg flex items-center gap-2 w-fit">
+                    <Flame size={12} className="text-primary animate-pulse" />
+                    <span className="text-label font-body font-medium text-white uppercase tracking-[0.06em]">Mais Vendido</span>
+                </div>
+            )}
+          </div>
+
+          {/* Badge de Preço Flutuante Estilo Luxury */}
+          <div className="absolute bottom-4 md:bottom-6 right-4 md:right-6 bg-slate-950 px-4 md:px-6 py-2 md:py-3 rounded-2xl shadow-2xl shadow-slate-950/40 border border-white/10 group-hover:bg-primary transition-all duration-500">
+              <span className="text-white font-mono text-numeric tracking-tighter">{formatCurrency(product.price)}</span>
           </div>
         </div>
 
-        <div className="p-4 space-y-2">
-          <h3 className="font-black text-xl text-slate-800 leading-tight group-hover:text-primary transition-colors">
-              {product.name}
-          </h3>
-          <p className="text-slate-500 text-sm line-clamp-2 leading-relaxed font-medium">
-            {product.description}
+        <div className="p-4 md:p-6 space-y-3 md:space-y-4">
+          <div className="space-y-1">
+            <span className="text-label font-body font-medium text-primary uppercase tracking-[0.06em] leading-none">
+                {product.category?.name || "SIGNATURE"}
+            </span>
+            <h3 className="font-display font-bold text-xl md:text-heading-2 text-slate-950 leading-none tracking-tighter uppercase group-hover:text-primary transition-colors">
+                {product.name}
+            </h3>
+          </div>
+          
+          <p className="text-slate-400 text-[10px] md:text-body line-clamp-2 leading-relaxed font-body uppercase tracking-wider opacity-60">
+            {product.description || "Ingredientes selecionados para uma experiência gastronômica inesquecível e luxuosa."}
           </p>
           
-          <div className="pt-4 flex items-center justify-between">
+          <div className="pt-2 md:pt-4 flex items-center justify-between">
               <div className="flex flex-col">
-                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Preço Unitário</span>
-                  <span className="text-xl font-black text-slate-900">{formatCurrency(product.price)}</span>
+                  <span className="text-[10px] uppercase tracking-[0.06em] text-slate-300">Inicia em</span>
+                  <span className="text-numeric font-mono text-slate-900 tracking-tighter">{formatCurrency(product.price)}</span>
               </div>
+              
               <motion.button
                   whileTap={{ scale: 0.9 }}
                   onClick={handleAddToCart}
-                  className="bg-slate-900 text-white w-14 h-14 rounded-2xl flex items-center justify-center hover:bg-primary transition-colors shadow-lg shadow-slate-900/20"
+                  className="bg-slate-50 text-slate-950 w-12 h-12 md:w-16 md:h-16 rounded-2xl md:rounded-[1.8rem] flex items-center justify-center hover:bg-slate-950 hover:text-white transition-all duration-500 border border-slate-100 shadow-sm group/btn relative"
               >
-                  <Plus size={24} />
+                  <Plus size={20} className="md:size-[24px] group-hover/btn:rotate-90 transition-transform duration-500" />
+                  <div className="absolute -top-2 -right-2 w-5 h-5 md:w-6 md:h-6 bg-primary rounded-full flex items-center justify-center scale-0 group-hover/btn:scale-100 transition-all shadow-lg shadow-primary/40">
+                    <ShoppingCart size={10} className="text-white" />
+                  </div>
               </motion.button>
           </div>
         </div>
       </motion.div>
 
       <ProductModal 
-        product={{...product, category: product.category?.name}} 
+        product={product} 
         isOpen={isModalOpen} 
         onClose={() => setIsModalOpen(false)} 
       />

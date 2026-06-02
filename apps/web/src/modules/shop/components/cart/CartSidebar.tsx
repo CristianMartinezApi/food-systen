@@ -1,6 +1,8 @@
-﻿import { useCartStore } from "../../../../core/stores/useCartStore";
+"use client";
+
+import { useCartStore } from "../../../../core/stores/useCartStore";
 import { X, ShoppingBag, Trash2, Plus, Minus, ArrowRight, Package, Edit2 } from "lucide-react";
-import { formatCurrency } from "../../../../shared/utils";
+import { formatCurrency, cn } from "../../../../shared/utils";
 import { getTenantSlug } from "../../../../shared/utils/tenant";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
@@ -11,8 +13,8 @@ import { useHasHydrated } from "../../../../core/hooks/useHasHydrated";
 
 export function CartSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   const hasHydrated = useHasHydrated();
-  const { items, removeItem, updateQuantity, getSubtotal } = useCartStore();
-  const { products } = useProducts();
+  const { items, removeItem, updateQuantity, getSubtotal } = useCartStore() as any;
+  const { products } = useProducts() as any;
   const total = hasHydrated ? getSubtotal() : 0;
   const cartItems = hasHydrated ? items : [];
   const [slug, setSlug] = useState<string>("");
@@ -24,14 +26,14 @@ export function CartSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
   }, []);
 
   const handleEditClick = (index: number, item: any) => {
-    const originalProduct = products.find(p => p.id === item.productId);
+    const originalProduct = products?.find((p: any) => p.id === item.productId);
     if (originalProduct) {
         setEditingItem({ index, data: { ...item, ...originalProduct, id: item.productId } });
     }
   };
 
   return (
-    <AnimatePresence>
+    <AnimatePresence mode="wait">
       {isOpen && (
         <>
           <ProductModal 
@@ -46,106 +48,117 @@ export function CartSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[100]"
+            className="fixed inset-0 bg-slate-950/40 backdrop-blur-md z-[100]"
           />
+          
           <motion.aside
             initial={{ x: "100%" }}
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
-            transition={{ type: "spring", damping: 25, stiffness: 200 }}
-            className="fixed right-0 top-0 h-full w-full max-w-md bg-white z-[101] shadow-2xl flex flex-col overflow-hidden"
+            transition={{ type: "spring", damping: 30, stiffness: 300 }}
+            className="fixed right-0 top-0 h-full w-full max-w-lg bg-white z-[101] shadow-[0_0_50px_rgba(0,0,0,0.2)] flex flex-col overflow-hidden"
           >
-            {/* Header do Carrinho */}
-            <div className="p-8 border-b border-slate-50 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center text-primary">
-                    <ShoppingBag size={24} />
+            {/* Header del Carrello con Estetica Moderna */}
+            <div className="p-10 border-b border-slate-50 flex items-center justify-between bg-white/80 backdrop-blur-xl sticky top-0 z-10">
+              <div className="flex items-center gap-6">
+                <div className="w-16 h-16 bg-slate-950 rounded-3xl flex items-center justify-center text-primary shadow-2xl shadow-slate-950/20 group cursor-default">
+                  <ShoppingBag size={28} className="group-hover:rotate-12 transition-transform duration-500" />
                 </div>
                 <div>
-                   <h2 className="text-xl font-black text-slate-900 uppercase tracking-tighter">Seu Pedido</h2>
-                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{cartItems.length} ITENS NO CARRINHO</p>
+                  <h3 className="text-heading-3 font-display font-bold text-slate-950 uppercase tracking-tighter leading-none mb-1.5">Meus Desejos</h3>
+                  <div className="flex items-center gap-2">
+                    <div className="w-1.5 h-1.5 rounded-full bg-primary" />
+                    <p className="text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em]">{cartItems.length} {cartItems.length === 1 ? 'item selecionado' : 'itens selecionados'}</p>
+                  </div>
                 </div>
               </div>
               <button 
                 onClick={onClose}
-                className="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400 hover:text-slate-900 active:scale-95 transition-all"
+                className="w-14 h-14 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-300 hover:text-slate-950 hover:bg-white hover:shadow-xl transition-all duration-500 hover:rotate-90"
               >
                 <X size={24} />
               </button>
             </div>
 
-            {/* Lista de Itens */}
-            <div className="flex-1 overflow-y-auto p-8 space-y-6 no-scrollbar">
+            {/* Lista di Prodotto Premium */}
+            <div className="flex-1 overflow-y-auto p-10 space-y-8 no-scrollbar scroll-smooth">
               {cartItems.length === 0 ? (
-                <div className="h-full flex flex-col items-center justify-center text-center">
-                  <div className="w-24 h-24 bg-slate-50 rounded-full flex items-center justify-center mb-6">
-                      <Package size={48} className="text-slate-200" />
+                <div className="h-full flex flex-col items-center justify-center text-center space-y-10">
+                  <div className="relative">
+                    <div className="absolute inset-0 bg-primary/20 rounded-full blur-3xl animate-pulse" />
+                    <div className="relative w-32 h-32 bg-slate-50 rounded-[4rem] flex items-center justify-center text-slate-200 border border-white">
+                        <Package size={56} />
+                    </div>
                   </div>
-                  <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight">Carrinho Vazio</h3>
-                  <p className="text-sm font-medium text-slate-400 max-w-[200px] mt-2">Escolha seus pratos favoritos para começar o pedido.</p>
+                  <div className="space-y-4">
+                    <h4 className="text-heading-3 font-display font-bold text-slate-950 uppercase tracking-tight">Opa! Cesto Vazio</h4>
+                    <p className="text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em] max-w-50 mx-auto leading-relaxed">Sua próxima experiência inesquecível começa com um clique.</p>
+                  </div>
+                  <button 
+                    onClick={onClose}
+                    className="px-10 py-5 bg-slate-950 text-white rounded-2xl text-label font-body font-medium uppercase tracking-[0.06em] hover:bg-primary hover:scale-105 active:scale-95 transition-all duration-500 shadow-xl shadow-slate-950/10"
+                  >
+                    Ver Cardápio Premium
+                  </button>
                 </div>
               ) : (
                 cartItems.map((item: any, index: number) => (
                   <motion.div 
                     layout
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    key={`${item.productId}-${index}`} 
-                    className="flex gap-4 group"
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: index * 0.1 }}
+                    key={index}
+                    className="p-6 bg-white border border-slate-50 rounded-[2.5rem] group hover:border-primary/20 hover:shadow-[0_20px_50px_rgba(0,0,0,0.06)] transition-all duration-500 relative"
                   >
-                    <div className="w-24 h-24 rounded-2xl bg-slate-100 overflow-hidden shrink-0 border border-slate-50">
-                      {item.image && <img src={item.image} alt={item.name} className="w-full h-full object-cover" />}
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex justify-between items-start mb-1">
-                        <div className="flex-1">
-                          <h4 className="font-black text-slate-900 uppercase tracking-tight leading-tight">{item.name}</h4>
-                          <div className="flex flex-wrap gap-1 mt-1">
-                            {item.variation && <span className="text-[9px] font-black bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded uppercase">{item.variation}</span>}
-                            {item.addons?.map((addon: any, i: number) => (
-                                <span key={i} className="text-[9px] font-black bg-primary/10 text-primary px-1.5 py-0.5 rounded uppercase">
-                                    +{addon.quantity > 1 ? `${addon.quantity}x ` : ""}{addon.name}
-                                </span>
-                            ))}
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                           <button 
-                            onClick={() => handleEditClick(index, item)}
-                            className="text-slate-300 hover:text-primary transition-colors p-1"
-                            title="Editar preferências"
-                          >
-                            <Edit2 size={14} />
-                          </button>
+                    <div className="flex gap-6">
+                      <div className="w-24 h-24 rounded-3xl overflow-hidden bg-slate-100 shrink-0 shadow-lg group-hover:rotate-3 transition-transform duration-500">
+                        <img 
+                            src={item.image} 
+                            alt={item.name}
+                            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000"
+                        />
+                      </div>
+                      
+                      <div className="flex-1 space-y-1 pt-1">
+                        <div className="flex justify-between items-start">
+                          <h4 className="font-body font-bold text-body-strong text-slate-950 uppercase tracking-tight leading-none group-hover:text-primary transition-colors">{item.name}</h4>
                           <button 
                             onClick={() => removeItem(index)}
-                            className="text-slate-300 hover:text-red-500 transition-colors p-1"
+                            className="text-slate-200 hover:text-rose-500 transition-colors bg-slate-50 p-2.5 rounded-xl hover:bg-rose-50"
                           >
                             <Trash2 size={16} />
                           </button>
                         </div>
-                      </div>
-                      
-                      {item.observations && (
-                        <p className="text-[10px] text-slate-500 italic mb-2 line-clamp-1">Obs: {item.observations}</p>
-                      )}
-
-                      <p className="text-primary font-black text-lg mb-3">{formatCurrency(item.price * item.quantity)}</p>
-                      
-                      <div className="flex items-center gap-1 bg-slate-50 w-fit rounded-xl p-1 border border-slate-100">
-                        <button 
-                          onClick={() => updateQuantity(index, Math.max(1, item.quantity - 1))}
-                          className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-500 hover:bg-white transition-all shadow-sm"
-                        >
-                          <Minus size={14} />
-                        </button>
-                        <span className="w-10 text-center font-black text-slate-900 text-sm">{item.quantity}</span>
-                        <button 
-                          onClick={() => updateQuantity(index, item.quantity + 1)}
-                          className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-500 hover:bg-white transition-all shadow-sm"
-                        >
-                          <Plus size={14} />
-                        </button>
+                        <span className="text-label font-body font-medium text-primary uppercase tracking-[0.06em]">{item.variation || 'Tamanho Padrão'}</span>
+                        
+                        <div className="flex justify-between items-center pt-5">
+                          <div className="flex items-center bg-slate-950 rounded-2xl p-1.5 shadow-xl">
+                            <button 
+                              onClick={() => updateQuantity(index, Math.max(1, item.quantity - 1))}
+                              className="w-9 h-9 rounded-xl flex items-center justify-center text-white hover:bg-white/10 active:scale-90"
+                            >
+                              <Minus size={16} />
+                            </button>
+                            <span className="w-8 text-center text-body font-mono font-medium text-white">{item.quantity}</span>
+                            <button 
+                              onClick={() => updateQuantity(index, item.quantity + 1)}
+                              className="w-9 h-9 rounded-xl flex items-center justify-center text-white hover:bg-white/10 active:scale-90"
+                            >
+                              <Plus size={16} />
+                            </button>
+                          </div>
+                          
+                          <div className="flex items-center gap-4">
+                            <button 
+                              onClick={() => handleEditClick(index, item)}
+                              className="w-12 h-12 flex items-center justify-center bg-slate-50 text-slate-400 rounded-2xl hover:bg-slate-950 hover:text-white transition-all shadow-sm active:scale-90"
+                            >
+                              <Edit2 size={18} />
+                            </button>
+                            <span className="font-mono font-medium text-slate-950 text-heading-3 tracking-tighter">{formatCurrency(item.price * item.quantity)}</span>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </motion.div>
@@ -153,32 +166,36 @@ export function CartSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
               )}
             </div>
 
-            {/* Footer do Carrinho */}
+            {/* Premium Checkout Footer */}
             {cartItems.length > 0 && (
-              <div className="p-8 bg-slate-50 border-t border-slate-100">
-                <div className="space-y-3 mb-8">
-                  <div className="flex justify-between text-slate-500 font-bold uppercase text-[10px] tracking-widest">
-                    <span>Subtotal</span>
-                    <span>{formatCurrency(total)}</span>
+              <div className="p-10 bg-white border-t border-slate-50 shadow-[0_-20px_50px_rgba(0,0,0,0.02)]">
+                <div className="space-y-4 mb-10">
+                  <div className="flex justify-between items-center">
+                    <span className="text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em]">Subtotal</span>
+                    <span className="font-mono font-medium text-slate-950 tracking-tighter">{formatCurrency(total)}</span>
                   </div>
-                  <div className="flex justify-between text-slate-500 font-bold uppercase text-[10px] tracking-widest">
-                    <span>Taxa de Entrega</span>
-                    <span className="text-emerald-500">GRÁTIS</span>
+                  <div className="flex justify-between items-center">
+                    <span className="text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em]">Logística de Entrega</span>
+                    <span className="text-label font-body font-medium text-emerald-500 uppercase tracking-[0.06em] bg-emerald-50 px-3 py-1 rounded-full">Cortesia Premium</span>
                   </div>
-                  <div className="h-[1px] bg-slate-200 my-2" />
+                  <div className="h-px bg-slate-100 my-4" />
                   <div className="flex justify-between items-end">
-                    <span className="text-sm font-black text-slate-900 uppercase tracking-tight">Total Geral</span>
-                    <span className="text-3xl font-black text-slate-900 tracking-tighter">{formatCurrency(total)}</span>
+                    <div className="space-y-1">
+                        <span className="text-label font-body font-medium text-slate-950 uppercase tracking-[0.06em]">Total Investido</span>
+                        <p className="text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em]">Taxas e serviços inclusos</p>
+                    </div>
+                    <span className="text-heading-1 font-mono font-medium text-slate-950 tracking-tighter">{formatCurrency(total)}</span>
                   </div>
                 </div>
 
                 <Link 
                   href={`/${slug}/checkout`} 
                   onClick={onClose}
-                  className="h-16 w-full bg-primary text-white rounded-2xl font-black flex items-center justify-center gap-3 shadow-xl shadow-primary/30 hover:scale-[1.02] active:scale-[0.98] transition-all group"
+                  className="h-20 w-full bg-slate-950 text-white rounded-[2rem] font-body font-bold uppercase tracking-[0.06em] text-label flex items-center justify-center gap-5 shadow-2xl shadow-slate-950/20 hover:bg-primary hover:scale-[1.02] active:scale-[0.98] transition-all duration-500 group overflow-hidden relative"
                 >
-                  FINALIZAR PEDIDO
-                  <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
+                  <span className="relative z-10 font-body font-bold">Iniciar Finalização</span>
+                  <ArrowRight size={20} className="relative z-10 group-hover:translate-x-3 transition-transform duration-500" />
+                  <div className="absolute inset-0 bg-linear-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
                 </Link>
               </div>
             )}

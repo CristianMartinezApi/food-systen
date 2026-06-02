@@ -55,46 +55,46 @@ export default function ProductsPage() {
 
   return (
     <>
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-8 mb-12">
           <div>
-            <h1 className="text-3xl font-black text-slate-900 tracking-tight">Gestão de Produtos</h1>
-            <p className="text-slate-500 font-medium">Cadastre, edite e organize o cardápio da sua loja.</p>
+            <h1 className="text-heading-1 font-display font-bold text-slate-950 uppercase tracking-tight">Inventário</h1>
+            <p className="text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em] mt-2">Curadoria e gestão estratégica do seu catálogo gastronômico.</p>
           </div>
           <button 
             onClick={() => {
               setSelectedProduct(null);
               setIsModalOpen(true);
             }}
-            className="h-14 px-8 bg-primary text-white rounded-2xl font-black flex items-center gap-3 shadow-xl shadow-primary/30 hover:scale-[1.02] active:scale-[0.98] transition-all whitespace-nowrap"
+            className="h-16 px-10 bg-slate-950 text-white rounded-2xl font-body font-bold text-label uppercase tracking-[0.06em] flex items-center gap-3 shadow-2xl shadow-slate-950/20 hover:bg-primary transition-all whitespace-nowrap active:scale-95"
           >
              <Plus size={20} /> NOVO PRODUTO
           </button>
         </div>
 
-        {/* Filtros e Busca */}
-        <div className="bg-white p-4 rounded-[2rem] border border-slate-100 shadow-sm flex flex-col md:flex-row gap-4 mb-8">
+        {/* Filtros e Busca Moderno */}
+        <div className="bg-white p-6 rounded-[3rem] border border-slate-50 shadow-sm flex flex-col md:flex-row gap-6 mb-12">
           <div className="relative flex-1">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+            <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-300" size={20} />
             <input 
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Pesquisar por nome ou categoria..."
-              className="w-full h-14 pl-12 pr-4 bg-slate-50 border-transparent rounded-2xl focus:ring-2 focus:ring-primary/20 transition-all font-bold text-slate-700"
+              placeholder="Buscar por nome ou categoria..."
+              className="w-full h-16 pl-16 pr-6 bg-slate-50 border-transparent rounded-[1.5rem] focus:bg-white focus:ring-2 focus:ring-slate-950/5 transition-all font-body font-medium text-slate-600 text-label uppercase tracking-[0.04em]"
             />
           </div>
-          <button className="h-14 px-6 rounded-2xl border-2 border-slate-50 text-slate-500 font-bold flex items-center gap-2 hover:bg-slate-50 transition-all">
-            <Filter size={18} /> Categorias
+          <button className="h-16 px-8 rounded-[1.5rem] border border-slate-100 text-label font-body font-bold text-slate-400 uppercase tracking-[0.06em] flex items-center gap-3 hover:bg-slate-50 transition-all">
+            <Filter size={18} /> Filtragem
           </button>
         </div>
 
         {/* Grid de Produtos Moderno */}
         {isLoading ? (
-          <div className="py-20 flex flex-col items-center gap-4">
+          <div className="py-32 flex flex-col items-center gap-6">
                <Loader2 className="animate-spin text-primary" size={40} />
-               <p className="text-slate-400 font-black uppercase tracking-widest text-xs">Carregando estoque...</p>
+               <p className="text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em]">Sincronizando inventário...</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-8">
             <AnimatePresence mode="popLayout">
               {filteredProducts.map((product, idx) => (
                 <motion.div
@@ -103,79 +103,83 @@ export default function ProductsPage() {
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.9 }}
                   transition={{ delay: idx * 0.05 }}
-                  key={product.id}
-                  className="bg-white rounded-[2.5rem] border border-slate-100 overflow-hidden shadow-sm hover:shadow-xl hover:shadow-slate-200/50 transition-all group"
+                  key={product.id || idx}
+                  className="bg-white rounded-[3.5rem] border border-slate-50 overflow-hidden shadow-sm hover:shadow-2xl hover:shadow-slate-200/50 transition-all duration-700 group flex flex-col h-full"
                 >
-                  <div className="relative aspect-square overflow-hidden bg-slate-100">
+                  {/* Image Container with Actions */}
+                  <div className="relative aspect-square overflow-hidden bg-slate-50 flex-shrink-0">
                     {product.image ? (
                       <img 
                         src={product.image} 
                         alt={product.name}
-                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" 
+                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-[1.5s] ease-out" 
                       />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center text-slate-300">
-                          <Package size={64} />
+                      <div className="w-full h-full flex items-center justify-center text-slate-200">
+                          <Package size={80} strokeWidth={1} />
                       </div>
                     )}
                     
-                    <div className="absolute top-4 left-4">
-                        <span className="bg-white/90 backdrop-blur-md px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-900 border border-white/50 shadow-sm flex items-center gap-1.5">
-                          <Tag size={12} className="text-primary" /> {product.category?.name || "Sem Categ."}
+                    {/* Floating Category Tag */}
+                    <div className="absolute top-8 left-8">
+                        <span className="bg-white/95 backdrop-blur-md px-6 py-2.5 rounded-2xl text-[10px] font-body font-bold uppercase tracking-[0.2em] text-slate-950 shadow-2xl border border-white/50 flex items-center gap-3">
+                          <div className="w-1.5 h-1.5 rounded-full bg-primary" /> {product.category?.name || "CURADORIA"}
                         </span>
                     </div>
 
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end justify-center p-6">
-                          <div className="flex gap-2">
+                    {/* Hover Controls */}
+                    <div className="absolute inset-0 bg-slate-950/60 backdrop-blur-[2px] opacity-0 group-hover:opacity-100 transition-all duration-500 flex items-center justify-center p-10">
+                          <div className="flex gap-4 translate-y-4 group-hover:translate-y-0 transition-transform duration-500">
                                <button 
                                   onClick={() => {
                                       setSelectedProduct(product);
                                       setIsModalOpen(true);
                                   }}
-                                  className="w-12 h-12 bg-white rounded-xl flex items-center justify-center text-slate-900 hover:bg-primary hover:text-white transition-all shadow-lg active:scale-90"
+                                  className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center text-slate-950 hover:bg-primary hover:text-white transition-all shadow-2xl active:scale-95 group/btn"
                                >
-                                  <Edit2 size={20} />
-                               </button>
+                                  <Edit2 size={24} className="group-hover/btn:rotate-12 transition-transform" />
+                                </button>
                                <button 
                                   onClick={() => handleDelete(product.id)}
-                                  className="w-12 h-12 bg-white rounded-xl flex items-center justify-center text-red-500 hover:bg-red-500 hover:text-white transition-all shadow-lg active:scale-90"
+                                  className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center text-rose-500 hover:bg-rose-500 hover:text-white transition-all shadow-2xl active:scale-95 group/btn"
                                >
-                                  <Trash2 size={20} />
+                                  <Trash2 size={24} className="group-hover/btn:rotate-12 transition-transform" />
                                </button>
                           </div>
                     </div>
                   </div>
 
-                  <div className="p-6">
-                    <div className="flex items-start justify-between mb-2">
-                      <h3 className="font-black text-lg text-slate-900 leading-tight uppercase tracking-tighter truncate flex-1 pr-2">
+                  {/* Product Info - Strategic Layout */}
+                  <div className="p-10 flex-1 flex flex-col">
+                    <div className="flex items-start justify-between mb-4">
+                      <h3 className="text-body-strong font-display font-bold text-slate-950 uppercase tracking-tight leading-tight line-clamp-2 text-xl flex-1 pr-4">
                         {product.name}
                       </h3>
-                      {product.isActive ? (
-                        <CheckCircle2 size={20} className="text-emerald-500 shrink-0" />
-                      ) : (
-                        <XCircle size={20} className="text-rose-500 shrink-0" />
-                      )}
+                      <div className={cn(
+                        "w-3 h-3 rounded-full mt-2 ring-4",
+                        product.available ? "bg-emerald-500 ring-emerald-500/10 animate-pulse" : "bg-slate-300 ring-slate-100"
+                      )} />
                     </div>
+
+                    <p className="text-label font-body font-medium text-slate-400 uppercase tracking-[0.05em] text-[11px] line-clamp-2 leading-relaxed mb-8 flex-1">
+                      {product.description || "Composição gastronômica exclusiva, refinada com ingredientes de procedência selecionada."}
+                    </p>
                     
-                    <div className="flex items-center justify-between mt-4">
+                    <div className="flex items-center justify-between pt-8 border-t border-slate-50">
                        <div>
-                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Preço de Venda</p>
-                          <p className="text-2xl font-black text-primary tracking-tighter">
+                          <p className="text-[10px] font-body font-bold text-slate-300 uppercase tracking-[0.2em] mb-1">Preço Sugerido</p>
+                          <p className="text-heading-2 font-mono font-bold text-slate-950 tracking-tighter leading-none">
                             {formatCurrency(product.price)}
                           </p>
                        </div>
                        <div className="text-right">
-                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Status</p>
-                          <div className={cn(
-                              "w-8 h-4 rounded-full mt-1 ml-auto transition-colors",
-                              product.isActive ? "bg-emerald-100" : "bg-slate-100"
+                          <p className="text-[10px] font-body font-bold text-slate-300 uppercase tracking-[0.2em] mb-1">Status Ativo</p>
+                          <span className={cn(
+                            "text-[10px] font-body font-black uppercase tracking-[0.1em] px-3 py-1 rounded-lg",
+                            product.available ? "bg-emerald-50 text-emerald-600" : "bg-slate-50 text-slate-400"
                           )}>
-                              <div className={cn(
-                                  "w-4 h-4 rounded-full shadow-sm transition-all",
-                                  product.isActive ? "bg-emerald-500 translate-x-4" : "bg-slate-400"
-                              )} />
-                          </div>
+                            {product.available ? "VIP" : "PAUSADO"}
+                          </span>
                        </div>
                     </div>
                   </div>

@@ -125,75 +125,77 @@ export default function SettingsPage() {
 
   return (
     <>
-      <div className="flex items-center justify-between mb-10">
+      <div className="flex items-center justify-between mb-12">
         <div>
-          <h1 className="text-3xl font-black text-slate-900 tracking-tight">Configurações da Loja</h1>
-          <p className="text-slate-500 font-medium">Personalize a identidade e funcionamento do seu negócio.</p>
+          <h1 className="text-heading-1 font-display font-bold text-slate-950 uppercase tracking-tight">Arquitetura de Marca</h1>
+          <p className="text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em] mt-2">Defina a identidade visual e os parâmetros operacionais do seu ecossistema.</p>
         </div>
         <button 
           onClick={handleSubmit}
           disabled={isSaving}
-          className="h-14 px-8 bg-slate-900 text-white rounded-2xl font-black flex items-center gap-3 shadow-xl shadow-slate-900/10 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50"
+          className="h-16 px-10 bg-slate-950 text-white rounded-2xl font-body font-bold text-label uppercase tracking-[0.06em] flex items-center gap-3 shadow-2xl shadow-slate-950/20 hover:bg-primary transition-all active:scale-95 disabled:opacity-50"
         >
           {isSaving ? <Loader2 className="animate-spin" /> : <Save size={20} />}
-          SALVAR ALTERAÇÕES
+          SALVAR DIRETRIZES
         </button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
         {/* Coluna Principal - Informações */}
-        <div className="lg:col-span-2 space-y-8">
-            <section className="bg-white rounded-[2.5rem] border border-slate-100 p-10 shadow-sm relative overflow-hidden">
-                <div className="flex items-center gap-3 mb-8">
-                    <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center text-primary">
-                        <Store size={20} />
+        <div className="lg:col-span-2 space-y-10">
+            <section className="bg-white rounded-[3rem] border border-slate-50 p-10 shadow-sm relative overflow-hidden">
+                <div className="flex items-center gap-4 mb-10">
+                    <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-400">
+                        <Store size={22} />
                     </div>
-                    <h3 className="font-black text-xl text-slate-900 uppercase tracking-tighter">Identidade Visual</h3>
+                    <h3 className="text-heading-3 font-display font-bold text-slate-950 uppercase tracking-tight">Identidade Corporativa</h3>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
                     <div className="space-y-4 md:col-span-2">
-                        <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Logo da Loja</label>
-                        <div className="flex items-center gap-6">
+                        <label className="text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em]">Emblema da Marca</label>
+                        <div className="flex flex-col md:flex-row items-center gap-10">
                             <div 
                                 onClick={() => fileInputRef.current?.click()}
-                                className="relative w-32 h-32 bg-slate-50 rounded-4xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center cursor-pointer hover:border-primary/40 hover:bg-primary/2 transition-all group overflow-hidden"
+                                className="relative w-40 h-40 bg-slate-50 rounded-[2.5rem] border-2 border-dashed border-slate-100 flex flex-col items-center justify-center cursor-pointer hover:border-primary/40 hover:bg-white transition-all group overflow-hidden shadow-sm"
                             >
                                 {formData.logo ? (
                                     <>
-                                        <img src={formData.logo} alt="Logo preview" className="w-full h-full object-cover" />
-                                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
-                                            <ImagePlus size={24} />
+                                        <img src={formData.logo} alt="Logo preview" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
+                                        <div className="absolute inset-0 bg-slate-950/40 backdrop-blur-[2px] opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
+                                            <ImagePlus size={32} />
                                         </div>
                                     </>
                                 ) : (
                                     <>
-                                        <ImagePlus className="text-slate-300 group-hover:text-primary transition-colors" size={32} />
-                                        <span className="text-[10px] font-black text-slate-400 mt-2 uppercase">Upload</span>
+                                        <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center text-slate-200 shadow-sm mb-4">
+                                            <ImagePlus size={32} />
+                                        </div>
+                                        <span className="text-[10px] font-body font-bold text-slate-400 uppercase tracking-widest">Upload Logo</span>
                                     </>
                                 )}
                             </div>
                             
-                            <div className="flex-1 space-y-4">
-                                <p className="text-sm font-bold text-slate-700">Selecione uma imagem local</p>
-                                <p className="text-xs text-slate-500 leading-relaxed">Formatos suportados: PNG, JPG ou WEBP. <br/> Resolução recomendada: 512x512px.</p>
+                            <div className="flex-1 space-y-4 text-center md:text-left">
+                                <h4 className="text-body-strong font-body font-bold text-slate-950 uppercase tracking-tight">Gestão de Mídia Reticular</h4>
+                                <p className="text-label font-body font-medium text-slate-400 uppercase tracking-[0.04em] leading-relaxed max-w-sm">Use arquivos SVG ou PNG de alta fidelidade para garantir a integridade visual da interface.</p>
                                 
-                                <div className="flex flex-wrap gap-3">
+                                <div className="flex flex-wrap gap-4 justify-center md:justify-start pt-2">
                                     <button 
                                         type="button"
                                         onClick={() => fileInputRef.current?.click()}
-                                        className="h-10 px-4 bg-primary text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:scale-105 transition-all shadow-lg shadow-primary/20"
+                                        className="h-12 px-8 bg-slate-950 text-white rounded-xl text-label font-body font-bold uppercase tracking-widest hover:bg-primary transition-all shadow-lg"
                                     >
-                                        Escolher Arquivo
+                                        Substituir
                                     </button>
 
                                     {formData.logo && (
                                         <button 
                                             type="button"
                                             onClick={() => setFormData({...formData, logo: ""})}
-                                            className="h-10 px-4 bg-white border border-rose-100 text-rose-500 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-rose-50 transition-all flex items-center gap-2"
+                                            className="h-12 px-8 bg-white border border-slate-100 text-slate-400 rounded-xl text-label font-body font-bold uppercase tracking-widest hover:bg-rose-50 hover:text-rose-500 hover:border-rose-100 transition-all flex items-center gap-2"
                                         >
-                                            <X size={14} /> Remover logo
+                                            <X size={16} /> Remover
                                         </button>
                                     )}
                                 </div>
@@ -209,45 +211,47 @@ export default function SettingsPage() {
                         </div>
                     </div>
 
-                    <div className="space-y-2">
-                        <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Nome da Loja</label>
+                    <div className="space-y-3">
+                        <label className="text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em] ml-1">Designação da Loja</label>
                         <input 
                             value={formData.storeName}
                             onChange={(e) => setFormData({...formData, storeName: e.target.value})}
-                            className="w-full h-14 px-5 bg-slate-50 border-2 border-transparent focus:border-primary/20 focus:bg-white rounded-2xl transition-all font-bold text-slate-700 outline-none"
+                            className="w-full h-16 px-6 bg-slate-50 border-transparent focus:bg-white focus:ring-2 focus:ring-slate-950/5 rounded-2xl transition-all font-body font-bold text-slate-950 text-label uppercase tracking-widest outline-none"
                         />
                     </div>
 
-                    <div className="space-y-2">
-                        <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">WhatsApp / Telefone</label>
+                    <div className="space-y-3">
+                        <label className="text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em] ml-1">Terminal de Atendimento</label>
                         <div className="relative">
-                            <Phone className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
+                            <Phone className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-300" size={20} />
                             <input 
                                 value={formData.phone}
                                 onChange={handlePhoneChange}
                                 placeholder="(11) 99999-9999"
-                                className="w-full h-14 pl-14 pr-5 bg-slate-50 border-2 border-transparent focus:border-primary/20 focus:bg-white rounded-2xl transition-all font-bold text-slate-700 outline-none"
+                                className="w-full h-16 pl-16 pr-6 bg-slate-50 border-transparent focus:bg-white focus:ring-2 focus:ring-slate-950/5 rounded-2xl transition-all font-body font-bold text-slate-950 text-label uppercase tracking-widest outline-none"
                             />
                         </div>
                     </div>
                     
-                    <div className="space-y-2 md:col-span-2">
-                        <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Cor Primária</label>
-                        <div className="flex gap-4">
-                           <div className="flex-1 h-14 bg-slate-50 rounded-2xl border-2 border-transparent flex items-center px-5 gap-3">
-                               <div className="w-6 h-6 rounded-lg shadow-sm" style={{ backgroundColor: formData.primaryColor }} />
+                    <div className="space-y-4 md:col-span-2 mt-4 pt-10 border-t border-slate-50">
+                        <label className="text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em] ml-1">Cromatismo Signature (HEX)</label>
+                        <div className="flex gap-6">
+                           <div className="flex-1 h-16 bg-slate-50 rounded-2xl flex items-center px-6 gap-4">
+                               <div className="w-8 h-8 rounded-xl shadow-lg border-2 border-white" style={{ backgroundColor: formData.primaryColor }} />
                                <input 
                                    value={formData.primaryColor}
                                    onChange={(e) => setFormData({...formData, primaryColor: e.target.value})}
-                                   className="bg-transparent font-black text-slate-700 uppercase outline-none w-full"
+                                   className="bg-transparent font-mono font-medium text-slate-950 uppercase outline-none w-full tracking-widest"
                                />
                            </div>
-                           <input 
-                               type="color"
-                               value={formData.primaryColor}
-                               onChange={(e) => setFormData({...formData, primaryColor: e.target.value})}
-                               className="w-14 h-14 rounded-2xl border-none p-0 bg-transparent cursor-pointer"
-                           />
+                           <div className="relative overflow-hidden w-16 h-16 rounded-2xl shadow-xl flex items-center justify-center">
+                                <input 
+                                    type="color"
+                                    value={formData.primaryColor}
+                                    onChange={(e) => setFormData({...formData, primaryColor: e.target.value})}
+                                    className="absolute inset-0 w-[150%] h-[150%] -translate-x-4 -translate-y-4 cursor-pointer border-none p-0 bg-transparent"
+                                />
+                           </div>
                         </div>
                     </div>
                     <div className="space-y-2 md:col-span-2">

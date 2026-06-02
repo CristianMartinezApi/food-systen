@@ -517,7 +517,7 @@ app.patch('/api/orders/:id', authMiddleware, async (req: AuthRequest, res) => {
 
 // Stats
 app.get('/api/stats', authMiddleware, async (req: AuthRequest, res) => {
-  const [totalOrders, totalSales, pendingOrders, recentOrders] = await Promise.all([
+  const [totalOrders, totalSales, pendingOrders, recentOrders, totalCustomers, topProductsRaw] = await Promise.all([
     prisma.order.count({ where: { restaurantId: req.restaurantId } }),
     prisma.order.aggregate({
       where: { 
@@ -535,15 +535,45 @@ app.get('/api/stats', authMiddleware, async (req: AuthRequest, res) => {
     prisma.order.findMany({
       where: { restaurantId: req.restaurantId },
       take: 5,
-      orderBy: { createdAt: 'desc' }
+      orderBy: { createdAt: 'desc' },
+      include: {
+        items: true
+      }
+    }),
+    prisma.customer.count({ where: { restaurantId: req.restaurantId } }),
+    prisma.orderItem.groupBy({
+      by: ['productId'],
+      _sum: { quantity: true },
+      where: {
+        order: { restaurantId: req.restaurantId }
+      },
+      orderBy: {
+        _sum: { quantity: 'desc' }
+      },
+      take: 3
     })
   ]);
+
+  // Fetch product names for top products
+  const topProducts = await Promise.all(
+    topProductsRaw.map(async (item) => {
+      const product = await prisma.product.findUnique({
+        where: { id: item.productId }
+      });
+      return {
+        name: product?.name || 'Produto Removido',
+        sales: `${item._sum.quantity} ordens`
+      };
+    })
+  );
 
   res.json({
     totalOrders,
     totalSales: totalSales._sum.total || 0,
     pendingOrders,
-    recentOrders
+    recentOrders,
+    totalCustomers,
+    topProducts
   });
 });
 

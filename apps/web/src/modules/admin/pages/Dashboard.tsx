@@ -69,106 +69,95 @@ export default function Dashboard() {
 
   return (
     <>
-      <div className="mb-10">
-        <h1 className="text-3xl font-black text-slate-900 tracking-tight">Painel de Controle</h1>
-        <p className="text-slate-500 font-medium tracking-tight">Bem-vindo de volta! Veja como está sua operação hoje.</p>
+      <div className="mb-12">
+        <h1 className="text-heading-1 font-display font-bold text-slate-950 uppercase tracking-tight leading-none">Visão de Topo</h1>
+        <p className="text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em] mt-2">Gestão Estratégica & Performance Operacional</p>
       </div>
 
       {/* Card de Link da Loja - Super Visível */}
-      <div className="mb-10 bg-gradient-to-r from-slate-900 to-slate-800 rounded-[2.5rem] p-8 text-white shadow-2xl shadow-slate-900/20 relative overflow-hidden group">
-        <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:scale-110 transition-transform duration-500">
-          <ExternalLink size={120} />
+      <div className="mb-12 bg-slate-950 rounded-[3rem] p-10 text-white shadow-2xl shadow-slate-950/20 relative overflow-hidden group">
+        <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:scale-110 group-hover:rotate-12 transition-transform duration-1000">
+          <ExternalLink size={160} />
         </div>
         
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-8">
+        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-10">
           <div>
-            <div className="flex items-center gap-2 mb-2">
+            <div className="flex items-center gap-3 mb-4">
               <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
-              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Sua loja está online</span>
+              <span className="text-label font-body font-medium uppercase tracking-[0.06em] text-emerald-500">Operação Digital Ativa</span>
             </div>
-            <h2 className="text-2xl font-black mb-1">Link do seu Cardápio Digital</h2>
-            <p className="text-slate-400 font-medium">Compartilhe este link com seus clientes para receber pedidos.</p>
+            <h2 className="text-heading-2 font-display font-bold uppercase tracking-tight mb-2">Seu Portal Gourmet</h2>
+            <p className="text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em]">Compartilhe o acesso exclusivo para seus clientes.</p>
           </div>
 
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-             <div className="bg-white/10 backdrop-blur-md border border-white/10 px-6 py-4 rounded-2xl flex items-center gap-3 group/link cursor-pointer hover:bg-white/15 transition-all">
-                <code className="text-emerald-400 font-bold text-lg tracking-tight">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
+             <div className="bg-white/5 backdrop-blur-3xl border border-white/10 px-8 py-5 rounded-2xl flex items-center gap-4 group/link cursor-pointer hover:bg-white/10 transition-all">
+                <code className="text-primary font-mono font-medium text-lg tracking-tighter">
                   {storeUrl.replace('http://', '').replace('https://', '')}
                 </code>
              </div>
              
              <button 
                 onClick={() => {
-                  navigator.clipboard.writeText(storeUrl);
-                  toast.success("Link copiado com sucesso!");
+                   navigator.clipboard.writeText(storeUrl);
+                   toast.success("Link copiado para a área de transferência!");
                 }}
-                className="bg-primary text-white font-black px-8 py-4 rounded-2xl hover:scale-105 active:scale-95 transition-all shadow-lg shadow-primary/30 flex items-center justify-center gap-2"
+                className="h-16 px-10 bg-white text-slate-950 rounded-2xl font-body font-bold text-label uppercase tracking-[0.06em] hover:bg-primary hover:text-white transition-all shadow-xl active:scale-95 flex items-center justify-center gap-3"
              >
-                <Plus size={20} />
-                COPIAR LINK
-             </button>
-
-             <a 
-                href={storeUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="bg-white text-slate-900 font-black px-8 py-4 rounded-2xl hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-2"
-             >
-                <ExternalLink size={20} />
-                ABRIR LOJA
-             </a>
+                Copiando Link
+             </button> 
           </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-16">
         <StatCard 
-          title="Faturamento" 
+          title="Faturamento Bruto" 
           value={formatCurrency(stats?.totalSales || 0)} 
-          trend="+12.5%"
+          trend="+R$ 0,00"
           icon={DollarSign} 
           color="bg-emerald-500"
         />
         <StatCard 
-          title="Total Pedidos" 
+          title="Fluxo de Pedidos" 
           value={stats?.totalOrders || 0} 
-          trend="+5.2%"
+          trend="Total"
           icon={ShoppingBag} 
           color="bg-primary"
         />
         <StatCard 
-          title="Em Aberto" 
+          title="Pedidos em Espera" 
           value={stats?.pendingOrders || 0} 
-          trend="-2.1%"
+          trend="Abertas"
           icon={Clock} 
           color="bg-orange-500"
         />
         <StatCard 
-          title="Novos Clientes" 
-          value="24" 
-          trend="+8.4%"
+          title="Membros VIP" 
+          value={stats?.totalCustomers || 0} 
+          trend="Base"
           icon={Users} 
           color="bg-blue-500"
         />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
         {/* Lista de Pedidos Modernizada */}
-        <div className="lg:col-span-2 bg-white rounded-[2rem] border border-slate-100 p-8 shadow-sm">
-          <div className="flex items-center justify-between mb-8">
+        <div className="lg:col-span-2 bg-white rounded-[3rem] border border-slate-50 p-10 shadow-sm">
+          <div className="flex items-center justify-between mb-10">
             <div>
-                <h3 className="font-black text-xl text-slate-900 uppercase tracking-tighter">Pedidos Recentes</h3>
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Últimas 5 movimentações</p>
+                <h3 className="text-heading-3 font-display font-bold text-slate-950 uppercase tracking-tight">Fluxo Recente</h3>
+                <p className="text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em] mt-1">Últimas interações em tempo real</p>
             </div>
-            <Link href="/admin/orders" className="h-10 px-4 rounded-xl border-2 border-slate-50 text-xs font-black text-slate-600 hover:bg-slate-50 transition-all flex items-center gap-2">
-              GERENCIAR TODOS <ExternalLink size={14} />
+            <Link href="/admin/orders" className="text-label font-body font-bold text-primary hover:bg-primary/5 px-6 py-3 rounded-xl transition-all uppercase tracking-[0.06em] border-2 border-primary/10">
+              Relatório Completo
             </Link>
           </div>
           
-          <div className="space-y-4">
+          <div className="space-y-6">
             {stats?.recentOrders?.length === 0 ? (
-              <div className="py-20 text-center border-2 border-dashed rounded-3xl">
-                  <p className="text-slate-400 font-bold">Nenhum pedido hoje ainda.</p>
+              <div className="py-24 text-center border-2 border-dashed border-slate-100 rounded-[2.5rem]">
+                  <p className="text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em]">Nenhuma atividade registrada hoje.</p>
               </div>
             ) : (
               stats?.recentOrders?.map((order: any, idx: number) => (
@@ -177,32 +166,32 @@ export default function Dashboard() {
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: idx * 0.1 }}
                   key={order.id} 
-                  className="flex items-center justify-between p-5 border border-slate-50 rounded-2xl hover:bg-slate-50 transition-all group cursor-pointer"
+                  className="flex items-center justify-between p-6 border border-slate-50 rounded-[2rem] hover:bg-slate-50/50 transition-all group cursor-pointer"
                 >
-                  <div className="flex items-center gap-5">
-                    <div className="w-14 h-14 rounded-2xl bg-white border-2 border-slate-100 flex items-center justify-center font-black text-slate-400 group-hover:border-primary/30 group-hover:text-primary transition-all shadow-sm">
-                      #{order.id.toString().padStart(3, '0')}
+                  <div className="flex items-center gap-6">
+                    <div className="w-16 h-16 rounded-2xl bg-white border border-slate-100 flex items-center justify-center font-mono font-medium text-slate-300 group-hover:border-primary/20 group-hover:text-primary transition-all shadow-sm">
+                      #{order.id.toString().slice(-3)}
                     </div>
                     <div>
-                      <p className="font-black text-slate-900 text-lg uppercase tracking-tight">{order.customerName}</p>
-                      <div className="flex items-center gap-2 mt-0.5">
-                         <span className="text-[10px] bg-slate-100 px-2 py-0.5 rounded-md font-black text-slate-500 uppercase">
+                      <p className="text-body-strong font-body font-bold text-slate-950 uppercase tracking-tight leading-none mb-1.5">{order.customerName}</p>
+                      <div className="flex items-center gap-3">
+                         <span className="text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em]">
                            {formatDistanceToNow(new Date(order.createdAt), { addSuffix: true, locale: ptBR })}
                          </span>
                          <span className={cn(
-                            "text-[10px] px-2 py-0.5 rounded-md font-black uppercase tracking-wider",
-                            order.status === 'new' ? 'bg-amber-100 text-amber-700' :
-                            order.status === 'delivered' ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'
+                            "text-[10px] font-body font-bold uppercase tracking-widest px-2.5 py-1 rounded-lg shadow-sm border",
+                            order.status === 'PENDING' ? 'bg-amber-50 text-amber-600 border-amber-100' :
+                            order.status === 'DELIVERED' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-blue-50 text-blue-600 border-blue-100'
                          )}>
-                            {order.status === 'new' ? 'Novo' : 
-                             order.status === 'delivered' ? 'Entregue' : 'Em Preparo'}
+                            {order.status === 'PENDING' ? 'Aprovação' : 
+                             order.status === 'DELIVERED' ? 'Finalizado' : 'Produção'}
                          </span>
                       </div>
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="font-black text-xl text-slate-900">{formatCurrency(order.total)}</p>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{order.paymentMethod === 'pix' ? 'Via PIX' : 'Cartão/Dinheiro'}</p>
+                    <p className="text-heading-3 font-mono font-medium text-slate-950 tracking-tighter">{formatCurrency(order.total)}</p>
+                    <p className="text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em] mt-1">{order.paymentMethod}</p>
                   </div>
                 </motion.div>
               ))
@@ -211,111 +200,71 @@ export default function Dashboard() {
         </div>
 
         {/* Coluna da Direita (Metas e Popularidade) */}
-        <div className="space-y-8">
-          <div className="bg-slate-900 rounded-[2rem] p-8 text-white shadow-xl shadow-slate-900/20 relative overflow-hidden">
-                <div className="absolute top-0 right-0 p-4 opacity-10">
-                    <Target size={120} />
+        <div className="space-y-10">
+          <div className="bg-slate-950 rounded-[3rem] p-10 text-white shadow-2xl shadow-slate-950/20 relative overflow-hidden group">
+                <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:scale-110 transition-transform duration-1000">
+                    <Target size={160} />
                 </div>
-                <h3 className="font-black text-xl uppercase tracking-tighter mb-1">Meta Mensal</h3>
-                <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-6">Status da sua meta</p>
+                <h3 className="text-heading-3 font-display font-bold uppercase tracking-tight mb-2">Meta Performance</h3>
+                <p className="text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em] mb-10">Faturamento Alvo: {formatCurrency(5000)}</p>
                 
-                <div className="space-y-6 relative z-10">
+                <div className="space-y-8 relative z-10">
                     <div>
-                        <div className="flex justify-between items-end mb-2">
-                           <span className="text-3xl font-black">74%</span>
-                           <span className="text-[10px] font-bold text-slate-400 uppercase">R$ 22.400 / R$ 30.000</span>
+                        <div className="flex justify-between items-end mb-4">
+                           <span className="text-4xl font-mono font-medium tracking-tighter">
+                             {Math.min(Math.round(((stats?.totalSales || 0) / 5000) * 100), 100)}%
+                           </span>
+                           <span className="text-label font-mono font-medium text-slate-500 uppercase">{formatCurrency(stats?.totalSales || 0)}</span>
                         </div>
-                        <div className="h-3 w-full bg-white/10 rounded-full overflow-hidden">
+                        <div className="h-2.5 w-full bg-white/10 rounded-full overflow-hidden">
                             <motion.div 
                                 initial={{ width: 0 }}
-                                animate={{ width: "74%" }}
+                                animate={{ width: `${Math.min(((stats?.totalSales || 0) / 5000) * 100, 100)}%` }}
                                 transition={{ duration: 1, delay: 0.5 }}
                                 className="h-full bg-primary" 
                             />
                         </div>
                     </div>
-                    <p className="text-xs text-slate-400 leading-relaxed">
-                        Você está <span className="text-white font-bold">R$ 7.600</span> longe de bater sua meta do mês. Continue assim!
+                    <p className="text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em] leading-relaxed">
+                        Desempenho <span className="text-white font-bold">{((stats?.totalSales || 0) / 5000) >= 1 ? 'Excepcional' : 'Promissor'}</span>. Faltam {formatCurrency(Math.max(5000 - (stats?.totalSales || 0), 0))} para a meta.
                     </p>
                 </div>
           </div>
 
-          <div className="bg-white rounded-[2rem] border border-slate-100 p-8 shadow-sm">
-            <h3 className="font-black text-xl text-slate-900 uppercase tracking-tighter mb-8 flex items-center justify-between">
-              Mais Vendidos <TrendingUp size={20} className="text-primary" />
+          <div className="bg-white rounded-[3rem] border border-slate-50 p-10 shadow-sm overflow-hidden relative group">
+            <h3 className="text-heading-3 font-display font-bold text-slate-950 uppercase tracking-tight mb-10 flex items-center justify-between">
+              Elite Mix <TrendingUp size={24} className="text-primary" />
             </h3>
-            <div className="space-y-6">
-              {[
-                { name: "Burger Clássico", sales: "142 vendas", color: "bg-primary" },
-                { name: "Double Bacon", sales: "98 vendas", color: "bg-orange-500" },
-                { name: "Batata Frita", sales: "87 vendas", color: "bg-amber-500" },
-              ].map((item) => (
-                <div key={item.name} className="flex items-center gap-4">
-                  <div className={cn("w-2 h-10 rounded-full", item.color)} />
-                  <div className="flex-1">
-                    <p className="font-black text-slate-900 uppercase tracking-tight text-sm">{item.name}</p>
-                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">{item.sales}</p>
+            <div className="space-y-8">
+              {stats?.topProducts?.length === 0 ? (
+                <p className="text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em]">Aguardando dados de vendas...</p>
+              ) : (
+                stats?.topProducts?.map((item: any, idx: number) => (
+                  <div key={item.name} className="flex items-center gap-6">
+                    <div className={cn("w-1.5 h-12 rounded-full", idx === 0 ? "bg-primary" : idx === 1 ? "bg-slate-950" : "bg-slate-200")} />
+                    <div className="flex-1">
+                      <p className="text-body-strong font-body font-bold text-slate-950 uppercase tracking-tight leading-none mb-1.5">{item.name}</p>
+                      <p className="text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em]">{item.sales}</p>
+                    </div>
+                    <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center group-hover:bg-slate-950 group-hover:text-white transition-all duration-500">
+                      <ArrowUpRight size={20} />
+                    </div>
                   </div>
-                  <div className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center">
-                    <ArrowUpRight size={18} className="text-primary" />
-                  </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </div>
         </div>
-        {/* Coluna Lateral - Metas e Ações Rápidas */}
+        
+        {/* Coluna Lateral - Ações Rápidas */}
         <div className="space-y-8">
-            {/* Metas de Hoje */}
-            <div className="bg-white rounded-[2rem] border border-slate-100 p-8 shadow-sm relative overflow-hidden">
-                <div className="flex items-center gap-3 mb-6">
-                    <div className="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center text-primary">
-                        <Target size={20} />
-                    </div>
-                    <h3 className="font-black text-xl text-slate-900 uppercase tracking-tighter">Metas do Dia</h3>
-                </div>
-
-                <div className="space-y-6">
-                    <div>
-                        <div className="flex justify-between items-end mb-2">
-                            <span className="text-xs font-black text-slate-500 uppercase tracking-widest">Vendas</span>
-                            <span className="text-sm font-black text-slate-900">75%</span>
-                        </div>
-                        <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
-                            <motion.div 
-                                initial={{ width: 0 }}
-                                animate={{ width: "75%" }}
-                                className="h-full bg-primary"
-                            />
-                        </div>
-                    </div>
-                    <div>
-                        <div className="flex justify-between items-end mb-2">
-                            <span className="text-xs font-black text-slate-500 uppercase tracking-widest">Avaliação</span>
-                            <span className="text-sm font-black text-slate-900">4.8/5</span>
-                        </div>
-                        <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
-                            <motion.div 
-                                initial={{ width: 0 }}
-                                animate={{ width: "90%" }}
-                                className="h-full bg-emerald-500"
-                            />
-                        </div>
-                    </div>
-                </div>
-
-                <div className="mt-8 p-4 bg-slate-50 rounded-2xl border border-slate-100 italic text-[10px] font-bold text-slate-400 text-center uppercase tracking-widest leading-relaxed">
-                    "O sucesso é o resultado da preparação, trabalho duro e aprendizado com o fracasso."
-                </div>
-            </div>
-
             {/* Ações Rápidas */}
             <div className="bg-slate-900 rounded-[2rem] p-8 text-white shadow-xl shadow-slate-900/20">
                 <h3 className="font-black text-xl uppercase tracking-tighter mb-6">Atalhos Rápidos</h3>
                 <div className="grid grid-cols-2 gap-4">
                     <QuickAction icon={Plus} label="Novo Produto" path="/admin/products" color="bg-white/10" />
                     <QuickAction icon={Settings} label="Ajustes" path="/admin/settings" color="bg-white/10" />
-                    <QuickAction icon={ExternalLink} label="Ver Site" path="/" color="bg-primary" />
+                    <QuickAction icon={ExternalLink} label="Ver Site" path={`/${slug}`} color="bg-primary" />
                     <QuickAction icon={Users} label="Suporte" path="#" color="bg-white/10" />
                 </div>
             </div>
