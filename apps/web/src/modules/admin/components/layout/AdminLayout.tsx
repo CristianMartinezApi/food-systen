@@ -14,7 +14,7 @@ import {
   ExternalLink
 } from "lucide-react";
 import { cn } from "../../../../shared/utils";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { getTenantSlug } from "../../../../shared/utils/tenant";
 import { useSettings } from "../../../../core/hooks/useSettings";
 import { useState, useEffect } from "react";
