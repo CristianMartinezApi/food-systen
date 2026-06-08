@@ -38,7 +38,7 @@ export const authMiddleware = (req: AuthRequest, res: Response, next: NextFuncti
 
     // Se o usuário estiver tentando acessar um recurso de um restaurante,
     // verificamos se ele pertence a esse restaurante (exceto se for SUPER_ADMIN)
-    if (decoded.role !== 'SUPER_ADMIN' && decoded.restaurantId !== req.restaurantId) {
+    if (decoded.role !== 'SUPER_ADMIN' && req.restaurantId !== undefined && decoded.restaurantId !== req.restaurantId) {
       return res.status(403).json({ error: 'Forbidden: You do not belong to this restaurant' });
     }
 

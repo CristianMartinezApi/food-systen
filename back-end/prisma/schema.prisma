@@ -29,6 +29,8 @@ model Restaurant {
   description        String?
   phone              String?
   isActive           Boolean    @default(true)
+  provisioningStatus String     @default("PENDING")
+  databaseName       String?
   planId             Int?
   subscriptionStatus String     @default("active")
   createdAt          DateTime   @default(now())
@@ -40,8 +42,19 @@ model Restaurant {
   plan               Plan?      @relation(fields: [planId], references: [id])
   settings           Settings?
   users              User[]
+  provisioningLogs   ProvisioningLog[]
 
   @@map("restaurants")
+}
+
+model ProvisioningLog {
+  id           Int      @id @default(autoincrement())
+  restaurantId Int
+  message      String
+  level        String   @default("info")
+  createdAt    DateTime @default(now())
+
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
 }
 
 model User {
@@ -50,10 +63,12 @@ model User {
   email        String      @unique
   password     String
   role         UserRole    @default(OWNER)
+  isApproved   Boolean     @default(false)
   restaurantId Int?
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
   restaurant   Restaurant? @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  auditLogs    AuditLog[]
 
   @@index([restaurantId])
   @@map("users")
@@ -225,4 +240,20 @@ enum PaymentMethod {
   PIX
   CASH
   CARD
+}
+
+model AuditLog {
+  id          Int      @id @default(autoincrement())
+  actorId     Int?
+  actorEmail  String?
+  action      String
+  subjectType String
+  subjectId   Int?
+  details     Json?
+  createdAt   DateTime @default(now())
+
+  actor User? @relation(fields: [actorId], references: [id], onDelete: Cascade)
+
+  @@index([actorId])
+  @@map("audit_logs")
 }
