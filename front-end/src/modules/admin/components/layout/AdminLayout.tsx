@@ -11,7 +11,8 @@ import {
   Bell,
   User,
   Tags,
-  ExternalLink
+  ExternalLink,
+  Users
 } from "lucide-react";
 import { cn } from "../../../../shared/utils";
 import { motion, AnimatePresence } from "framer-motion";
@@ -29,10 +30,21 @@ export function AdminLayout({ children }: AdminLayoutProps) {
   const { settings } = useSettings();
   const [slug, setSlug] = useState<string>("");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [userRole, setUserRole] = useState<string>("");
   const storeLabel = settings?.storeName || "Master Admin";
 
   useEffect(() => {
     setSlug(getTenantSlug());
+
+    const userData = localStorage.getItem("@FoodSystem:user");
+    if (userData) {
+      try {
+        const parsedUser = JSON.parse(userData);
+        setUserRole(parsedUser.role || "");
+      } catch {
+        setUserRole("");
+      }
+    }
   }, []);
 
   const handleLogout = () => {
@@ -42,13 +54,23 @@ export function AdminLayout({ children }: AdminLayoutProps) {
     router.push("/admin/login");
   };
 
-  const menuItems = [
+  let menuItems = [
     { icon: LayoutDashboard, label: "Painel", path: "/admin" },
     { icon: ShoppingBag, label: "Pedidos", path: "/admin/orders" },
     { icon: Package, label: "Produtos", path: "/admin/products" },
     { icon: Tags, label: "Categorias", path: "/admin/categories" },
     { icon: Settings, label: "Configurações", path: "/admin/settings" },
   ];
+
+  // Simplify menu for SUPER_ADMIN: only show core management views
+  if (userRole === 'SUPER_ADMIN') {
+    menuItems = [
+      { icon: LayoutDashboard, label: "Painel", path: "/admin" },
+      { icon: Users, label: "Clientes", path: "/admin/clients" },
+      { icon: ExternalLink, label: "Auditoria", path: "/admin/audit" },
+      { icon: Settings, label: "Configurações", path: "/admin/settings" },
+    ];
+  }
 
   const storeUrl = typeof window !== 'undefined' ? `${window.location.origin}/${slug}` : '';
 
@@ -62,13 +84,13 @@ export function AdminLayout({ children }: AdminLayoutProps) {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={() => setIsSidebarOpen(false)}
-            className="fixed inset-0 bg-slate-950/60 backdrop-blur-md z-[60] lg:hidden"
+            className="fixed inset-0 bg-slate-950/60 backdrop-blur-md z-60 lg:hidden"
           />
         )}
       </AnimatePresence>
 
       <aside className={cn(
-        "fixed inset-y-0 left-0 w-80 bg-white border-r border-slate-100 flex flex-col h-screen z-[70] transition-transform duration-500 lg:sticky lg:translate-x-0 lg:z-50 shadow-[4px_0_24px_rgba(0,0,0,0.02)]",
+        "fixed inset-y-0 left-0 w-80 bg-white border-r border-slate-100 flex flex-col h-screen z-70 transition-transform duration-500 lg:sticky lg:translate-x-0 lg:z-50 shadow-[4px_0_24px_rgba(0,0,0,0.02)]",
         isSidebarOpen ? "translate-x-0" : "-translate-x-full"
       )}>
         <div className="p-10 pb-12 flex items-center justify-between">
@@ -84,7 +106,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
                 <span className="text-heading-3 font-display font-bold tracking-tight text-slate-950 uppercase leading-none">
                     {settings?.storeName?.split(' ')[0] || "Food"}
                 </span>
-                <span className="text-label font-body font-medium text-slate-400 uppercase tracking-[0.1em] mt-1">SISTEMA</span>
+                <span className="text-label font-body font-medium text-slate-400 uppercase tracking-widest mt-1">SISTEMA</span>
             </div>
           </div>
           
@@ -138,7 +160,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
         </div>
 
         <div className="p-8 border-t border-slate-50">
-           <div className="bg-slate-50 rounded-[2rem] p-5 flex items-center gap-4 mb-6 border border-slate-100">
+           <div className="bg-slate-50 rounded-4xl p-5 flex items-center gap-4 mb-6 border border-slate-100">
                 <div className="w-12 h-12 rounded-xl bg-white border flex items-center justify-center shadow-sm">
                     <User size={20} className="text-slate-200" />
                 </div>

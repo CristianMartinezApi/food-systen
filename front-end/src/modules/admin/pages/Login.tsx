@@ -38,9 +38,15 @@ export default function Login() {
       localStorage.setItem("@FoodSystem:restaurant", JSON.stringify(response.restaurant));
       
       toast.success("Bem-vindo de volta!");
-      router.push("/admin");
+      if (response.user.role === 'SUPER_ADMIN') {
+        router.push("/admin/clients");
+      } else if (response.user.restaurantId) {
+        router.push("/admin");
+      } else {
+        router.push("/admin/onboarding");
+      }
     } catch (error: any) {
-      toast.error("Credenciais inválidas ou erro no servidor");
+      toast.error(error.message || "Credenciais inválidas ou erro no servidor");
     } finally {
       setIsLoading(false);
     }

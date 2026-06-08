@@ -12,10 +12,20 @@ import {
 } from "lucide-react";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { useSettings } from "../../../core/hooks/useSettings";
 
 gsap.registerPlugin(ScrollTrigger);
 
 export default function LandingPage() {
+  const { settings } = useSettings();
+
+  const bannerBadge = settings?.bannerBadge ?? "Plataforma completa para restaurantes e dark kitchens";
+  const bannerTitle = settings?.bannerTitleLine1 || settings?.bannerTitleLine2
+    ? `${settings?.bannerTitleLine1 ?? ""}${settings?.bannerTitleLine2 ? ` ${settings?.bannerTitleLine2}` : ""}`.trim()
+    : "A plataforma que vende por você — operação, entrega e pagamentos.";
+  const bannerDescription = settings?.bannerDescription ?? "Aceite pedidos via web e app, gerencie cardápio e promoções, controle entregas e comissões em um painel único. Reduza chamadas, aumente ticket médio e automatize sua operação.";
+  const bannerCta = settings?.bannerCtaLabel ?? "Teste grátis — 14 dias";
+  const bannerImage = settings?.bannerImage ?? "/hero-illustration.png";
   const rootRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -120,50 +130,69 @@ export default function LandingPage() {
       </header>
 
       <main className="pt-20 flex-1">
-        {/* Hero Section */}
-        <section className="relative overflow-hidden py-24 md:py-32">
+        {/* Hero Section - atualizado para versão mais profissional */}
+        <section className="relative overflow-hidden py-20 md:py-28">
           <div className="container mx-auto max-w-7xl px-4 relative z-10">
-            <div className="max-w-3xl">
-              <div className="landing-hero-badge inline-flex items-center gap-2 bg-primary/10 text-primary px-4 py-2 rounded-full font-black text-[10px] uppercase tracking-[0.2em] mb-8"
-              >
-                <Zap size={12} className="fill-primary" /> Plataforma SaaS para delivery com execução visual limpa
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+              <div className="max-w-2xl">
+                <div className="landing-hero-badge inline-flex items-center gap-2 bg-primary/10 text-primary px-4 py-2 rounded-full font-black text-[10px] uppercase tracking-[0.18em] mb-6">
+                  <Zap size={12} className="fill-primary" /> {bannerBadge}
+                </div>
+
+                <h1 className="landing-hero-title text-4xl md:text-6xl lg:text-7xl font-black text-slate-900 tracking-tighter leading-tight mb-6">
+                  {bannerTitle}
+                </h1>
+
+                <p className="landing-hero-copy text-base md:text-lg text-slate-600 font-medium leading-relaxed mb-6 max-w-xl">
+                  {bannerDescription}
+                </p>
+
+                <div className="landing-hero-actions flex flex-col sm:flex-row gap-4 mb-6">
+                  <Link href="/admin/register" className="bg-primary text-white h-14 px-8 rounded-3xl font-black text-lg uppercase tracking-tight hover:scale-105 transition-all shadow-xl flex items-center justify-center gap-3">
+                    {bannerCta} <Zap size={18} />
+                  </Link>
+                  <Link href="#demo" className="border border-slate-100 text-slate-900 h-14 px-8 rounded-3xl font-black text-lg uppercase tracking-tight hover:bg-slate-50 transition-all flex items-center justify-center gap-3">
+                    Agendar demo
+                  </Link>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-6">
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center text-primary font-black">1</div>
+                    <div>
+                      <p className="font-bold text-sm">Cardápio Online</p>
+                      <p className="text-xs text-slate-500">Personalize categorias, variações e combos.</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center text-primary font-black">2</div>
+                    <div>
+                      <p className="font-bold text-sm">Gestão de Pedidos</p>
+                      <p className="text-xs text-slate-500">Fila inteligente, preparação e integração com entregas.</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center text-primary font-black">3</div>
+                    <div>
+                      <p className="font-bold text-sm">Relatórios</p>
+                      <p className="text-xs text-slate-500">Vendas, campanhas e performance por canal.</p>
+                    </div>
+                  </div>
+                </div>
               </div>
 
-              <h1 
-                className="landing-hero-title text-5xl md:text-7xl lg:text-8xl font-black text-slate-900 tracking-tighter leading-[0.9] mb-8 uppercase"
-              >
-                Sua loja online em <span className="text-primary italic">minutos.</span>
-              </h1>
-
-              <p 
-                className="landing-hero-copy text-lg md:text-xl text-slate-500 font-medium leading-relaxed mb-10 max-w-xl"
-              >
-                Gerencie pedidos, produtos e clientes em uma plataforma multi-tenant robusta. 
-                Escalável, rápida e pronta para o seu sucesso.
-              </p>
-
-              <div 
-                className="landing-hero-actions flex flex-col sm:flex-row gap-4"
-              >
-                <Link 
-                  href="/admin/register" 
-                  className="bg-primary text-white h-20 px-10 rounded-4xl font-black text-lg uppercase tracking-tight hover:scale-105 transition-all shadow-2xl shadow-primary/20 flex items-center justify-center gap-3"
-                >
-                  Começar agora <Zap size={24} />
-                </Link>
-                <Link 
-                  href="#demo" 
-                  className="bg-slate-50 text-slate-900 h-20 px-10 rounded-4xl font-black text-lg uppercase tracking-tight hover:bg-slate-100 transition-all flex items-center justify-center gap-3"
-                >
-                  Ver Demo
-                </Link>
+              {/* Ilustração / imagem do produto */}
+              <div className="flex items-center justify-center lg:justify-end">
+                <div className="w-full max-w-lg bg-gradient-to-br from-white to-slate-50 rounded-3xl p-8 shadow-2xl">
+                    <div className="w-full h-64 bg-center bg-cover rounded-2xl" style={{ backgroundImage: `url(${bannerImage})` }} />
+                </div>
               </div>
             </div>
           </div>
 
-          {/* Background Decorativo */}
-          <div className="landing-bg-orb absolute top-0 right-0 -translate-y-1/4 translate-x-1/4 w-200 h-200 bg-primary/5 rounded-full blur-3xl -z-10" />
-          <div className="landing-bg-orb absolute bottom-0 left-0 translate-y-1/4 -translate-x-1/4 w-150 h-150 bg-slate-100 rounded-full blur-3xl -z-10" />
+          {/* Background Decorativo simplificado */}
+          <div className="landing-bg-orb absolute top-0 right-0 -translate-y-1/4 translate-x-1/4 w-80 h-80 bg-primary/6 rounded-full blur-3xl -z-10" />
+          <div className="landing-bg-orb absolute bottom-0 left-0 translate-y-1/4 -translate-x-1/4 w-60 h-60 bg-slate-100 rounded-full blur-3xl -z-10" />
         </section>
 
         {/* Stats Section */}

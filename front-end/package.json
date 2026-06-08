@@ -30,6 +30,10 @@
     "zod": "^4.4.3",
     "zustand": "^5.0.13"
   },
+  "optionalDependencies": {
+    "chart.js": "^4.4.0",
+    "react-chartjs-2": "^5.2.0"
+  },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@tailwindcss/postcss": "^4.0.0",
