@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { X, ImagePlus, Loader2, Save, Plus, Trash2 } from "lucide-react";
 import { api } from "../../../../core/config/api";
 import { formatCurrency } from "../../../../shared/utils";
+import { clampDiscountPercent, getProductDiscountedPrice } from "../../../../shared/utils/product";
 
 interface ProductModalProps {
   isOpen: boolean;
@@ -15,6 +16,7 @@ export function ProductModal({ isOpen, onClose, onSave, product }: ProductModalP
     name: "",
     description: "",
     price: 0,
+    discountPercent: 0,
     categoryId: "",
     image: "",
     isActive: true,
@@ -67,6 +69,7 @@ export function ProductModal({ isOpen, onClose, onSave, product }: ProductModalP
         ...product,
         categoryId: product.categoryId?.toString() || "",
         isActive: product.isActive !== undefined ? product.isActive : true,
+        discountPercent: clampDiscountPercent(product.discountPercent),
         addons: product.addons || [],
         sizes: product.sizes || [],
         ingredients: product.ingredients || []
@@ -76,6 +79,7 @@ export function ProductModal({ isOpen, onClose, onSave, product }: ProductModalP
         name: "",
         description: "",
         price: "" as any,
+        discountPercent: 0,
         categoryId: "",
         image: "",
         isActive: true,
@@ -85,6 +89,10 @@ export function ProductModal({ isOpen, onClose, onSave, product }: ProductModalP
       });
     }
   }, [product, isOpen]);
+
+  const discountPercent = clampDiscountPercent(formData.discountPercent);
+  const basePrice = Number(formData.price) || 0;
+  const finalPrice = getProductDiscountedPrice(basePrice, discountPercent);
 
   const addAddon = () => {
     if (newAddon.name && newAddon.price) {
@@ -167,6 +175,7 @@ export function ProductModal({ isOpen, onClose, onSave, product }: ProductModalP
         addons: formData.addons?.map((a: any) => ({ ...a, name: a.name.toUpperCase().trim() })),
         sizes: formData.sizes?.map((s: any) => ({ ...s, name: s.name.toUpperCase().trim() })),
         ingredients: formData.ingredients?.map((i: string) => i.toUpperCase().trim())
+        ,discountPercent: discountPercent
       };
 
       if (product?.id) {
@@ -288,6 +297,31 @@ export function ProductModal({ isOpen, onClose, onSave, product }: ProductModalP
                         className="w-full h-14 px-5 bg-slate-50 border-2 border-transparent focus:border-primary/20 focus:bg-white rounded-2xl transition-all font-bold text-slate-700 outline-none"
                     />
                 </div>
+
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Desconto (%)</label>
+                      <input 
+                        type="number"
+                        min="0"
+                        max="100"
+                        step="1"
+                        value={formData.discountPercent}
+                        onChange={(e) => setFormData({...formData, discountPercent: e.target.value})}
+                        placeholder="0"
+                        className="w-full h-14 px-5 bg-slate-50 border-2 border-transparent focus:border-primary/20 focus:bg-white rounded-2xl transition-all font-bold text-slate-700 outline-none"
+                      />
+                    </div>
+
+                    <div className="md:col-span-2 rounded-3xl border border-slate-100 bg-slate-50 p-5 flex items-center justify-between gap-4">
+                      <div>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Preço original</p>
+                        <p className="font-mono font-bold text-slate-900 text-xl mt-1">{formatCurrency(basePrice)}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Preço final</p>
+                        <p className="font-mono font-bold text-primary text-xl mt-1">{formatCurrency(finalPrice)}</p>
+                      </div>
+                    </div>
 
                 <div className="space-y-2">
                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Status</label>

@@ -3,6 +3,7 @@ import { X, Plus, Minus, ShoppingBag, Check } from "lucide-react";
 import { formatCurrency, cn } from "../../../../shared/utils";
 import { useCartStore } from "../../../../core/stores/useCartStore";
 import { motion, AnimatePresence } from "framer-motion";
+import { clampDiscountPercent, getProductDiscountedPrice, hasProductDiscount } from "../../../../shared/utils/product";
 
 interface ProductModalProps {
   product: any;
@@ -48,7 +49,9 @@ export function ProductModal({ product, isOpen, onClose, editIndex = null, initi
     return selectedAddons.reduce((acc, addon) => acc + ((addon.price || 0) * (addon.quantity || 1)), 0);
   }, [selectedAddons]);
 
-  const unitPrice = basePrice + addonsTotal;
+    const discountPercent = clampDiscountPercent(product?.discountPercent);
+    const discountedBasePrice = getProductDiscountedPrice(basePrice, discountPercent);
+    const unitPrice = discountedBasePrice + addonsTotal;
   const totalPrice = unitPrice * quantity;
 
   const handleAdd = () => {
@@ -113,7 +116,7 @@ export function ProductModal({ product, isOpen, onClose, editIndex = null, initi
   return (
     <AnimatePresence>
       {isOpen && product && (
-        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-120 flex items-center justify-center p-4">
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -125,16 +128,16 @@ export function ProductModal({ product, isOpen, onClose, editIndex = null, initi
             initial={{ scale: 0.9, opacity: 0, y: 20 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.9, opacity: 0, y: 20 }}
-            className="bg-white w-full max-w-6xl h-full md:h-[min(90vh,900px)] rounded-[0rem] md:rounded-[3rem] overflow-hidden shadow-2xl relative z-10 flex flex-col md:flex-row"
+            className="bg-white w-full max-w-6xl h-full md:h-[min(90vh,900px)] rounded-none md:rounded-[3rem] overflow-hidden shadow-2xl relative z-10 flex flex-col md:flex-row"
           >
             <button 
                 onClick={onClose}
                 className="absolute top-4 md:top-8 right-4 md:right-8 z-50 w-12 h-12 md:w-14 md:h-14 bg-white/90 backdrop-blur-xl rounded-2xl flex items-center justify-center text-slate-900 shadow-2xl border border-white/50 hover:bg-slate-950 hover:text-white transition-all duration-500 active:scale-90 group"
             >
-                <X size={20} className="md:size-[24px] group-hover:rotate-90 transition-transform duration-500" />
+                <X size={20} className="md:size-6 group-hover:rotate-90 transition-transform duration-500" />
             </button>
 
-            <div className="relative w-full md:w-1/2 h-64 md:h-full bg-slate-100 flex-shrink-0 group overflow-hidden">
+            <div className="relative w-full md:w-1/2 h-64 md:h-full bg-slate-100 shrink-0 group overflow-hidden">
               {product.image ? (
                 <img 
                   src={product.image} 
@@ -146,7 +149,7 @@ export function ProductModal({ product, isOpen, onClose, editIndex = null, initi
                    <ShoppingBag size={120} strokeWidth={1} />
                 </div>
               )}
-              <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/60 to-transparent md:hidden" />
+              <div className="absolute inset-x-0 bottom-0 h-1/2 bg-linear-to-t from-black/60 to-transparent md:hidden" />
               
               <div className="absolute bottom-8 left-8 right-8 md:hidden">
                 <h2 className="text-heading-1 font-display font-bold text-white uppercase tracking-tighter drop-shadow-xl">
@@ -171,6 +174,19 @@ export function ProductModal({ product, isOpen, onClose, editIndex = null, initi
                     </div>
 
                     <div className="space-y-12">
+                        {hasProductDiscount(discountPercent) && (
+                            <section className="rounded-4xl border border-rose-100 bg-rose-50 p-6 flex items-center justify-between gap-6">
+                                <div>
+                                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-rose-500">Promoção ativa</p>
+                                    <p className="text-body-strong font-display font-bold text-slate-950 uppercase tracking-tight mt-2">Desconto de {discountPercent}% aplicado automaticamente</p>
+                                </div>
+                                <div className="text-right">
+                                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-rose-500 line-through">{formatCurrency(basePrice)}</p>
+                                    <p className="text-heading-2 font-mono font-bold text-rose-500 tracking-tighter">{formatCurrency(discountedBasePrice)}</p>
+                                </div>
+                            </section>
+                        )}
+
                         {product.sizes && product.sizes.length > 0 && (
                             <section>
                                 <h3 className="text-label font-body font-bold text-slate-300 uppercase tracking-[0.2em] mb-6 border-l-2 border-primary pl-4">Selecione o Corte</h3>
@@ -301,7 +317,7 @@ export function ProductModal({ product, isOpen, onClose, editIndex = null, initi
                         onClick={handleAdd}
                         disabled={added}
                         className={cn(
-                            "flex-1 h-20 rounded-[1.5rem] flex items-center justify-between px-10 transition-all duration-500 active:scale-[0.98]",
+                            "flex-1 h-20 rounded-3xl flex items-center justify-between px-10 transition-all duration-500 active:scale-[0.98]",
                             added ? "bg-emerald-500 text-white" : "bg-primary text-white shadow-2xl shadow-primary/30 hover:scale-[1.02]"
                         )}
                     >
@@ -313,7 +329,7 @@ export function ProductModal({ product, isOpen, onClose, editIndex = null, initi
                             ) : editIndex !== null ? "Atualizar Reserva" : "Adicionar ao Carrinho"}
                         </span>
                         <div className="flex items-center gap-4">
-                            <div className="h-8 w-[1px] bg-white/20" />
+                            <div className="h-8 w-px bg-white/20" />
                             <span className="text-heading-3 font-mono font-medium tracking-tighter">
                                 {formatCurrency(totalPrice)}
                             </span>

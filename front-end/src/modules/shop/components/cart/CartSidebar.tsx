@@ -7,6 +7,7 @@ import { getTenantSlug } from "../../../../shared/utils/tenant";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { ProductModal } from "../product/ProductModal";
 import { useProducts } from "../../hooks/useProducts";
 import { useHasHydrated } from "../../../../core/hooks/useHasHydrated";
@@ -32,7 +33,7 @@ export function CartSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
     }
   };
 
-  return (
+  const content = (
     <AnimatePresence mode="wait">
       {isOpen && (
         <>
@@ -48,7 +49,7 @@ export function CartSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="fixed inset-0 bg-slate-950/40 backdrop-blur-md z-[100]"
+            className="fixed inset-0 bg-slate-950/40 backdrop-blur-md z-110"
           />
           
           <motion.aside
@@ -56,7 +57,7 @@ export function CartSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
             transition={{ type: "spring", damping: 30, stiffness: 300 }}
-            className="fixed right-0 top-0 h-full w-full max-w-lg bg-white z-[101] shadow-[0_0_50px_rgba(0,0,0,0.2)] flex flex-col overflow-hidden"
+            className="fixed right-0 top-0 bottom-0 w-full max-w-lg bg-white z-111 shadow-[0_0_50px_rgba(0,0,0,0.2)] flex flex-col overflow-hidden"
           >
             {/* Header del Carrello con Estetica Moderna */}
             <div className="p-10 border-b border-slate-50 flex items-center justify-between bg-white/80 backdrop-blur-xl sticky top-0 z-10">
@@ -191,7 +192,7 @@ export function CartSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
                 <Link 
                   href={`/${slug}/checkout`} 
                   onClick={onClose}
-                  className="h-20 w-full bg-slate-950 text-white rounded-[2rem] font-body font-bold uppercase tracking-[0.06em] text-label flex items-center justify-center gap-5 shadow-2xl shadow-slate-950/20 hover:bg-primary hover:scale-[1.02] active:scale-[0.98] transition-all duration-500 group overflow-hidden relative"
+                  className="h-20 w-full bg-slate-950 text-white rounded-4xl font-body font-bold uppercase tracking-[0.06em] text-label flex items-center justify-center gap-5 shadow-2xl shadow-slate-950/20 hover:bg-primary hover:scale-[1.02] active:scale-[0.98] transition-all duration-500 group overflow-hidden relative"
                 >
                   <span className="relative z-10 font-body font-bold">Iniciar Finalização</span>
                   <ArrowRight size={20} className="relative z-10 group-hover:translate-x-3 transition-transform duration-500" />
@@ -204,4 +205,6 @@ export function CartSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
       )}
     </AnimatePresence>
   );
+
+  return typeof document !== "undefined" ? createPortal(content, document.body) : content;
 }

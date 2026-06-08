@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from "react";
+﻿import { useState, useEffect, useRef } from "react";
 import { 
   TrendingUp, 
   ShoppingBag, 
@@ -21,11 +21,13 @@ import { ptBR } from "date-fns/locale";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import toast from "react-hot-toast";
+import { gsap } from "gsap";
 
 export default function Dashboard() {
   const [stats, setStats] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [slug, setSlug] = useState<string>("");
+  const rootRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setSlug(getTenantSlug());
@@ -59,6 +61,20 @@ export default function Dashboard() {
     };
   }, []);
 
+  useEffect(() => {
+    if (isLoading || !rootRef.current) return;
+
+    const ctx = gsap.context(() => {
+      const tl = gsap.timeline({ defaults: { ease: "power3.out" } });
+      tl.from(".dashboard-hero", { y: -18, opacity: 0, duration: 0.7 })
+        .from(".dashboard-link-card", { y: 24, opacity: 0, duration: 0.8 }, "-=0.2")
+        .from(".dashboard-stat", { y: 18, opacity: 0, duration: 0.55, stagger: 0.08 }, "-=0.35")
+        .from(".dashboard-panel", { y: 24, opacity: 0, duration: 0.75, stagger: 0.1 }, "-=0.35");
+    }, rootRef);
+
+    return () => ctx.revert();
+  }, [isLoading, stats]);
+
   if (isLoading) {
     return (
       <div className="h-96 flex items-center justify-center">
@@ -68,14 +84,14 @@ export default function Dashboard() {
   }
 
   return (
-    <>
-      <div className="mb-12">
+    <div ref={rootRef}>
+      <div className="dashboard-hero mb-12">
         <h1 className="text-heading-1 font-display font-bold text-slate-950 uppercase tracking-tight leading-none">Visão de Topo</h1>
         <p className="text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em] mt-2">Gestão Estratégica & Performance Operacional</p>
       </div>
 
       {/* Card de Link da Loja - Super Visível */}
-      <div className="mb-12 bg-slate-950 rounded-[3rem] p-10 text-white shadow-2xl shadow-slate-950/20 relative overflow-hidden group">
+      <div className="dashboard-link-card mb-12 bg-slate-950 rounded-[3rem] p-10 text-white shadow-2xl shadow-slate-950/20 relative overflow-hidden group">
         <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:scale-110 group-hover:rotate-12 transition-transform duration-1000">
           <ExternalLink size={160} />
         </div>
@@ -143,7 +159,7 @@ export default function Dashboard() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
         {/* Lista de Pedidos Modernizada */}
-        <div className="lg:col-span-2 bg-white rounded-[3rem] border border-slate-50 p-10 shadow-sm">
+        <div className="dashboard-panel lg:col-span-2 bg-white rounded-[3rem] border border-slate-50 p-10 shadow-sm">
           <div className="flex items-center justify-between mb-10">
             <div>
                 <h3 className="text-heading-3 font-display font-bold text-slate-950 uppercase tracking-tight">Fluxo Recente</h3>
@@ -166,7 +182,7 @@ export default function Dashboard() {
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: idx * 0.1 }}
                   key={order.id} 
-                  className="flex items-center justify-between p-6 border border-slate-50 rounded-[2rem] hover:bg-slate-50/50 transition-all group cursor-pointer"
+                  className="flex items-center justify-between p-6 border border-slate-50 rounded-4xl hover:bg-slate-50/50 transition-all group cursor-pointer"
                 >
                   <div className="flex items-center gap-6">
                     <div className="w-16 h-16 rounded-2xl bg-white border border-slate-100 flex items-center justify-center font-mono font-medium text-slate-300 group-hover:border-primary/20 group-hover:text-primary transition-all shadow-sm">
@@ -201,7 +217,7 @@ export default function Dashboard() {
 
         {/* Coluna da Direita (Metas e Popularidade) */}
         <div className="space-y-10">
-          <div className="bg-slate-950 rounded-[3rem] p-10 text-white shadow-2xl shadow-slate-950/20 relative overflow-hidden group">
+          <div className="dashboard-panel bg-slate-950 rounded-[3rem] p-10 text-white shadow-2xl shadow-slate-950/20 relative overflow-hidden group">
                 <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:scale-110 transition-transform duration-1000">
                     <Target size={160} />
                 </div>
@@ -231,7 +247,7 @@ export default function Dashboard() {
                 </div>
           </div>
 
-          <div className="bg-white rounded-[3rem] border border-slate-50 p-10 shadow-sm overflow-hidden relative group">
+          <div className="dashboard-panel bg-white rounded-[3rem] border border-slate-50 p-10 shadow-sm overflow-hidden relative group">
             <h3 className="text-heading-3 font-display font-bold text-slate-950 uppercase tracking-tight mb-10 flex items-center justify-between">
               Elite Mix <TrendingUp size={24} className="text-primary" />
             </h3>
@@ -259,7 +275,7 @@ export default function Dashboard() {
         {/* Coluna Lateral - Ações Rápidas */}
         <div className="space-y-8">
             {/* Ações Rápidas */}
-            <div className="bg-slate-900 rounded-[2rem] p-8 text-white shadow-xl shadow-slate-900/20">
+            <div className="dashboard-panel bg-slate-900 rounded-4xl p-8 text-white shadow-xl shadow-slate-900/20">
                 <h3 className="font-black text-xl uppercase tracking-tighter mb-6">Atalhos Rápidos</h3>
                 <div className="grid grid-cols-2 gap-4">
                     <QuickAction icon={Plus} label="Novo Produto" path="/admin/products" color="bg-white/10" />
@@ -270,7 +286,7 @@ export default function Dashboard() {
             </div>
         </div>
       </div>
-    </>
+    </div>
   );
 }
 
@@ -292,7 +308,7 @@ function StatCard({ title, value, trend, icon: Icon, color }: any) {
   return (
     <motion.div 
       whileHover={{ y: -5 }}
-      className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm relative overflow-hidden group"
+      className="bg-white p-6 rounded-4xl border border-slate-100 shadow-sm relative overflow-hidden group"
     >
       <div className="absolute top-0 right-0 -mr-4 -mt-4 w-24 h-24 bg-slate-50 rounded-full opacity-50 group-hover:scale-125 transition-transform duration-500" />
       

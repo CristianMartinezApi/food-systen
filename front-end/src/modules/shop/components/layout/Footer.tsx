@@ -16,6 +16,7 @@ import { getTenantSlug } from "../../../../shared/utils/tenant";
 import { cn } from "../../../../shared/utils";
 import Link from "next/link";
 import { useState, useEffect } from "react";
+import { getNextOpeningLabel, getOperatingHoursSummary } from "../../../../shared/utils/schedule";
 
 export function Footer() {
   const { settings } = useSettings();
@@ -70,7 +71,7 @@ export function Footer() {
             <ul className="space-y-6">
               {['Início', 'Nosso Cardápio', 'Meus Pedidos', 'Sobre o Chef'].map((item) => (
                 <li key={item}>
-                  <Link href={`/${slug}`} className="text-label font-body font-bold text-slate-500 hover:text-white transition-all flex items-center gap-4 group uppercase tracking-[0.1em]">
+                  <Link href={`/${slug}`} className="text-label font-body font-bold text-slate-500 hover:text-white transition-all flex items-center gap-4 group uppercase tracking-widest">
                     <div className="w-1.5 h-1.5 rounded-full bg-primary scale-0 group-hover:scale-100 transition-all duration-500 shadow-[0_0_12px_var(--color-primary)]" />
                     {item}
                   </Link>
@@ -125,13 +126,13 @@ export function Footer() {
                 </div>
                 <div className="space-y-1">
                   <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest leading-none">Aberto das</p>
-                  <p className="text-lg font-black text-white uppercase tracking-tighter">18:00 - 23:30</p>
+                  <p className="text-lg font-black text-white uppercase tracking-tighter">{getOperatingHoursSummary(settings?.operatingHours)}</p>
                 </div>
               </div>
               <div className="pt-6 border-t border-white/5 flex items-center gap-3">
                 <div className={cn("w-2 h-2 rounded-full shadow-[0_0_10px]", settings?.isOpen ? "bg-emerald-500 shadow-emerald-500 animate-pulse" : "bg-rose-500 shadow-rose-500")} />
                 <span className={cn("text-[10px] font-black uppercase tracking-[0.2em]", settings?.isOpen ? "text-emerald-500" : "text-rose-500")}>
-                  {settings?.isOpen ? "Estamos Abertos" : "Fechados no momento"}
+                  {settings?.isOpen ? "Estamos Abertos" : `Fechados • ${getNextOpeningLabel(settings?.operatingHours)}`}
                 </span>
               </div>
             </div>

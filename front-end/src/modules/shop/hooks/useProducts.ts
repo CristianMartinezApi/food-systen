@@ -8,21 +8,38 @@ export function useProducts() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    async function fetchData() {
+    let isMounted = true;
+
+    async function fetchProducts() {
       try {
-        const [productsData, categoriesData] = await Promise.all([
-          api.get('/products'),
-          api.get('/categories')
-        ]);
+        const productsData = await api.get('/products');
+        if (!isMounted) return;
         setProducts(productsData);
-        setCategories(categoriesData);
       } catch (error) {
-        console.error('Falha ao buscar dados:', error);
+        console.error('Falha ao buscar produtos:', error);
       } finally {
-        setIsLoading(false);
+        if (isMounted) {
+          setIsLoading(false);
+        }
       }
     }
-    fetchData();
+
+    async function fetchCategories() {
+      try {
+        const categoriesData = await api.get('/categories');
+        if (!isMounted) return;
+        setCategories(categoriesData);
+      } catch (error) {
+        console.error('Falha ao buscar categorias:', error);
+      }
+    }
+
+    fetchProducts();
+    fetchCategories();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   return {

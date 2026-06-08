@@ -2,6 +2,7 @@
 import { api } from '../config/api';
 import { socket } from '../config/socket';
 import { getTenantSlug } from '../../shared/utils/tenant';
+import { createDefaultOperatingHours, isRestaurantOpenNow, normalizeOperatingHours } from '../../shared/utils/schedule';
 
 export function useSettings() {
   const [settings, setSettings] = useState<any>(null);
@@ -25,18 +26,9 @@ export function useSettings() {
         return;
       }
 
-      // Garante estrutura básica de horários para evitar erros no form
-      if (!data.operatingHours) {
-        data.operatingHours = {
-          seg: { open: '18:00', close: '23:00', closed: false },
-          ter: { open: '18:00', close: '23:00', closed: false },
-          qua: { open: '18:00', close: '23:00', closed: false },
-          qui: { open: '18:00', close: '23:00', closed: false },
-          sex: { open: '18:00', close: '23:00', closed: false },
-          sab: { open: '18:00', close: '23:00', closed: false },
-          dom: { open: '18:00', close: '23:00', closed: false }
-        };
-      }
+      data.operatingHours = normalizeOperatingHours(data.operatingHours || createDefaultOperatingHours());
+      data.isOpen = isRestaurantOpenNow(data.operatingHours);
+      data.deliveryEtaMinutes = data.deliveryEtaMinutes || 35;
 
       setSettings(data);
       if (data.primaryColor) {
@@ -56,6 +48,8 @@ export function useSettings() {
 
     const eventName = `settings_updated_${slug}`;
     socket.on(eventName, (newSettings) => {
+      newSettings.operatingHours = normalizeOperatingHours(newSettings.operatingHours || createDefaultOperatingHours());
+      newSettings.isOpen = isRestaurantOpenNow(newSettings.operatingHours);
       setSettings(newSettings);
       if (newSettings.primaryColor) {
         document.documentElement.style.setProperty('--color-primary', newSettings.primaryColor);
@@ -66,6 +60,20 @@ export function useSettings() {
       socket.off(eventName);
     };
   }, [slug]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setSettings((current: any) => {
+        if (!current) return current;
+        return {
+          ...current,
+          isOpen: isRestaurantOpenNow(current.operatingHours),
+        };
+      });
+    }, 60000);
+
+    return () => clearInterval(interval);
+  }, []);
 
   const updateSettings = async (newSettings: any) => {
     try {

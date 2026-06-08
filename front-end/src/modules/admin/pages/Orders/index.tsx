@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from "react";
+﻿import { useState, useEffect, useRef } from "react";
 import { 
   Loader2,
   Clock,
@@ -18,11 +18,17 @@ import { formatCurrency, cn } from "../../../../shared/utils";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { motion, AnimatePresence } from "framer-motion";
+import { gsap } from "gsap";
 
 export default function OrdersPage() {
   const [orders, setOrders] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState("ALL");
+   const rootRef = useRef<HTMLDivElement>(null);
+
+   const filteredOrders = orders.filter(o => 
+      statusFilter === "ALL" ? true : o.status === statusFilter
+   );
 
   const fetchOrders = async () => {
     try {
@@ -55,19 +61,28 @@ export default function OrdersPage() {
     };
   }, []);
 
-  const filteredOrders = orders.filter(o => 
-    statusFilter === "ALL" ? true : o.status === statusFilter
-  );
+   useEffect(() => {
+      if (isLoading || !rootRef.current) return;
+
+      const ctx = gsap.context(() => {
+         const tl = gsap.timeline({ defaults: { ease: "power3.out" } });
+         tl.from(".orders-hero", { y: -18, opacity: 0, duration: 0.7 })
+            .from(".orders-filters", { y: 20, opacity: 0, duration: 0.7 }, "-=0.2")
+            .from(".order-card", { y: 22, opacity: 0, duration: 0.6, stagger: 0.06 }, "-=0.35");
+      }, rootRef);
+
+      return () => ctx.revert();
+    }, [isLoading, orders.length, statusFilter]);
 
   return (
-    <div className="min-h-screen bg-slate-50/50 p-8">
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-8 mb-12">
+      <div ref={rootRef} className="min-h-screen bg-slate-50/50 p-8">
+         <div className="orders-hero flex flex-col md:flex-row md:items-end justify-between gap-8 mb-12">
         <div>
           <h1 className="text-heading-1 font-display font-bold text-slate-950 uppercase tracking-tight">Expedição</h1>
           <p className="text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em] mt-2">Gestão logística e acompanhamento de fluxo em tempo real.</p>
         </div>
         
-        <div className="flex bg-white p-2 rounded-3xl border border-slate-100 shadow-sm">
+      <div className="orders-filters flex bg-white p-2 rounded-3xl border border-slate-100 shadow-sm">
             {[
               { id: "ALL", label: "Global" },
               { id: "PENDING", label: "Novos" },
@@ -105,18 +120,18 @@ export default function OrdersPage() {
                   className="py-32 flex flex-col items-center justify-center border-2 border-dashed border-slate-100 rounded-[3rem] text-center bg-white"
                >
                   <PackageCheck size={64} className="text-slate-200 mb-6" />
-                  <p className="text-label font-body font-bold text-slate-400 uppercase tracking-[0.1em]">Nenhum pedido no fluxo atual</p>
+                  <p className="text-label font-body font-bold text-slate-400 uppercase tracking-widest">Nenhum pedido no fluxo atual</p>
                </motion.div>
             ) : (
                filteredOrders.map((order, idx) => (
-                <motion.div
+                        <motion.div
                   layout
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.95 }}
                   transition={{ delay: idx * 0.05 }}
                   key={order.id}
-                  className="bg-white rounded-[3rem] border border-slate-50 shadow-sm hover:shadow-2xl hover:shadow-slate-200/50 transition-all duration-500 overflow-hidden group"
+                           className="order-card bg-white rounded-[3rem] border border-slate-50 shadow-sm hover:shadow-2xl hover:shadow-slate-200/50 transition-all duration-500 overflow-hidden group"
                 >
                     <div className="p-10">
                        <div className="flex flex-col lg:flex-row gap-8">

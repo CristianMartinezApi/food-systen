@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { 
   Plus, 
   Edit2, 
@@ -12,12 +12,15 @@ import {
 import { api } from "../../../../core/config/api";
 import { motion, AnimatePresence } from "framer-motion";
 import { CategoryModal } from "../../components/modals/CategoryModal";
+import { gsap } from "gsap";
 
 export default function CategoriesPage() {
   const [categories, setCategories] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<any>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const hasAnimatedRef = useRef(false);
 
   const fetchCategories = async () => {
     try {
@@ -34,6 +37,19 @@ export default function CategoriesPage() {
     fetchCategories();
   }, []);
 
+  useEffect(() => {
+    if (isLoading || !rootRef.current || hasAnimatedRef.current) return;
+    hasAnimatedRef.current = true;
+
+    const ctx = gsap.context(() => {
+      const tl = gsap.timeline({ defaults: { ease: "power3.out" } });
+      tl.from(".categories-hero", { y: -18, opacity: 0, duration: 0.7 })
+        .from(".categories-panel", { y: 24, opacity: 0, duration: 0.8 }, "-=0.25");
+    }, rootRef);
+
+    return () => ctx.revert();
+  }, [isLoading]);
+
   const handleDelete = async (id: number) => {
     if (!confirm("Tem certeza? Isso excluirá todos os produtos desta categoria.")) return;
     try {
@@ -45,8 +61,8 @@ export default function CategoriesPage() {
   };
 
   return (
-    <>
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-8 mb-12">
+    <div ref={rootRef}>
+      <div className="categories-hero flex flex-col md:flex-row md:items-end justify-between gap-8 mb-12">
         <div>
           <h1 className="text-heading-1 font-display font-bold text-slate-950 uppercase tracking-tight">Arquitetura</h1>
           <p className="text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em] mt-2">Organize seu ecossistema gastronômico em seções lógicas.</p>
@@ -62,7 +78,7 @@ export default function CategoriesPage() {
         </button>
       </div>
 
-      <div className="bg-white rounded-[3rem] border border-slate-50 shadow-sm overflow-hidden">
+      <div className="categories-panel bg-white rounded-[3rem] border border-slate-50 shadow-sm overflow-hidden">
         {isLoading ? (
           <div className="py-24 flex flex-col items-center gap-6">
                <Loader2 className="animate-spin text-primary" size={40} />
@@ -85,11 +101,11 @@ export default function CategoriesPage() {
                   {categories.map((cat, idx) => (
                     <motion.tr 
                       layout
-                      initial={{ opacity: 0 }}
+                      initial={false}
                       animate={{ opacity: 1 }}
                       exit={{ opacity: 0 }}
                       key={cat.id} 
-                      className="border-b border-slate-50 last:border-0 hover:bg-slate-50 transition-colors group"
+                      className="categories-row border-b border-slate-50 last:border-0 hover:bg-slate-50 transition-colors group"
                     >
                       <td className="px-10 py-8">
                         <div className="flex items-center gap-4">
@@ -152,6 +168,6 @@ export default function CategoriesPage() {
         onSave={fetchCategories}
         category={selectedCategory}
       />
-    </>
+    </div>
   );
 }

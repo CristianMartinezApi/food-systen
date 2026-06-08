@@ -8,6 +8,7 @@ import { tenantMiddleware, TenantRequest } from './middlewares/tenant.middleware
 import { authMiddleware, AuthRequest } from './middlewares/auth.middleware';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
+import { getNextOpeningLabel, isRestaurantOpenNow, normalizeOperatingHours } from './utils/hours';
 
 dotenv.config();
 
@@ -19,7 +20,7 @@ const io = new Server(httpServer, {
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 8000;
 
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
@@ -64,17 +65,18 @@ const seedSettings = async () => {
             address: 'Rua das Flores, 123 - Centro',
             bio: 'O melhor hambúrguer artesanal da região, feito com ingredientes frescos e selecionados.',
             operatingHours: {
-              seg: { open: '18:00', close: '23:00', closed: false },
-              ter: { open: '18:00', close: '23:00', closed: false },
-              qua: { open: '18:00', close: '23:00', closed: false },
-              qui: { open: '18:00', close: '23:00', closed: false },
-              sex: { open: '18:00', close: '00:00', closed: false },
-              sab: { open: '12:00', close: '00:00', closed: false },
-              dom: { open: '12:00', close: '23:00', closed: false }
+              seg: { enabled: true, shifts: [{ open: '18:00', close: '23:00' }] },
+              ter: { enabled: true, shifts: [{ open: '18:00', close: '23:00' }] },
+              qua: { enabled: true, shifts: [{ open: '18:00', close: '23:00' }] },
+              qui: { enabled: true, shifts: [{ open: '18:00', close: '23:00' }] },
+              sex: { enabled: true, shifts: [{ open: '18:00', close: '00:00' }] },
+              sab: { enabled: true, shifts: [{ open: '12:00', close: '00:00' }] },
+              dom: { enabled: true, shifts: [{ open: '12:00', close: '23:00' }] }
             },
             deliveryFee: 5.0,
             minOrderValue: 20.0,
             isOpen: true,
+            deliveryEtaMinutes: 35,
             primaryColor: '#ef4444',
             latitude: -23.55052,
             longitude: -46.633308
@@ -214,20 +216,40 @@ app.get('/api/settings', async (req: TenantRequest, res) => {
   const settings = await prisma.settings.findUnique({ 
     where: { restaurantId: req.restaurantId } 
   });
-  res.json(settings);
+  if (!settings) {
+    return res.status(404).json({ error: 'Configurações não encontradas' });
+  }
+
+  res.json({
+    ...settings,
+    operatingHours: normalizeOperatingHours(settings.operatingHours),
+    isOpen: isRestaurantOpenNow(settings.operatingHours),
+    nextOpeningLabel: getNextOpeningLabel(settings.operatingHours),
+  });
 });
 
 app.patch('/api/settings', authMiddleware, async (req: AuthRequest, res) => {
   try {
-    const { id, restaurantId, createdAt, updatedAt, ...updateData } = req.body;
+    const { id, restaurantId, createdAt, updatedAt, nextOpeningLabel, isOpen, ...updateData } = req.body;
+    const operatingHours = normalizeOperatingHours(updateData.operatingHours);
     
     const settings = await prisma.settings.update({
       where: { restaurantId: req.restaurantId },
-      data: updateData
+      data: {
+        ...updateData,
+        operatingHours,
+        isOpen: isRestaurantOpenNow(operatingHours),
+        deliveryEtaMinutes: updateData.deliveryEtaMinutes || 35,
+      }
     });
     
     io.emit(`settings_updated_${req.restaurant?.slug}`, settings);
-    res.json(settings);
+    res.json({
+      ...settings,
+      operatingHours: normalizeOperatingHours(settings.operatingHours),
+      isOpen: isRestaurantOpenNow(settings.operatingHours),
+      nextOpeningLabel: getNextOpeningLabel(settings.operatingHours),
+    });
   } catch (error) {
     console.error('Error updating settings:', error);
     res.status(400).json({ error: 'Erro ao atualizar configurações.' });
@@ -344,6 +366,7 @@ app.post('/api/products', authMiddleware, async (req: AuthRequest, res) => {
     if (productData.addons) productData.addons = (productData.addons as any[]).map(a => ({ ...a, name: a.name.toUpperCase().trim() }));
     if (productData.sizes) productData.sizes = (productData.sizes as any[]).map(s => ({ ...s, name: s.name.toUpperCase().trim() }));
     if (productData.ingredients) productData.ingredients = (productData.ingredients as string[]).map(i => i.toUpperCase().trim());
+    productData.discountPercent = Math.max(0, Math.min(100, Number(productData.discountPercent || 0)));
 
     // Verificar limite de produtos do plano
     const productCount = await prisma.product.count({
@@ -385,6 +408,7 @@ app.patch('/api/products/:id', authMiddleware, async (req: AuthRequest, res) => 
     if (updateData.addons) updateData.addons = (updateData.addons as any[]).map(a => ({ ...a, name: a.name.toUpperCase().trim() }));
     if (updateData.sizes) updateData.sizes = (updateData.sizes as any[]).map(s => ({ ...s, name: s.name.toUpperCase().trim() }));
     if (updateData.ingredients) updateData.ingredients = (updateData.ingredients as string[]).map(i => i.toUpperCase().trim());
+    updateData.discountPercent = Math.max(0, Math.min(100, Number(updateData.discountPercent || 0)));
 
     // Usamos updateMany para garantir que o produto pertence ao restaurante
     const result = await prisma.product.updateMany({
@@ -462,6 +486,16 @@ app.get('/api/orders', authMiddleware, async (req: AuthRequest, res) => {
 app.post('/api/orders', async (req: TenantRequest, res) => {
   try {
     const { customerName, phone, address, paymentMethod, items, subtotal, deliveryFee, total, notes, cpf, changeFor } = req.body;
+    const settings = await prisma.settings.findUnique({
+      where: { restaurantId: req.restaurantId! }
+    });
+
+    if (settings && !isRestaurantOpenNow(settings.operatingHours)) {
+      return res.status(403).json({
+        error: 'Restaurante fechado no momento.',
+        nextOpeningLabel: getNextOpeningLabel(settings.operatingHours)
+      });
+    }
 
     const order = await prisma.order.create({
       data: {
@@ -495,8 +529,13 @@ app.post('/api/orders', async (req: TenantRequest, res) => {
       }
     });
 
-    io.emit(`new_order_${req.restaurant?.slug}`, order);
-    res.status(201).json(order);
+    const responseOrder = {
+      ...order,
+      estimatedDeliveryMinutes: settings?.deliveryEtaMinutes || 35,
+    };
+
+    io.emit(`new_order_${req.restaurant?.slug}`, responseOrder);
+    res.status(201).json(responseOrder);
   } catch (error) {
     console.error('Error creating order:', error);
     res.status(400).json({ error: 'Erro ao processar pedido. Verifique os dados.' });

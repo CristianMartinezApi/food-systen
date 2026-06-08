@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCartStore } from "../../../core/stores/useCartStore";
@@ -34,7 +34,12 @@ import { api } from "../../../core/config/api";
 import { formatWhatsAppMessage, sendToWhatsApp } from "../../../shared/utils/whatsapp";
 import { calculateDistance } from "../../../shared/utils/distance";
 import { getTenantSlug } from "../../../shared/utils/tenant";
+import { getNextOpeningLabel, isRestaurantOpenNow } from "../../../shared/utils/schedule";
 import toast from "react-hot-toast";
+import { gsap } from "gsap";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
+
+gsap.registerPlugin(ScrollTrigger);
 
 type Step = "mode" | "customer" | "address" | "payment" | "review" | "success";
 type DeliveryMode = "DELIVERY" | "PICKUP" | "DINE_IN";
@@ -53,10 +58,26 @@ export default function Checkout() {
   const { settings } = useSettings();
   const router = useRouter();
   const [slug, setSlug] = useState<string>("");
+  const rootRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setSlug(getTenantSlug());
   }, []);
+
+  useEffect(() => {
+    if (!rootRef.current) return;
+
+    const ctx = gsap.context(() => {
+      const tl = gsap.timeline({ defaults: { ease: "power3.out" } });
+
+      tl.from(".checkout-header", { y: -18, opacity: 0, duration: 0.7 })
+        .from(".checkout-progress", { y: 18, opacity: 0, duration: 0.7 }, "-=0.2")
+        .from(".checkout-step-panel", { y: 28, opacity: 0, duration: 0.8, stagger: 0.1 }, "-=0.35")
+        .from(".checkout-summary", { x: 20, opacity: 0, duration: 0.8 }, "-=0.45");
+    }, rootRef);
+
+    return () => ctx.revert();
+  }, [step]);
 
   // Pre-fill address if available in store
   useEffect(() => {
@@ -80,6 +101,8 @@ export default function Checkout() {
   const total = subtotal + deliveryFee;
   const minOrderValue = settings?.minOrderValue || 0;
   const isBelowMinimum = subtotal < minOrderValue;
+  const isOpenNow = isRestaurantOpenNow(settings?.operatingHours);
+  const estimatedDeliveryMinutes = settings?.deliveryEtaMinutes || 35;
 
   const [formData, setFormData] = useState({
     customerName: "",
@@ -314,6 +337,11 @@ export default function Checkout() {
   };
 
   const handleFinishOrder = async () => {
+    if (!isOpenNow) {
+        toast.error(`Estamos fechados no momento. ${getNextOpeningLabel(settings?.operatingHours)}`);
+        return;
+    }
+
     if (isBelowMinimum && deliveryMode === "DELIVERY") {
         toast.error(`O valor mínimo para entrega é ${formatCurrency(minOrderValue)}`);
         return;
@@ -375,7 +403,7 @@ export default function Checkout() {
 
   if (items.length === 0 && step !== "success") {
     return (
-      <div className="min-h-screen bg-[#FDFDFD] flex flex-col items-center justify-center p-8">
+      <div ref={rootRef} className="min-h-screen bg-[#FDFDFD] flex flex-col items-center justify-center p-8">
         <div className="relative w-32 h-32 mb-12">
             <div className="absolute inset-0 bg-primary/5 rounded-[2.5rem] rotate-6 animate-pulse" />
             <div className="relative w-32 h-32 bg-white rounded-[2.5rem] border border-slate-100 flex items-center justify-center shadow-xl shadow-slate-200/50">
@@ -386,13 +414,13 @@ export default function Checkout() {
         <h2 className="text-heading-2 font-display font-bold text-slate-950 uppercase tracking-tight mb-4 text-center">
             Sua Cesta está Vazia
         </h2>
-        <p className="text-label font-body font-medium text-slate-400 uppercase tracking-[0.1em] mb-12 text-center max-w-xs leading-relaxed">
+        <p className="text-label font-body font-medium text-slate-400 uppercase tracking-widest mb-12 text-center max-w-xs leading-relaxed">
             Selecione nossas criações exclusivas para iniciar sua experiência.
         </p>
         
         <button 
           onClick={() => router.back()} 
-          className="h-16 px-10 bg-slate-950 text-white rounded-2xl font-body font-bold flex items-center justify-center gap-3 shadow-2xl shadow-slate-950/20 hover:bg-black active:scale-[0.98] transition-all uppercase tracking-[0.1em] text-label"
+          className="h-16 px-10 bg-slate-950 text-white rounded-2xl font-body font-bold flex items-center justify-center gap-3 shadow-2xl shadow-slate-950/20 hover:bg-black active:scale-[0.98] transition-all uppercase tracking-widest text-label"
         >
             EXPLORAR MENU <ChevronRight size={20} />
         </button>
@@ -409,10 +437,10 @@ export default function Checkout() {
   ];
 
   return (
-    <div className="min-h-screen bg-[#FDFDFD] flex flex-col">
+    <div ref={rootRef} className="min-h-screen bg-[#FDFDFD] flex flex-col">
       {/* Header Simplificado de Checkout */}
       {/* Header Simplificado de Checkout Premium */}
-      <header className="bg-white/80 backdrop-blur-md border-b border-slate-50 sticky top-0 z-50">
+      <header className="checkout-header bg-white/80 backdrop-blur-md border-b border-slate-50 sticky top-0 z-50">
         <div className="container mx-auto px-6 h-24 flex items-center justify-between max-w-5xl">
           <button 
             onClick={handleBack}
@@ -427,7 +455,7 @@ export default function Checkout() {
              </h1>
              <div className="flex items-center gap-2 mt-2">
                 <div className="w-1 h-1 rounded-full bg-primary shadow-[0_0_8px_var(--color-primary)]" />
-                <span className="text-label font-body font-medium text-slate-400 uppercase tracking-[0.1em]">Experiência Premium</span>
+                <span className="text-label font-body font-medium text-slate-400 uppercase tracking-widest">Experiência Premium</span>
              </div>
           </div>
 
@@ -438,9 +466,18 @@ export default function Checkout() {
       </header>
 
       <main className="container mx-auto px-6 py-12 md:py-16 max-w-5xl flex-1">
+        {!isOpenNow && (
+          <div className="checkout-summary mb-10 rounded-4xl border border-rose-100 bg-rose-50/70 p-5 text-rose-700">
+            <p className="text-label font-body font-bold uppercase tracking-[0.08em]">Fechado no momento</p>
+            <p className="text-[11px] font-body font-medium uppercase tracking-[0.08em] mt-1">
+              {getNextOpeningLabel(settings?.operatingHours)}
+            </p>
+          </div>
+        )}
+
         {/* PROGRESS BAR LUXURY */}
         {step !== "success" && (
-            <div className="flex items-center justify-between relative mb-20 px-4">
+          <div className="checkout-progress flex items-center justify-between relative mb-20 px-4">
                 {stepsList.map((s, idx) => {
                     const isCompleted = stepsList.findIndex(stepObj => stepObj.key === step) > idx;
                     const isActive = s.key === step;
@@ -454,13 +491,13 @@ export default function Checkout() {
                                 {isCompleted ? <CheckCircle2 size={24} /> : (idx + 1).toString().padStart(2, "0")}
                             </div>
                             <span className={cn(
-                                "text-label font-body font-bold uppercase tracking-[0.1em] text-[10px]",
+                                "text-label font-body font-bold uppercase tracking-widest text-[10px]",
                                 isActive ? "text-slate-950" : "text-slate-300"
                             )}>
                                 {s.label}
                             </span>
                             {idx < stepsList.length - 1 && (
-                                <div className="absolute top-6 left-1/2 w-full h-[1px] bg-slate-50 -z-0">
+                                <div className="absolute top-6 left-1/2 w-full h-px bg-slate-50 z-0">
                                     <div className={cn(
                                         "h-full bg-primary transition-all duration-1000",
                                         isCompleted ? "w-full" : "w-0"
@@ -473,10 +510,10 @@ export default function Checkout() {
             </div>
         )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
+        <div className="checkout-main-grid grid grid-cols-1 lg:grid-cols-3 gap-10">
           
           {/* Coluna de Conteúdo */}
-          <div className="lg:col-span-2">
+          <div className="checkout-step-panel lg:col-span-2">
             <AnimatePresence mode="wait">
               {/* PASSO 1: MODO DE ENTREGA */}
               {step === "mode" && (
@@ -487,7 +524,7 @@ export default function Checkout() {
                      </div>
                      <div>
                         <h2 className="text-heading-2 font-display font-bold text-slate-950 uppercase tracking-tight">Experiência</h2>
-                        <p className="text-label font-body font-medium text-slate-400 uppercase tracking-[0.1em] mt-1">Como deseja desfrutar hoje?</p>
+                        <p className="text-label font-body font-medium text-slate-400 uppercase tracking-widest mt-1">Como deseja desfrutar hoje?</p>
                      </div>
                   </div>
 
@@ -517,7 +554,7 @@ export default function Checkout() {
 
                   <button 
                     onClick={handleNext}
-                    className="h-20 w-full bg-slate-950 text-white rounded-[2rem] font-body font-bold flex items-center justify-center gap-4 mt-12 shadow-2xl shadow-slate-950/20 hover:bg-slate-900 transition-all text-label tracking-[0.1em] uppercase group"
+                    className="h-20 w-full bg-slate-950 text-white rounded-4xl font-body font-bold flex items-center justify-center gap-4 mt-12 shadow-2xl shadow-slate-950/20 hover:bg-slate-900 transition-all text-label tracking-widest uppercase group"
                   >
                     AVANÇAR PARA IDENTIFICAÇÃO <ChevronRight size={20} className="group-hover:translate-x-1 transition-transform" />
                   </button>
@@ -533,7 +570,7 @@ export default function Checkout() {
                      </div>
                      <div>
                         <h2 className="text-heading-2 font-display font-bold text-slate-950 uppercase tracking-tight">Identificação</h2>
-                        <p className="text-label font-body font-medium text-slate-400 uppercase tracking-[0.1em] mt-1">É um prazer ter você por aqui</p>
+                        <p className="text-label font-body font-medium text-slate-400 uppercase tracking-widest mt-1">É um prazer ter você por aqui</p>
                      </div>
                   </div>
 
@@ -579,7 +616,7 @@ export default function Checkout() {
                   <button 
                     onClick={handleNext}
                     disabled={isDistanceValidating}
-                    className="h-20 w-full bg-slate-950 text-white rounded-[2rem] font-body font-bold flex items-center justify-center gap-4 mt-12 shadow-2xl shadow-slate-950/20 hover:bg-slate-900 transition-all disabled:opacity-50 text-label tracking-[0.1em] uppercase group"
+                    className="h-20 w-full bg-slate-950 text-white rounded-4xl font-body font-bold flex items-center justify-center gap-4 mt-12 shadow-2xl shadow-slate-950/20 hover:bg-slate-900 transition-all disabled:opacity-50 text-label tracking-widest uppercase group"
                   >
                     {isDistanceValidating ? (
                       <>Validando Distância... <Loader2 className="animate-spin" /></>
@@ -601,7 +638,7 @@ export default function Checkout() {
                      </div>
                      <div>
                         <h2 className="text-heading-2 font-display font-bold text-slate-950 uppercase tracking-tight">Logística</h2>
-                        <p className="text-label font-body font-medium text-slate-400 uppercase tracking-[0.1em] mt-1">Onde a magia acontece?</p>
+                        <p className="text-label font-body font-medium text-slate-400 uppercase tracking-widest mt-1">Onde a magia acontece?</p>
                      </div>
                   </div>
 
@@ -609,7 +646,7 @@ export default function Checkout() {
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
                         <div className="md:col-span-1">
                             <div className="space-y-3 group">
-                                <label className="text-label font-body font-medium text-slate-400 uppercase tracking-[0.1em] ml-1 group-focus-within:text-slate-950 transition-colors">
+                                <label className="text-label font-body font-medium text-slate-400 uppercase tracking-widest ml-1 group-focus-within:text-slate-950 transition-colors">
                                     CEP Premium
                                 </label>
                                 <div className="relative">
@@ -652,7 +689,7 @@ export default function Checkout() {
 
                   <button 
                     onClick={handleNext}
-                    className="h-20 w-full bg-slate-950 text-white rounded-[2rem] font-body font-bold flex items-center justify-center gap-4 mt-12 shadow-2xl shadow-slate-950/20 hover:bg-slate-900 transition-all text-label tracking-[0.1em] uppercase group"
+                    className="h-20 w-full bg-slate-950 text-white rounded-4xl font-body font-bold flex items-center justify-center gap-4 mt-12 shadow-2xl shadow-slate-950/20 hover:bg-slate-900 transition-all text-label tracking-widest uppercase group"
                   >
                     CONTINUAR PARA PAGAMENTO <ChevronRight size={20} className="group-hover:translate-x-1 transition-transform" />
                   </button>
@@ -668,7 +705,7 @@ export default function Checkout() {
                      </div>
                      <div>
                         <h2 className="text-heading-2 font-display font-bold text-slate-950 uppercase tracking-tight">Financiamento</h2>
-                        <p className="text-label font-body font-medium text-slate-400 uppercase tracking-[0.1em] mt-1">Como deseja acertar as contas?</p>
+                        <p className="text-label font-body font-medium text-slate-400 uppercase tracking-widest mt-1">Como deseja acertar as contas?</p>
                      </div>
                   </div>
 
@@ -726,9 +763,9 @@ export default function Checkout() {
 
                           {formData.needsChange && (
                             <div className="mt-8 pt-8 border-t border-slate-200">
-                              <p className="text-label font-body font-bold text-slate-950 uppercase tracking-[0.1em] mb-4">Troco para qual valor?</p>
+                              <p className="text-label font-body font-bold text-slate-950 uppercase tracking-widest mb-4">Troco para qual valor?</p>
                               <div className="relative">
-                                <span className="absolute left-6 top-[50%] -translate-y-[50%] text-slate-400 font-mono text-lg">R$</span>
+                                <span className="absolute left-6 top-[50%] translate-y-[-50%] text-slate-400 font-mono text-lg">R$</span>
                                 <input 
                                   type="text"
                                   placeholder="0,00"
@@ -754,7 +791,7 @@ export default function Checkout() {
 
                   <button 
                     onClick={handleNext}
-                    className="h-20 w-full bg-slate-950 text-white rounded-[2rem] font-body font-bold flex items-center justify-center gap-4 mt-12 shadow-2xl shadow-slate-950/20 hover:bg-slate-900 transition-all text-label tracking-[0.1em] uppercase group"
+                    className="h-20 w-full bg-slate-950 text-white rounded-4xl font-body font-bold flex items-center justify-center gap-4 mt-12 shadow-2xl shadow-slate-950/20 hover:bg-slate-900 transition-all text-label tracking-widest uppercase group"
                   >
                     REVISAR PEDIDO <ChevronRight size={20} className="group-hover:translate-x-1 transition-transform" />
                   </button>
@@ -770,7 +807,7 @@ export default function Checkout() {
                      </div>
                      <div>
                         <h2 className="text-heading-2 font-display font-bold text-slate-950 uppercase tracking-tight">Curadoria</h2>
-                        <p className="text-label font-body font-medium text-slate-400 uppercase tracking-[0.1em] mt-1">Confirme seu ritual gastronômico</p>
+                        <p className="text-label font-body font-medium text-slate-400 uppercase tracking-widest mt-1">Confirme seu ritual gastronômico</p>
                      </div>
                   </div>
 
@@ -788,11 +825,11 @@ export default function Checkout() {
                             <h4 className="text-label font-body font-bold text-slate-300 uppercase tracking-[0.15em] mb-4">Experiência & Ativos</h4>
                             <div className="flex flex-col gap-3">
                                 <div className="flex items-center gap-3">
-                                    <div className="px-4 py-2 bg-slate-950 text-white rounded-xl text-label font-body font-bold uppercase tracking-[0.1em]">
+                                    <div className="px-4 py-2 bg-slate-950 text-white rounded-xl text-label font-body font-bold uppercase tracking-widest">
                                         {deliveryMode === 'DELIVERY' ? 'DELIVERY' : (deliveryMode === 'PICKUP' ? 'RETIRADA' : 'NO LOCAL')}
                                     </div>
                                     <span className="w-1.5 h-1.5 rounded-full bg-primary" />
-                                    <div className="px-4 py-2 bg-primary/10 text-primary border border-primary/20 rounded-xl text-label font-body font-bold uppercase tracking-[0.1em]">
+                                    <div className="px-4 py-2 bg-primary/10 text-primary border border-primary/20 rounded-xl text-label font-body font-bold uppercase tracking-widest">
                                         {deliveryMode === 'DINE_IN' ? 'NA MESA' : formData.paymentMethod}
                                     </div>
                                 </div>
@@ -801,6 +838,12 @@ export default function Checkout() {
                                       O acerto será realizado diretamente com nosso concierge na mesa.
                                     </p>
                                 )}
+                                <div className="mt-4 rounded-3xl bg-slate-50 border border-slate-100 px-4 py-3">
+                                  <p className="text-[10px] font-body font-black uppercase tracking-[0.2em] text-slate-400">Tempo estimado</p>
+                                  <p className="text-heading-3 font-display font-bold text-slate-950 uppercase tracking-tight mt-1">
+                                    {estimatedDeliveryMinutes} min
+                                  </p>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -808,7 +851,7 @@ export default function Checkout() {
                     {deliveryMode === 'DELIVERY' && (
                         <div className="pt-8 border-t border-slate-100">
                             <h4 className="text-label font-body font-bold text-slate-300 uppercase tracking-[0.15em] mb-5">Destino da Entrega</h4>
-                            <div className="bg-slate-50/50 p-8 rounded-[2rem] border border-slate-100 group hover:bg-white hover:shadow-xl hover:shadow-slate-100 transition-all duration-500">
+                            <div className="bg-slate-50/50 p-8 rounded-4xl border border-slate-100 group hover:bg-white hover:shadow-xl hover:shadow-slate-100 transition-all duration-500">
                                 <div className="flex items-start gap-4">
                                   <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center border border-slate-100 text-slate-300 group-hover:text-slate-950 transition-colors">
                                     <MapPin size={20} />
@@ -871,7 +914,7 @@ export default function Checkout() {
                     <h2 className="text-display font-display font-bold text-slate-950 uppercase tracking-tighter mb-6 leading-none">
                         Pedido <br/> Confirmado
                     </h2>
-                    <p className="text-label font-body font-medium text-slate-400 uppercase tracking-[0.1em] mb-16 leading-relaxed max-w-xs mx-auto">
+                    <p className="text-label font-body font-medium text-slate-400 uppercase tracking-widest mb-16 leading-relaxed max-w-xs mx-auto">
                         Seu ticket <span className="text-slate-950 font-mono font-bold">#{orderCreatedId}</span> está em nossa linha de produção.
                     </p>
                     
@@ -883,15 +926,15 @@ export default function Checkout() {
                             <span className="text-label font-body font-bold uppercase tracking-[0.2em] opacity-80 mb-2 text-[10px]">Acompanhamento em Tempo Real</span>
                             <div className="flex items-center gap-4">
                                 <MessageCircle size={24} strokeWidth={2} />
-                                <span className="text-body-strong font-body font-bold uppercase tracking-[0.1em] text-lg">Notificar via WhatsApp</span>
+                                <span className="text-body-strong font-body font-bold uppercase tracking-widest text-lg">Notificar via WhatsApp</span>
                             </div>
                         </button>
 
                         <div className="grid grid-cols-2 gap-4 pt-4">
-                            <Link href={`/${slug}/orders`} className="h-16 flex items-center justify-center bg-slate-950 text-white rounded-2xl font-body font-bold shadow-2xl shadow-slate-950/20 hover:bg-black transition-all uppercase tracking-[0.1em] text-label">
+                            <Link href={`/${slug}/orders`} className="h-16 flex items-center justify-center bg-slate-950 text-white rounded-2xl font-body font-bold shadow-2xl shadow-slate-950/20 hover:bg-black transition-all uppercase tracking-widest text-label">
                                 MEUS PEDIDOS
                             </Link>
-                            <Link href={`/${slug}`} className="h-16 flex items-center justify-center bg-white border border-slate-100 text-slate-400 rounded-2xl font-body font-bold hover:bg-slate-50 transition-all uppercase tracking-[0.1em] text-label">
+                            <Link href={`/${slug}`} className="h-16 flex items-center justify-center bg-white border border-slate-100 text-slate-400 rounded-2xl font-body font-bold hover:bg-slate-50 transition-all uppercase tracking-widest text-label">
                                 NOVA ORDEM
                             </Link>
                         </div>
@@ -906,7 +949,7 @@ export default function Checkout() {
             <div className="lg:col-span-1">
                 <div className="bg-white rounded-[3rem] border border-slate-100 p-10 shadow-[0_20px_50px_rgba(0,0,0,0.02)] sticky top-32">
                     <h3 className="font-display font-bold text-heading-3 text-slate-950 uppercase tracking-tight mb-8 flex items-center justify-between">
-                        Sua Cesta <span className="text-label font-body font-bold bg-slate-50 px-3 py-1.5 rounded-xl text-slate-400 uppercase tracking-[0.1em] text-[10px]">{items.length} ITENS</span>
+                        Sua Cesta <span className="text-label font-body font-bold bg-slate-50 px-3 py-1.5 rounded-xl text-slate-400 uppercase tracking-widest text-[10px]">{items.length} ITENS</span>
                     </h3>
                     
                     <div className="space-y-6 mb-10 max-h-64 overflow-y-auto no-scrollbar pr-2">
@@ -917,7 +960,7 @@ export default function Checkout() {
                                     <div className="flex flex-wrap gap-1.5">
                                         <p className="text-[10px] font-mono font-medium text-slate-400 uppercase tracking-tighter">{item.quantity}x {formatCurrency(item.price)}</p>
                                         {item.addons?.map((a: any, i: number) => (
-                                            <span key={i} className="text-[10px] font-body font-medium text-primary uppercase tracking-[0.05em]">
+                                            <span key={i} className="text-[10px] font-body font-medium text-primary uppercase tracking-wider">
                                                 • {a.name}
                                             </span>
                                         ))}
@@ -930,12 +973,12 @@ export default function Checkout() {
 
                     <div className="space-y-4 pt-8 border-t border-slate-50">
                         <div className="flex justify-between items-center">
-                            <span className="font-body font-medium text-slate-400 uppercase text-label tracking-[0.1em]">Subtotal</span>
+                            <span className="font-body font-medium text-slate-400 uppercase text-label tracking-widest">Subtotal</span>
                             <span className="font-mono font-medium text-slate-950 tracking-tighter">{formatCurrency(subtotal)}</span>
                         </div>
                         
                         <div className="flex justify-between items-center">
-                            <span className="font-body font-medium text-slate-400 uppercase text-label tracking-[0.1em]">Logística</span>
+                            <span className="font-body font-medium text-slate-400 uppercase text-label tracking-widest">Logística</span>
                             <span className={cn("font-mono font-bold tracking-tighter", deliveryFee > 0 ? "text-slate-950" : "text-emerald-500")}>
                                 {deliveryFee > 0 ? formatCurrency(deliveryFee) : "CORTESIA"}
                             </span>
@@ -952,7 +995,7 @@ export default function Checkout() {
                     </div>
 
                     {isBelowMinimum && deliveryMode === 'DELIVERY' && (
-                        <div className="mt-8 p-6 bg-slate-950 rounded-[2rem] border border-slate-900 flex items-start gap-4">
+                        <div className="mt-8 p-6 bg-slate-950 rounded-4xl border border-slate-900 flex items-start gap-4">
                             <AlertCircle size={20} className="text-primary shrink-0 mt-0.5" />
                             <p className="text-label font-body font-medium text-slate-400 uppercase tracking-[0.08em] leading-relaxed text-[10px]">
                                 <span className="text-white font-bold">Mínimo para Entrega:</span> {formatCurrency(minOrderValue)}. <br/> 
@@ -977,7 +1020,7 @@ function SelectOption({ active, onClick, title, description, icon }: any) {
     <button 
         onClick={onClick}
         className={cn(
-            "p-8 rounded-[2rem] border-2 text-left transition-all duration-500 flex items-center gap-6 group relative overflow-hidden",
+            "p-8 rounded-4xl border-2 text-left transition-all duration-500 flex items-center gap-6 group relative overflow-hidden",
             active 
                 ? "bg-slate-950 border-slate-950 shadow-2xl shadow-slate-950/20 ring-4 ring-slate-950/5" 
                 : "bg-white border-slate-100 hover:border-slate-200 hover:shadow-xl hover:shadow-slate-100"
@@ -986,7 +1029,7 @@ function SelectOption({ active, onClick, title, description, icon }: any) {
         {active && (
           <motion.div 
             layoutId="option-bg"
-            className="absolute inset-0 bg-gradient-to-br from-slate-900 to-slate-950 -z-0"
+            className="absolute inset-0 bg-linear-to-br from-slate-900 to-slate-950 z-0"
           />
         )}
         
@@ -1004,7 +1047,7 @@ function SelectOption({ active, onClick, title, description, icon }: any) {
                 {title}
             </h4>
             <p className={cn(
-                "text-label font-body font-medium uppercase tracking-[0.05em] transition-colors",
+                "text-label font-body font-medium uppercase tracking-wider transition-colors",
                 active ? "text-slate-400" : "text-slate-400 group-hover:text-slate-500"
             )}>
                 {description}

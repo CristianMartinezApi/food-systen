@@ -1,11 +1,12 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Home, ShoppingBag, Utensils, Phone, MapPin, Clock, Star, Compass, Info } from "lucide-react";
+import { X, Home, ShoppingBag, Utensils, Phone, MapPin, Clock, Star, Compass } from "lucide-react";
 import { useSettings } from "../../../../core/hooks/useSettings";
+import { getNextOpeningLabel, getOperatingHoursSummary } from "../../../../shared/utils/schedule";
 import { useLocationStore } from "../../../../core/stores/useLocationStore";
 import { AddressModal } from "../modals/AddressModal";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { cn } from "../../../../shared/utils";
 
 interface NavSidebarProps {
@@ -20,6 +21,25 @@ export function NavSidebar({ isOpen, onClose, categories, activeCategory, onCate
   const { settings } = useSettings() as any;
   const { address } = useLocationStore() as any;
   const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
+  const storeName = settings?.storeName || "Food System";
+  const firstName = storeName.split(' ')[0] || "Food";
+  const statusTone = settings?.isOpen ? 'text-emerald-500' : 'text-rose-500';
+  const statusDot = settings?.isOpen ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]' : 'bg-rose-500';
+  const statusTitle = settings?.isOpen ? 'Serviço aberto' : 'Serviço encerrado';
+  const statusDetail = settings?.isOpen
+    ? getOperatingHoursSummary(settings?.operatingHours)
+    : getNextOpeningLabel(settings?.operatingHours);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [isOpen]);
 
   return (
     <AnimatePresence mode="wait">
@@ -30,146 +50,132 @@ export function NavSidebar({ isOpen, onClose, categories, activeCategory, onCate
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="fixed inset-0 bg-slate-950/60 backdrop-blur-md z-[100]"
+            className="fixed inset-0 bg-slate-950/60 backdrop-blur-md z-100"
           />
           <motion.aside
             initial={{ x: "-100%" }}
             animate={{ x: 0 }}
             exit={{ x: "-100%" }}
             transition={{ type: "spring", damping: 30, stiffness: 300 }}
-            className="fixed left-0 top-0 h-full w-full max-w-[320px] md:max-w-md bg-white z-[101] shadow-[50px_0_100px_rgba(0,0,0,0.1)] flex flex-col overflow-hidden"
+            className="fixed left-0 top-0 h-full w-[88vw] max-w-[320px] sm:max-w-90 md:max-w-md bg-white z-101 shadow-[50px_0_100px_rgba(0,0,0,0.1)] flex flex-col overflow-hidden"
           >
-            {/* Elegant Branding Header */}
-            <div className="p-10 border-b border-slate-50 space-y-10">
-               <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-5">
-                    <div className="relative group">
-                        <div className="absolute inset-0 bg-primary/20 rounded-[1.5rem] blur-xl group-hover:blur-2xl transition-all" />
-                        {settings?.logo ? (
-                            <img src={settings.logo} alt="Logo" className="relative w-16 h-16 rounded-[1.5rem] object-cover border-2 border-white shadow-2xl" />
-                        ) : (
-                            <div className="relative w-16 h-16 bg-slate-950 rounded-[1.5rem] flex items-center justify-center text-primary border-2 border-white shadow-2xl">
-                                <Utensils size={32} />
-                            </div>
-                        )}
-                    </div>
-                    <div className="flex flex-col">
-                        <span className="text-heading-1 font-display font-bold text-slate-950 tracking-tighter uppercase leading-none">
-                            {settings?.storeName?.split(' ')[0] || "SIGNATURE"}
-                        </span>
-                        <div className="flex items-center gap-2 mt-2">
-                            <div className={cn(
-                                "w-2 h-2 rounded-full",
-                                settings?.isOpen ? "bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)] animate-pulse" : "bg-rose-500"
-                            )} />
-                            <span className={cn(
-                                "text-label font-body font-medium uppercase tracking-[0.06em]",
-                                settings?.isOpen ? "text-emerald-500" : "text-rose-500"
-                            )}>
-                            {settings?.isOpen ? 'Serviço Executivo' : 'Serviço Encerrado'}
-                            </span>
-                        </div>
-                    </div>
+            <div className="p-6 md:p-10 border-b border-slate-50 space-y-6">
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex items-center gap-4 min-w-0">
+                  <div className="relative shrink-0">
+                    <div className="absolute inset-0 bg-primary/20 rounded-3xl blur-xl" />
+                    {settings?.logo ? (
+                      <img src={settings.logo} alt="Logo" className="relative w-12 h-12 md:w-16 md:h-16 rounded-3xl object-cover border-2 border-white shadow-2xl" />
+                    ) : (
+                      <div className="relative w-12 h-12 md:w-16 md:h-16 bg-slate-950 rounded-3xl flex items-center justify-center text-primary border-2 border-white shadow-2xl">
+                        <Utensils size={24} className="md:size-8" />
+                      </div>
+                    )}
                   </div>
-                  <button 
-                    onClick={onClose} 
-                    className="w-14 h-14 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-300 hover:text-slate-950 hover:bg-white transition-all duration-500 hover:rotate-90"
-                  >
-                    <X size={24} />
-                  </button>
-               </div>
 
-               {/* Address Display Premium */}
-               <button 
-                  onClick={() => setIsAddressModalOpen(true)}
-                  className="w-full p-6 bg-slate-50 rounded-[2rem] border border-white flex items-center gap-5 text-left hover:bg-white hover:shadow-xl group transition-all duration-500 active:scale-95"
-               >
-                  <div className="w-12 h-12 rounded-[1rem] bg-white shadow-sm flex items-center justify-center text-primary group-hover:bg-slate-950 group-hover:text-white transition-all duration-500">
-                    <MapPin size={22} />
+                  <div className="min-w-0">
+                    <p className="text-[10px] font-black text-slate-300 uppercase tracking-[0.24em] mb-1">Restaurante</p>
+                    <h2 className="text-heading-2 md:text-heading-1 font-display font-bold text-slate-950 tracking-tighter uppercase leading-none truncate">
+                      {firstName}
+                    </h2>
+                    <div className={cn("mt-3 flex items-start gap-2", statusTone)}>
+                      <span className={cn("mt-1 w-2 h-2 rounded-full shrink-0", statusDot)} />
+                      <div className="min-w-0">
+                        <p className="text-label font-body font-semibold uppercase tracking-[0.06em] leading-none">{statusTitle}</p>
+                        <p className="mt-1 text-[10px] font-medium text-slate-500 uppercase tracking-[0.18em] leading-relaxed">
+                          {statusDetail}
+                        </p>
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex-1 overflow-hidden">
-                    <p className="text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em] leading-none mb-2">Sua Localização</p>
+                </div>
+
+                <button 
+                  onClick={onClose} 
+                  className="w-12 h-12 md:w-14 md:h-14 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-300 hover:text-slate-950 hover:bg-white transition-all duration-500 hover:rotate-90 shrink-0"
+                >
+                  <X size={20} className="md:size-6" />
+                </button>
+              </div>
+
+              <div className="rounded-4xl border border-slate-100 bg-slate-50/80 p-4 md:p-5 space-y-3">
+                <button 
+                  onClick={() => setIsAddressModalOpen(true)}
+                  className="w-full flex items-center gap-4 text-left active:scale-95 transition-transform"
+                >
+                  <div className="w-12 h-12 rounded-2xl bg-white shadow-sm flex items-center justify-center text-primary shrink-0">
+                    <MapPin size={20} />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[10px] font-black text-slate-300 uppercase tracking-[0.24em] mb-1">Sua localização</p>
                     <p className="text-body-strong font-body text-slate-950 truncate uppercase tracking-tighter">
-                        {address ? `${address.street}, ${address.number}` : "Configurar endereço VIP..."}
+                      {address ? `${address.street}, ${address.number}` : "Configurar endereço"}
                     </p>
                   </div>
-               </button>
+                </button>
+
+                <p className="pl-13 text-[10px] font-medium text-slate-500 uppercase tracking-[0.18em] leading-relaxed">
+                  {getOperatingHoursSummary(settings?.operatingHours)}
+                </p>
+              </div>
             </div>
 
-            {/* Menu Sections Premium */}
-            <div className="flex-1 overflow-y-auto p-10 space-y-12 no-scrollbar">
+            <div className="flex-1 overflow-y-auto p-6 md:p-10 space-y-8 md:space-y-10 no-scrollbar">
               
-              {/* Direct Navigation */}
               <div className="space-y-4">
-                <h3 className="text-label font-body font-medium text-slate-300 uppercase tracking-[0.06em] px-4">Exploração</h3>
-                <div className="grid grid-cols-1 gap-2">
+                <h3 className="px-1 text-[10px] font-black text-slate-300 uppercase tracking-[0.24em]">Menu</h3>
+                <div className="grid grid-cols-1 gap-3">
                     <button 
                         onClick={() => { onCategorySelect('all'); onClose(); }}
                         className={cn(
-                            "w-full flex items-center gap-5 px-6 h-16 rounded-2xl font-body font-bold uppercase tracking-[0.06em] text-label transition-all duration-500",
-                            activeCategory === 'all' ? "bg-slate-950 text-white shadow-2xl" : "text-slate-400 hover:bg-slate-50 hover:text-slate-950"
+                            "w-full flex items-center gap-4 px-5 md:px-6 h-14 md:h-16 rounded-[1.35rem] font-body font-bold uppercase tracking-[0.06em] text-label transition-all duration-500 border",
+                            activeCategory === 'all' ? "bg-slate-950 text-white shadow-2xl border-slate-950" : "bg-white text-slate-500 border-slate-100 hover:border-slate-200 hover:bg-slate-50"
                         )}
                     >
-                        <Compass size={20} className={activeCategory === 'all' ? "text-primary" : ""} />
-                        Menu Completo
+                        <Compass size={18} className={activeCategory === 'all' ? "text-primary" : "text-slate-300"} />
+                        <span className="flex-1 text-left">Menu completo</span>
                     </button>
                     {categories.map((cat: any) => (
                         <button 
                             key={cat.id}
                             onClick={() => { onCategorySelect(cat.id); onClose(); }}
                             className={cn(
-                                "w-full flex items-center gap-5 px-6 h-16 rounded-2xl font-body font-bold uppercase tracking-[0.06em] text-label transition-all duration-500",
-                                activeCategory === cat.id ? "bg-slate-950 text-white shadow-2xl" : "text-slate-400 hover:bg-slate-50 hover:text-slate-950"
+                                "w-full flex items-center gap-4 px-5 md:px-6 h-14 md:h-16 rounded-[1.35rem] font-body font-bold uppercase tracking-[0.06em] text-label transition-all duration-500 border",
+                                activeCategory === cat.id ? "bg-slate-950 text-white shadow-2xl border-slate-950" : "bg-white text-slate-500 border-slate-100 hover:border-slate-200 hover:bg-slate-50"
                             )}
                         >
-                            <Star size={20} className={activeCategory === cat.id ? "text-primary" : ""} />
-                            {cat.name}
+                            <Star size={18} className={activeCategory === cat.id ? "text-primary" : "text-slate-300"} />
+                            <span className="flex-1 text-left truncate">{cat.name}</span>
                         </button>
                     ))}
                 </div>
               </div>
 
-              {/* Utility Info */}
-              <div className="space-y-6 pt-6 border-t border-slate-50">
-                <h3 className="text-label font-body font-medium text-slate-300 uppercase tracking-[0.06em] px-4">Institucional</h3>
-                <div className="grid grid-cols-1 gap-6 px-4">
-                    <div className="flex items-center gap-5 group">
-                        <div className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center text-slate-300 group-hover:text-primary transition-colors">
-                            <Clock size={18} />
-                        </div>
-                        <div>
-                            <p className="text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em] leading-none mb-1">Horário de Pico</p>
-                            <p className="text-body-strong font-body font-bold text-slate-900 uppercase tracking-tight">35 - 55 Minutos</p>
-                        </div>
+              <div className="space-y-5 pt-6 border-t border-slate-50">
+                <h3 className="px-1 text-[10px] font-black text-slate-300 uppercase tracking-[0.24em]">Informações</h3>
+                <div className="grid grid-cols-1 gap-4">
+                  <div className="flex items-center gap-4 rounded-[1.35rem] border border-slate-100 bg-white p-4">
+                    <div className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center text-slate-300 shrink-0">
+                      <Clock size={18} />
                     </div>
-                    <div className="flex items-center gap-5 group">
-                        <div className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center text-slate-300 group-hover:text-primary transition-colors">
-                            <Phone size={18} />
-                        </div>
-                        <div>
-                            <p className="text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em] leading-none mb-1">Linha Executiva</p>
-                            <p className="text-body-strong font-body font-bold text-slate-900 uppercase tracking-tight">{settings?.phone || "Número Privado"}</p>
-                        </div>
+                    <div className="min-w-0">
+                      <p className="text-[10px] font-black text-slate-300 uppercase tracking-[0.24em] mb-1">Tempo médio</p>
+                      <p className="text-body-strong font-body font-bold text-slate-900 uppercase tracking-tight">35 - 55 minutos</p>
                     </div>
+                  </div>
+                  <div className="flex items-center gap-4 rounded-[1.35rem] border border-slate-100 bg-white p-4">
+                    <div className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center text-slate-300 shrink-0">
+                      <Phone size={18} />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-[10px] font-black text-slate-300 uppercase tracking-[0.24em] mb-1">Contato</p>
+                      <p className="text-body-strong font-body font-bold text-slate-900 uppercase tracking-tight truncate">{settings?.phone || "Número privado"}</p>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
 
-            {/* Premium Footer Sidebar */}
-            <div className="p-10 bg-slate-950">
-                <div className="flex items-center gap-5 mb-8">
-                    <div className="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center text-primary">
-                        <Info size={24} />
-                    </div>
-                    <div className="space-y-1">
-                        <p className="text-label font-body font-bold text-white uppercase tracking-[0.06em]">FoodSystem Signature</p>
-                        <p className="text-label font-mono font-medium text-slate-500 uppercase tracking-tighter">Version 2.0 Elite Edition</p>
-                    </div>
-                </div>
-                <p className="text-label font-body font-medium text-slate-600 uppercase tracking-[0.06em] leading-relaxed">
-                    Experiência desenvolvida exclusivamente para elevar o padrão da gastronomia digital.
-                </p>
-            </div>
           </motion.aside>
         </>
       )}

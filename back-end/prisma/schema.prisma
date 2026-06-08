@@ -100,6 +100,7 @@ model Product {
   image        String?
   isActive     Boolean     @default(true)
   isFeatured   Boolean     @default(false)
+  discountPercent Float    @default(0)
   restaurantId Int
   categoryId   Int
   createdAt    DateTime    @default(now())
@@ -172,6 +173,7 @@ model Settings {
   address        String?
   deliveryFee    Float      @default(5)
   minOrderValue  Float      @default(20)
+  deliveryEtaMinutes Int    @default(35)
   isOpen         Boolean    @default(true)
   primaryColor   String     @default("#ef4444")
   logo           String?

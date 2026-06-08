@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from "react";
+﻿import { useState, useEffect, useRef } from "react";
 import { 
   Plus, 
   Search, 
@@ -15,6 +15,8 @@ import { api } from "../../../../core/config/api";
 import { formatCurrency, cn } from "../../../../shared/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { ProductModal } from "../../components/modals/ProductModal";
+import { gsap } from "gsap";
+import { clampDiscountPercent, getProductDiscountedPrice, hasProductDiscount } from "../../../../shared/utils/product";
 
 export default function ProductsPage() {
   const [products, setProducts] = useState<any[]>([]);
@@ -22,6 +24,13 @@ export default function ProductsPage() {
   const [search, setSearch] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const hasAnimatedRef = useRef(false);
+
+  const filteredProducts = products.filter(p => 
+    p.name.toLowerCase().includes(search.toLowerCase()) ||
+    p.category?.name?.toLowerCase().includes(search.toLowerCase())
+  );
 
   const fetchProducts = async () => {
     try {
@@ -38,6 +47,19 @@ export default function ProductsPage() {
     fetchProducts();
   }, []);
 
+  useEffect(() => {
+    if (isLoading || !rootRef.current || hasAnimatedRef.current) return;
+    hasAnimatedRef.current = true;
+
+    const ctx = gsap.context(() => {
+      const tl = gsap.timeline({ defaults: { ease: "power3.out" } });
+      tl.from(".products-hero", { y: -18, opacity: 0, duration: 0.7 })
+        .from(".products-filters", { y: 24, opacity: 0, duration: 0.8 }, "-=0.25");
+    }, rootRef);
+
+    return () => ctx.revert();
+  }, [isLoading]);
+
   const handleDelete = async (id: number) => {
     if (!confirm("Tem certeza que deseja excluir este produto?")) return;
     try {
@@ -48,14 +70,9 @@ export default function ProductsPage() {
     }
   };
 
-  const filteredProducts = products.filter(p => 
-    p.name.toLowerCase().includes(search.toLowerCase()) ||
-    p.category?.name?.toLowerCase().includes(search.toLowerCase())
-  );
-
   return (
-    <>
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-8 mb-12">
+    <div ref={rootRef}>
+      <div className="products-hero flex flex-col md:flex-row md:items-end justify-between gap-8 mb-12">
           <div>
             <h1 className="text-heading-1 font-display font-bold text-slate-950 uppercase tracking-tight">Inventário</h1>
             <p className="text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em] mt-2">Curadoria e gestão estratégica do seu catálogo gastronômico.</p>
@@ -72,17 +89,17 @@ export default function ProductsPage() {
         </div>
 
         {/* Filtros e Busca Moderno */}
-        <div className="bg-white p-6 rounded-[3rem] border border-slate-50 shadow-sm flex flex-col md:flex-row gap-6 mb-12">
+        <div className="products-filters bg-white p-6 rounded-[3rem] border border-slate-50 shadow-sm flex flex-col md:flex-row gap-6 mb-12">
           <div className="relative flex-1">
             <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-300" size={20} />
             <input 
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Buscar por nome ou categoria..."
-              className="w-full h-16 pl-16 pr-6 bg-slate-50 border-transparent rounded-[1.5rem] focus:bg-white focus:ring-2 focus:ring-slate-950/5 transition-all font-body font-medium text-slate-600 text-label uppercase tracking-[0.04em]"
+              className="w-full h-16 pl-16 pr-6 bg-slate-50 border-transparent rounded-3xl focus:bg-white focus:ring-2 focus:ring-slate-950/5 transition-all font-body font-medium text-slate-600 text-label uppercase tracking-[0.04em]"
             />
           </div>
-          <button className="h-16 px-8 rounded-[1.5rem] border border-slate-100 text-label font-body font-bold text-slate-400 uppercase tracking-[0.06em] flex items-center gap-3 hover:bg-slate-50 transition-all">
+          <button className="h-16 px-8 rounded-3xl border border-slate-100 text-label font-body font-bold text-slate-400 uppercase tracking-[0.06em] flex items-center gap-3 hover:bg-slate-50 transition-all">
             <Filter size={18} /> Filtragem
           </button>
         </div>
@@ -97,17 +114,23 @@ export default function ProductsPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-8">
             <AnimatePresence mode="popLayout">
               {filteredProducts.map((product, idx) => (
+                (() => {
+                  const discountPercent = clampDiscountPercent(product.discountPercent);
+                  const salePrice = getProductDiscountedPrice(product.price, discountPercent);
+                  const isPromotional = hasProductDiscount(discountPercent);
+
+                  return (
                 <motion.div
                   layout
-                  initial={{ opacity: 0, scale: 0.9 }}
+                  initial={false}
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.9 }}
                   transition={{ delay: idx * 0.05 }}
                   key={product.id || idx}
-                  className="bg-white rounded-[3.5rem] border border-slate-50 overflow-hidden shadow-sm hover:shadow-2xl hover:shadow-slate-200/50 transition-all duration-700 group flex flex-col h-full"
+                  className="product-card bg-white rounded-[3.5rem] border border-slate-50 overflow-hidden shadow-sm hover:shadow-2xl hover:shadow-slate-200/50 transition-all duration-700 group flex flex-col h-full"
                 >
                   {/* Image Container with Actions */}
-                  <div className="relative aspect-square overflow-hidden bg-slate-50 flex-shrink-0">
+                  <div className="relative aspect-square overflow-hidden bg-slate-50 shrink-0">
                     {product.image ? (
                       <img 
                         src={product.image} 
@@ -125,6 +148,12 @@ export default function ProductsPage() {
                         <span className="bg-white/95 backdrop-blur-md px-6 py-2.5 rounded-2xl text-[10px] font-body font-bold uppercase tracking-[0.2em] text-slate-950 shadow-2xl border border-white/50 flex items-center gap-3">
                           <div className="w-1.5 h-1.5 rounded-full bg-primary" /> {product.category?.name || "CURADORIA"}
                         </span>
+                        {isPromotional && (
+                          <div className="mt-3 inline-flex items-center gap-2 rounded-2xl bg-rose-500 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-white shadow-xl shadow-rose-500/20">
+                            <span>PROMOÇÃO</span>
+                            <span>-{discountPercent}%</span>
+                          </div>
+                        )}
                     </div>
 
                     {/* Hover Controls */}
@@ -157,33 +186,48 @@ export default function ProductsPage() {
                       </h3>
                       <div className={cn(
                         "w-3 h-3 rounded-full mt-2 ring-4",
-                        product.available ? "bg-emerald-500 ring-emerald-500/10 animate-pulse" : "bg-slate-300 ring-slate-100"
+                        product.isActive !== false ? "bg-emerald-500 ring-emerald-500/10 animate-pulse" : "bg-slate-300 ring-slate-100"
                       )} />
                     </div>
 
-                    <p className="text-label font-body font-medium text-slate-400 uppercase tracking-[0.05em] text-[11px] line-clamp-2 leading-relaxed mb-8 flex-1">
+                    <p className="text-label font-body font-medium text-slate-400 uppercase tracking-wider text-[11px] line-clamp-2 leading-relaxed mb-8 flex-1">
                       {product.description || "Composição gastronômica exclusiva, refinada com ingredientes de procedência selecionada."}
                     </p>
                     
                     <div className="flex items-center justify-between pt-8 border-t border-slate-50">
                        <div>
                           <p className="text-[10px] font-body font-bold text-slate-300 uppercase tracking-[0.2em] mb-1">Preço Sugerido</p>
-                          <p className="text-heading-2 font-mono font-bold text-slate-950 tracking-tighter leading-none">
-                            {formatCurrency(product.price)}
-                          </p>
+                          <div className="flex flex-col gap-1">
+                            {isPromotional ? (
+                              <>
+                                <p className="text-[10px] font-body font-bold text-slate-300 uppercase tracking-widest line-through">
+                                  {formatCurrency(product.price)}
+                                </p>
+                                <p className="text-heading-2 font-mono font-bold text-primary tracking-tighter leading-none">
+                                  {formatCurrency(salePrice)}
+                                </p>
+                              </>
+                            ) : (
+                              <p className="text-heading-2 font-mono font-bold text-slate-950 tracking-tighter leading-none">
+                                {formatCurrency(product.price)}
+                              </p>
+                            )}
+                          </div>
                        </div>
                        <div className="text-right">
                           <p className="text-[10px] font-body font-bold text-slate-300 uppercase tracking-[0.2em] mb-1">Status Ativo</p>
                           <span className={cn(
-                            "text-[10px] font-body font-black uppercase tracking-[0.1em] px-3 py-1 rounded-lg",
-                            product.available ? "bg-emerald-50 text-emerald-600" : "bg-slate-50 text-slate-400"
+                            "text-[10px] font-body font-black uppercase tracking-widest px-3 py-1 rounded-lg",
+                            product.isActive !== false ? "bg-emerald-50 text-emerald-600" : "bg-slate-50 text-slate-400"
                           )}>
-                            {product.available ? "VIP" : "PAUSADO"}
+                            {product.isActive !== false ? "ATIVO" : "PAUSADO"}
                           </span>
                        </div>
                     </div>
                   </div>
                 </motion.div>
+                  );
+                })()
               ))}
             </AnimatePresence>
           </div>
@@ -195,6 +239,6 @@ export default function ProductsPage() {
           onSave={fetchProducts}
           product={selectedProduct}
         />
-    </>
+    </div>
   );
 }

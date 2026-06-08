@@ -1,15 +1,30 @@
-import { useState } from "react";
+"use client";
+
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "../../../core/config/api";
 import { Lock, Mail, Loader2, Utensils } from "lucide-react";
 import toast from "react-hot-toast";
 import Link from "next/link";
+import { gsap } from "gsap";
 
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!rootRef.current) return;
+
+    const ctx = gsap.context(() => {
+      gsap.from(".login-hero", { y: 20, opacity: 0, duration: 0.8, ease: "power3.out" });
+      gsap.from(".login-form", { y: 28, opacity: 0, duration: 0.9, ease: "power3.out" }, "-=0.35");
+    }, rootRef);
+
+    return () => ctx.revert();
+  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -32,17 +47,17 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+    <div ref={rootRef} className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
-        <div className="text-center mb-10">
-          <div className="w-16 h-16 bg-primary rounded-[2rem] flex items-center justify-center shadow-xl shadow-primary/30 mx-auto mb-6">
+        <div className="login-hero text-center mb-10">
+          <div className="w-16 h-16 bg-primary rounded-4xl flex items-center justify-center shadow-xl shadow-primary/30 mx-auto mb-6">
             <Utensils className="text-white" size={32} />
           </div>
           <h1 className="text-3xl font-black text-slate-900 uppercase tracking-tighter">Painel Admin</h1>
           <p className="text-slate-500 font-medium">Acesse sua conta para gerenciar sua loja</p>
         </div>
 
-        <form onSubmit={handleLogin} className="bg-white rounded-[2.5rem] p-8 shadow-sm border border-slate-100 space-y-6">
+        <form onSubmit={handleLogin} className="login-form bg-white rounded-[2.5rem] p-8 shadow-sm border border-slate-100 space-y-6">
           <div className="space-y-2">
             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Seu E-mail</label>
             <div className="relative">

@@ -1,6 +1,6 @@
 ﻿import { getTenantSlug } from '../../shared/utils/tenant';
 
-const API_URL = 'http://localhost:3001/api';
+const API_URL = 'http://localhost:8000/api';
 
 const getHeaders = (headers: Record<string, string> = {}) => {
   const token = localStorage.getItem('@FoodSystem:token');

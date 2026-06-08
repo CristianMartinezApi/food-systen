@@ -3,6 +3,7 @@ export interface Product {
   name: string;
   description: string;
   price: number;
+  discountPercent?: number;
   categoryId: number;
   image: string;
   isActive: boolean;
@@ -67,6 +68,7 @@ export interface Settings {
   favicon?: string;
   slogan?: string;
   primaryColor?: string;
+  deliveryEtaMinutes?: number;
   contact: {
     phones: string[];
     email: string;
@@ -78,7 +80,7 @@ export interface Settings {
       whatsapp?: string;
     };
   };
-  schedule: ScheduleDay[];
+  operatingHours: OperatingHours;
   delivery: {
     enabled: boolean;
     minOrderValue: number;
@@ -94,8 +96,17 @@ export interface Settings {
   }
 }
 
-export interface ScheduleDay {
-  day: number; // 0-6
+export interface OperatingHours {
+  dom: OperatingDay;
+  seg: OperatingDay;
+  ter: OperatingDay;
+  qua: OperatingDay;
+  qui: OperatingDay;
+  sex: OperatingDay;
+  sab: OperatingDay;
+}
+
+export interface OperatingDay {
   enabled: boolean;
   shifts: { open: string; close: string }[];
 }

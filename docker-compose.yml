@@ -5,7 +5,7 @@ services:
       context: ./front-end
       dockerfile: Dockerfile
     ports:
-      - "8081:3000"
+      - "3000:3000"
     depends_on:
       - backend
     networks:
@@ -18,9 +18,9 @@ services:
       dockerfile: Dockerfile
     command: sh -c "npx prisma db push --accept-data-loss && npm start"
     ports:
-      - "3001:3001"
+      - "8000:8000"
     environment:
-      - PORT=3001
+      - PORT=8000
       - DATABASE_URL=postgresql://postgres:postgres@db:5432/food_db
     depends_on:
       - db

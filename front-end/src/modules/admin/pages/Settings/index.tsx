@@ -24,12 +24,25 @@ import {
 import { useSettings } from "../../../../core/hooks/useSettings";
 import { cn } from "../../../../shared/utils";
 import toast from "react-hot-toast";
+import { gsap } from "gsap";
+import { createDefaultOperatingHours, getNextOpeningLabel, isRestaurantOpenNow, normalizeOperatingHours } from "../../../../shared/utils/schedule";
+
+const DAY_OPTIONS = [
+    { key: "seg", label: "Segunda" },
+    { key: "ter", label: "Terça" },
+    { key: "qua", label: "Quarta" },
+    { key: "qui", label: "Quinta" },
+    { key: "sex", label: "Sexta" },
+    { key: "sab", label: "Sábado" },
+    { key: "dom", label: "Domingo" },
+] as const;
 
 export default function SettingsPage() {
   const { settings, updateSettings } = useSettings();
   const [formData, setFormData] = useState<any>(null);
   const [isSaving, setIsSaving] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+    const rootRef = useRef<HTMLDivElement>(null);
 
   // Autocomplete Hook
   const {
@@ -47,10 +60,26 @@ export default function SettingsPage() {
 
   useEffect(() => {
     if (settings && !formData) {
-      setFormData(settings);
+            setFormData({
+                ...settings,
+                operatingHours: normalizeOperatingHours(settings.operatingHours || createDefaultOperatingHours()),
+                deliveryEtaMinutes: settings.deliveryEtaMinutes || 35,
+            });
       setValue(settings.address || "", false);
     }
   }, [settings, setValue, formData]);
+
+    useEffect(() => {
+        if (!formData || !rootRef.current) return;
+
+        const ctx = gsap.context(() => {
+            const tl = gsap.timeline({ defaults: { ease: "power3.out" } });
+            tl.from(".settings-hero", { y: -18, opacity: 0, duration: 0.7 })
+                .from(".settings-panel", { y: 24, opacity: 0, duration: 0.8, stagger: 0.08 }, "-=0.25");
+        }, rootRef);
+
+        return () => ctx.revert();
+    }, [formData]);
 
   const handleManualAddressChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
@@ -123,9 +152,70 @@ export default function SettingsPage() {
 
   if (!formData) return null;
 
+    const operatingHours = normalizeOperatingHours(formData.operatingHours || createDefaultOperatingHours());
+    const isOpenNow = isRestaurantOpenNow(operatingHours);
+
+    const syncOperatingHours = (updater: (hours: ReturnType<typeof normalizeOperatingHours>) => ReturnType<typeof normalizeOperatingHours>) => {
+        setFormData((prev: any) => {
+            const hours = normalizeOperatingHours(prev?.operatingHours || createDefaultOperatingHours());
+            return {
+                ...prev,
+                operatingHours: updater(hours),
+            };
+        });
+    };
+
+    const updateShift = (day: keyof typeof operatingHours, shiftIndex: number, field: "open" | "close", value: string) => {
+        syncOperatingHours((hours) => {
+            const nextHours = { ...hours };
+            nextHours[day] = {
+                ...nextHours[day],
+                shifts: nextHours[day].shifts.map((shift, index) => (
+                    index === shiftIndex ? { ...shift, [field]: value } : shift
+                )),
+            };
+            return nextHours;
+        });
+    };
+
+    const addShift = (day: keyof typeof operatingHours) => {
+        syncOperatingHours((hours) => {
+            const nextHours = { ...hours };
+            nextHours[day] = {
+                ...nextHours[day],
+                shifts: [...nextHours[day].shifts, { open: "12:00", close: "14:00" }],
+            };
+            return nextHours;
+        });
+    };
+
+    const removeShift = (day: keyof typeof operatingHours, shiftIndex: number) => {
+        syncOperatingHours((hours) => {
+            const nextHours = { ...hours };
+            nextHours[day] = {
+                ...nextHours[day],
+                shifts: nextHours[day].shifts.length > 1
+                    ? nextHours[day].shifts.filter((_, index) => index !== shiftIndex)
+                    : nextHours[day].shifts,
+            };
+            return nextHours;
+        });
+    };
+
+    const toggleDay = (day: keyof typeof operatingHours) => {
+        syncOperatingHours((hours) => {
+            const nextHours = { ...hours };
+            nextHours[day] = {
+                ...nextHours[day],
+                enabled: !nextHours[day].enabled,
+            };
+            return nextHours;
+        });
+    };
+
   return (
-    <>
-      <div className="flex items-center justify-between mb-12">
+        <div ref={rootRef}>
+            <div className="settings-hero flex items-center justify-between mb-12">
         <div>
           <h1 className="text-heading-1 font-display font-bold text-slate-950 uppercase tracking-tight">Arquitetura de Marca</h1>
           <p className="text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em] mt-2">Defina a identidade visual e os parâmetros operacionais do seu ecossistema.</p>
@@ -140,10 +230,10 @@ export default function SettingsPage() {
         </button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
         {/* Coluna Principal - Informações */}
-        <div className="lg:col-span-2 space-y-10">
-            <section className="bg-white rounded-[3rem] border border-slate-50 p-10 shadow-sm relative overflow-hidden">
+                <div className="lg:col-span-2 space-y-10">
+                        <section className="settings-panel bg-white rounded-[3rem] border border-slate-50 p-10 shadow-sm relative overflow-hidden">
                 <div className="flex items-center gap-4 mb-10">
                     <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-400">
                         <Store size={22} />
@@ -290,7 +380,7 @@ export default function SettingsPage() {
                         {/* Lista de Sugestões */}
 ...
                         {status === "OK" && (
-                            <div className="absolute z-[100] w-full mt-2 bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden animate-in fade-in zoom-in duration-200">
+                            <div className="absolute z-100 w-full mt-2 bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden animate-in fade-in zoom-in duration-200">
                                 {data.map(({ place_id, description }) => (
                                     <button
                                         key={place_id}
@@ -398,6 +488,21 @@ export default function SettingsPage() {
                         </div>
                     </div>
                     <div className="space-y-2">
+                        <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Tempo Estimado (min)</label>
+                        <div className="relative">
+                            <Clock className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
+                            <input 
+                                type="number"
+                                min={10}
+                                step="5"
+                                value={formData.deliveryEtaMinutes || 35}
+                                onChange={(e) => setFormData({...formData, deliveryEtaMinutes: Number(e.target.value)})}
+                                className="w-full h-14 pl-14 pr-5 bg-slate-50 border-2 border-transparent focus:border-primary/20 focus:bg-white rounded-2xl transition-all font-bold text-slate-700 outline-none"
+                            />
+                        </div>
+                        <p className="text-[10px] text-slate-400 font-bold uppercase mt-1 ml-1">Mostrado ao cliente no checkout e no fechamento do pedido.</p>
+                    </div>
+                    <div className="space-y-2">
                         <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Pedido Mínimo (R$)</label>
                         <div className="relative">
                             <DollarSign className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
@@ -422,73 +527,84 @@ export default function SettingsPage() {
                 </div>
 
                 <div className="space-y-6">
-                    <div className="flex items-center justify-between p-6 bg-slate-50 rounded-3xl border border-slate-100">
+                    <div className="flex items-center justify-between p-6 bg-slate-50 rounded-3xl border border-slate-100 gap-6">
                         <div>
-                            <p className="font-black text-slate-900 uppercase tracking-tight">Status da Loja</p>
-                            <p className="text-xs font-medium text-slate-500">Defina se sua loja está aberta para receber novos pedidos agora.</p>
+                            <p className="font-black text-slate-900 uppercase tracking-tight">Status Automático</p>
+                            <p className="text-xs font-medium text-slate-500">A loja abre e fecha conforme os horários cadastrados.</p>
                         </div>
-                        <button 
-                            type="button"
-                            onClick={() => setFormData({...formData, isOpen: !formData.isOpen})}
-                            className={cn(
-                                "w-16 h-8 rounded-full transition-all relative flex items-center px-1",
-                                formData.isOpen ? "bg-emerald-500" : "bg-slate-300"
-                            )}
-                        >
-                            <div className={cn(
-                                "w-6 h-6 bg-white rounded-full shadow-md transition-all",
-                                formData.isOpen ? "translate-x-8" : "translate-x-0"
-                            )} />
-                        </button>
+                        <div className={cn(
+                            "px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border whitespace-nowrap",
+                            isOpenNow ? "bg-emerald-50 text-emerald-600 border-emerald-100" : "bg-rose-50 text-rose-600 border-rose-100"
+                        )}>
+                            {isOpenNow ? "Aberto agora" : `Fechado • ${getNextOpeningLabel(operatingHours)}`}
+                        </div>
                     </div>
 
                     <div className="grid grid-cols-1 gap-4">
-                        {['seg', 'ter', 'qua', 'qui', 'sex', 'sab', 'dom'].map((day) => (
-                            <div key={day} className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 rounded-2xl border border-slate-50 bg-slate-50/50">
-                                <span className="text-xs font-black uppercase tracking-widest text-slate-600 w-16">{day}</span>
-                                
-                                <div className="flex items-center gap-3">
-                                    <input 
-                                        type="time" 
-                                        value={formData.operatingHours?.[day]?.open || "18:00"}
-                                        onChange={(e) => {
-                                            const hours = { ...formData.operatingHours };
-                                            hours[day] = { ...hours[day], open: e.target.value };
-                                            setFormData({ ...formData, operatingHours: hours });
-                                        }}
-                                        className="h-10 px-3 bg-white border border-slate-100 rounded-lg text-xs font-bold outline-none"
-                                    />
-                                    <span className="text-slate-300 font-black">às</span>
-                                    <input 
-                                        type="time" 
-                                        value={formData.operatingHours?.[day]?.close || "23:00"}
-                                        onChange={(e) => {
-                                            const hours = { ...formData.operatingHours };
-                                            hours[day] = { ...hours[day], close: e.target.value };
-                                            setFormData({ ...formData, operatingHours: hours });
-                                        }}
-                                        className="h-10 px-3 bg-white border border-slate-100 rounded-lg text-xs font-bold outline-none"
-                                    />
-                                </div>
+                        {DAY_OPTIONS.map((day) => {
+                            const daySchedule = operatingHours[day.key];
 
-                                <button 
-                                    type="button"
-                                    onClick={() => {
-                                        const hours = { ...formData.operatingHours };
-                                        hours[day] = { ...hours[day], closed: !hours[day]?.closed };
-                                        setFormData({ ...formData, operatingHours: hours });
-                                    }}
-                                    className={cn(
-                                        "px-4 h-9 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all",
-                                        formData.operatingHours?.[day]?.closed 
-                                            ? "bg-rose-500 text-white" 
-                                            : "bg-white text-slate-400 border border-slate-100"
-                                    )}
-                                >
-                                    {formData.operatingHours?.[day]?.closed ? "Fechado" : "Aberto"}
-                                </button>
-                            </div>
-                        ))}
+                            return (
+                                <div key={day.key} className="rounded-2xl border border-slate-50 bg-slate-50/50 p-4 space-y-4">
+                                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                                        <div>
+                                            <span className="text-xs font-black uppercase tracking-widest text-slate-600">{day.label}</span>
+                                            <p className="text-[10px] font-medium text-slate-400 uppercase tracking-[0.12em] mt-1">
+                                                {daySchedule.enabled ? daySchedule.shifts.map((shift) => `${shift.open} - ${shift.close}`).join(" • ") : "Fechado"}
+                                            </p>
+                                        </div>
+
+                                        <button
+                                            type="button"
+                                            onClick={() => toggleDay(day.key)}
+                                            className={cn(
+                                                "px-4 h-9 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all",
+                                                daySchedule.enabled
+                                                    ? "bg-emerald-50 text-emerald-600 border border-emerald-100"
+                                                    : "bg-rose-500 text-white"
+                                            )}
+                                        >
+                                            {daySchedule.enabled ? "Ativo" : "Fechado"}
+                                        </button>
+                                    </div>
+
+                                    <div className="space-y-3">
+                                        {daySchedule.shifts.map((shift, shiftIndex) => (
+                                            <div key={shiftIndex} className="flex flex-col md:flex-row md:items-center gap-3">
+                                                <input
+                                                    type="time"
+                                                    value={shift.open}
+                                                    onChange={(e) => updateShift(day.key, shiftIndex, "open", e.target.value)}
+                                                    className="h-10 px-3 bg-white border border-slate-100 rounded-lg text-xs font-bold outline-none"
+                                                />
+                                                <span className="text-slate-300 font-black">às</span>
+                                                <input
+                                                    type="time"
+                                                    value={shift.close}
+                                                    onChange={(e) => updateShift(day.key, shiftIndex, "close", e.target.value)}
+                                                    className="h-10 px-3 bg-white border border-slate-100 rounded-lg text-xs font-bold outline-none"
+                                                />
+                                                <button
+                                                    type="button"
+                                                    onClick={() => removeShift(day.key, shiftIndex)}
+                                                    className="h-10 px-4 rounded-lg text-[10px] font-black uppercase tracking-widest bg-white text-slate-400 border border-slate-100"
+                                                >
+                                                    Remover
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    <button
+                                        type="button"
+                                        onClick={() => addShift(day.key)}
+                                        className="h-10 px-4 rounded-lg text-[10px] font-black uppercase tracking-widest bg-white text-slate-500 border border-dashed border-slate-200"
+                                    >
+                                        Adicionar intervalo
+                                    </button>
+                                </div>
+                            );
+                        })}
                     </div>
                 </div>
             </section>
@@ -574,6 +690,6 @@ export default function SettingsPage() {
             </div>
         </div>
       </div>
-    </>
+        </div>
   );
 }

@@ -9,46 +9,89 @@ import { ProductCard } from "../components/product/ProductCard";
 import { Button } from "../../../shared/components/ui/button";
 import { useSettings } from "../../../core/hooks/useSettings";
 import { Skeleton } from "../../../shared/components/ui/skeleton";
-import { motion, AnimatePresence } from "framer-motion";
-import { Star, Utensils, ArrowRight, Zap, Flame, ShoppingBag } from "lucide-react";
+import { motion } from "framer-motion";
+import { Utensils, ArrowRight, Flame } from "lucide-react";
 import { cn, formatCurrency } from "../../../shared/utils";
 import { gsap } from "gsap";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
+
+gsap.registerPlugin(ScrollTrigger);
 
 export default function Home() {
   const { products, categories, isLoading: productsLoading } = useProducts() as any;
-  const { settings, isLoading: settingsLoading } = useSettings();
+  const { isLoading: settingsLoading } = useSettings();
   const [activeCategory, setActiveCategory] = useState<number | 'all'>('all');
   const [isNavOpen, setIsNavOpen] = useState(false);
 
+  const rootRef = useRef<HTMLDivElement>(null);
   const heroRef = useRef<HTMLDivElement>(null);
-  const titleRef = useRef<HTMLHeadingElement>(null);
 
   useEffect(() => {
-    if (!productsLoading && !settingsLoading) {
-      const ctx = gsap.context(() => {
-        // Animação de entrada do Hero com Stagger
-        gsap.from(".hero-content > *", {
-          y: 60,
+    if (productsLoading || !rootRef.current) return;
+
+    const ctx = gsap.context(() => {
+      const tl = gsap.timeline({ defaults: { ease: "power3.out" } });
+
+      tl.from(".home-header", {
+        y: -18,
+        opacity: 0,
+        duration: 0.7,
+        stagger: 0.06,
+      })
+        .from(".home-hero-badge", {
+          y: 18,
           opacity: 0,
-          duration: 1.2,
-          stagger: 0.2,
-          ease: "expo.out",
-          delay: 0.5
-        });
+          duration: 0.55,
+        }, "-=0.2")
+        .from(".home-hero-title", {
+          y: 34,
+          opacity: 0,
+          duration: 0.85,
+        }, "-=0.16")
+        .from(".home-hero-copy", {
+          y: 22,
+          opacity: 0,
+          duration: 0.7,
+        }, "-=0.45")
+        .from(".home-hero-actions", {
+          y: 18,
+          opacity: 0,
+          duration: 0.6,
+        }, "-=0.4")
+        .from(".home-hero-art", {
+          scale: 0.96,
+          opacity: 0,
+          duration: 0.9,
+        }, "-=0.65");
 
-        // Efeito de brilho flutuante no título
-        gsap.to(".hero-title", {
-          textShadow: "0 0 30px rgba(246, 111, 25, 0.4)",
-          duration: 2,
-          repeat: -1,
-          yoyo: true,
-          ease: "sine.inOut"
-        });
-      }, heroRef);
+      gsap.from(".home-section-heading", {
+        scrollTrigger: {
+          trigger: "#menu-section",
+          start: "top 80%",
+        },
+        y: 24,
+        opacity: 0,
+        duration: 0.6,
+        stagger: 0.1,
+        ease: "power3.out",
+      });
 
-      return () => ctx.revert();
-    }
-  }, [productsLoading, settingsLoading]);
+      gsap.from(".home-category-chip", {
+        scrollTrigger: {
+          trigger: "#menu-section",
+          start: "top 75%",
+        },
+        y: 14,
+        opacity: 0,
+        duration: 0.45,
+        stagger: 0.06,
+        ease: "power3.out",
+      });
+
+    }, rootRef);
+
+    return () => ctx.revert();
+  }, [productsLoading]);
 
   const filteredProducts = useMemo(() => {
     if (!products) return [];
@@ -56,15 +99,15 @@ export default function Home() {
     return products.filter((p: any) => p.categoryId === activeCategory);
   }, [products, activeCategory]);
 
-  if (productsLoading || settingsLoading) {
+  if (productsLoading) {
     return (
       <div className="min-h-screen bg-slate-50 flex flex-col">
         <Header onOpenMenu={() => setIsNavOpen(true)} />
         <main className="flex-1 container mx-auto px-4 md:px-6 py-8 md:py-12">
-          <Skeleton className="h-[300px] md:h-[500px] w-full rounded-[2.5rem] md:rounded-[3.5rem] mb-12" />
+          <Skeleton className="h-75 md:h-125 w-full rounded-[2.5rem] md:rounded-[3.5rem] mb-12" />
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-8">
             {[1, 2, 3, 4, 5, 6].map(i => (
-              <Skeleton key={i} className="h-64 md:h-96 w-full rounded-[2rem] md:rounded-[2.5rem]" />
+              <Skeleton key={i} className="h-64 md:h-96 w-full rounded-4xl md:rounded-[2.5rem]" />
             ))}
           </div>
         </main>
@@ -73,8 +116,10 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col selection:bg-primary selection:text-white">
-      <Header onOpenMenu={() => setIsNavOpen(true)} />
+    <div ref={rootRef} className="min-h-screen bg-slate-50 flex flex-col selection:bg-primary selection:text-white">
+      <div className="home-header">
+        <Header onOpenMenu={() => setIsNavOpen(true)} />
+      </div>
       
       <NavSidebar 
         isOpen={isNavOpen} 
@@ -87,7 +132,7 @@ export default function Home() {
       <main className="flex-1 container mx-auto px-4 md:px-6 py-8 md:py-12 space-y-16 md:space-y-24">
         {/* Hero Section Premium com GSAP */}
         <section className="relative">
-          <div ref={heroRef} className="relative rounded-[2.5rem] md:rounded-[3.5rem] bg-slate-950 overflow-hidden shadow-[0_40px_100px_rgba(0,0,0,0.3)] min-h-[450px] md:min-h-[600px] flex items-center">
+          <div ref={heroRef} className="home-hero-art relative rounded-[2.5rem] md:rounded-[3.5rem] bg-slate-950 overflow-hidden shadow-[0_40px_100px_rgba(0,0,0,0.3)] min-h-112.5 md:min-h-150 flex items-center">
             {/* Background Art */}
             <div className="absolute inset-0 z-0">
               <img 
@@ -95,30 +140,30 @@ export default function Home() {
                 className="w-full h-full object-cover opacity-60 scale-105"
                 alt="Fundo Gourmet"
               />
-              <div className="absolute inset-0 bg-gradient-to-r from-slate-950 via-slate-950/40 to-transparent" />
-              <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-slate-950 to-transparent" />
+              <div className="absolute inset-0 bg-linear-to-r from-slate-950 via-slate-950/40 to-transparent" />
+              <div className="absolute inset-x-0 bottom-0 h-1/2 bg-linear-to-t from-slate-950 to-transparent" />
             </div>
 
-            <div className="relative z-10 p-8 md:p-20 max-w-4xl space-y-6 md:space-y-8 hero-content">
+            <div className="relative z-10 p-8 md:p-20 max-w-4xl space-y-6 md:space-y-8">
               <div>
-                <div className="flex items-center gap-4 mb-6 md:mb-8">
+                <div className="home-hero-badge flex items-center gap-4 mb-6 md:mb-8">
                   <div className="bg-primary/20 backdrop-blur-xl border border-primary/30 px-4 py-1.5 rounded-full flex items-center gap-2">
                     <Flame size={14} className="text-primary fill-primary animate-pulse" />
                     <span className="text-primary text-[10px] font-bold uppercase tracking-[0.3em]">O mais desejado de 2024</span>
                   </div>
                 </div>
 
-                <h1 ref={titleRef} className="hero-title text-5xl md:text-display font-display text-white leading-[0.9] md:leading-[0.85] tracking-tighter uppercase mb-6 drop-shadow-2xl">
+                <h1 className="home-hero-title text-5xl md:text-display font-display text-white leading-[0.9] md:leading-[0.85] tracking-tighter uppercase mb-6 drop-shadow-2xl">
                   Sabor que <br/>
                   <span className="text-primary text-outline-white">Transforma</span>
                 </h1>
                 
-                <p className="text-lg md:text-xl text-slate-300 font-medium max-w-xl leading-relaxed">
+                <p className="home-hero-copy text-lg md:text-xl text-slate-300 font-medium max-w-xl leading-relaxed">
                   Experiência gastronômica executiva com ingredientes selecionados e preparo artesanal.
                 </p>
               </div>
 
-              <div className="flex flex-col sm:flex-row items-center gap-4 md:gap-6 pt-4">
+              <div className="home-hero-actions flex flex-col sm:flex-row items-center gap-4 md:gap-6 pt-4">
                 <Button 
                   size="lg" 
                   className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-white rounded-2xl px-8 md:px-10 h-14 md:h-16 text-sm font-black uppercase tracking-widest shadow-xl shadow-primary/20 group"
@@ -131,21 +176,6 @@ export default function Home() {
                   <ArrowRight size={18} className="ml-2 group-hover:translate-x-1 transition-transform" />
                 </Button>
                 
-                <div className="flex items-center gap-4 px-6 py-4 bg-white/5 backdrop-blur-md rounded-2xl border border-white/10">
-                  <div className="flex -space-x-3">
-                    {[1,2,3].map(i => (
-                      <div key={i} className="w-8 h-8 rounded-full border-2 border-slate-950 bg-slate-800 flex items-center justify-center overflow-hidden">
-                        <img src={`https://i.pravatar.cc/100?img=${i+10}`} alt="avatar" />
-                      </div>
-                    ))}
-                  </div>
-                  <div className="text-[10px] md:text-xs">
-                    <p className="text-white font-bold">+500 Clientes VIP</p>
-                    <div className="flex gap-0.5 text-yellow-500">
-                      {[1,2,3,4,5].map(i => <Star key={i} size={10} fill="currentColor" />)}
-                    </div>
-                  </div>
-                </div>
               </div>
             </div>
           </div>
@@ -154,7 +184,7 @@ export default function Home() {
         {/* Categories Navigation */}
         <section id="menu-section" className="space-y-8 md:space-y-12">
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-            <div className="space-y-2">
+            <div className="home-section-heading space-y-2">
               <h2 className="text-3xl md:text-heading-2 font-display font-bold text-slate-950 uppercase tracking-tight">Nosso Cardápio</h2>
               <div className="h-1.5 w-24 bg-primary rounded-full" />
             </div>
@@ -163,6 +193,7 @@ export default function Home() {
               <button
                 onClick={() => setActiveCategory('all')}
                 className={cn(
+                  "home-category-chip",
                   "px-6 py-3 rounded-2xl text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap border-2",
                   activeCategory === 'all' 
                     ? "bg-slate-950 text-white border-slate-950 shadow-lg" 
@@ -176,6 +207,7 @@ export default function Home() {
                   key={cat.id}
                   onClick={() => setActiveCategory(cat.id)}
                   className={cn(
+                    "home-category-chip",
                     "px-6 py-3 rounded-2xl text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap border-2",
                     activeCategory === cat.id 
                       ? "bg-slate-950 text-white border-slate-950 shadow-lg" 
@@ -189,21 +221,16 @@ export default function Home() {
           </div>
 
           {/* Product Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-6 md:gap-10">
-            <AnimatePresence mode="popLayout">
-              {filteredProducts.map((product: any) => (
-                <motion.div
-                  key={product.id}
-                  layout
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.9 }}
-                  transition={{ duration: 0.4 }}
-                >
-                  <ProductCard product={product} />
-                </motion.div>
-              ))}
-            </AnimatePresence>
+          <div className="home-products-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-6 md:gap-10">
+            {filteredProducts.map((product: any) => (
+              <div
+                key={product.id}
+                className="home-product-item"
+                style={{ opacity: 1, transform: "none" }}
+              >
+                <ProductCard product={product} />
+              </div>
+            ))}
           </div>
 
           {filteredProducts.length === 0 && (

@@ -1,6 +1,6 @@
 "use client";
 
-import { ShoppingBag, Menu, Search, MapPin, X, ChevronRight, User, Utensils } from "lucide-react";
+import { ShoppingBag, Menu, Search, MapPin, ChevronRight, Utensils } from "lucide-react";
 import { useCartStore } from "../../../../core/stores/useCartStore";
 import { useLocationStore } from "../../../../core/stores/useLocationStore";
 import { useSettings } from "../../../../core/hooks/useSettings";
@@ -12,6 +12,7 @@ import { AddressModal } from "../modals/AddressModal";
 import { cn } from "../../../../shared/utils";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
+import { getNextOpeningLabel } from "../../../../shared/utils/schedule";
 
 interface HeaderProps {
   onOpenMenu?: () => void;
@@ -46,30 +47,30 @@ export function Header({ onOpenMenu }: HeaderProps) {
         className={cn(
           "sticky top-0 left-0 right-0 z-50 transition-all duration-500",
           isScrolled 
-            ? "py-3 md:py-4 bg-white/80 backdrop-blur-2xl shadow-[0_10px_40px_rgba(0,0,0,0.05)]" 
-            : "py-5 md:py-6 bg-white border-b border-slate-50"
+            ? "py-2 sm:py-3 md:py-4 bg-white/80 backdrop-blur-2xl shadow-[0_10px_40px_rgba(0,0,0,0.05)]" 
+            : "py-3 sm:py-4 md:py-6 bg-white border-b border-slate-50"
         )}
       >
         <div className="container mx-auto px-4 md:px-6">
-          <div className="flex items-center justify-between gap-4 md:gap-8">
+          <div className="flex items-center justify-between gap-3 md:gap-8">
             
             {/* Logo Section */}
-            <div className="flex items-center gap-6">
-              <Link href={`/${slug}`} className="flex items-center gap-4 group">
-                <div className="w-12 h-12 md:w-16 md:h-16 bg-slate-950 rounded-2xl md:rounded-3xl flex items-center justify-center shadow-2xl shadow-slate-950/20 group-hover:rotate-6 transition-all duration-500 flex-shrink-0">
+            <div className="flex items-center gap-3 md:gap-6 min-w-0">
+              <Link href={`/${slug}`} className="flex items-center gap-3 md:gap-4 group min-w-0">
+                <div className="w-11 h-11 md:w-16 md:h-16 bg-slate-950 rounded-2xl md:rounded-3xl flex items-center justify-center shadow-2xl shadow-slate-950/20 group-hover:rotate-6 transition-all duration-500 shrink-0">
                   {settings?.logo ? (
                     <img src={settings.logo} alt="Logo" className="w-full h-full object-cover rounded-2xl md:rounded-3xl" />
                   ) : (
-                    <Utensils className="text-primary group-hover:scale-110 transition-transform duration-500" size={24} />
+                    <Utensils className="text-primary group-hover:scale-110 transition-transform duration-500" size={20} />
                   )}
                 </div>
-                <div className="flex flex-col">
-                  <h1 className="text-body-strong md:text-heading-1 font-display font-bold text-slate-950 tracking-tighter leading-none uppercase">
-                    {settings?.storeName?.split(' ')[0] || "FOOD"}<span className="text-primary">{settings?.storeName?.split(' ')[1] || "SYSTEM"}</span>
+                <div className="flex flex-col min-w-0">
+                  <h1 className="text-body-strong sm:text-heading-2 md:text-heading-1 font-display font-bold text-slate-950 tracking-tighter leading-none uppercase truncate max-w-40 sm:max-w-none">
+                    {settings?.storeName?.split(' ')[0] || "FOOD"}<span className="hidden sm:inline text-primary">{settings?.storeName?.split(' ')[1] || "SYSTEM"}</span>
                   </h1>
                   <p className="hidden xs:flex text-[8px] md:text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em] mt-1 pr-2 items-center gap-1.5 whitespace-nowrap">
                     <span className={cn("w-1.5 h-1.5 rounded-full", settings?.isOpen ? "bg-emerald-500 animate-pulse" : "bg-rose-500")} />
-                    {settings?.isOpen ? "Produzindo" : "Fechado"}
+                    {settings?.isOpen ? "Produzindo" : `Fechado • ${getNextOpeningLabel(settings?.operatingHours)}`}
                   </p>
                 </div>
               </Link>
@@ -93,7 +94,7 @@ export function Header({ onOpenMenu }: HeaderProps) {
             </div>
 
             {/* Right Section: Actions */}
-            <div className="flex items-center gap-3 md:gap-6">
+            <div className="flex items-center gap-2 md:gap-6 shrink-0">
               {/* Search Bar - Aesthetic version */}
               <div className="hidden md:flex relative items-center group">
                 <Search className="absolute left-6 text-slate-300 group-focus-within:text-primary transition-colors duration-300" size={20} />
@@ -106,10 +107,10 @@ export function Header({ onOpenMenu }: HeaderProps) {
               {/* Cart Button */}
               <button 
                 onClick={() => setIsCartOpen(true)}
-                className="relative bg-slate-950 text-white h-14 md:h-18 px-6 md:px-10 rounded-2xl md:rounded-3xl flex items-center gap-4 md:gap-5 hover:scale-105 active:scale-95 transition-all duration-500 shadow-2xl shadow-slate-950/30 group"
+                className="relative bg-slate-950 text-white h-12 md:h-18 px-4 md:px-10 rounded-2xl md:rounded-3xl flex items-center gap-3 md:gap-5 hover:scale-105 active:scale-95 transition-all duration-500 shadow-2xl shadow-slate-950/30 group"
               >
                 <div className="relative">
-                    <ShoppingBag size={20} className="md:size-[24px] group-hover:rotate-12 transition-transform duration-300" />
+                    <ShoppingBag size={18} className="md:size-6 group-hover:rotate-12 transition-transform duration-300" />
                     {totalItems > 0 && (
                         <AnimatePresence>
                             <motion.span 
@@ -131,9 +132,9 @@ export function Header({ onOpenMenu }: HeaderProps) {
               {/* Mobile Menu Toggle */}
               <button 
                 onClick={onOpenMenu}
-                className="w-14 h-14 md:w-16 md:h-16 bg-white border border-slate-100 rounded-2xl flex items-center justify-center text-slate-950 shadow-sm active:scale-90 transition-all"
+                className="w-12 h-12 md:w-16 md:h-16 bg-white border border-slate-100 rounded-2xl flex items-center justify-center text-slate-950 shadow-sm active:scale-90 transition-all"
               >
-                <Menu size={20} className="md:size-[24px]" />
+                <Menu size={18} className="md:size-6" />
               </button>
             </div>
           </div>

@@ -1,9 +1,12 @@
-import { useState } from "react";
+"use client";
+
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "../../../core/config/api";
 import { Lock, Mail, Loader2, Utensils, Store, User, Globe } from "lucide-react";
 import toast from "react-hot-toast";
 import Link from "next/link";
+import { gsap } from "gsap";
 
 export default function Register() {
   const [formData, setFormData] = useState({
@@ -15,6 +18,18 @@ export default function Register() {
   });
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!rootRef.current) return;
+
+    const ctx = gsap.context(() => {
+      gsap.from(".register-hero", { y: 20, opacity: 0, duration: 0.8, ease: "power3.out" });
+      gsap.from(".register-form", { y: 28, opacity: 0, duration: 0.9, ease: "power3.out" }, "-=0.35");
+    }, rootRef);
+
+    return () => ctx.revert();
+  }, []);
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,17 +63,17 @@ export default function Register() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 py-12">
+    <div ref={rootRef} className="min-h-screen bg-slate-50 flex items-center justify-center p-4 py-12">
       <div className="w-full max-w-xl">
-        <div className="text-center mb-10">
-          <div className="w-16 h-16 bg-primary rounded-[2rem] flex items-center justify-center shadow-xl shadow-primary/30 mx-auto mb-6">
+        <div className="register-hero text-center mb-10">
+          <div className="w-16 h-16 bg-primary rounded-4xl flex items-center justify-center shadow-xl shadow-primary/30 mx-auto mb-6">
             <Utensils className="text-white" size={32} />
           </div>
           <h1 className="text-3xl font-black text-slate-900 uppercase tracking-tighter">Criar sua Loja</h1>
           <p className="text-slate-500 font-medium">Junte-se a centenas de restaurantes e comece a vender hoje.</p>
         </div>
 
-        <form onSubmit={handleRegister} className="bg-white rounded-[2.5rem] p-8 md:p-12 shadow-sm border border-slate-100 space-y-6">
+        <form onSubmit={handleRegister} className="register-form bg-white rounded-[2.5rem] p-8 md:p-12 shadow-sm border border-slate-100 space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Informações Pessoais */}
             <div className="md:col-span-2">
