@@ -6,6 +6,7 @@ import usePlacesAutocomplete, {
 import { 
   Save, 
   Loader2,
+    Flame,
   Store,
   Clock,
   Palette,
@@ -42,7 +43,9 @@ export default function SettingsPage() {
   const [formData, setFormData] = useState<any>(null);
   const [isSaving, setIsSaving] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+    const bannerFileInputRef = useRef<HTMLInputElement>(null);
     const rootRef = useRef<HTMLDivElement>(null);
+    const hasAnimatedRef = useRef(false);
 
   // Autocomplete Hook
   const {
@@ -70,7 +73,7 @@ export default function SettingsPage() {
   }, [settings, setValue, formData]);
 
     useEffect(() => {
-        if (!formData || !rootRef.current) return;
+        if (!settings || !rootRef.current || hasAnimatedRef.current) return;
 
         const ctx = gsap.context(() => {
             const tl = gsap.timeline({ defaults: { ease: "power3.out" } });
@@ -78,8 +81,10 @@ export default function SettingsPage() {
                 .from(".settings-panel", { y: 24, opacity: 0, duration: 0.8, stagger: 0.08 }, "-=0.25");
         }, rootRef);
 
+        hasAnimatedRef.current = true;
+
         return () => ctx.revert();
-    }, [formData]);
+    }, [settings]);
 
   const handleManualAddressChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
@@ -134,6 +139,17 @@ export default function SettingsPage() {
       reader.readAsDataURL(file);
     }
   };
+
+    const handleBannerFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setFormData({ ...formData, bannerImage: reader.result as string });
+            };
+            reader.readAsDataURL(file);
+        }
+    };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -351,6 +367,104 @@ export default function SettingsPage() {
                             onChange={(e) => setFormData({...formData, bio: e.target.value})}
                             placeholder="Conte um pouco sobre sua loja, especialidades..."
                             className="w-full h-32 p-5 bg-slate-50 border-2 border-transparent focus:border-primary/20 focus:bg-white rounded-2xl transition-all font-bold text-slate-700 outline-none resize-none"
+                        />
+                    </div>
+                </div>
+            </section>
+
+            <section className="settings-panel bg-white rounded-[3rem] border border-slate-50 p-10 shadow-sm relative overflow-hidden">
+                <div className="flex items-center gap-4 mb-10">
+                    <div className="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center text-primary">
+                        <ImagePlus size={22} />
+                    </div>
+                    <h3 className="text-heading-3 font-display font-bold text-slate-950 uppercase tracking-tight">Banner da Loja</h3>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                    <div className="space-y-4 md:col-span-2">
+                        <label className="text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em]">Imagem do Banner</label>
+                        <div
+                            onClick={() => bannerFileInputRef.current?.click()}
+                            className="relative min-h-64 rounded-[2.5rem] overflow-hidden border-2 border-dashed border-slate-100 bg-slate-50 cursor-pointer group shadow-sm"
+                        >
+                            {formData.bannerImage ? (
+                                <>
+                                    <img src={formData.bannerImage} alt="Banner preview" className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
+                                    <div className="absolute inset-0 bg-slate-950/35" />
+                                </>
+                            ) : (
+                                <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-8">
+                                    <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center text-slate-200 shadow-sm mb-4">
+                                        <ImagePlus size={32} />
+                                    </div>
+                                    <span className="text-[10px] font-body font-bold text-slate-400 uppercase tracking-widest">Upload do Banner</span>
+                                </div>
+                            )}
+                            <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between gap-4 pointer-events-none">
+                                <div className="bg-white/90 backdrop-blur px-3 py-2 rounded-xl text-[10px] font-black text-slate-900 uppercase tracking-widest shadow-sm">
+                                    Clique para trocar a imagem
+                                </div>
+                                <div className="bg-slate-950/80 backdrop-blur px-3 py-2 rounded-xl text-[10px] font-black text-white uppercase tracking-widest shadow-sm">
+                                    Hero principal
+                                </div>
+                            </div>
+                        </div>
+                        <input 
+                            type="file"
+                            ref={bannerFileInputRef}
+                            onChange={handleBannerFileChange}
+                            accept="image/*"
+                            className="hidden"
+                        />
+                    </div>
+
+                    <div className="space-y-3">
+                        <label className="text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em] ml-1">Frase de Destaque</label>
+                        <input 
+                            value={formData.bannerBadge || ""}
+                            onChange={(e) => setFormData({...formData, bannerBadge: e.target.value})}
+                            className="w-full h-16 px-6 bg-slate-50 border-transparent focus:bg-white focus:ring-2 focus:ring-slate-950/5 rounded-2xl transition-all font-body font-bold text-slate-950 text-label uppercase tracking-widest outline-none"
+                            placeholder="O mais desejado de 2024"
+                        />
+                    </div>
+
+                    <div className="space-y-3">
+                        <label className="text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em] ml-1">Título Linha 1</label>
+                        <input 
+                            value={formData.bannerTitleLine1 || ""}
+                            onChange={(e) => setFormData({...formData, bannerTitleLine1: e.target.value})}
+                            className="w-full h-16 px-6 bg-slate-50 border-transparent focus:bg-white focus:ring-2 focus:ring-slate-950/5 rounded-2xl transition-all font-body font-bold text-slate-950 text-label uppercase tracking-widest outline-none"
+                            placeholder="Sabor que"
+                        />
+                    </div>
+
+                    <div className="space-y-3">
+                        <label className="text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em] ml-1">Título Linha 2</label>
+                        <input 
+                            value={formData.bannerTitleLine2 || ""}
+                            onChange={(e) => setFormData({...formData, bannerTitleLine2: e.target.value})}
+                            className="w-full h-16 px-6 bg-slate-50 border-transparent focus:bg-white focus:ring-2 focus:ring-slate-950/5 rounded-2xl transition-all font-body font-bold text-slate-950 text-label uppercase tracking-widest outline-none"
+                            placeholder="Transforma"
+                        />
+                    </div>
+
+                    <div className="space-y-3 md:col-span-2">
+                        <label className="text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em] ml-1">Frase de Apoio</label>
+                        <textarea 
+                            value={formData.bannerDescription || ""}
+                            onChange={(e) => setFormData({...formData, bannerDescription: e.target.value})}
+                            placeholder="Descreva a experiência que o cliente vai sentir no banner..."
+                            className="w-full h-32 p-5 bg-slate-50 border-2 border-transparent focus:border-primary/20 focus:bg-white rounded-2xl transition-all font-bold text-slate-700 outline-none resize-none"
+                        />
+                    </div>
+
+                    <div className="space-y-3">
+                        <label className="text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em] ml-1">Texto do Botão</label>
+                        <input 
+                            value={formData.bannerCtaLabel || ""}
+                            onChange={(e) => setFormData({...formData, bannerCtaLabel: e.target.value})}
+                            className="w-full h-16 px-6 bg-slate-50 border-transparent focus:bg-white focus:ring-2 focus:ring-slate-950/5 rounded-2xl transition-all font-body font-bold text-slate-950 text-label uppercase tracking-widest outline-none"
+                            placeholder="Explorar Menu"
                         />
                     </div>
                 </div>
@@ -653,24 +767,30 @@ export default function SettingsPage() {
                     <Palette size={120} />
                 </div>
                 <h3 className="font-black text-xl uppercase tracking-tighter mb-4 relative z-10">Preview em Tempo Real</h3>
-                <div className="p-6 bg-white/5 backdrop-blur-md rounded-3xl border border-white/10 relative z-10">
-                     <div className="flex items-center gap-3 mb-4">
-                        {formData.logo ? (
-                            <img src={formData.logo} alt="Logo Preview" className="w-10 h-10 rounded-xl object-cover shadow-lg" />
-                        ) : (
-                            <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-white/10">
-                                <Store size={20} className="text-white/40" />
-                            </div>
-                        )}
-                        <div className="flex-1 truncate">
-                            <p className="font-black uppercase text-sm tracking-tight truncate" style={{ color: formData.primaryColor }}>
-                                {formData.storeName}
-                            </p>
-                            <p className="text-[10px] text-white/40 font-bold uppercase tracking-widest">Loja Online</p>
+                <div className="relative rounded-4xl overflow-hidden border border-white/10 shadow-2xl shadow-black/20 min-h-96 z-10">
+                    {formData.bannerImage ? (
+                        <img src={formData.bannerImage} alt="Banner Preview" className="absolute inset-0 w-full h-full object-cover" />
+                    ) : (
+                        <div className="absolute inset-0 bg-linear-to-br from-slate-800 to-slate-950" />
+                    )}
+                    <div className="absolute inset-0 bg-linear-to-r from-slate-950 via-slate-950/60 to-transparent" />
+                    <div className="relative p-6 flex flex-col justify-end min-h-96">
+                        <div className="inline-flex items-center gap-2 self-start bg-primary/20 backdrop-blur px-3 py-1.5 rounded-full border border-primary/20 mb-4">
+                            <Flame size={12} className="text-primary fill-primary" />
+                            <span className="text-[10px] font-black text-primary uppercase tracking-[0.24em]">{formData.bannerBadge || "Sua marca"}</span>
                         </div>
-                     </div>
-                     <div className="h-2 w-full bg-white/10 rounded-full mb-2" />
-                     <div className="h-2 w-3/4 bg-white/10 rounded-full" />
+                        <h4 className="font-display font-black text-4xl uppercase tracking-tighter leading-[0.88] mb-4" style={{ color: formData.primaryColor || '#ef4444' }}>
+                            {formData.bannerTitleLine1 || "Sabor que"}
+                            <br />
+                            <span className="text-white">{formData.bannerTitleLine2 || "Transforma"}</span>
+                        </h4>
+                        <p className="text-sm text-white/75 font-medium leading-relaxed max-w-sm mb-6">
+                            {formData.bannerDescription || "Conte a sua proposta de valor e personalize a primeira impressão do cliente."}
+                        </p>
+                        <button className="self-start h-12 px-5 bg-primary text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-black/20">
+                            {formData.bannerCtaLabel || "Explorar Menu"}
+                        </button>
+                    </div>
                 </div>
                 <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-6 text-center">As cores são aplicadas instantaneamente.</p>
             </div>

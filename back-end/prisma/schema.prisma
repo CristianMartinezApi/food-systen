@@ -171,6 +171,12 @@ model Settings {
   bio            String?
   phone          String?
   address        String?
+  bannerBadge    String?
+  bannerTitleLine1 String?
+  bannerTitleLine2 String?
+  bannerDescription String?
+  bannerCtaLabel String?
+  bannerImage    String?
   deliveryFee    Float      @default(5)
   minOrderValue  Float      @default(20)
   deliveryEtaMinutes Int    @default(35)

@@ -29,6 +29,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
   const { settings } = useSettings();
   const [slug, setSlug] = useState<string>("");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const storeLabel = settings?.storeName || "Master Admin";
 
   useEffect(() => {
     setSlug(getTenantSlug());
@@ -176,22 +177,32 @@ export function AdminLayout({ children }: AdminLayoutProps) {
                 </span>
             </div>
 
-            <div className="flex items-center gap-4 lg:gap-8">
-                <div className="hidden md:flex items-center gap-3 bg-emerald-50 px-5 py-2.5 rounded-xl border border-emerald-100/50">
-                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
-                    <span className="text-label font-body font-bold text-emerald-600 uppercase tracking-[0.08em]">Marketplace Online</span>
-                </div>
+            <div className="flex items-center gap-3 lg:gap-4">
+              <div className="hidden md:flex items-center gap-3 bg-emerald-50 px-5 py-2.5 rounded-xl border border-emerald-100/50">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
+                <span className="text-label font-body font-bold text-emerald-600 uppercase tracking-[0.08em]">Marketplace Online</span>
+              </div>
 
-                <div className="h-10 w-px bg-slate-100 mx-2" />
-
-                <button className="relative w-12 h-12 rounded-2xl bg-white flex items-center justify-center border border-slate-100 hover:border-primary/20 transition-all group shadow-sm">
-                    <Bell size={20} className="text-slate-300 group-hover:text-primary transition-colors" />
-                    <span className="absolute top-3.5 right-3.5 w-2 h-2 bg-primary rounded-full border-2 border-white shadow-sm" />
-                </button>
-                
-                <div className="h-12 w-12 bg-slate-950 rounded-2xl flex items-center justify-center text-primary shadow-2xl shadow-slate-950/20">
-                    <User size={20} />
+              <button className="flex items-center gap-3 h-12 px-4 lg:px-5 rounded-2xl bg-white border border-slate-100 hover:border-primary/20 transition-all group shadow-sm">
+                <div className="relative w-10 h-10 rounded-2xl bg-slate-50 flex items-center justify-center">
+                  <Bell size={18} className="text-slate-300 group-hover:text-primary transition-colors" />
+                  <span className="absolute top-2 right-2 w-2 h-2 bg-primary rounded-full border-2 border-white shadow-sm" />
                 </div>
+                <div className="hidden sm:flex flex-col items-start leading-none">
+                  <span className="text-[10px] font-black text-slate-300 uppercase tracking-[0.24em]">Avisos</span>
+                  <span className="text-[11px] font-bold text-slate-950 uppercase tracking-[0.08em]">1 pendência</span>
+                </div>
+              </button>
+
+              <button className="flex items-center gap-3 h-12 px-4 lg:px-5 rounded-2xl bg-slate-950 text-white shadow-2xl shadow-slate-950/20">
+                <div className="w-10 h-10 rounded-2xl bg-white/10 flex items-center justify-center text-primary shrink-0">
+                  <User size={18} />
+                </div>
+                <div className="hidden sm:flex flex-col items-start leading-none min-w-0">
+                  <span className="text-[10px] font-black text-white/40 uppercase tracking-[0.24em]">Perfil</span>
+                  <span className="text-[11px] font-bold text-white uppercase tracking-[0.08em] truncate max-w-40">{storeLabel}</span>
+                </div>
+              </button>
             </div>
         </header>
 

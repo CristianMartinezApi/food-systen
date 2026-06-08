@@ -64,6 +64,12 @@ const seedSettings = async () => {
             phone: '(11) 99999-9999',
             address: 'Rua das Flores, 123 - Centro',
             bio: 'O melhor hambúrguer artesanal da região, feito com ingredientes frescos e selecionados.',
+            bannerBadge: 'O mais desejado de 2024',
+            bannerTitleLine1: 'Sabor que',
+            bannerTitleLine2: 'Transforma',
+            bannerDescription: 'Experiência gastronômica executiva com ingredientes selecionados e preparo artesanal.',
+            bannerCtaLabel: 'Explorar Menu',
+            bannerImage: 'https://images.unsplash.com/photo-1550547660-d9450f859349?q=80&w=2000',
             operatingHours: {
               seg: { enabled: true, shifts: [{ open: '18:00', close: '23:00' }] },
               ter: { enabled: true, shifts: [{ open: '18:00', close: '23:00' }] },
@@ -162,6 +168,12 @@ app.post('/api/auth/register', async (req, res) => {
         settings: {
           create: {
             storeName: restaurantName,
+            bannerBadge: 'O mais desejado de 2024',
+            bannerTitleLine1: 'Sabor que',
+            bannerTitleLine2: 'Transforma',
+            bannerDescription: 'Experiência gastronômica executiva com ingredientes selecionados e preparo artesanal.',
+            bannerCtaLabel: 'Explorar Menu',
+            bannerImage: 'https://images.unsplash.com/photo-1550547660-d9450f859349?q=80&w=2000',
           }
         }
       },

@@ -19,7 +19,7 @@ gsap.registerPlugin(ScrollTrigger);
 
 export default function Home() {
   const { products, categories, isLoading: productsLoading } = useProducts() as any;
-  const { isLoading: settingsLoading } = useSettings();
+  const { settings, isLoading: settingsLoading } = useSettings();
   const [activeCategory, setActiveCategory] = useState<number | 'all'>('all');
   const [isNavOpen, setIsNavOpen] = useState(false);
 
@@ -99,6 +99,13 @@ export default function Home() {
     return products.filter((p: any) => p.categoryId === activeCategory);
   }, [products, activeCategory]);
 
+  const heroBadge = settings?.bannerBadge || "O mais desejado de 2024";
+  const heroTitleLine1 = settings?.bannerTitleLine1 || "Sabor que";
+  const heroTitleLine2 = settings?.bannerTitleLine2 || "Transforma";
+  const heroDescription = settings?.bannerDescription || settings?.bio || "Experiência gastronômica executiva com ingredientes selecionados e preparo artesanal.";
+  const heroCtaLabel = settings?.bannerCtaLabel || "Explorar Menu";
+  const heroImage = settings?.bannerImage || "https://images.unsplash.com/photo-1550547660-d9450f859349?q=80&w=2000";
+
   if (productsLoading) {
     return (
       <div className="min-h-screen bg-slate-50 flex flex-col">
@@ -136,9 +143,9 @@ export default function Home() {
             {/* Background Art */}
             <div className="absolute inset-0 z-0">
               <img 
-                src="https://images.unsplash.com/photo-1550547660-d9450f859349?q=80&w=2000" 
+                src={heroImage}
                 className="w-full h-full object-cover opacity-60 scale-105"
-                alt="Fundo Gourmet"
+                alt={settings?.storeName || "Fundo Gourmet"}
               />
               <div className="absolute inset-0 bg-linear-to-r from-slate-950 via-slate-950/40 to-transparent" />
               <div className="absolute inset-x-0 bottom-0 h-1/2 bg-linear-to-t from-slate-950 to-transparent" />
@@ -149,17 +156,17 @@ export default function Home() {
                 <div className="home-hero-badge flex items-center gap-4 mb-6 md:mb-8">
                   <div className="bg-primary/20 backdrop-blur-xl border border-primary/30 px-4 py-1.5 rounded-full flex items-center gap-2">
                     <Flame size={14} className="text-primary fill-primary animate-pulse" />
-                    <span className="text-primary text-[10px] font-bold uppercase tracking-[0.3em]">O mais desejado de 2024</span>
+                    <span className="text-primary text-[10px] font-bold uppercase tracking-[0.3em]">{heroBadge}</span>
                   </div>
                 </div>
 
                 <h1 className="home-hero-title text-5xl md:text-display font-display text-white leading-[0.9] md:leading-[0.85] tracking-tighter uppercase mb-6 drop-shadow-2xl">
-                  Sabor que <br/>
-                  <span className="text-primary text-outline-white">Transforma</span>
+                  {heroTitleLine1} <br/>
+                  <span className="text-primary text-outline-white">{heroTitleLine2}</span>
                 </h1>
                 
                 <p className="home-hero-copy text-lg md:text-xl text-slate-300 font-medium max-w-xl leading-relaxed">
-                  Experiência gastronômica executiva com ingredientes selecionados e preparo artesanal.
+                  {heroDescription}
                 </p>
               </div>
 
@@ -172,7 +179,7 @@ export default function Home() {
                     el?.scrollIntoView({ behavior: 'smooth' });
                   }}
                 >
-                  Explorar Menu
+                  {heroCtaLabel}
                   <ArrowRight size={18} className="ml-2 group-hover:translate-x-1 transition-transform" />
                 </Button>
                 

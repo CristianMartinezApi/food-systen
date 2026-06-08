@@ -1,0 +1,6 @@
+ALTER TABLE "settings" ADD COLUMN IF NOT EXISTS "bannerBadge" TEXT;
+ALTER TABLE "settings" ADD COLUMN IF NOT EXISTS "bannerTitleLine1" TEXT;
+ALTER TABLE "settings" ADD COLUMN IF NOT EXISTS "bannerTitleLine2" TEXT;
+ALTER TABLE "settings" ADD COLUMN IF NOT EXISTS "bannerDescription" TEXT;
+ALTER TABLE "settings" ADD COLUMN IF NOT EXISTS "bannerCtaLabel" TEXT;
+ALTER TABLE "settings" ADD COLUMN IF NOT EXISTS "bannerImage" TEXT;
