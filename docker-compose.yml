@@ -2,7 +2,7 @@ services:
   # Frontend (Next.js)
   frontend:
     build:
-      context: ./apps/web
+      context: ./front-end
       dockerfile: Dockerfile
     ports:
       - "8081:3000"
@@ -14,7 +14,7 @@ services:
   # Backend (Node.js/Express)
   backend:
     build:
-      context: ./apps/api
+      context: ./back-end
       dockerfile: Dockerfile
     command: sh -c "npx prisma db push --accept-data-loss && npm start"
     ports:

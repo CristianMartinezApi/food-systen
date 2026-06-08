@@ -15,6 +15,8 @@ Sistema de cardápio digital completo com cliente e painel administrativo, focad
 
 ## 📁 Estrutura do Projeto
 
+- `back-end`: API Node.js/Express, Prisma e migrations.
+- `front-end`: Aplicação web (cliente e painel administrativo).
 - `src/app/client`: Aplicação voltada para o cliente final.
 - `src/app/admin`: Painel administrativo para gestão do estabelecimento.
 - `src/shared`: Componentes, hooks e utils compartilhados.
