@@ -205,6 +205,10 @@ app.post('/api/auth/login', async (req, res) => {
       return res.status(403).json({ error: 'Conta aguardando liberação do super admin' });
     }
 
+    if (!user.isActive && user.role !== 'SUPER_ADMIN') {
+      return res.status(403).json({ error: 'Conta desativada. Contate o Super Admin.' });
+    }
+
     const token = jwt.sign(
       { id: user.id, role: user.role, restaurantId: user.restaurantId },
       JWT_SECRET,
@@ -387,6 +391,55 @@ app.patch('/api/admin/users/:id/approve', authMiddleware, async (req: AuthReques
   await createAudit(req, 'approve_user', 'user', userId, { note: 'Approved by super admin' });
 
   res.json(user);
+});
+
+// Ativar usuário (SUPER_ADMIN)
+app.patch('/api/admin/users/:id/activate', authMiddleware, async (req: AuthRequest, res) => {
+  if (req.userRole !== 'SUPER_ADMIN') {
+    return res.status(403).json({ error: 'Acesso restrito ao super admin' });
+  }
+
+  const userId = Number(req.params.id);
+  try {
+    const user = await prisma.user.update({ where: { id: userId }, data: { isActive: true } });
+    await createAudit(req, 'activate_user', 'user', userId, {});
+    res.json(user);
+  } catch (error) {
+    console.error('Error activating user:', error);
+    res.status(400).json({ error: 'Erro ao ativar usuário' });
+  }
+});
+
+// Pausar usuário (SUPER_ADMIN)
+app.patch('/api/admin/users/:id/pause', authMiddleware, async (req: AuthRequest, res) => {
+  if (req.userRole !== 'SUPER_ADMIN') {
+    return res.status(403).json({ error: 'Acesso restrito ao super admin' });
+  }
+
+  const userId = Number(req.params.id);
+  try {
+    const user = await prisma.user.update({ where: { id: userId }, data: { isActive: false } });
+    await createAudit(req, 'pause_user', 'user', userId, {});
+    res.json(user);
+  } catch (error) {
+    console.error('Error pausing user:', error);
+    res.status(400).json({ error: 'Erro ao pausar usuário' });
+  }
+});
+
+// Usuário pausa a própria conta (autenticado)
+app.post('/api/users/me/pause', authMiddleware, async (req: AuthRequest, res) => {
+  try {
+    const userId = req.userId;
+    if (!userId) return res.status(401).json({ error: 'Não autenticado' });
+
+    const user = await prisma.user.update({ where: { id: userId }, data: { isActive: false } });
+    await createAudit(req, 'self_pause', 'user', userId, {});
+    res.json({ message: 'Conta pausada' });
+  } catch (error) {
+    console.error('Error pausing self:', error);
+    res.status(400).json({ error: 'Erro ao pausar conta' });
+  }
 });
 
 // Editar usuário (SUPER_ADMIN)

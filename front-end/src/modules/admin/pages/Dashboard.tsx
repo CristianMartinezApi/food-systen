@@ -118,7 +118,7 @@ export default function Dashboard() {
                    navigator.clipboard.writeText(storeUrl);
                    toast.success("Link copiado para a área de transferência!");
                 }}
-                className="h-16 px-10 bg-white text-slate-950 rounded-2xl font-body font-bold text-label uppercase tracking-[0.06em] hover:bg-primary hover:text-white transition-all shadow-xl active:scale-95 flex items-center justify-center gap-3"
+                 className="h-16 px-10 bg-white text-slate-950 rounded-full font-body font-bold text-label uppercase tracking-[0.06em] hover:bg-primary hover:text-white transition-all shadow-xl active:scale-95 flex items-center justify-center gap-3"
              >
                 Copiando Link
              </button> 
@@ -262,7 +262,7 @@ export default function Dashboard() {
                       <p className="text-body-strong font-body font-bold text-slate-950 uppercase tracking-tight leading-none mb-1.5">{item.name}</p>
                       <p className="text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em]">{item.sales}</p>
                     </div>
-                    <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center group-hover:bg-slate-950 group-hover:text-white transition-all duration-500">
+                    <div className="w-12 h-12 bg-slate-50 rounded-full flex items-center justify-center group-hover:bg-slate-950 group-hover:text-white transition-all duration-500">
                       <ArrowUpRight size={20} />
                     </div>
                   </div>
@@ -292,10 +292,10 @@ export default function Dashboard() {
 
 function QuickAction({ icon: Icon, label, path, color }: any) {
     return (
-        <Link href={path} className={cn(
-            "p-5 rounded-2xl flex flex-col items-center justify-center gap-3 transition-all hover:scale-105 active:scale-95 group",
-            color
-        )}>
+      <Link href={path} className={cn(
+        "p-5 rounded-full flex flex-col items-center justify-center gap-3 transition-all hover:scale-105 active:scale-95 group",
+        color
+      )}>
             <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center text-white group-hover:bg-white group-hover:text-slate-900 transition-colors">
                 <Icon size={20} />
             </div>
@@ -314,7 +314,7 @@ function StatCard({ title, value, trend, icon: Icon, color }: any) {
       
       <div className="relative z-10">
         <div className="flex items-center justify-between mb-6">
-            <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-lg", color)}>
+            <div className={cn("w-12 h-12 rounded-full flex items-center justify-center text-white shadow-lg", color)}>
                 <Icon size={24} />
             </div>
             <span className={cn(
