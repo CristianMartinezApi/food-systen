@@ -43,7 +43,7 @@ export default function Login() {
       
       toast.success("Bem-vindo de volta!");
       if (response.user.role === 'SUPER_ADMIN') {
-        router.push("/admin/clients");
+        router.push("/admin");
       } else if (response.user.restaurantId) {
         router.push("/admin");
       } else {

@@ -18,7 +18,25 @@ import { cn } from "../../../../shared/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { getTenantSlug } from "../../../../shared/utils/tenant";
 import { useSettings } from "../../../../core/hooks/useSettings";
-import { useState, useEffect } from "react";
+import { api } from "../../../../core/config/api";
+import { socket } from "../../../../core/config/socket";
+import { useState, useEffect, useMemo, useRef } from "react";
+
+type PendingUserNotice = {
+  id: number;
+  name: string;
+  email: string;
+  restaurant?: { name?: string | null } | null;
+  createdAt: string;
+};
+
+type PendingRestaurantNotice = {
+  id: number;
+  name: string;
+  slug: string;
+  provisioningStatus: string;
+  createdAt: string;
+};
 
 interface AdminLayoutProps {
   children: ReactNode;
@@ -31,6 +49,12 @@ export function AdminLayout({ children }: AdminLayoutProps) {
   const [slug, setSlug] = useState<string>("");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [userRole, setUserRole] = useState<string>("");
+  const [pendingCount, setPendingCount] = useState<number | null>(null);
+  const [isNoticesOpen, setIsNoticesOpen] = useState(false);
+  const [pendingUsers, setPendingUsers] = useState<PendingUserNotice[]>([]);
+  const [pendingRestaurants, setPendingRestaurants] = useState<PendingRestaurantNotice[]>([]);
+  const [noticesLoading, setNoticesLoading] = useState(false);
+  const noticesRef = useRef<HTMLDivElement>(null);
   const storeLabel = settings?.storeName || "Master Admin";
 
   useEffect(() => {
@@ -46,6 +70,119 @@ export function AdminLayout({ children }: AdminLayoutProps) {
       }
     }
   }, []);
+
+  useEffect(() => {
+    if (!userRole) return;
+
+    socket.connect();
+
+    return () => {
+      socket.disconnect();
+    };
+  }, [userRole]);
+
+  useEffect(() => {
+    if (userRole !== 'SUPER_ADMIN') {
+      setPendingCount(null);
+      setPendingUsers([]);
+      setPendingRestaurants([]);
+      return;
+    }
+
+    const loadPendingCount = async () => {
+      try {
+        const [usersResponse, restaurantsResponse] = await Promise.all([
+          api.get('/admin/users?filter=pending&page=1&perPage=1'),
+          api.get('/admin/provisioning')
+        ]);
+
+        const totalPendingUsers = Number(usersResponse?.total || 0);
+        const totalPendingRestaurants = (restaurantsResponse || []).filter((restaurant: PendingRestaurantNotice) =>
+          ['PENDING', 'IN_PROGRESS', 'PAUSED', 'DENIED'].includes(restaurant.provisioningStatus)
+        ).length;
+        const totalPending = totalPendingUsers + totalPendingRestaurants;
+
+        setPendingCount(totalPending);
+      } catch {
+        setPendingCount(0);
+      }
+    };
+
+    loadPendingCount();
+  }, [userRole]);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (noticesRef.current && !noticesRef.current.contains(event.target as Node)) {
+        setIsNoticesOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const noticeSummary = useMemo(() => {
+    const total = (pendingUsers.length || 0) + (pendingRestaurants.length || 0);
+
+    if (userRole !== 'SUPER_ADMIN') {
+      return { label: 'Sem alertas', count: 0 };
+    }
+
+    if (noticesLoading) {
+      return { label: 'Carregando...', count: pendingCount ?? 0 };
+    }
+
+    if (pendingCount === null) {
+      return { label: 'Carregando...', count: 0 };
+    }
+
+    if (pendingCount === 0) {
+      return { label: 'Sem pendências', count: 0 };
+    }
+
+    return {
+      label: `${pendingCount} pendência${pendingCount > 1 ? 's' : ''}`,
+      count: total,
+    };
+  }, [userRole, noticesLoading, pendingCount, pendingUsers.length, pendingRestaurants.length]);
+
+  const openNotices = async () => {
+    if (userRole !== 'SUPER_ADMIN') return;
+
+    setIsNoticesOpen((current) => !current);
+
+    if (pendingCount === 0 || noticesLoading || (pendingUsers.length > 0 || pendingRestaurants.length > 0)) {
+      return;
+    }
+
+    setNoticesLoading(true);
+    try {
+      const [usersResponse, restaurantsResponse] = await Promise.all([
+        api.get('/admin/users?filter=pending&page=1&perPage=5'),
+        api.get('/admin/provisioning')
+      ]);
+
+      setPendingUsers((usersResponse?.data || []).map((user: any) => ({
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        restaurant: user.restaurant,
+        createdAt: user.createdAt,
+      })));
+
+      setPendingRestaurants(
+        (restaurantsResponse || [])
+          .filter((restaurant: PendingRestaurantNotice) => ['PENDING', 'IN_PROGRESS', 'PAUSED', 'DENIED'].includes(restaurant.provisioningStatus))
+          .slice(0, 5)
+      );
+    } catch {
+      setPendingUsers([]);
+      setPendingRestaurants([]);
+    } finally {
+      setNoticesLoading(false);
+    }
+  };
 
   const handleLogout = () => {
     localStorage.removeItem("@FoodSystem:token");
@@ -68,7 +205,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
       { icon: LayoutDashboard, label: "Painel", path: "/admin" },
       { icon: Users, label: "Clientes", path: "/admin/clients" },
       { icon: ExternalLink, label: "Auditoria", path: "/admin/audit" },
-      { icon: Settings, label: "Configurações", path: "/admin/settings" },
+      { icon: Settings, label: "Provisionamento", path: "/admin/provisioning" },
     ];
   }
 
@@ -148,16 +285,18 @@ export function AdminLayout({ children }: AdminLayoutProps) {
         </nav>
 
         {/* Ver Loja */}
-        <div className="px-8 mb-4">
+        {userRole !== 'SUPER_ADMIN' && (
+          <div className="px-8 mb-4">
             <a 
-                href={storeUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="flex items-center justify-center gap-3 w-full h-14 bg-white border border-slate-100 text-slate-400 rounded-2xl text-label font-body font-bold uppercase tracking-[0.06em] hover:bg-slate-50 hover:border-primary/20 hover:text-primary transition-all shadow-sm"
+              href={storeUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="flex items-center justify-center gap-3 w-full h-14 bg-white border border-slate-100 text-slate-400 rounded-2xl text-label font-body font-bold uppercase tracking-[0.06em] hover:bg-slate-50 hover:border-primary/20 hover:text-primary transition-all shadow-sm"
             >
-                Acessar Vitrine <ExternalLink size={14} />
+              Acessar Vitrine <ExternalLink size={14} />
             </a>
-        </div>
+          </div>
+        )}
 
         <div className="p-8 border-t border-slate-50">
            <div className="bg-slate-50 rounded-4xl p-5 flex items-center gap-4 mb-6 border border-slate-100">
@@ -205,16 +344,119 @@ export function AdminLayout({ children }: AdminLayoutProps) {
                 <span className="text-label font-body font-bold text-emerald-600 uppercase tracking-[0.08em]">Marketplace Online</span>
               </div>
 
-              <button className="flex items-center gap-3 h-12 px-4 lg:px-5 rounded-2xl bg-white border border-slate-100 hover:border-primary/20 transition-all group shadow-sm">
+              <div ref={noticesRef} className="relative">
+                <button
+                  onClick={openNotices}
+                  className="flex items-center gap-3 h-12 px-4 lg:px-5 rounded-2xl bg-white border border-slate-100 hover:border-primary/20 transition-all group shadow-sm disabled:cursor-default"
+                  disabled={userRole !== 'SUPER_ADMIN'}
+                >
                 <div className="relative w-10 h-10 rounded-2xl bg-slate-50 flex items-center justify-center">
                   <Bell size={18} className="text-slate-300 group-hover:text-primary transition-colors" />
-                  <span className="absolute top-2 right-2 w-2 h-2 bg-primary rounded-full border-2 border-white shadow-sm" />
+                  {pendingCount && pendingCount > 0 ? (
+                    <span className="absolute top-2 right-2 min-w-4 h-4 px-1 rounded-full bg-primary text-[10px] font-black leading-4 text-white border-2 border-white shadow-sm text-center">
+                      {pendingCount}
+                    </span>
+                  ) : (
+                    <span className="absolute top-2 right-2 w-2 h-2 bg-slate-200 rounded-full border-2 border-white shadow-sm" />
+                  )}
                 </div>
                 <div className="hidden sm:flex flex-col items-start leading-none">
                   <span className="text-[10px] font-black text-slate-300 uppercase tracking-[0.24em]">Avisos</span>
-                  <span className="text-[11px] font-bold text-slate-950 uppercase tracking-[0.08em]">1 pendência</span>
+                  <span className="text-[11px] font-bold text-slate-950 uppercase tracking-[0.08em]">
+                    {noticeSummary.label}
+                  </span>
                 </div>
-              </button>
+                </button>
+
+                {isNoticesOpen && userRole === 'SUPER_ADMIN' && (
+                  <div className="absolute right-0 top-14 z-50 w-[min(92vw,28rem)] rounded-3xl border border-slate-100 bg-white shadow-[0_28px_80px_rgba(15,23,42,0.18)] overflow-hidden">
+                    <div className="border-b border-slate-100 px-5 py-4 flex items-center justify-between">
+                      <div>
+                        <p className="text-[10px] font-black uppercase tracking-[0.24em] text-slate-300">Avisos reais</p>
+                        <h3 className="mt-1 text-sm font-black uppercase tracking-tight text-slate-950">Pendências que exigem ação</h3>
+                      </div>
+                      <span className="rounded-full bg-slate-950 px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-white">
+                        {pendingCount ?? 0}
+                      </span>
+                    </div>
+
+                    <div className="max-h-96 overflow-auto p-4 space-y-4">
+                      {noticesLoading ? (
+                        <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-500">
+                          Carregando pendências...
+                        </div>
+                      ) : pendingCount === 0 ? (
+                        <div className="rounded-2xl border border-emerald-100 bg-emerald-50/70 px-4 py-6 text-sm font-medium text-emerald-700">
+                          Nenhuma pendência aberta no momento.
+                        </div>
+                      ) : (
+                        <>
+                          <section className="space-y-2">
+                            <div className="flex items-center justify-between">
+                              <h4 className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-400">Usuários pendentes</h4>
+                              <button onClick={() => router.push('/admin/clients')} className="text-[10px] font-black uppercase tracking-[0.18em] text-primary">Ver todos</button>
+                            </div>
+                            {pendingUsers.length === 0 ? (
+                              <div className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3 text-sm text-slate-500">Nenhum usuário aguardando aprovação.</div>
+                            ) : pendingUsers.map((user) => (
+                              <button
+                                key={user.id}
+                                onClick={() => router.push('/admin/clients?filter=pending')}
+                                className="w-full text-left rounded-2xl border border-slate-100 bg-white px-4 py-3 hover:border-primary/20 hover:bg-primary/5 transition-all"
+                              >
+                                <div className="flex items-start justify-between gap-3">
+                                  <div className="min-w-0">
+                                    <p className="text-sm font-bold text-slate-950 truncate">{user.name}</p>
+                                    <p className="mt-0.5 text-xs text-slate-500 truncate">{user.email}</p>
+                                    <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">
+                                      {user.restaurant?.name ? `Loja: ${user.restaurant.name}` : 'Sem loja vinculada'}
+                                    </p>
+                                  </div>
+                                  <span className="rounded-full bg-amber-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-amber-600">Aprovar</span>
+                                </div>
+                              </button>
+                            ))}
+                          </section>
+
+                          <section className="space-y-2">
+                            <div className="flex items-center justify-between">
+                              <h4 className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-400">Lojas em atenção</h4>
+                              <button onClick={() => router.push('/admin/provisioning')} className="text-[10px] font-black uppercase tracking-[0.18em] text-primary">Provisionamento</button>
+                            </div>
+                            {pendingRestaurants.length === 0 ? (
+                              <div className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3 text-sm text-slate-500">Nenhuma loja em fila ou pausa.</div>
+                            ) : pendingRestaurants.map((restaurant) => (
+                              <button
+                                key={restaurant.id}
+                                onClick={() => router.push('/admin/provisioning')}
+                                className="w-full text-left rounded-2xl border border-slate-100 bg-white px-4 py-3 hover:border-primary/20 hover:bg-primary/5 transition-all"
+                              >
+                                <div className="flex items-start justify-between gap-3">
+                                  <div className="min-w-0">
+                                    <p className="text-sm font-bold text-slate-950 truncate">{restaurant.name}</p>
+                                    <p className="mt-0.5 text-xs text-slate-500 truncate">Slug: {restaurant.slug}</p>
+                                    <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">Status: {restaurant.provisioningStatus}</p>
+                                  </div>
+                                  <span className="rounded-full bg-slate-950 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-white">Abrir</span>
+                                </div>
+                              </button>
+                            ))}
+                          </section>
+                        </>
+                      )}
+                    </div>
+
+                    <div className="border-t border-slate-100 px-5 py-3 bg-slate-50 flex items-center justify-between gap-3">
+                      <button onClick={() => router.push('/admin/clients?filter=pending')} className="text-xs font-black uppercase tracking-[0.16em] text-slate-500 hover:text-slate-950 transition-colors">
+                        Gerenciar usuários
+                      </button>
+                      <button onClick={() => router.push('/admin/provisioning')} className="text-xs font-black uppercase tracking-[0.16em] text-primary hover:opacity-80 transition-colors">
+                        Abrir provisionamento
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
 
               <button className="flex items-center gap-3 h-12 px-4 lg:px-5 rounded-2xl bg-slate-950 text-white shadow-2xl shadow-slate-950/20">
                 <div className="w-10 h-10 rounded-2xl bg-white/10 flex items-center justify-center text-primary shrink-0">

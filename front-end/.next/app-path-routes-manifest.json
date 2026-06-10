@@ -1,18 +1,19 @@
 {
   "/_not-found/page": "/_not-found",
+  "/[slug]/checkout/page": "/[slug]/checkout",
   "/[slug]/page": "/[slug]",
   "/[slug]/orders/page": "/[slug]/orders",
-  "/[slug]/checkout/page": "/[slug]/checkout",
   "/admin/register/page": "/admin/register",
   "/admin/login/page": "/admin/login",
-  "/page": "/",
   "/admin/reset-password/page": "/admin/reset-password",
-  "/admin/(dashboard)/audit/page": "/admin/audit",
-  "/admin/(dashboard)/onboarding/page": "/admin/onboarding",
-  "/admin/(dashboard)/orders/page": "/admin/orders",
-  "/admin/(dashboard)/categories/page": "/admin/categories",
+  "/page": "/",
   "/admin/(dashboard)/clients/page": "/admin/clients",
+  "/admin/(dashboard)/categories/page": "/admin/categories",
+  "/admin/(dashboard)/onboarding/page": "/admin/onboarding",
+  "/admin/(dashboard)/audit/page": "/admin/audit",
+  "/admin/(dashboard)/orders/page": "/admin/orders",
+  "/admin/(dashboard)/provisioning/page": "/admin/provisioning",
+  "/admin/(dashboard)/page": "/admin",
   "/admin/(dashboard)/products/page": "/admin/products",
-  "/admin/(dashboard)/settings/page": "/admin/settings",
-  "/admin/(dashboard)/page": "/admin"
+  "/admin/(dashboard)/settings/page": "/admin/settings"
 }

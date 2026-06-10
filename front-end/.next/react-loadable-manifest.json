@@ -10,5 +10,11 @@
     "files": [
       "static/chunks/646.f342b7cffc01feb0.js"
     ]
+  },
+  "src\\modules\\admin\\pages\\Dashboard\\index.tsx -> react-chartjs-2": {
+    "id": 877,
+    "files": [
+      "static/chunks/258.789a37a05fbd6949.js"
+    ]
   }
 }

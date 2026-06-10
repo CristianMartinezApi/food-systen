@@ -5,6 +5,7 @@ Sistema de cardápio digital completo com cliente SaaS e painel administrativo, 
 ## 🚀 Stack Tecnológico
 
 ### Frontend
+
 - **Next.js 15.5** (App Router) + **React 19**
 - **TypeScript** (Type-safe)
 - **Tailwind CSS 4.0** (Estilização moderna)
@@ -15,6 +16,7 @@ Sistema de cardápio digital completo com cliente SaaS e painel administrativo, 
 - **GSAP** (Animações avançadas)
 
 ### Backend
+
 - **Node.js 20+** (Runtime)
 - **Express** (Framework HTTP)
 - **TypeScript**
@@ -24,6 +26,7 @@ Sistema de cardápio digital completo com cliente SaaS e painel administrativo, 
 - **bcryptjs** (Hashing de senhas)
 
 ### Infraestrutura
+
 - **Docker & Docker Compose** (Containerização)
 - **PostgreSQL 15-alpine** (Banco de dados)
 - **Nginx** (Reverse proxy no frontend)
@@ -94,6 +97,7 @@ food-systen/
 ## 🛠️ Como Executar
 
 ### Pré-requisitos
+
 - Docker & Docker Compose instalados
 - Node.js 20+ (para desenvolvimento local sem Docker)
 
@@ -137,6 +141,7 @@ docker compose down
 ## 🔑 Credenciais Padrão (Desenvolvimento)
 
 Os containers são iniciados com seeding automático:
+
 - **Usuário Super Admin:** `superadmin@foodsystem.com` / `superadmin123`
 - **Usuário Admin Padrão:** `admin@restaurant.com` / `AdminPass2026Secure`
 
@@ -145,6 +150,7 @@ Os containers são iniciados com seeding automático:
 ## ✨ Funcionalidades Implementadas
 
 ### Cliente (SaaS)
+
 - [x] Catálogo de produtos por restaurante
 - [x] Carrinho de compras persistente
 - [x] Checkout com validação
@@ -155,6 +161,7 @@ Os containers são iniciados com seeding automático:
 - [x] Delivery ETA
 
 ### Painel Administrativo
+
 - [x] Dashboard com métricas
 - [x] Gerenciamento de cardápio
 - [x] Gestão de pedidos
@@ -164,6 +171,7 @@ Os containers são iniciados com seeding automático:
 - [x] Controle multi-tenant
 
 ### Segurança & DevOps
+
 - [x] Autenticação JWT
 - [x] Multi-tenant com isolamento
 - [x] Rate limiting
@@ -174,19 +182,23 @@ Os containers são iniciados com seeding automático:
 ## 📊 Endpoints Principais
 
 ### Autenticação
+
 - `POST /api/auth/login` - Login de usuários
 - `POST /api/auth/refresh` - Renovar token
 
 ### Restaurante
+
 - `GET /api/restaurants/:slug` - Dados do restaurante
 - `GET /api/settings` - Configurações da loja
 - `PUT /api/settings` - Atualizar configurações
 
 ### Admin (SUPER_ADMIN)
+
 - `GET /api/admin/audit-logs` - Logs de auditoria
 - `GET /api/admin/dashboard` - Métricas
 
 ### Pedidos
+
 - `POST /api/orders` - Criar pedido
 - `GET /api/orders` - Listar pedidos do usuário
 - `GET /api/orders/:id` - Detalhes do pedido
@@ -194,6 +206,7 @@ Os containers são iniciados com seeding automático:
 ## 🚀 Deployment
 
 O projeto está pronto para deploy em:
+
 - ✅ Docker (Self-hosted)
 - ✅ Railway / Heroku / Render (com adjustments)
 - ✅ AWS ECS
@@ -222,16 +235,19 @@ INITIAL_ADMIN_PASSWORD=outrassenhaforte
 ## 🐛 Troubleshooting
 
 ### Containers não iniciando
+
 ```bash
 docker compose logs -f
 ```
 
 ### Banco de dados não conectando
+
 ```bash
 docker compose exec db psql -U postgres -d food_db -c "SELECT 1"
 ```
 
 ### Limpar e reconstruir
+
 ```bash
 docker compose down -v
 docker compose up -d --build

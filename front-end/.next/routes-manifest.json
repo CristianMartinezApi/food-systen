@@ -106,6 +106,12 @@
       "namedRegex": "^/admin/products(?:/)?$"
     },
     {
+      "page": "/admin/provisioning",
+      "regex": "^/admin/provisioning(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/admin/provisioning(?:/)?$"
+    },
+    {
       "page": "/admin/register",
       "regex": "^/admin/register(?:/)?$",
       "routeKeys": {},
