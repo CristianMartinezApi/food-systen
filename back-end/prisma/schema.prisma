@@ -70,6 +70,8 @@ model User {
   updatedAt    DateTime    @updatedAt
   restaurant   Restaurant? @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
   auditLogs    AuditLog[]
+  passwordChangeAttempts PasswordChangeAttempt[]
+  passwordResetTokens PasswordResetToken[]
 
   @@index([restaurantId])
   @@map("users")
@@ -257,4 +259,38 @@ model AuditLog {
 
   @@index([actorId])
   @@map("audit_logs")
+}
+
+model PasswordChangeAttempt {
+  id           Int      @id @default(autoincrement())
+  userId       Int
+  success      Boolean  @default(false)
+  reason       String?  // "Invalid current password", "Weak password", etc
+  ipAddress    String?
+  userAgent    String?
+  createdAt    DateTime @default(now())
+
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([createdAt])
+  @@map("password_change_attempts")
+}
+
+model PasswordResetToken {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  email     String   // Cópia do email para rastreamento
+  token     String   @unique // Token criptografado/hash
+  used      Boolean  @default(false)
+  usedAt    DateTime?
+  expiresAt DateTime // Válido por 1 hora
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([email])
+  @@index([expiresAt])
+  @@map("password_reset_tokens")
 }

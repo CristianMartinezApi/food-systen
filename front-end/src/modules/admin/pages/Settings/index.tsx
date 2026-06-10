@@ -27,6 +27,7 @@ import { cn } from "../../../../shared/utils";
 import toast from "react-hot-toast";
 import { gsap } from "gsap";
 import { createDefaultOperatingHours, getNextOpeningLabel, isRestaurantOpenNow, normalizeOperatingHours } from "../../../../shared/utils/schedule";
+import ChangePassword from "../../components/ChangePassword";
 
 const DAY_OPTIONS = [
     { key: "seg", label: "Segunda" },
@@ -808,6 +809,9 @@ export default function SettingsPage() {
                     Falar com Suporte
                  </button>
             </div>
+
+            {/* Componente de Segurança - Mudança de Senha */}
+            <ChangePassword />
         </div>
       </div>
         </div>

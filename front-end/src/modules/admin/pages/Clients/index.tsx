@@ -5,6 +5,7 @@ import { api } from "@/core/config/api";
 import { Loader2, Plus, Shield, Trash, Search, Users, Store, BadgeCheck, CirclePause, Sparkles, Filter } from "lucide-react";
 import toast from "react-hot-toast";
 import { gsap } from "gsap";
+import AdminResetPassword from "../../components/AdminResetPassword";
 
 interface AdminUser {
   id: number;
@@ -464,6 +465,12 @@ export default function ClientsPage() {
                     ) : (
                       <button onClick={() => handleActivateUser(u.id)} className="rounded-full bg-slate-900 px-4 py-3 text-[10px] font-black uppercase tracking-[0.2em] text-white">Ativar acesso</button>
                     )}
+                    <AdminResetPassword 
+                      userId={u.id}
+                      userEmail={u.email}
+                      userName={u.name}
+                      onSuccess={() => loadUsers()}
+                    />
                     <button onClick={() => handleEditUser(u)} className="rounded-full border border-slate-100 bg-slate-50 px-4 py-3 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Editar</button>
                     <button onClick={() => handleDeleteUser(u.id)} className="rounded-full bg-rose-600 px-4 py-3 text-[10px] font-black uppercase tracking-[0.2em] text-white">Excluir</button>
                   </div>

@@ -8,9 +8,43 @@ import { tenantMiddleware, TenantRequest } from './middlewares/tenant.middleware
 import { authMiddleware, AuthRequest } from './middlewares/auth.middleware';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
 import { getNextOpeningLabel, isRestaurantOpenNow, normalizeOperatingHours } from './utils/hours';
 
 dotenv.config();
+
+// --- VALIDAÇÃO DE SEGURANÇA ---
+
+// Gera um token criptográfico seguro para reset de senha
+function generatePasswordResetToken(): string {
+  return crypto.randomBytes(32).toString('hex');
+}
+
+// Valida força da senha (mín 8 chars, maiúscula, minúscula, número e caractere especial)
+function validatePasswordStrength(password: string): { isValid: boolean; errors: string[] } {
+  const errors: string[] = [];
+
+  if (password.length < 8) {
+    errors.push('Mínimo 8 caracteres');
+  }
+  if (!/[A-Z]/.test(password)) {
+    errors.push('Pelo menos 1 letra maiúscula');
+  }
+  if (!/[a-z]/.test(password)) {
+    errors.push('Pelo menos 1 letra minúscula');
+  }
+  if (!/[0-9]/.test(password)) {
+    errors.push('Pelo menos 1 número');
+  }
+  if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) {
+    errors.push('Pelo menos 1 caractere especial (!@#$%^&* etc)');
+  }
+
+  return {
+    isValid: errors.length === 0,
+    errors
+  };
+}
 
 const app = express();
 const httpServer = createServer(app);
@@ -218,6 +252,145 @@ app.post('/api/auth/login', async (req, res) => {
     res.json({ user, token, restaurant: user.restaurant });
   } catch (error) {
     res.status(500).json({ error: 'Erro ao fazer login' });
+  }
+});
+
+// Solicitar reset de senha
+app.post('/api/auth/forgot-password', async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ error: 'Email é obrigatório' });
+    }
+
+      // Validar formato de email
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        return res.status(400).json({ error: 'Email inválido' });
+      }
+
+      const user = await prisma.user.findUnique({ where: { email } });
+    
+    // Por segurança, sempre retorna sucesso mesmo se email não existe
+    if (!user) {
+      return res.json({ 
+        message: 'Se o email existir em nosso sistema, você receberá um link de reset de senha.' 
+      });
+    }
+
+    // Limpar tokens antigos (não utilizados, expirados ou usados há mais de 24h)
+    await prisma.passwordResetToken.deleteMany({
+      where: {
+        userId: user.id,
+        OR: [
+          { expiresAt: { lt: new Date() } },
+          { usedAt: { lt: new Date(Date.now() - 24 * 60 * 60 * 1000) } }
+        ]
+      }
+    });
+
+    // Gerar token de reset
+    const token = generatePasswordResetToken();
+    const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hora
+
+    await prisma.passwordResetToken.create({
+      data: {
+        userId: user.id,
+        email: user.email,
+        token,
+        expiresAt
+      }
+    });
+
+    // TODO: Integrar com serviço de email (SendGrid, AWS SES, etc)
+    // Por enquanto, apenas log
+    const resetLink = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/admin/reset-password?token=${token}`;
+    console.log(`📧 RESET PASSWORD EMAIL:
+      To: ${user.email}
+      Link: ${resetLink}
+      Valid for: 1 hour
+    `);
+
+    await createAudit(req, 'forgot_password_requested', 'user', user.id, { email: user.email });
+
+    res.json({ 
+      message: 'Se o email existir em nosso sistema, você receberá um link de reset de senha.' 
+    });
+  } catch (error) {
+    console.error('Error in forgot-password:', error);
+    res.status(500).json({ error: 'Erro ao processar solicitação' });
+  }
+});
+
+// Resetar senha com token
+app.post('/api/auth/reset-password', async (req, res) => {
+  try {
+    const { token, newPassword, confirmPassword } = req.body;
+
+    if (!token || !newPassword || !confirmPassword) {
+      return res.status(400).json({ error: 'Token e nova senha são obrigatórios' });
+    }
+
+    if (newPassword !== confirmPassword) {
+      return res.status(400).json({ error: 'Senhas não correspondem' });
+    }
+
+    // Validar força da nova senha
+    const passwordValidation = validatePasswordStrength(newPassword);
+    if (!passwordValidation.isValid) {
+      return res.status(400).json({ 
+        error: 'Senha fraca',
+        requirements: passwordValidation.errors
+      });
+    }
+
+    // Buscar token válido
+    const resetToken = await prisma.passwordResetToken.findUnique({
+      where: { token },
+      include: { user: true }
+    });
+
+    if (!resetToken) {
+      return res.status(404).json({ error: 'Token inválido ou expirado' });
+    }
+
+    if (resetToken.used) {
+      return res.status(400).json({ error: 'Este link de reset já foi utilizado' });
+    }
+
+    if (new Date() > resetToken.expiresAt) {
+      return res.status(400).json({ error: 'Link de reset expirou' });
+    }
+
+    // Hash da nova senha
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    // Atualizar senha do usuário
+    await prisma.user.update({
+      where: { id: resetToken.userId },
+      data: { password: hashedPassword }
+    });
+
+    // Marcar token como utilizado
+    await prisma.passwordResetToken.update({
+      where: { id: resetToken.id },
+      data: {
+        used: true,
+        usedAt: new Date()
+      }
+    });
+
+    // Auditoria
+    await createAudit(undefined, 'password_reset', 'user', resetToken.userId, { 
+      email: resetToken.email,
+      success: true
+    });
+
+    res.json({ message: 'Senha resetada com sucesso. Faça login com sua nova senha.' });
+  } catch (error) {
+    console.error('Error in reset-password:', error);
+    res.status(500).json({ error: 'Erro ao resetar senha' });
   }
 });
 
@@ -442,6 +615,133 @@ app.post('/api/users/me/pause', authMiddleware, async (req: AuthRequest, res) =>
   }
 });
 
+// Usuário muda sua própria senha (autenticado) - COM RATE LIMITING
+app.post('/api/users/me/change-password', authMiddleware, async (req: AuthRequest, res) => {
+  try {
+    const userId = req.userId;
+    if (!userId) return res.status(401).json({ error: 'Não autenticado' });
+
+    // --- RATE LIMITING: 5 tentativas a cada 15 minutos ---
+    const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000);
+    const recentAttempts = await prisma.passwordChangeAttempt.count({
+      where: {
+        userId,
+        createdAt: { gte: fifteenMinutesAgo }
+      }
+    });
+
+    if (recentAttempts >= 5) {
+      // Registrar tentativa bloqueada
+      const ipAddress = (req.headers['x-forwarded-for'] as string)?.split(',')[0] || req.socket.remoteAddress || 'unknown';
+      const userAgent = req.headers['user-agent'] || 'unknown';
+      
+      await prisma.passwordChangeAttempt.create({
+        data: {
+          userId,
+          success: false,
+          reason: 'Rate limit exceeded',
+          ipAddress,
+          userAgent
+        }
+      });
+
+      await createAudit(req, 'rate_limit_exceeded', 'user', userId, { 
+        reason: 'Too many password change attempts',
+        attempts: recentAttempts
+      });
+
+      return res.status(429).json({ 
+        error: 'Muitas tentativas de mudança de senha. Tente novamente em 15 minutos.',
+        retryAfter: 900
+      });
+    }
+
+    const { currentPassword, newPassword, confirmPassword } = req.body;
+
+    // Validações básicas
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      return res.status(400).json({ error: 'Todos os campos são obrigatórios' });
+    }
+
+    if (newPassword !== confirmPassword) {
+      return res.status(400).json({ error: 'Novas senhas não correspondem' });
+    }
+
+    if (currentPassword === newPassword) {
+      return res.status(400).json({ error: 'Nova senha deve ser diferente da atual' });
+    }
+
+    // Validar força da nova senha
+    const passwordValidation = validatePasswordStrength(newPassword);
+    if (!passwordValidation.isValid) {
+      return res.status(400).json({ 
+        error: 'Senha fraca',
+        requirements: passwordValidation.errors
+      });
+    }
+
+    // Buscar usuário
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) {
+      return res.status(401).json({ error: 'Usuário não encontrado' });
+    }
+
+    // Validar senha atual
+    const isCurrentPasswordValid = await bcrypt.compare(currentPassword, user.password);
+    if (!isCurrentPasswordValid) {
+      // Registrar tentativa falha
+      const ipAddress = (req.headers['x-forwarded-for'] as string)?.split(',')[0] || req.socket.remoteAddress || 'unknown';
+      const userAgent = req.headers['user-agent'] || 'unknown';
+      
+      await prisma.passwordChangeAttempt.create({
+        data: {
+          userId,
+          success: false,
+          reason: 'Invalid current password',
+          ipAddress,
+          userAgent
+        }
+      });
+
+      await createAudit(req, 'failed_password_change', 'user', userId, { reason: 'Invalid current password' });
+      return res.status(401).json({ error: 'Senha atual inválida' });
+    }
+
+    // Hash da nova senha
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    // Atualizar senha
+    await prisma.user.update({
+      where: { id: userId },
+      data: { password: hashedPassword }
+    });
+
+    // Registrar tentativa bem-sucedida
+    const ipAddress = (req.headers['x-forwarded-for'] as string)?.split(',')[0] || req.socket.remoteAddress || 'unknown';
+    const userAgent = req.headers['user-agent'] || 'unknown';
+    
+    await prisma.passwordChangeAttempt.create({
+      data: {
+        userId,
+        success: true,
+        ipAddress,
+        userAgent
+      }
+    });
+
+    // Registrar sucesso na auditoria
+    await createAudit(req, 'change_password', 'user', userId, { 
+      success: true,
+      timestamp: new Date().toISOString()
+    });
+
+    res.json({ message: 'Senha alterada com sucesso' });
+  } catch (error) {
+    console.error('Error changing password:', error);
+    res.status(500).json({ error: 'Erro ao alterar senha' });
+  }
+});
+
 // Editar usuário (SUPER_ADMIN)
 app.patch('/api/admin/users/:id', authMiddleware, async (req: AuthRequest, res) => {
   if (req.userRole !== 'SUPER_ADMIN') {
@@ -467,6 +767,64 @@ app.patch('/api/admin/users/:id', authMiddleware, async (req: AuthRequest, res) 
   } catch (error) {
     console.error('Error updating user:', error);
     res.status(400).json({ error: 'Erro ao atualizar usuário' });
+  }
+});
+
+// Admin reseta a senha de um usuário (SUPER_ADMIN)
+app.post('/api/admin/users/:id/reset-password', authMiddleware, async (req: AuthRequest, res) => {
+  if (req.userRole !== 'SUPER_ADMIN') {
+    return res.status(403).json({ error: 'Acesso restrito ao super admin' });
+  }
+
+  const userId = Number(req.params.id);
+  const { newPassword } = req.body;
+
+  if (!newPassword) {
+    return res.status(400).json({ error: 'Nova senha é obrigatória' });
+  }
+
+  // Validar força da nova senha
+  const passwordValidation = validatePasswordStrength(newPassword);
+  if (!passwordValidation.isValid) {
+    return res.status(400).json({ 
+      error: 'Senha fraca',
+      requirements: passwordValidation.errors
+    });
+  }
+
+  try {
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) {
+      return res.status(404).json({ error: 'Usuário não encontrado' });
+    }
+
+    // Hash da nova senha
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    // Atualizar senha
+    await prisma.user.update({
+      where: { id: userId },
+      data: { password: hashedPassword }
+    });
+
+    // Limpar tokens de reset de senha pendentes para este usuário
+    await prisma.passwordResetToken.deleteMany({
+      where: {
+        userId,
+        used: false
+      }
+    });
+
+    console.log(`SuperAdmin ${req.userId} resetou a senha do usuário ${userId}`);
+    await createAudit(req, 'admin_reset_password', 'user', userId, { 
+      reason: 'Password reset by super admin',
+      userEmail: user.email
+    });
+
+    res.json({ message: 'Senha resetada com sucesso' });
+  } catch (error) {
+    console.error('Error resetting password:', error);
+    res.status(500).json({ error: 'Erro ao resetar senha' });
   }
 });
 

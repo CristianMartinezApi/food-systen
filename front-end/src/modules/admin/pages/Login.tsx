@@ -101,6 +101,10 @@ export default function Login() {
           >
             {isLoading ? <Loader2 className="animate-spin" /> : "ENTRAR NO PAINEL"}
           </button>
+
+          <Link href="/admin/reset-password" className="block text-center text-sm text-slate-500 hover:text-primary transition-colors font-medium">
+            Esqueci minha senha
+          </Link>
         </form>
 
         <p className="text-center mt-8 text-slate-400 text-sm">

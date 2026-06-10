@@ -1,4 +1,4 @@
-// File: c:\Users\17447\food-systen\front-end\app\admin\login\page.tsx
+// File: C:\Users\17447\food-systen\front-end\app\admin\login\page.tsx
 import * as entry from '../../../../../app/admin/login/page.js'
 import type { ResolvingMetadata, ResolvingViewport } from 'next/dist/lib/metadata/types/metadata-interface.js'
 
