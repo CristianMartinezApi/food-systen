@@ -1,18 +1,18 @@
 {
   "/_not-found/page": "app/_not-found/page.js",
-  "/[slug]/checkout/page": "app/[slug]/checkout/page.js",
-  "/[slug]/orders/page": "app/[slug]/orders/page.js",
   "/[slug]/page": "app/[slug]/page.js",
-  "/admin/login/page": "app/admin/login/page.js",
-  "/admin/reset-password/page": "app/admin/reset-password/page.js",
+  "/[slug]/orders/page": "app/[slug]/orders/page.js",
+  "/[slug]/checkout/page": "app/[slug]/checkout/page.js",
   "/admin/register/page": "app/admin/register/page.js",
+  "/admin/login/page": "app/admin/login/page.js",
   "/page": "app/page.js",
+  "/admin/reset-password/page": "app/admin/reset-password/page.js",
   "/admin/(dashboard)/audit/page": "app/admin/(dashboard)/audit/page.js",
   "/admin/(dashboard)/onboarding/page": "app/admin/(dashboard)/onboarding/page.js",
-  "/admin/(dashboard)/page": "app/admin/(dashboard)/page.js",
   "/admin/(dashboard)/orders/page": "app/admin/(dashboard)/orders/page.js",
   "/admin/(dashboard)/categories/page": "app/admin/(dashboard)/categories/page.js",
   "/admin/(dashboard)/clients/page": "app/admin/(dashboard)/clients/page.js",
   "/admin/(dashboard)/products/page": "app/admin/(dashboard)/products/page.js",
-  "/admin/(dashboard)/settings/page": "app/admin/(dashboard)/settings/page.js"
+  "/admin/(dashboard)/settings/page": "app/admin/(dashboard)/settings/page.js",
+  "/admin/(dashboard)/page": "app/admin/(dashboard)/page.js"
 }

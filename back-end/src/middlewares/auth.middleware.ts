@@ -26,7 +26,12 @@ export const authMiddleware = (req: AuthRequest, res: Response, next: NextFuncti
     return res.status(401).json({ error: 'Token malformatted' });
   }
 
-  const secret = process.env.JWT_SECRET || 'your-secret-key';
+  // ✅ SEGURO: JWT_SECRET validação (não permite fallback inseguro)
+  const secret = process.env.JWT_SECRET;
+  if (!secret) {
+    console.error('❌ CRÍTICO: JWT_SECRET não está configurado');
+    return res.status(500).json({ error: 'Server configuration error' });
+  }
 
   jwt.verify(token, secret, (err: any, decoded: any) => {
     if (err) {

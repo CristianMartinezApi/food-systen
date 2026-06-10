@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "react-hot-toast";
-import Script from "next/script";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -18,12 +17,6 @@ export default function RootLayout({
 }) {
   return (
     <html lang="pt-BR">
-      <head>
-        <Script
-          src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCV4EcVeyozyk9VHH7XFhFuLXU4fS7Gjds&libraries=places"
-          strategy="beforeInteractive"
-        />
-      </head>
       <body className={inter.className}>
         <Toaster position="top-right" />
         {children}

@@ -48,15 +48,32 @@ function validatePasswordStrength(password: string): { isValid: boolean; errors:
 
 const app = express();
 const httpServer = createServer(app);
-const io = new Server(httpServer, {
-  cors: { origin: "*", methods: ["GET", "POST", "PATCH", "PUT", "DELETE"] }
-});
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+// ✅ SEGURO: JWT_SECRET validação
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  throw new Error('❌ CRÍTICO: JWT_SECRET must be defined in environment variables. Use: openssl rand -base64 32');
+}
 
 const PORT = process.env.PORT || 8000;
 
-app.use(cors());
+// ✅ SEGURO: CORS configurado explicitamente
+const allowedOrigins = (process.env.ALLOWED_ORIGINS || 'http://localhost:3000').split(',').map(o => o.trim());
+app.use(cors({
+  origin: allowedOrigins,
+  credentials: true,
+  methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE'],
+  optionsSuccessStatus: 200
+}));
+
+// ✅ SEGURO: Socket.io com CORS configurado
+const io = new Server(httpServer, {
+  cors: { 
+    origin: allowedOrigins,
+    credentials: true,
+    methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE']
+  }
+});
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
@@ -102,8 +119,14 @@ const seedSettings = async () => {
       }
     });
 
-    // Criar o primeiro restaurante (tenant principal)
-    const hashedPassword = await bcrypt.hash('admin123', 10);
+    // ✅ SEGURO: Admin password gerado de forma segura
+    const adminPassword = process.env.INITIAL_ADMIN_PASSWORD || crypto.randomBytes(16).toString('hex');
+    const hashedPassword = await bcrypt.hash(adminPassword, 10);
+    console.log('🔐 IMPORTANTE: Admin inicial criado. Primeira senha de admin (não será mostrada novamente):');
+    console.log(`   Email: admin@foodsystem.com`);
+    console.log(`   Senha: ${adminPassword}`);
+    console.log(`   ⚠️ Altere a senha ao primeiro login!\n`);
+    
     const restaurant = await prisma.restaurant.create({
       data: {
         name: 'FoodSystem Burger',
@@ -189,7 +212,11 @@ const seedSettings = async () => {
   }
 
   const superAdminEmail = 'superadmin@foodsystem.com';
-  const superAdminPassword = await bcrypt.hash('superadmin123', 10);
+  // ✅ SEGURO: SuperAdmin password gerado de forma segura
+  const superAdminPassword = await bcrypt.hash(
+    process.env.INITIAL_SUPERADMIN_PASSWORD || crypto.randomBytes(16).toString('hex'),
+    10
+  );
 
   await prisma.user.upsert({
     where: { email: superAdminEmail },

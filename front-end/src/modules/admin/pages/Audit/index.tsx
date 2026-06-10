@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { api } from "@/core/config/api";
 import { BadgeCheck, Download, FileText, Filter, Search, ShieldAlert } from "lucide-react";
 import toast from "react-hot-toast";
@@ -16,7 +17,7 @@ interface AuditLog {
   createdAt: string;
 }
 
-export default function AuditPage() {
+function AuditContent() {
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [page, setPage] = useState(1);
   const [perPage] = useState(20);
@@ -24,11 +25,6 @@ export default function AuditPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [search, setSearch] = useState("");
   const [subjectType, setSubjectType] = useState("");
-
-  const actionCount = logs.length;
-  const userCount = logs.filter((log) => log.subjectType === "user").length;
-  const restaurantCount = logs.filter((log) => log.subjectType === "restaurant").length;
-  const latestLog = logs[0];
 
   const load = async (p = 1) => {
     try {
@@ -53,6 +49,11 @@ export default function AuditPage() {
   useEffect(() => {
     load(1);
   }, []);
+
+  const actionCount = logs.length;
+  const userCount = logs.filter((log) => log.subjectType === "user").length;
+  const restaurantCount = logs.filter((log) => log.subjectType === "restaurant").length;
+  const latestLog = logs[0];
 
   return (
     <div className="space-y-8">
@@ -231,4 +232,42 @@ export default function AuditPage() {
       </div>
     </div>
   );
+}
+
+export default function AuditPage() {
+  const router = useRouter();
+  const [status, setStatus] = useState<"checking" | "authorized" | "denied">("checking");
+
+  useEffect(() => {
+    const userData = localStorage.getItem("@FoodSystem:user");
+
+    if (!userData) {
+      router.push("/admin/login");
+      return;
+    }
+
+    try {
+      const user = JSON.parse(userData);
+      if (user.role !== "SUPER_ADMIN") {
+        console.warn("⚠️ Acesso negado: Apenas SUPER_ADMIN pode acessar auditoria");
+        router.push("/admin");
+        setStatus("denied");
+        return;
+      }
+
+      setStatus("authorized");
+    } catch {
+      router.push("/admin/login");
+    }
+  }, [router]);
+
+  if (status === "checking") {
+    return <div className="min-h-screen flex items-center justify-center">Validando acesso...</div>;
+  }
+
+  if (status === "denied") {
+    return null;
+  }
+
+  return <AuditContent />;
 }

@@ -35,7 +35,11 @@ export default function Login() {
       
       localStorage.setItem("@FoodSystem:token", response.token);
       localStorage.setItem("@FoodSystem:user", JSON.stringify(response.user));
-      localStorage.setItem("@FoodSystem:restaurant", JSON.stringify(response.restaurant));
+      if (response.restaurant) {
+        localStorage.setItem("@FoodSystem:restaurant", JSON.stringify(response.restaurant));
+      } else {
+        localStorage.removeItem("@FoodSystem:restaurant");
+      }
       
       toast.success("Bem-vindo de volta!");
       if (response.user.role === 'SUPER_ADMIN') {

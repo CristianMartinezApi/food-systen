@@ -1,4 +1,5 @@
 ﻿import { useState, useEffect, useRef } from "react";
+import Script from "next/script";
 import usePlacesAutocomplete, {
   getGeocode,
   getLatLng,
@@ -231,7 +232,12 @@ export default function SettingsPage() {
     };
 
   return (
-        <div ref={rootRef}>
+        <>
+            <Script
+                src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCV4EcVeyozyk9VHH7XFhFuLXU4fS7Gjds&libraries=places&loading=async"
+                strategy="afterInteractive"
+            />
+            <div ref={rootRef}>
             <div className="settings-hero flex items-center justify-between mb-12">
         <div>
           <h1 className="text-heading-1 font-display font-bold text-slate-950 uppercase tracking-tight">Arquitetura de Marca</h1>
@@ -645,7 +651,6 @@ export default function SettingsPage() {
                     <div className="flex items-center justify-between p-6 bg-slate-50 rounded-3xl border border-slate-100 gap-6">
                         <div>
                             <p className="font-black text-slate-900 uppercase tracking-tight">Status Automático</p>
-                            <p className="text-xs font-medium text-slate-500">A loja abre e fecha conforme os horários cadastrados.</p>
                         </div>
                         <div className={cn(
                             "px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border whitespace-nowrap",
@@ -815,5 +820,6 @@ export default function SettingsPage() {
         </div>
       </div>
         </div>
+                </>
   );
 }

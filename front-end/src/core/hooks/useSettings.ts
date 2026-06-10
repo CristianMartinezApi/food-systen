@@ -16,6 +16,21 @@ export function useSettings() {
 
   const fetchSettings = async () => {
     if (!slug) return;
+
+    const userData = typeof window !== 'undefined' ? localStorage.getItem('@FoodSystem:user') : null;
+    if (userData) {
+      try {
+        const user = JSON.parse(userData);
+        if (user.role === 'SUPER_ADMIN') {
+          setSettings(null);
+          setError(false);
+          setIsLoading(false);
+          return;
+        }
+      } catch {
+        // Mantém o fluxo normal quando os dados locais estiverem corrompidos.
+      }
+    }
     
     try {
       setError(false);
