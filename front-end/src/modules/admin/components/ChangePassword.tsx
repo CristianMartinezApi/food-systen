@@ -122,7 +122,7 @@ export default function ChangePassword() {
 
   if (!showForm) {
     return (
-      <div className="rounded-3xl bg-gradient-to-br from-slate-50 to-slate-100 border border-slate-200 p-6 md:p-8">
+      <div className="rounded-3xl bg-linear-to-br from-slate-50 to-slate-100 border border-slate-200 p-6 md:p-8">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center">
@@ -243,9 +243,9 @@ export default function ChangePassword() {
               {passwordRequirements.map((req, idx) => (
                 <li key={idx} className="flex items-center gap-2 text-sm">
                   {req.met ? (
-                    <CheckCircle2 size={16} className="text-green-500 flex-shrink-0" />
+                    <CheckCircle2 size={16} className="text-green-500 shrink-0" />
                   ) : (
-                    <AlertCircle size={16} className="text-slate-300 flex-shrink-0" />
+                    <AlertCircle size={16} className="text-slate-300 shrink-0" />
                   )}
                   <span className={req.met ? "text-slate-600" : "text-slate-400"}>
                     {req.label}

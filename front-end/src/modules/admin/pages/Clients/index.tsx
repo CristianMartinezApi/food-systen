@@ -317,7 +317,7 @@ export default function ClientsPage() {
 
   if (userRole !== "SUPER_ADMIN") {
     return (
-      <div className="bg-white rounded-[1rem] border p-6">
+      <div className="bg-white rounded-2xl border p-6">
         <div className="flex items-center gap-4 mb-4">
           <div className="w-12 h-12 rounded bg-slate-900 text-white flex items-center justify-center"><Shield size={20} /></div>
           <div>
@@ -334,7 +334,7 @@ export default function ClientsPage() {
     <div ref={rootRef} className="space-y-8">
       {confirmState.open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white rounded p-6 w-full max-w-md">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-md">
             <h3 className="font-bold text-lg">{confirmState.title}</h3>
             <p className="text-sm text-slate-600 mt-2">{confirmState.message}</p>
             <div className="mt-4 flex justify-end gap-2">

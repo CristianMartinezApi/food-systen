@@ -1,6 +1,9 @@
 /** @type {import('next').NextConfig} */
+import path from "path";
+
 const nextConfig = {
   reactStrictMode: true,
+  outputFileTracingRoot: path.join(process.cwd(), ".."),
   eslint: {
     // Atenção: Isso permite que o build continue mesmo que haja erros de ESLint.
     // Ideal para migrações rápidas, mas deve ser corrigido depois.
