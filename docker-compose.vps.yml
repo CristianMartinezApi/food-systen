@@ -1,0 +1,58 @@
+services:
+  frontend:
+    build:
+      context: ./front-end
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-https://seu-dominio.com/api}
+        NEXT_PUBLIC_SOCKET_URL: ${NEXT_PUBLIC_SOCKET_URL:-https://seu-dominio.com}
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-https://seu-dominio.com/api}
+      - NEXT_PUBLIC_SOCKET_URL=${NEXT_PUBLIC_SOCKET_URL:-https://seu-dominio.com}
+    depends_on:
+      - backend
+    networks:
+      - food-network
+
+  backend:
+    build:
+      context: ./back-end
+      dockerfile: Dockerfile
+    command: sh -c "npx prisma migrate deploy && npm start"
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8000:8000"
+    environment:
+      - PORT=8000
+      - DATABASE_URL=${DATABASE_URL}
+      - JWT_SECRET=${JWT_SECRET}
+      - FRONTEND_URL=${FRONTEND_URL:-https://seu-dominio.com}
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-https://seu-dominio.com}
+      - INITIAL_ADMIN_PASSWORD=${INITIAL_ADMIN_PASSWORD}
+      - INITIAL_SUPERADMIN_PASSWORD=${INITIAL_SUPERADMIN_PASSWORD}
+    depends_on:
+      - db
+    networks:
+      - food-network
+
+  db:
+    image: postgres:15-alpine
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - food-network
+
+networks:
+  food-network:
+    driver: bridge
+
+volumes:
+  postgres_data:

@@ -205,12 +205,16 @@ Os containers são iniciados com seeding automático:
 
 ## 🚀 Deployment
 
-O projeto está pronto para deploy em:
+Recomendação atual: **VPS com Docker + Nginx + HTTPS**.
 
-- ✅ Docker (Self-hosted)
-- ✅ Railway / Heroku / Render (com adjustments)
-- ✅ AWS ECS
-- ✅ DigitalOcean App Platform
+Guia completo: [docs/vps-deploy.md](docs/vps-deploy.md)
+
+Opções suportadas:
+
+- ✅ VPS próprio com Docker Compose
+- ✅ Postgres gerenciado externo
+- ✅ Nginx como reverse proxy
+- ✅ Railway / Render / App Platform (com ajustes)
 
 ## 📝 Variáveis de Ambiente
 
@@ -226,6 +230,10 @@ FRONTEND_URL=https://seu-dominio.com
 
 # Security
 ALLOWED_ORIGINS=https://seu-dominio.com
+
+# Frontend build-time
+NEXT_PUBLIC_API_URL=https://seu-dominio.com/api
+NEXT_PUBLIC_SOCKET_URL=https://seu-dominio.com
 
 # Senhas iniciais (apenas primeira execução)
 INITIAL_SUPERADMIN_PASSWORD=senhafortealeatoria
