@@ -2,8 +2,9 @@
 set -euo pipefail
 
 DOMAIN="${1:-}"
+WWW_DOMAIN="${2:-}"
 if [[ -z "${DOMAIN}" ]]; then
-  echo "Uso: sudo bash deploy/bootstrap-vps.sh seu-dominio.com"
+  echo "Uso: sudo bash deploy/bootstrap-vps.sh seu-dominio.com [www.seu-dominio.com]"
   exit 1
 fi
 
@@ -72,16 +73,28 @@ if certbot certificates | grep -q "${DOMAIN}"; then
   echo "Certificado HTTPS já existe para ${DOMAIN}."
 else
   echo "Emitindo certificado HTTPS com Certbot..."
-  certbot --nginx \
-    -d "${DOMAIN}" \
-    -d "www.${DOMAIN}" \
-    --non-interactive \
-    --agree-tos \
-    --register-unsafely-without-email \
-    --redirect
+  if [[ -n "${WWW_DOMAIN}" ]]; then
+    certbot --nginx \
+      -d "${DOMAIN}" \
+      -d "${WWW_DOMAIN}" \
+      --non-interactive \
+      --agree-tos \
+      --register-unsafely-without-email \
+      --redirect
+  else
+    certbot --nginx \
+      -d "${DOMAIN}" \
+      --non-interactive \
+      --agree-tos \
+      --register-unsafely-without-email \
+      --redirect
+  fi
 fi
 
 echo "Finalizado. Verifique:"
 echo "- Frontend: https://${DOMAIN}"
 echo "- Backend:  https://${DOMAIN}/api"
 echo "- Socket:   https://${DOMAIN}/socket.io"
+if [[ -n "${WWW_DOMAIN}" ]]; then
+  echo "- WWW:      https://${WWW_DOMAIN}"
+fi
