@@ -207,10 +207,13 @@ Os containers são iniciados com seeding automático:
 
 Recomendação atual: **VPS com Docker + Nginx + HTTPS**.
 
-Guia completo: [docs/vps-deploy.md](docs/vps-deploy.md)
+Se você for usar a VPS da Locaweb, siga este guia: [docs/locaweb-deploy.md](docs/locaweb-deploy.md)
+
+Guia genérico para VPS: [docs/vps-deploy.md](docs/vps-deploy.md)
 
 Opções suportadas:
 
+- ✅ VPS da Locaweb com acesso root
 - ✅ VPS próprio com Docker Compose
 - ✅ Postgres gerenciado externo
 - ✅ Nginx como reverse proxy
