@@ -4,14 +4,14 @@ services:
       context: ./front-end
       dockerfile: Dockerfile
       args:
-        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-https://seu-dominio.com/api}
-        NEXT_PUBLIC_SOCKET_URL: ${NEXT_PUBLIC_SOCKET_URL:-https://seu-dominio.com}
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-https://vps67951.publiccloud.com.br/api}
+        NEXT_PUBLIC_SOCKET_URL: ${NEXT_PUBLIC_SOCKET_URL:-https://vps67951.publiccloud.com.br}
     restart: unless-stopped
     ports:
       - "127.0.0.1:3000:3000"
     environment:
-      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-https://seu-dominio.com/api}
-      - NEXT_PUBLIC_SOCKET_URL=${NEXT_PUBLIC_SOCKET_URL:-https://seu-dominio.com}
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-https://vps67951.publiccloud.com.br/api}
+      - NEXT_PUBLIC_SOCKET_URL=${NEXT_PUBLIC_SOCKET_URL:-https://vps67951.publiccloud.com.br}
     depends_on:
       - backend
     networks:
@@ -29,8 +29,8 @@ services:
       - PORT=8000
       - DATABASE_URL=${DATABASE_URL}
       - JWT_SECRET=${JWT_SECRET}
-      - FRONTEND_URL=${FRONTEND_URL:-https://seu-dominio.com}
-      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-https://seu-dominio.com}
+      - FRONTEND_URL=${FRONTEND_URL:-https://vps67951.publiccloud.com.br}
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-https://vps67951.publiccloud.com.br}
       - INITIAL_ADMIN_PASSWORD=${INITIAL_ADMIN_PASSWORD}
       - INITIAL_SUPERADMIN_PASSWORD=${INITIAL_SUPERADMIN_PASSWORD}
     depends_on:
