@@ -127,10 +127,10 @@ export default function Home() {
       <div className="home-header">
         <Header onOpenMenu={() => setIsNavOpen(true)} />
       </div>
-      
-      <NavSidebar 
-        isOpen={isNavOpen} 
-        onClose={() => setIsNavOpen(false)} 
+
+      <NavSidebar
+        isOpen={isNavOpen}
+        onClose={() => setIsNavOpen(false)}
         categories={categories}
         activeCategory={activeCategory}
         onCategorySelect={setActiveCategory}
@@ -151,21 +151,21 @@ export default function Home() {
                 <div className="absolute inset-0 bg-black/40 md:bg-linear-to-r md:from-slate-950/60 md:via-slate-950/30 md:to-transparent" />
               </div>
 
-              <div className="relative z-10 p-6 md:p-20 max-w-4xl space-y-3 md:space-y-8">
+              <div className="relative z-10 p-6 md:p-12 max-w-2xl space-y-3 md:space-y-5">
                 <div>
-                  <div className="home-hero-badge flex items-center gap-2 md:gap-4 mb-3 md:mb-8">
-                    <div className="bg-primary/20 backdrop-blur-xl border border-primary/30 px-3 md:px-4 py-1 md:py-1.5 rounded-full flex items-center gap-2">
-                      <Flame size={12} className="md:size-14 text-primary fill-primary animate-pulse" />
-                      <span className="text-primary text-[8px] md:text-[10px] font-bold uppercase tracking-[0.3em]">{heroBadge}</span>
+                  <div className="home-hero-badge inline-flex items-center mb-3 md:mb-6 ml-0.5 md:ml-1">
+                    <div className="bg-primary/25 backdrop-blur-xl border border-primary/35 px-3 md:px-4 py-1 md:py-1.5 rounded-full inline-flex items-center gap-2 md:gap-2.5 shadow-lg shadow-primary/15">
+                      <Flame size={11} className="md:size-4.5 text-primary fill-primary animate-pulse" />
+                      <span className="text-primary text-[8px] md:text-[9px] font-bold uppercase tracking-[0.18em]">{heroBadge}</span>
                     </div>
                   </div>
 
-                  <h1 className="home-hero-title text-4xl md:text-display font-display text-white leading-[0.92] md:leading-[0.85] tracking-tighter uppercase mb-3 md:mb-6 drop-shadow-2xl max-w-2xl">
+                  <h1 className="home-hero-title text-4xl sm:text-[46px] md:text-[52px] lg:text-[60px] font-display text-white leading-[0.95] md:leading-[0.88] tracking-tight uppercase mb-2 md:mb-4 drop-shadow-2xl max-w-xl">
                     {heroTitleLine1} <br />
                     <span className="text-primary text-outline-white">{heroTitleLine2}</span>
                   </h1>
 
-                  <p className="home-hero-copy text-sm md:text-xl text-slate-200 font-medium max-w-xl leading-relaxed">
+                  <p className="home-hero-copy text-sm md:text-[15px] text-slate-200 font-medium max-w-lg leading-relaxed">
                     {heroDescription}
                   </p>
                 </div>
@@ -207,7 +207,7 @@ export default function Home() {
                   "px-4 md:px-6 py-2 md:py-3 rounded-lg md:rounded-2xl text-[9px] md:text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap border-2",
                   activeCategory === 'all'
                     ? "bg-slate-950 text-white border-slate-950 shadow-lg"
-                    : "bg-white text-slate-400 border-slate-100 hover:border-slate-200"
+                    : "bg-slate-100 text-slate-500 border-slate-200 shadow-sm hover:border-slate-300"
                 )}
               >
                 Todos
@@ -221,7 +221,7 @@ export default function Home() {
                     "px-4 md:px-6 py-2 md:py-3 rounded-lg md:rounded-2xl text-[9px] md:text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap border-2",
                     activeCategory === cat.id
                       ? "bg-slate-950 text-white border-slate-950 shadow-lg"
-                      : "bg-white text-slate-400 border-slate-100 hover:border-slate-200"
+                      : "bg-slate-100 text-slate-500 border-slate-200 shadow-sm hover:border-slate-300"
                   )}
                 >
                   {cat.name}

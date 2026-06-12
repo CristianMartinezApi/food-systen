@@ -87,11 +87,11 @@ export default function CustomerOrdersPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#FDFDFD] flex flex-col selection:bg-primary selection:text-white">
+    <div className="min-h-screen bg-slate-100 flex flex-col selection:bg-primary selection:text-white">
       {/* Header Premium */}
-      <header className="bg-white/80 backdrop-blur-2xl border-b border-slate-50 sticky top-0 z-50 py-3 md:py-6">
+      <header className="bg-slate-100/90 backdrop-blur-2xl border-b border-slate-200 sticky top-0 z-50 py-3 md:py-6 shadow-[0_10px_30px_rgba(15,23,42,0.08)]">
         <div className="container mx-auto px-4 md:px-6 flex items-center justify-between gap-3">
-          <Link href={`/${slug}`} className="w-11 h-11 md:w-12 md:h-12 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400 hover:text-slate-900 hover:bg-white transition-all shrink-0">
+          <Link href={`/${slug}`} className="w-11 h-11 md:w-12 md:h-12 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400 hover:text-slate-900 hover:bg-slate-100 transition-all shrink-0">
             <ArrowLeft size={20} className="md:size-6" />
           </Link>
           <div className="text-center min-w-0 flex-1">
@@ -146,7 +146,7 @@ export default function CustomerOrdersPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: idx * 0.1 }}
                     key={order.id}
-                    className="bg-white border border-slate-100 rounded-[2.5rem] p-8 shadow-sm hover:shadow-2xl hover:shadow-slate-200/50 transition-all duration-500 group"
+                    className="bg-slate-50 border border-slate-200 rounded-[2.5rem] p-8 shadow-md shadow-slate-300/25 hover:shadow-2xl hover:shadow-slate-300/40 transition-all duration-500 group"
                   >
                     <div className="flex flex-col md:flex-row justify-between gap-8">
                       <div className="space-y-6 flex-1">

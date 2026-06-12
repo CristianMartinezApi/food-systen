@@ -84,7 +84,7 @@ export function AddressModal({ isOpen, onClose }: AddressModalProps) {
             initial={{ scale: 0.9, opacity: 0, y: 20 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.9, opacity: 0, y: 20 }}
-            className="bg-white w-full max-w-none md:max-w-lg h-dvh md:h-auto rounded-none md:rounded-[2.5rem] overflow-hidden shadow-2xl relative z-10 p-5 md:p-10 flex flex-col"
+            className="bg-slate-100 w-full max-w-none md:max-w-lg h-dvh md:h-auto rounded-none md:rounded-[2.5rem] overflow-hidden shadow-[0_30px_70px_rgba(15,23,42,0.2)] relative z-10 p-5 md:p-10 flex flex-col"
           >
             <div className="flex items-center justify-between mb-6 md:mb-8 shrink-0">
               <div className="flex items-center gap-3 min-w-0">
@@ -98,7 +98,7 @@ export function AddressModal({ isOpen, onClose }: AddressModalProps) {
               </div>
               <button
                 onClick={onClose}
-                className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center text-slate-400 hover:text-slate-900 transition-all shrink-0"
+                className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center text-slate-400 hover:text-slate-900 border border-slate-200 transition-all shrink-0"
               >
                 <X size={18} className="md:size-5" />
               </button>
@@ -113,7 +113,7 @@ export function AddressModal({ isOpen, onClose }: AddressModalProps) {
                     onChange={(e) => setCep(e.target.value)}
                     onBlur={handleCepBlur}
                     placeholder="00000-000"
-                    className="w-full h-12 md:h-14 bg-slate-50 border border-transparent rounded-2xl focus:bg-white focus:ring-4 focus:ring-primary/5 focus:border-primary/20 transition-all font-bold text-slate-700 outline-none px-5 md:px-6"
+                    className="w-full h-12 md:h-14 bg-slate-50 border border-slate-200 rounded-2xl focus:bg-slate-50 focus:ring-4 focus:ring-primary/10 focus:border-primary/20 transition-all font-bold text-slate-700 outline-none px-5 md:px-6"
                   />
                   {isSearching && (
                     <div className="absolute right-4 top-1/2 -translate-y-1/2">
@@ -161,7 +161,7 @@ function InputLabel({ label, value, onChange, placeholder }: any) {
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="w-full h-14 bg-slate-50 border border-transparent rounded-2xl focus:bg-white focus:ring-4 focus:ring-primary/5 focus:border-primary/20 transition-all font-bold text-slate-700 outline-none px-6"
+        className="w-full h-14 bg-slate-50 border border-slate-200 rounded-2xl focus:bg-slate-50 focus:ring-4 focus:ring-primary/10 focus:border-primary/20 transition-all font-bold text-slate-700 outline-none px-6"
       />
     </div>
   );

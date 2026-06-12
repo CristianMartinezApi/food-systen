@@ -128,11 +128,11 @@ export function ProductModal({ product, isOpen, onClose, editIndex = null, initi
                         initial={{ scale: 0.9, opacity: 0, y: 20 }}
                         animate={{ scale: 1, opacity: 1, y: 0 }}
                         exit={{ scale: 0.9, opacity: 0, y: 20 }}
-                        className="bg-white w-full max-w-none md:max-w-6xl h-dvh md:h-[min(90vh,900px)] rounded-none md:rounded-[3rem] overflow-hidden shadow-2xl relative z-10 flex flex-col md:flex-row"
+                        className="bg-slate-100 w-full max-w-none md:max-w-6xl h-dvh md:h-[min(90vh,900px)] rounded-none md:rounded-[3rem] overflow-hidden shadow-[0_35px_80px_rgba(15,23,42,0.28)] relative z-10 flex flex-col md:flex-row"
                     >
                         <button
                             onClick={onClose}
-                            className="absolute top-3 md:top-8 right-3 md:right-8 z-50 w-11 h-11 md:w-14 md:h-14 bg-white/90 backdrop-blur-xl rounded-2xl flex items-center justify-center text-slate-900 shadow-2xl border border-white/50 hover:bg-slate-950 hover:text-white transition-all duration-500 active:scale-90 group"
+                            className="absolute top-3 md:top-8 right-3 md:right-8 z-50 w-11 h-11 md:w-14 md:h-14 bg-slate-100/95 backdrop-blur-xl rounded-2xl flex items-center justify-center text-slate-900 shadow-2xl border border-slate-200 hover:bg-slate-950 hover:text-white transition-all duration-500 active:scale-90 group"
                         >
                             <X size={20} className="md:size-6 group-hover:rotate-90 transition-transform duration-500" />
                         </button>
@@ -158,7 +158,7 @@ export function ProductModal({ product, isOpen, onClose, editIndex = null, initi
                             </div>
                         </div>
 
-                        <div className="flex-1 flex flex-col h-full bg-white relative overflow-hidden">
+                        <div className="flex-1 flex flex-col h-full bg-slate-100 relative overflow-hidden">
                             <div className="flex-1 overflow-y-auto no-scrollbar p-6 md:p-14">
                                 <div className="hidden md:block mb-12">
                                     <div className="flex items-center gap-3 mb-4">
@@ -199,7 +199,7 @@ export function ProductModal({ product, isOpen, onClose, editIndex = null, initi
                                                             "p-6 rounded-2xl border-2 text-left transition-all duration-500 flex items-center justify-between group",
                                                             selectedSize?.name === size.name
                                                                 ? "bg-slate-950 border-slate-950 shadow-xl shadow-slate-950/20 translate-x-2"
-                                                                : "bg-white border-slate-50 hover:border-slate-100"
+                                                                : "bg-slate-50 border-slate-200 hover:border-slate-300"
                                                         )}
                                                     >
                                                         <div className="flex flex-col">
@@ -230,7 +230,7 @@ export function ProductModal({ product, isOpen, onClose, editIndex = null, initi
                                                             key={addon.name}
                                                             className={cn(
                                                                 "p-6 rounded-2xl border-2 transition-all duration-500 flex items-center justify-between",
-                                                                current ? "bg-slate-50 border-primary/20" : "bg-white border-slate-50"
+                                                                current ? "bg-slate-50 border-primary/20" : "bg-slate-100 border-slate-200"
                                                             )}
                                                         >
                                                             <div className="flex flex-col">
@@ -238,7 +238,7 @@ export function ProductModal({ product, isOpen, onClose, editIndex = null, initi
                                                                 <span className="text-numeric font-mono text-primary font-bold text-sm mt-1">+{formatCurrency(addon.price)}</span>
                                                             </div>
 
-                                                            <div className="flex items-center gap-4 bg-white p-1.5 rounded-xl shadow-sm border border-slate-100">
+                                                            <div className="flex items-center gap-4 bg-slate-50 p-1.5 rounded-xl shadow-sm border border-slate-200">
                                                                 <button
                                                                     onClick={() => updateAddonQuantity(addon, -1)}
                                                                     className="w-10 h-10 rounded-lg flex items-center justify-center text-slate-400 hover:bg-slate-50 hover:text-rose-500 transition-all"
@@ -274,7 +274,7 @@ export function ProductModal({ product, isOpen, onClose, editIndex = null, initi
                                                             "px-6 py-3 rounded-xl border-2 font-body font-bold text-[10px] uppercase tracking-[0.15em] transition-all duration-300",
                                                             removals.includes(ing)
                                                                 ? "bg-rose-50 border-rose-200 text-rose-500 line-through scale-95"
-                                                                : "bg-white border-slate-100 text-slate-400 hover:border-slate-200"
+                                                                : "bg-slate-50 border-slate-200 text-slate-400 hover:border-slate-300"
                                                         )}
                                                     >
                                                         {ing}
@@ -290,14 +290,14 @@ export function ProductModal({ product, isOpen, onClose, editIndex = null, initi
                                             value={observations}
                                             onChange={(e) => setObservations(e.target.value)}
                                             placeholder="Ponto da carne, alergias ou solicitações especiais..."
-                                            className="w-full h-32 p-6 bg-slate-50 border border-transparent rounded-2xl focus:bg-white focus:ring-8 focus:ring-slate-950/5 focus:border-slate-950/10 transition-all font-body font-medium text-slate-950 outline-none placeholder:text-slate-300 resize-none"
+                                            className="w-full h-32 p-6 bg-slate-50 border border-slate-200 rounded-2xl focus:bg-slate-50 focus:ring-8 focus:ring-slate-950/10 focus:border-slate-950/10 transition-all font-body font-medium text-slate-950 outline-none placeholder:text-slate-400 resize-none"
                                         />
                                     </section>
                                 </div>
                             </div>
 
-                            <div className="p-8 md:p-14 bg-white border-t border-slate-50 shadow-[0_-20px_40px_rgba(0,0,0,0.02)] flex flex-col sm:flex-row items-center gap-8">
-                                <div className="flex items-center gap-6 bg-slate-50 p-2 rounded-2xl border border-slate-100">
+                            <div className="p-8 md:p-14 bg-slate-100 border-t border-slate-200 shadow-[0_-20px_40px_rgba(15,23,42,0.08)] flex flex-col sm:flex-row items-center gap-8">
+                                <div className="flex items-center gap-6 bg-slate-50 p-2 rounded-2xl border border-slate-200">
                                     <button
                                         onClick={() => setQuantity(Math.max(1, quantity - 1))}
                                         className="w-14 h-14 rounded-xl flex items-center justify-center text-slate-400 hover:text-slate-950 transition-colors"

@@ -58,12 +58,12 @@ export function CartSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
             exit={{ x: "100%" }}
             transition={{ type: "spring", damping: 30, stiffness: 300 }}
             className={cn(
-              "fixed right-0 top-0 bottom-0 w-full max-w-lg bg-white z-111 shadow-[0_0_50px_rgba(0,0,0,0.2)] flex flex-col overflow-hidden",
+              "fixed right-0 top-0 bottom-0 w-full max-w-lg bg-slate-100 z-111 shadow-[0_0_50px_rgba(15,23,42,0.28)] flex flex-col overflow-hidden",
               "rounded-t-3xl md:rounded-none h-dvh md:h-auto"
             )}
           >
             {/* Header del Carrello con Estetica Moderna */}
-            <div className="px-4 py-4 md:p-10 border-b border-slate-50 flex items-center justify-between bg-white/80 backdrop-blur-xl sticky top-0 z-10">
+            <div className="px-4 py-4 md:p-10 border-b border-slate-200 flex items-center justify-between bg-slate-100/90 backdrop-blur-xl sticky top-0 z-10">
               <div className="flex items-center gap-3 md:gap-6 min-w-0">
                 <div className="w-12 h-12 md:w-16 md:h-16 bg-slate-950 rounded-2xl md:rounded-3xl flex items-center justify-center text-primary shadow-2xl shadow-slate-950/20 group cursor-default shrink-0">
                   <ShoppingBag size={22} className="group-hover:rotate-12 transition-transform duration-500" />
@@ -78,7 +78,7 @@ export function CartSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
               </div>
               <button
                 onClick={onClose}
-                className="w-11 h-11 md:w-14 md:h-14 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-300 hover:text-slate-950 hover:bg-white hover:shadow-xl transition-all duration-500 hover:rotate-90 shrink-0"
+                className="w-11 h-11 md:w-14 md:h-14 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-300 hover:text-slate-950 hover:bg-slate-100 hover:shadow-xl transition-all duration-500 hover:rotate-90 shrink-0"
               >
                 <X size={20} className="md:size-6" />
               </button>
@@ -90,7 +90,7 @@ export function CartSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
                 <div className="h-full flex flex-col items-center justify-center text-center space-y-6 md:space-y-10">
                   <div className="relative">
                     <div className="absolute inset-0 bg-primary/20 rounded-full blur-3xl animate-pulse" />
-                    <div className="relative w-24 h-24 md:w-32 md:h-32 bg-slate-50 rounded-[3rem] md:rounded-[4rem] flex items-center justify-center text-slate-200 border border-white">
+                    <div className="relative w-24 h-24 md:w-32 md:h-32 bg-slate-50 rounded-[3rem] md:rounded-[4rem] flex items-center justify-center text-slate-200 border border-slate-200">
                       <Package size={44} className="md:size-14" />
                     </div>
                   </div>
@@ -113,7 +113,7 @@ export function CartSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: index * 0.1 }}
                     key={index}
-                    className="p-4 md:p-6 bg-white border border-slate-50 rounded-4xl md:rounded-[2.5rem] group hover:border-primary/20 hover:shadow-[0_20px_50px_rgba(0,0,0,0.06)] transition-all duration-500 relative"
+                    className="p-4 md:p-6 bg-slate-50 border border-slate-200 rounded-4xl md:rounded-[2.5rem] group hover:border-primary/20 hover:shadow-[0_20px_50px_rgba(15,23,42,0.15)] transition-all duration-500 relative"
                   >
                     <div className="flex gap-4 md:gap-6">
                       <div className="w-16 h-16 md:w-24 md:h-24 rounded-2xl md:rounded-3xl overflow-hidden bg-slate-100 shrink-0 shadow-lg group-hover:rotate-3 transition-transform duration-500">
@@ -172,7 +172,7 @@ export function CartSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
 
             {/* Premium Checkout Footer */}
             {cartItems.length > 0 && (
-              <div className="p-4 md:p-10 bg-white border-t border-slate-50 shadow-[0_-20px_50px_rgba(0,0,0,0.02)]">
+              <div className="p-4 md:p-10 bg-slate-100 border-t border-slate-200 shadow-[0_-20px_50px_rgba(15,23,42,0.08)]">
                 <div className="space-y-3 md:space-y-4 mb-6 md:mb-10">
                   <div className="flex justify-between items-center">
                     <span className="text-[10px] md:text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em]">Subtotal</span>

@@ -57,17 +57,17 @@ export function NavSidebar({ isOpen, onClose, categories, activeCategory, onCate
             animate={{ x: 0 }}
             exit={{ x: "-100%" }}
             transition={{ type: "spring", damping: 30, stiffness: 300 }}
-            className="fixed left-0 top-0 h-dvh w-full max-w-none sm:max-w-[320px] md:max-w-md bg-white z-101 shadow-[50px_0_100px_rgba(0,0,0,0.1)] flex flex-col overflow-hidden"
+            className="fixed left-0 top-0 h-dvh w-full max-w-none sm:max-w-[320px] md:max-w-md bg-slate-100 z-101 shadow-[50px_0_100px_rgba(15,23,42,0.18)] flex flex-col overflow-hidden"
           >
-            <div className="p-5 md:p-10 border-b border-slate-50 space-y-5 md:space-y-6">
+            <div className="p-5 md:p-10 border-b border-slate-200 space-y-5 md:space-y-6">
               <div className="flex items-start justify-between gap-4">
                 <div className="flex items-center gap-3 md:gap-4 min-w-0">
                   <div className="relative shrink-0">
                     <div className="absolute inset-0 bg-primary/20 rounded-3xl blur-xl" />
                     {settings?.logo ? (
-                      <img src={settings.logo} alt="Logo" className="relative w-11 h-11 md:w-16 md:h-16 rounded-3xl object-cover border-2 border-white shadow-2xl" />
+                      <img src={settings.logo} alt="Logo" className="relative w-11 h-11 md:w-16 md:h-16 rounded-3xl object-cover border-2 border-slate-200 shadow-2xl" />
                     ) : (
-                      <div className="relative w-11 h-11 md:w-16 md:h-16 bg-slate-950 rounded-3xl flex items-center justify-center text-primary border-2 border-white shadow-2xl">
+                      <div className="relative w-11 h-11 md:w-16 md:h-16 bg-slate-950 rounded-3xl flex items-center justify-center text-primary border-2 border-slate-200 shadow-2xl">
                         <Utensils size={22} className="md:size-8" />
                       </div>
                     )}
@@ -92,18 +92,18 @@ export function NavSidebar({ isOpen, onClose, categories, activeCategory, onCate
 
                 <button
                   onClick={onClose}
-                  className="w-11 h-11 md:w-14 md:h-14 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-300 hover:text-slate-950 hover:bg-white transition-all duration-500 hover:rotate-90 shrink-0"
+                  className="w-11 h-11 md:w-14 md:h-14 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-300 hover:text-slate-950 hover:bg-slate-100 transition-all duration-500 hover:rotate-90 shrink-0"
                 >
                   <X size={18} className="md:size-6" />
                 </button>
               </div>
 
-              <div className="rounded-4xl border border-slate-100 bg-slate-50/80 p-4 md:p-5 space-y-3">
+              <div className="rounded-4xl border border-slate-200 bg-slate-50 p-4 md:p-5 space-y-3 shadow-md shadow-slate-300/20">
                 <button
                   onClick={() => setIsAddressModalOpen(true)}
                   className="w-full flex items-center gap-4 text-left active:scale-95 transition-transform"
                 >
-                  <div className="w-11 h-11 rounded-2xl bg-white shadow-sm flex items-center justify-center text-primary shrink-0">
+                  <div className="w-11 h-11 rounded-2xl bg-slate-100 shadow-sm flex items-center justify-center text-primary shrink-0 border border-slate-200">
                     <MapPin size={18} />
                   </div>
                   <div className="min-w-0 flex-1">
@@ -129,7 +129,7 @@ export function NavSidebar({ isOpen, onClose, categories, activeCategory, onCate
                     onClick={() => { onCategorySelect('all'); onClose(); }}
                     className={cn(
                       "w-full flex items-center gap-3 px-4 md:px-6 h-13 md:h-16 rounded-[1.35rem] font-body font-bold uppercase tracking-[0.06em] text-[10px] md:text-label transition-all duration-500 border",
-                      activeCategory === 'all' ? "bg-slate-950 text-white shadow-2xl border-slate-950" : "bg-white text-slate-500 border-slate-100 hover:border-slate-200 hover:bg-slate-50"
+                      activeCategory === 'all' ? "bg-slate-950 text-white shadow-2xl border-slate-950" : "bg-slate-50 text-slate-500 border-slate-200 hover:border-slate-300 hover:bg-slate-100"
                     )}
                   >
                     <Compass size={17} className={activeCategory === 'all' ? "text-primary" : "text-slate-300"} />
@@ -141,7 +141,7 @@ export function NavSidebar({ isOpen, onClose, categories, activeCategory, onCate
                       onClick={() => { onCategorySelect(cat.id); onClose(); }}
                       className={cn(
                         "w-full flex items-center gap-3 px-4 md:px-6 h-13 md:h-16 rounded-[1.35rem] font-body font-bold uppercase tracking-[0.06em] text-[10px] md:text-label transition-all duration-500 border",
-                        activeCategory === cat.id ? "bg-slate-950 text-white shadow-2xl border-slate-950" : "bg-white text-slate-500 border-slate-100 hover:border-slate-200 hover:bg-slate-50"
+                        activeCategory === cat.id ? "bg-slate-950 text-white shadow-2xl border-slate-950" : "bg-slate-50 text-slate-500 border-slate-200 hover:border-slate-300 hover:bg-slate-100"
                       )}
                     >
                       <Star size={17} className={activeCategory === cat.id ? "text-primary" : "text-slate-300"} />
@@ -151,10 +151,10 @@ export function NavSidebar({ isOpen, onClose, categories, activeCategory, onCate
                 </div>
               </div>
 
-              <div className="space-y-5 pt-6 border-t border-slate-50">
+              <div className="space-y-5 pt-6 border-t border-slate-200">
                 <h3 className="px-1 text-[10px] font-black text-slate-300 uppercase tracking-[0.24em]">Informações</h3>
                 <div className="grid grid-cols-1 gap-4">
-                  <div className="flex items-center gap-4 rounded-[1.35rem] border border-slate-100 bg-white p-4">
+                  <div className="flex items-center gap-4 rounded-[1.35rem] border border-slate-200 bg-slate-50 p-4 shadow-md shadow-slate-300/15">
                     <div className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center text-slate-300 shrink-0">
                       <Clock size={18} />
                     </div>
@@ -163,7 +163,7 @@ export function NavSidebar({ isOpen, onClose, categories, activeCategory, onCate
                       <p className="text-body-strong font-body font-bold text-slate-900 uppercase tracking-tight">35 - 55 minutos</p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-4 rounded-[1.35rem] border border-slate-100 bg-white p-4">
+                  <div className="flex items-center gap-4 rounded-[1.35rem] border border-slate-200 bg-slate-50 p-4 shadow-md shadow-slate-300/15">
                     <div className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center text-slate-300 shrink-0">
                       <Phone size={18} />
                     </div>

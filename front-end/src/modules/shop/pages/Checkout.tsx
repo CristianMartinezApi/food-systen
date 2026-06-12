@@ -403,10 +403,10 @@ export default function Checkout() {
 
   if (items.length === 0 && step !== "success") {
     return (
-      <div ref={rootRef} className="min-h-screen bg-[#FDFDFD] flex flex-col items-center justify-center p-8">
+      <div ref={rootRef} className="min-h-screen bg-slate-100 flex flex-col items-center justify-center p-8">
         <div className="relative w-32 h-32 mb-12">
             <div className="absolute inset-0 bg-primary/5 rounded-[2.5rem] rotate-6 animate-pulse" />
-            <div className="relative w-32 h-32 bg-white rounded-[2.5rem] border border-slate-100 flex items-center justify-center shadow-xl shadow-slate-200/50">
+            <div className="relative w-32 h-32 bg-slate-50 rounded-[2.5rem] border border-slate-200 flex items-center justify-center shadow-xl shadow-slate-300/40">
                 <ShoppingBag size={48} className="text-slate-200" strokeWidth={1.5} />
             </div>
         </div>
@@ -437,10 +437,10 @@ export default function Checkout() {
   ];
 
   return (
-    <div ref={rootRef} className="min-h-screen bg-[#FDFDFD] flex flex-col">
+    <div ref={rootRef} className="min-h-screen bg-slate-100 flex flex-col">
       {/* Header Simplificado de Checkout */}
       {/* Header Simplificado de Checkout Premium */}
-      <header className="checkout-header bg-white/80 backdrop-blur-md border-b border-slate-50 sticky top-0 z-50">
+      <header className="checkout-header bg-slate-100/90 backdrop-blur-md border-b border-slate-200 sticky top-0 z-50 shadow-[0_10px_30px_rgba(15,23,42,0.08)]">
         <div className="container mx-auto px-6 h-20 md:h-24 flex items-center justify-between max-w-5xl">
           <button 
             onClick={handleBack}
@@ -574,7 +574,7 @@ export default function Checkout() {
                      </div>
                   </div>
 
-                  <div className="bg-white rounded-[3rem] border border-slate-100 p-10 shadow-2xl shadow-slate-200/50 space-y-8">
+                    <div className="bg-slate-50 rounded-[3rem] border border-slate-200 p-10 shadow-2xl shadow-slate-300/40 space-y-8">
                     <p className="text-label font-body text-slate-400 uppercase tracking-[0.06em] leading-relaxed">
                         Seus dados são confidenciais e utilizados apenas para a excelência do serviço.
                     </p>
@@ -642,7 +642,7 @@ export default function Checkout() {
                      </div>
                   </div>
 
-                  <div className="bg-white rounded-[3rem] border border-slate-100 p-10 shadow-2xl shadow-slate-200/50 space-y-8">
+                  <div className="bg-slate-50 rounded-[3rem] border border-slate-200 p-10 shadow-2xl shadow-slate-300/40 space-y-8">
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
                         <div className="md:col-span-1">
                             <div className="space-y-3 group">
@@ -655,7 +655,7 @@ export default function Checkout() {
                                         onChange={handleCepChange}
                                         onBlur={handleCepBlur}
                                         placeholder="00000-000"
-                                        className="w-full h-16 bg-slate-50 border border-transparent rounded-[1.25rem] focus:bg-white focus:ring-4 focus:ring-slate-950/5 focus:border-slate-950/20 transition-all font-mono text-numeric text-slate-700 outline-none px-6"
+                                        className="w-full h-16 bg-slate-50 border border-slate-200 rounded-[1.25rem] focus:bg-slate-50 focus:ring-4 focus:ring-slate-950/10 focus:border-slate-950/20 transition-all font-mono text-numeric text-slate-700 outline-none px-6"
                                     />
                                     {isCepLoading && (
                                         <div className="absolute right-4 top-1/2 -translate-y-1/2">
@@ -743,7 +743,7 @@ export default function Checkout() {
                                 <p className="text-body-strong font-display font-bold text-slate-950 uppercase tracking-tight">Necessita de Troco?</p>
                                 <p className="text-label font-body font-medium text-slate-500 uppercase tracking-[0.06em] mt-1">Investimento Total: {formatCurrency(total)}</p>
                             </div>
-                            <div className="flex bg-white p-1.5 rounded-2xl border border-slate-200 shadow-sm">
+                            <div className="flex bg-slate-50 p-1.5 rounded-2xl border border-slate-200 shadow-sm">
                                 <button 
                                   onClick={() => setFormData({...formData, needsChange: false})}
                                   className={cn(
@@ -772,7 +772,7 @@ export default function Checkout() {
                                   value={formData.changeFor}
                                   onChange={(e) => setFormData({...formData, changeFor: e.target.value.replace(/\D/g, '')})}
                                   className={cn(
-                                    "w-full h-16 pl-16 pr-6 bg-white rounded-[1.25rem] border border-slate-200 focus:ring-4 focus:ring-slate-950/5 focus:border-slate-950/20 font-mono text-numeric text-xl text-slate-950 outline-none transition-all",
+                                    "w-full h-16 pl-16 pr-6 bg-slate-50 rounded-[1.25rem] border border-slate-200 focus:ring-4 focus:ring-slate-950/10 focus:border-slate-950/20 font-mono text-numeric text-xl text-slate-950 outline-none transition-all",
                                     formData.needsChange && Number(formData.changeFor) > 0 && Number(formData.changeFor) <= total && "border-rose-500 ring-4 ring-rose-500/5 text-rose-500"
                                   )}
                                 />
@@ -811,7 +811,7 @@ export default function Checkout() {
                      </div>
                   </div>
 
-                  <div className="bg-white rounded-[3rem] border border-slate-100 p-10 shadow-2xl shadow-slate-200/50 space-y-8">
+                  <div className="bg-slate-50 rounded-[3rem] border border-slate-200 p-10 shadow-2xl shadow-slate-300/40 space-y-8">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
                         <div>
                             <h4 className="text-label font-body font-bold text-slate-300 uppercase tracking-[0.15em] mb-4">Comensal</h4>
@@ -851,9 +851,9 @@ export default function Checkout() {
                     {deliveryMode === 'DELIVERY' && (
                         <div className="pt-8 border-t border-slate-100">
                             <h4 className="text-label font-body font-bold text-slate-300 uppercase tracking-[0.15em] mb-5">Destino da Entrega</h4>
-                            <div className="bg-slate-50/50 p-8 rounded-4xl border border-slate-100 group hover:bg-white hover:shadow-xl hover:shadow-slate-100 transition-all duration-500">
+                            <div className="bg-slate-50 p-8 rounded-4xl border border-slate-200 group hover:bg-slate-100 hover:shadow-xl hover:shadow-slate-300/25 transition-all duration-500">
                                 <div className="flex items-start gap-4">
-                                  <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center border border-slate-100 text-slate-300 group-hover:text-slate-950 transition-colors">
+                                  <div className="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center border border-slate-200 text-slate-300 group-hover:text-slate-950 transition-colors">
                                     <MapPin size={20} />
                                   </div>
                                   <div>
@@ -934,7 +934,7 @@ export default function Checkout() {
                             <Link href={`/${slug}/orders`} className="h-16 flex items-center justify-center bg-slate-950 text-white rounded-2xl font-body font-bold shadow-2xl shadow-slate-950/20 hover:bg-black transition-all uppercase tracking-widest text-label">
                                 MEUS PEDIDOS
                             </Link>
-                            <Link href={`/${slug}`} className="h-16 flex items-center justify-center bg-white border border-slate-100 text-slate-400 rounded-2xl font-body font-bold hover:bg-slate-50 transition-all uppercase tracking-widest text-label">
+                            <Link href={`/${slug}`} className="h-16 flex items-center justify-center bg-slate-50 border border-slate-200 text-slate-500 rounded-2xl font-body font-bold hover:bg-slate-100 transition-all uppercase tracking-widest text-label">
                                 NOVA ORDEM
                             </Link>
                         </div>
@@ -947,9 +947,9 @@ export default function Checkout() {
           {/* Resumo do Pedido - Curadoria Sticky lateral */}
           {step !== "success" && (
             <div className="lg:col-span-1">
-                <div className="bg-white rounded-[3rem] border border-slate-100 p-10 shadow-[0_20px_50px_rgba(0,0,0,0.02)] sticky top-32">
+                <div className="bg-slate-50 rounded-[3rem] border border-slate-200 p-10 shadow-[0_20px_50px_rgba(15,23,42,0.12)] sticky top-32">
                     <h3 className="font-display font-bold text-heading-3 text-slate-950 uppercase tracking-tight mb-8 flex items-center justify-between">
-                        Sua Cesta <span className="text-label font-body font-bold bg-slate-50 px-3 py-1.5 rounded-xl text-slate-400 uppercase tracking-widest text-[10px]">{items.length} ITENS</span>
+                      Sua Cesta <span className="text-label font-body font-bold bg-slate-100 px-3 py-1.5 rounded-xl text-slate-500 uppercase tracking-widest text-[10px]">{items.length} ITENS</span>
                     </h3>
                     
                     <div className="space-y-6 mb-10 max-h-64 overflow-y-auto no-scrollbar pr-2">
@@ -1012,7 +1012,7 @@ export default function Checkout() {
 
       {step !== "success" && (
         <div className="lg:hidden fixed bottom-4 left-4 right-4 z-50">
-          <div className="bg-white rounded-2xl p-3 shadow-xl flex items-center justify-between" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
+          <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3 shadow-xl shadow-slate-300/30 flex items-center justify-between" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
             <div>
               <p className="text-[10px] text-slate-400 uppercase">Total</p>
               <p className="text-lg font-bold text-primary">{formatCurrency(total)}</p>
@@ -1052,7 +1052,7 @@ function SelectOption({ active, onClick, title, description, icon }: any) {
             "p-8 rounded-4xl border-2 text-left transition-all duration-500 flex items-center gap-6 group relative overflow-hidden",
             active 
                 ? "bg-slate-950 border-slate-950 shadow-2xl shadow-slate-950/20 ring-4 ring-slate-950/5" 
-                : "bg-white border-slate-100 hover:border-slate-200 hover:shadow-xl hover:shadow-slate-100"
+            : "bg-slate-50 border-slate-200 hover:border-slate-300 hover:shadow-xl hover:shadow-slate-300/25"
         )}
     >
         {active && (
@@ -1108,7 +1108,7 @@ function InputGroup({ label, icon, value, onChange, placeholder }: any) {
                     onChange={(e) => onChange(e.target.value)}
                     placeholder={placeholder}
                     className={cn(
-                        "w-full h-16 bg-slate-50 border border-transparent rounded-[1.25rem] focus:bg-white focus:ring-8 focus:ring-slate-950/5 focus:border-slate-950/10 transition-all duration-300 font-body font-bold text-body-lg text-slate-950 outline-none placeholder:text-slate-300 placeholder:font-medium",
+                    "w-full h-16 bg-slate-50 border border-slate-200 rounded-[1.25rem] focus:bg-slate-50 focus:ring-8 focus:ring-slate-950/10 focus:border-slate-950/10 transition-all duration-300 font-body font-bold text-body-lg text-slate-950 outline-none placeholder:text-slate-300 placeholder:font-medium",
                         icon ? "pl-16" : "px-8"
                     )}
                 />
