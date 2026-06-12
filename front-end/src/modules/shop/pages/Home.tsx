@@ -133,77 +133,80 @@ export default function Home() {
         onClose={() => setIsNavOpen(false)} 
         categories={categories}
         activeCategory={activeCategory}
-        onSelectCategory={setActiveCategory}
+        onCategorySelect={setActiveCategory}
       />
 
-      <main className="flex-1 container mx-auto px-4 md:px-6 py-8 md:py-12 space-y-16 md:space-y-24">
+      <main className="flex-1 container mx-auto px-4 md:px-6 py-6 md:py-12 space-y-8 md:space-y-24">
         {/* Hero Section Premium com GSAP */}
         <section className="relative">
-          <div ref={heroRef} className="home-hero-art relative rounded-[2.5rem] md:rounded-[3.5rem] bg-slate-950 overflow-hidden shadow-[0_40px_100px_rgba(0,0,0,0.3)] min-h-112.5 md:min-h-150 flex items-center">
-            {/* Background Art */}
-            <div className="absolute inset-0 z-0">
-              <img 
-                src={heroImage}
-                className="w-full h-full object-cover opacity-60 scale-105"
-                alt={settings?.storeName || "Fundo Gourmet"}
-              />
-              <div className="absolute inset-0 bg-linear-to-r from-slate-950 via-slate-950/40 to-transparent" />
-              <div className="absolute inset-x-0 bottom-0 h-1/2 bg-linear-to-t from-slate-950 to-transparent" />
-            </div>
-
-            <div className="relative z-10 p-8 md:p-20 max-w-4xl space-y-6 md:space-y-8">
-              <div>
-                <div className="home-hero-badge flex items-center gap-4 mb-6 md:mb-8">
-                  <div className="bg-primary/20 backdrop-blur-xl border border-primary/30 px-4 py-1.5 rounded-full flex items-center gap-2">
-                    <Flame size={14} className="text-primary fill-primary animate-pulse" />
-                    <span className="text-primary text-[10px] font-bold uppercase tracking-[0.3em]">{heroBadge}</span>
-                  </div>
-                </div>
-
-                <h1 className="home-hero-title text-5xl md:text-display font-display text-white leading-[0.9] md:leading-[0.85] tracking-tighter uppercase mb-6 drop-shadow-2xl">
-                  {heroTitleLine1} <br/>
-                  <span className="text-primary text-outline-white">{heroTitleLine2}</span>
-                </h1>
-                
-                <p className="home-hero-copy text-lg md:text-xl text-slate-300 font-medium max-w-xl leading-relaxed">
-                  {heroDescription}
-                </p>
+          <div className="relative left-1/2 w-dvw max-w-none -translate-x-1/2">
+            <div ref={heroRef} className="home-hero-art relative overflow-hidden shadow-[0_40px_100px_rgba(0,0,0,0.25)] min-h-64 md:min-h-150 flex items-center">
+              {/* Background Art (full-bleed) */}
+              <div className="absolute inset-0 z-0">
+                <img
+                  src={heroImage}
+                  className="w-full h-full object-cover"
+                  alt={settings?.storeName || "Fundo Gourmet"}
+                />
+                <div className="absolute inset-0 bg-black/40 md:bg-linear-to-r md:from-slate-950/60 md:via-slate-950/30 md:to-transparent" />
               </div>
 
-              <div className="home-hero-actions flex flex-col sm:flex-row items-center gap-4 md:gap-6 pt-4">
-                <Button 
-                  size="lg" 
-                  className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-white rounded-2xl px-8 md:px-10 h-14 md:h-16 text-sm font-black uppercase tracking-widest shadow-xl shadow-primary/20 group"
-                  onClick={() => {
-                    const el = document.getElementById('menu-section');
-                    el?.scrollIntoView({ behavior: 'smooth' });
-                  }}
-                >
-                  {heroCtaLabel}
-                  <ArrowRight size={18} className="ml-2 group-hover:translate-x-1 transition-transform" />
-                </Button>
-                
+              <div className="relative z-10 p-6 md:p-20 max-w-4xl space-y-3 md:space-y-8">
+                <div>
+                  <div className="home-hero-badge flex items-center gap-2 md:gap-4 mb-3 md:mb-8">
+                    <div className="bg-primary/20 backdrop-blur-xl border border-primary/30 px-3 md:px-4 py-1 md:py-1.5 rounded-full flex items-center gap-2">
+                      <Flame size={12} className="md:size-14 text-primary fill-primary animate-pulse" />
+                      <span className="text-primary text-[8px] md:text-[10px] font-bold uppercase tracking-[0.3em]">{heroBadge}</span>
+                    </div>
+                  </div>
+
+                  <h1 className="home-hero-title text-4xl md:text-display font-display text-white leading-[0.92] md:leading-[0.85] tracking-tighter uppercase mb-3 md:mb-6 drop-shadow-2xl max-w-2xl">
+                    {heroTitleLine1} <br />
+                    <span className="text-primary text-outline-white">{heroTitleLine2}</span>
+                  </h1>
+
+                  <p className="home-hero-copy text-sm md:text-xl text-slate-200 font-medium max-w-xl leading-relaxed">
+                    {heroDescription}
+                  </p>
+                </div>
+
+                <div className="home-hero-actions flex flex-col sm:flex-row items-center gap-2 md:gap-6 pt-2 md:pt-4">
+                  <Button
+                    size="lg"
+                    className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-white rounded-xl md:rounded-2xl px-4 md:px-10 h-12 md:h-16 text-[10px] md:text-sm font-black uppercase tracking-widest shadow-xl shadow-primary/20 group"
+                    onClick={() => {
+                      const el = document.getElementById('menu-section');
+                      el?.scrollIntoView({ behavior: 'smooth' });
+                    }}
+                  >
+                    {heroCtaLabel}
+                    <ArrowRight size={18} className="ml-2 group-hover:translate-x-1 transition-transform" />
+                  </Button>
+
+                </div>
               </div>
             </div>
           </div>
         </section>
 
+        <div className="h-px w-full bg-slate-200/60 my-6 md:my-10" />
+
         {/* Categories Navigation */}
-        <section id="menu-section" className="space-y-8 md:space-y-12">
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-            <div className="home-section-heading space-y-2">
-              <h2 className="text-3xl md:text-heading-2 font-display font-bold text-slate-950 uppercase tracking-tight">Nosso Cardápio</h2>
-              <div className="h-1.5 w-24 bg-primary rounded-full" />
+        <section id="menu-section" className="mt-4 md:mt-8 space-y-4 md:space-y-8">
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-3 md:gap-6">
+            <div className="home-section-heading space-y-1 md:space-y-2">
+              <h2 className="text-xl md:text-heading-2 font-display font-bold text-slate-950 uppercase tracking-tight">Nosso Cardápio</h2>
+              <div className="h-1 md:h-1.5 w-20 bg-primary rounded-full" />
             </div>
-            
-            <div className="flex items-center gap-3 overflow-x-auto pb-4 md:pb-0 no-scrollbar">
+
+            <div className="flex items-center gap-2 md:gap-3 overflow-x-auto pb-2 md:pb-0 no-scrollbar md:justify-end">
               <button
                 onClick={() => setActiveCategory('all')}
                 className={cn(
                   "home-category-chip",
-                  "px-6 py-3 rounded-2xl text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap border-2",
-                  activeCategory === 'all' 
-                    ? "bg-slate-950 text-white border-slate-950 shadow-lg" 
+                  "px-4 md:px-6 py-2 md:py-3 rounded-lg md:rounded-2xl text-[9px] md:text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap border-2",
+                  activeCategory === 'all'
+                    ? "bg-slate-950 text-white border-slate-950 shadow-lg"
                     : "bg-white text-slate-400 border-slate-100 hover:border-slate-200"
                 )}
               >
@@ -215,9 +218,9 @@ export default function Home() {
                   onClick={() => setActiveCategory(cat.id)}
                   className={cn(
                     "home-category-chip",
-                    "px-6 py-3 rounded-2xl text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap border-2",
-                    activeCategory === cat.id 
-                      ? "bg-slate-950 text-white border-slate-950 shadow-lg" 
+                    "px-4 md:px-6 py-2 md:py-3 rounded-lg md:rounded-2xl text-[9px] md:text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap border-2",
+                    activeCategory === cat.id
+                      ? "bg-slate-950 text-white border-slate-950 shadow-lg"
                       : "bg-white text-slate-400 border-slate-100 hover:border-slate-200"
                   )}
                 >

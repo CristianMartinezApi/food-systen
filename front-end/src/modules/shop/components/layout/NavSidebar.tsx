@@ -57,25 +57,25 @@ export function NavSidebar({ isOpen, onClose, categories, activeCategory, onCate
             animate={{ x: 0 }}
             exit={{ x: "-100%" }}
             transition={{ type: "spring", damping: 30, stiffness: 300 }}
-            className="fixed left-0 top-0 h-full w-[88vw] max-w-[320px] sm:max-w-90 md:max-w-md bg-white z-101 shadow-[50px_0_100px_rgba(0,0,0,0.1)] flex flex-col overflow-hidden"
+            className="fixed left-0 top-0 h-dvh w-full max-w-none sm:max-w-[320px] md:max-w-md bg-white z-101 shadow-[50px_0_100px_rgba(0,0,0,0.1)] flex flex-col overflow-hidden"
           >
-            <div className="p-6 md:p-10 border-b border-slate-50 space-y-6">
+            <div className="p-5 md:p-10 border-b border-slate-50 space-y-5 md:space-y-6">
               <div className="flex items-start justify-between gap-4">
-                <div className="flex items-center gap-4 min-w-0">
+                <div className="flex items-center gap-3 md:gap-4 min-w-0">
                   <div className="relative shrink-0">
                     <div className="absolute inset-0 bg-primary/20 rounded-3xl blur-xl" />
                     {settings?.logo ? (
-                      <img src={settings.logo} alt="Logo" className="relative w-12 h-12 md:w-16 md:h-16 rounded-3xl object-cover border-2 border-white shadow-2xl" />
+                      <img src={settings.logo} alt="Logo" className="relative w-11 h-11 md:w-16 md:h-16 rounded-3xl object-cover border-2 border-white shadow-2xl" />
                     ) : (
-                      <div className="relative w-12 h-12 md:w-16 md:h-16 bg-slate-950 rounded-3xl flex items-center justify-center text-primary border-2 border-white shadow-2xl">
-                        <Utensils size={24} className="md:size-8" />
+                      <div className="relative w-11 h-11 md:w-16 md:h-16 bg-slate-950 rounded-3xl flex items-center justify-center text-primary border-2 border-white shadow-2xl">
+                        <Utensils size={22} className="md:size-8" />
                       </div>
                     )}
                   </div>
 
                   <div className="min-w-0">
-                    <p className="text-[10px] font-black text-slate-300 uppercase tracking-[0.24em] mb-1">Restaurante</p>
-                    <h2 className="text-heading-2 md:text-heading-1 font-display font-bold text-slate-950 tracking-tighter uppercase leading-none truncate">
+                    <p className="text-[9px] md:text-[10px] font-black text-slate-300 uppercase tracking-[0.22em] mb-1">Restaurante</p>
+                    <h2 className="text-heading-3 md:text-heading-1 font-display font-bold text-slate-950 tracking-tighter uppercase leading-none truncate">
                       {firstName}
                     </h2>
                     <div className={cn("mt-3 flex items-start gap-2", statusTone)}>
@@ -90,64 +90,64 @@ export function NavSidebar({ isOpen, onClose, categories, activeCategory, onCate
                   </div>
                 </div>
 
-                <button 
-                  onClick={onClose} 
-                  className="w-12 h-12 md:w-14 md:h-14 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-300 hover:text-slate-950 hover:bg-white transition-all duration-500 hover:rotate-90 shrink-0"
+                <button
+                  onClick={onClose}
+                  className="w-11 h-11 md:w-14 md:h-14 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-300 hover:text-slate-950 hover:bg-white transition-all duration-500 hover:rotate-90 shrink-0"
                 >
-                  <X size={20} className="md:size-6" />
+                  <X size={18} className="md:size-6" />
                 </button>
               </div>
 
               <div className="rounded-4xl border border-slate-100 bg-slate-50/80 p-4 md:p-5 space-y-3">
-                <button 
+                <button
                   onClick={() => setIsAddressModalOpen(true)}
                   className="w-full flex items-center gap-4 text-left active:scale-95 transition-transform"
                 >
-                  <div className="w-12 h-12 rounded-2xl bg-white shadow-sm flex items-center justify-center text-primary shrink-0">
-                    <MapPin size={20} />
+                  <div className="w-11 h-11 rounded-2xl bg-white shadow-sm flex items-center justify-center text-primary shrink-0">
+                    <MapPin size={18} />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="text-[10px] font-black text-slate-300 uppercase tracking-[0.24em] mb-1">Sua localização</p>
-                    <p className="text-body-strong font-body text-slate-950 truncate uppercase tracking-tighter">
+                    <p className="text-[9px] md:text-[10px] font-black text-slate-300 uppercase tracking-[0.22em] mb-1">Sua localização</p>
+                    <p className="text-label md:text-body-strong font-body text-slate-950 truncate uppercase tracking-tighter">
                       {address ? `${address.street}, ${address.number}` : "Configurar endereço"}
                     </p>
                   </div>
                 </button>
 
-                <p className="pl-13 text-[10px] font-medium text-slate-500 uppercase tracking-[0.18em] leading-relaxed">
+                <p className="pl-12 md:pl-13 text-[9px] md:text-[10px] font-medium text-slate-500 uppercase tracking-[0.18em] leading-relaxed">
                   {getOperatingHoursSummary(settings?.operatingHours)}
                 </p>
               </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-6 md:p-10 space-y-8 md:space-y-10 no-scrollbar">
-              
+            <div className="flex-1 overflow-y-auto px-5 py-5 md:p-10 space-y-7 md:space-y-10 no-scrollbar">
+
               <div className="space-y-4">
                 <h3 className="px-1 text-[10px] font-black text-slate-300 uppercase tracking-[0.24em]">Menu</h3>
                 <div className="grid grid-cols-1 gap-3">
-                    <button 
-                        onClick={() => { onCategorySelect('all'); onClose(); }}
-                        className={cn(
-                            "w-full flex items-center gap-4 px-5 md:px-6 h-14 md:h-16 rounded-[1.35rem] font-body font-bold uppercase tracking-[0.06em] text-label transition-all duration-500 border",
-                            activeCategory === 'all' ? "bg-slate-950 text-white shadow-2xl border-slate-950" : "bg-white text-slate-500 border-slate-100 hover:border-slate-200 hover:bg-slate-50"
-                        )}
+                  <button
+                    onClick={() => { onCategorySelect('all'); onClose(); }}
+                    className={cn(
+                      "w-full flex items-center gap-3 px-4 md:px-6 h-13 md:h-16 rounded-[1.35rem] font-body font-bold uppercase tracking-[0.06em] text-[10px] md:text-label transition-all duration-500 border",
+                      activeCategory === 'all' ? "bg-slate-950 text-white shadow-2xl border-slate-950" : "bg-white text-slate-500 border-slate-100 hover:border-slate-200 hover:bg-slate-50"
+                    )}
+                  >
+                    <Compass size={17} className={activeCategory === 'all' ? "text-primary" : "text-slate-300"} />
+                    <span className="flex-1 text-left">Menu completo</span>
+                  </button>
+                  {categories.map((cat: any) => (
+                    <button
+                      key={cat.id}
+                      onClick={() => { onCategorySelect(cat.id); onClose(); }}
+                      className={cn(
+                        "w-full flex items-center gap-3 px-4 md:px-6 h-13 md:h-16 rounded-[1.35rem] font-body font-bold uppercase tracking-[0.06em] text-[10px] md:text-label transition-all duration-500 border",
+                        activeCategory === cat.id ? "bg-slate-950 text-white shadow-2xl border-slate-950" : "bg-white text-slate-500 border-slate-100 hover:border-slate-200 hover:bg-slate-50"
+                      )}
                     >
-                        <Compass size={18} className={activeCategory === 'all' ? "text-primary" : "text-slate-300"} />
-                        <span className="flex-1 text-left">Menu completo</span>
+                      <Star size={17} className={activeCategory === cat.id ? "text-primary" : "text-slate-300"} />
+                      <span className="flex-1 text-left truncate">{cat.name}</span>
                     </button>
-                    {categories.map((cat: any) => (
-                        <button 
-                            key={cat.id}
-                            onClick={() => { onCategorySelect(cat.id); onClose(); }}
-                            className={cn(
-                                "w-full flex items-center gap-4 px-5 md:px-6 h-14 md:h-16 rounded-[1.35rem] font-body font-bold uppercase tracking-[0.06em] text-label transition-all duration-500 border",
-                                activeCategory === cat.id ? "bg-slate-950 text-white shadow-2xl border-slate-950" : "bg-white text-slate-500 border-slate-100 hover:border-slate-200 hover:bg-slate-50"
-                            )}
-                        >
-                            <Star size={18} className={activeCategory === cat.id ? "text-primary" : "text-slate-300"} />
-                            <span className="flex-1 text-left truncate">{cat.name}</span>
-                        </button>
-                    ))}
+                  ))}
                 </div>
               </div>
 

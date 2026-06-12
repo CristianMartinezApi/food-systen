@@ -55,12 +55,12 @@ export function ProductCard({ product }: ProductCardProps) {
       <motion.div 
         whileHover={{ y: -12 }}
         onClick={() => setIsModalOpen(true)}
-        className="group bg-white rounded-[2.5rem] md:rounded-[3.5rem] border border-slate-100 p-3 md:p-4 shadow-2xl shadow-slate-200/40 hover:shadow-primary/10 transition-all duration-700 relative cursor-pointer overflow-hidden"
+        className="group bg-white rounded-xl md:rounded-[3.5rem] border border-slate-100 p-2 md:p-4 shadow-2xl shadow-slate-200/40 hover:shadow-primary/10 transition-all duration-700 relative cursor-pointer overflow-hidden"
       >
         {/* Glow de fundo no hover */}
         <div className="absolute inset-x-0 bottom-0 h-1/2 bg-linear-to-t from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
         
-        <div className="relative aspect-4/5 overflow-hidden rounded-4xl md:rounded-[2.8rem] shadow-inner bg-slate-50">
+        <div className="relative h-44 md:h-auto md:aspect-4/5 overflow-hidden rounded-2xl md:rounded-[2.8rem] shadow-inner bg-slate-50">
           <img 
             src={product.image} 
             alt={product.name}
@@ -68,34 +68,34 @@ export function ProductCard({ product }: ProductCardProps) {
           />
           
           {/* Badge Superior */}
-          <div className="absolute top-4 md:top-6 left-4 md:left-6 flex flex-col gap-2">
-            <div className="bg-white/90 backdrop-blur-xl px-3 md:px-4 py-1.5 rounded-2xl shadow-lg border border-white/50 flex items-center gap-2">
-                <Star size={12} className="text-primary fill-primary" />
-                <span className="text-label font-body font-medium text-slate-900 uppercase tracking-[0.06em]">Escolha Premium</span>
+          <div className="absolute top-2 md:top-4 left-2 md:left-6 flex flex-col gap-1 md:gap-1.5">
+            <div className="bg-white/90 backdrop-blur-xl px-2 md:px-3 py-1 rounded-xl md:rounded-2xl shadow-lg border border-white/50 flex items-center gap-1 md:gap-1.5">
+                <Star size={10} className="text-primary fill-primary md:h-4 md:w-4" />
+                <span className="text-[8px] md:text-[9px] font-body font-medium text-slate-900 uppercase tracking-[0.06em]">Escolha Premium</span>
             </div>
             {!isPromotional && product.price > 40 && (
-                 <div className="bg-slate-900/90 backdrop-blur-xl px-3 md:px-4 py-1.5 rounded-2xl shadow-lg flex items-center gap-2 w-fit">
-                    <Flame size={12} className="text-primary animate-pulse" />
-                    <span className="text-label font-body font-medium text-white uppercase tracking-[0.06em]">Mais Vendido</span>
+                 <div className="bg-slate-900/90 backdrop-blur-xl px-2 md:px-3 py-1 rounded-xl md:rounded-2xl shadow-lg flex items-center gap-1 md:gap-1.5 w-fit">
+                    <Flame size={10} className="text-primary animate-pulse md:h-4 md:w-4" />
+                    <span className="text-[8px] md:text-[9px] font-body font-medium text-white uppercase tracking-[0.06em]">Mais Vendido</span>
                 </div>
             )}
             {isPromotional && (
-              <div className="bg-rose-500/95 backdrop-blur-xl px-3 md:px-4 py-1.5 rounded-2xl shadow-lg flex items-center gap-2 w-fit">
-                <span className="text-label font-body font-black text-white uppercase tracking-[0.08em]">Promoção</span>
-                <span className="text-label font-body font-bold text-white uppercase tracking-[0.08em]">-{discountPercent}%</span>
+              <div className="bg-rose-500/95 backdrop-blur-xl px-2 md:px-3 py-1 rounded-xl md:rounded-2xl shadow-lg flex items-center gap-1 md:gap-1.5 w-fit">
+                <span className="text-[8px] md:text-[9px] font-body font-black text-white uppercase tracking-[0.08em]">Promoção</span>
+                <span className="text-[8px] md:text-[9px] font-body font-bold text-white uppercase tracking-[0.08em]">-{discountPercent}%</span>
               </div>
             )}
           </div>
 
           {/* Badge de Preço Flutuante Estilo Luxury */}
-          <div className="absolute bottom-4 md:bottom-6 right-4 md:right-6 bg-slate-950 px-4 md:px-6 py-2 md:py-3 rounded-2xl shadow-2xl shadow-slate-950/40 border border-white/10 group-hover:bg-primary transition-all duration-500">
+          <div className="absolute bottom-2 md:bottom-6 right-2 md:right-6 bg-slate-950 px-2 md:px-6 py-1 md:py-3 rounded-lg md:rounded-2xl shadow-2xl shadow-slate-950/40 border border-white/10 group-hover:bg-primary transition-all duration-500">
               {isPromotional ? (
                 <div className="flex flex-col items-end gap-0.5">
-                  <span className="text-[9px] uppercase tracking-[0.18em] text-white/60 line-through">{formatCurrency(product.price)}</span>
-                  <span className="text-white font-mono text-numeric tracking-tighter">{formatCurrency(salePrice)}</span>
+                  <span className="text-[7px] md:text-[9px] uppercase tracking-[0.18em] text-white/60 line-through">{formatCurrency(product.price)}</span>
+                  <span className="text-white font-mono text-[10px] md:text-numeric tracking-tighter">{formatCurrency(salePrice)}</span>
                 </div>
               ) : (
-                <span className="text-white font-mono text-numeric tracking-tighter">{formatCurrency(product.price)}</span>
+                <span className="text-white font-mono text-[10px] md:text-numeric tracking-tighter">{formatCurrency(product.price)}</span>
               )}
           </div>
         </div>

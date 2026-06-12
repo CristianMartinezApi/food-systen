@@ -333,7 +333,7 @@ export default function Checkout() {
        if (deliveryMode === "DINE_IN") setStep("customer");
        else setStep("payment");
     }
-    else router.back();
+    else router.push(`/${slug}`);
   };
 
   const handleFinishOrder = async () => {
@@ -419,8 +419,8 @@ export default function Checkout() {
         </p>
         
         <button 
-          onClick={() => router.back()} 
-          className="h-16 px-10 bg-slate-950 text-white rounded-2xl font-body font-bold flex items-center justify-center gap-3 shadow-2xl shadow-slate-950/20 hover:bg-black active:scale-[0.98] transition-all uppercase tracking-widest text-label"
+          onClick={() => router.push(`/${slug}`)} 
+          className="h-14 px-8 bg-slate-950 text-white rounded-2xl font-body font-bold flex items-center justify-center gap-3 shadow-2xl shadow-slate-950/20 hover:bg-black active:scale-[0.98] transition-all uppercase tracking-widest text-label"
         >
             EXPLORAR MENU <ChevronRight size={20} />
         </button>
@@ -441,7 +441,7 @@ export default function Checkout() {
       {/* Header Simplificado de Checkout */}
       {/* Header Simplificado de Checkout Premium */}
       <header className="checkout-header bg-white/80 backdrop-blur-md border-b border-slate-50 sticky top-0 z-50">
-        <div className="container mx-auto px-6 h-24 flex items-center justify-between max-w-5xl">
+        <div className="container mx-auto px-6 h-20 md:h-24 flex items-center justify-between max-w-5xl">
           <button 
             onClick={handleBack}
             className="w-14 h-14 rounded-[1.25rem] bg-slate-50 flex items-center justify-center text-slate-400 hover:text-slate-900 transition-all border border-transparent hover:border-slate-100 group"
@@ -477,7 +477,7 @@ export default function Checkout() {
 
         {/* PROGRESS BAR LUXURY */}
         {step !== "success" && (
-          <div className="checkout-progress flex items-center justify-between relative mb-20 px-4">
+          <div className="checkout-progress flex items-center justify-between relative mb-8 md:mb-20 px-4">
                 {stepsList.map((s, idx) => {
                     const isCompleted = stepsList.findIndex(stepObj => stepObj.key === step) > idx;
                     const isActive = s.key === step;
@@ -554,7 +554,7 @@ export default function Checkout() {
 
                   <button 
                     onClick={handleNext}
-                    className="h-20 w-full bg-slate-950 text-white rounded-4xl font-body font-bold flex items-center justify-center gap-4 mt-12 shadow-2xl shadow-slate-950/20 hover:bg-slate-900 transition-all text-label tracking-widest uppercase group"
+                    className="h-14 md:h-20 w-full bg-slate-950 text-white rounded-4xl font-body font-bold flex items-center justify-center gap-4 mt-8 md:mt-12 shadow-2xl shadow-slate-950/20 hover:bg-slate-900 transition-all text-label tracking-widest uppercase group"
                   >
                     AVANÇAR PARA IDENTIFICAÇÃO <ChevronRight size={20} className="group-hover:translate-x-1 transition-transform" />
                   </button>
@@ -616,7 +616,7 @@ export default function Checkout() {
                   <button 
                     onClick={handleNext}
                     disabled={isDistanceValidating}
-                    className="h-20 w-full bg-slate-950 text-white rounded-4xl font-body font-bold flex items-center justify-center gap-4 mt-12 shadow-2xl shadow-slate-950/20 hover:bg-slate-900 transition-all disabled:opacity-50 text-label tracking-widest uppercase group"
+                    className="h-14 md:h-20 w-full bg-slate-950 text-white rounded-4xl font-body font-bold flex items-center justify-center gap-4 mt-8 md:mt-12 shadow-2xl shadow-slate-950/20 hover:bg-slate-900 transition-all disabled:opacity-50 text-label tracking-widest uppercase group"
                   >
                     {isDistanceValidating ? (
                       <>Validando Distância... <Loader2 className="animate-spin" /></>
@@ -689,7 +689,7 @@ export default function Checkout() {
 
                   <button 
                     onClick={handleNext}
-                    className="h-20 w-full bg-slate-950 text-white rounded-4xl font-body font-bold flex items-center justify-center gap-4 mt-12 shadow-2xl shadow-slate-950/20 hover:bg-slate-900 transition-all text-label tracking-widest uppercase group"
+                    className="h-14 md:h-20 w-full bg-slate-950 text-white rounded-4xl font-body font-bold flex items-center justify-center gap-4 mt-8 md:mt-12 shadow-2xl shadow-slate-950/20 hover:bg-slate-900 transition-all text-label tracking-widest uppercase group"
                   >
                     CONTINUAR PARA PAGAMENTO <ChevronRight size={20} className="group-hover:translate-x-1 transition-transform" />
                   </button>
@@ -791,7 +791,7 @@ export default function Checkout() {
 
                   <button 
                     onClick={handleNext}
-                    className="h-20 w-full bg-slate-950 text-white rounded-4xl font-body font-bold flex items-center justify-center gap-4 mt-12 shadow-2xl shadow-slate-950/20 hover:bg-slate-900 transition-all text-label tracking-widest uppercase group"
+                    className="h-14 md:h-20 w-full bg-slate-950 text-white rounded-4xl font-body font-bold flex items-center justify-center gap-4 mt-8 md:mt-12 shadow-2xl shadow-slate-950/20 hover:bg-slate-900 transition-all text-label tracking-widest uppercase group"
                   >
                     REVISAR PEDIDO <ChevronRight size={20} className="group-hover:translate-x-1 transition-transform" />
                   </button>
@@ -874,7 +874,7 @@ export default function Checkout() {
                     onClick={handleFinishOrder}
                     disabled={isSubmitting || (isBelowMinimum && deliveryMode === 'DELIVERY')}
                     className={cn(
-                        "h-24 w-full rounded-[2.5rem] font-body font-bold flex flex-col items-center justify-center gap-1 mt-12 shadow-2xl transition-all duration-300 disabled:opacity-50",
+                        "h-18 md:h-24 w-full rounded-[2.5rem] font-body font-bold flex flex-col items-center justify-center gap-1 mt-8 md:mt-12 shadow-2xl transition-all duration-300 disabled:opacity-50",
                         isBelowMinimum && deliveryMode === 'DELIVERY'
                             ? "bg-slate-100 text-slate-300 cursor-not-allowed shadow-none"
                             : "bg-slate-950 text-white shadow-slate-950/20 hover:bg-slate-900 active:scale-[0.98] group"
@@ -1009,6 +1009,35 @@ export default function Checkout() {
 
         </div>
       </main>
+
+      {step !== "success" && (
+        <div className="lg:hidden fixed bottom-4 left-4 right-4 z-50">
+          <div className="bg-white rounded-2xl p-3 shadow-xl flex items-center justify-between" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
+            <div>
+              <p className="text-[10px] text-slate-400 uppercase">Total</p>
+              <p className="text-lg font-bold text-primary">{formatCurrency(total)}</p>
+              <p className="text-[10px] text-slate-400 uppercase mt-1">
+                {String(stepsList.findIndex(s => s.key === step) + 1).padStart(2, '0')}/{stepsList.length} • {stepsList.find(s => s.key === step)?.label}
+              </p>
+            </div>
+            <div>
+              {step === 'review' ? (
+                <button onClick={handleFinishOrder} className={cn("h-12 px-6 rounded-2xl font-body font-bold text-sm shadow-2xl transition-all", isBelowMinimum && deliveryMode === 'DELIVERY' ? "bg-slate-100 text-slate-300 cursor-not-allowed shadow-none" : "bg-slate-950 text-white")}>CONFIRMAR</button>
+              ) : (
+                <button onClick={handleNext} className="h-12 px-6 rounded-2xl font-body font-bold text-sm bg-slate-950 text-white shadow-2xl">
+                  {(() => {
+                    if (step === 'mode') return 'AVANÇAR';
+                    if (step === 'customer') return deliveryMode === 'DELIVERY' ? 'CONTINUAR' : 'REVISAR';
+                    if (step === 'address') return 'CONTINUAR';
+                    if (step === 'payment') return 'REVISAR';
+                    return 'AVANÇAR';
+                  })()}
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {step === "success" && <Footer />}
     </div>
