@@ -1,4 +1,9 @@
 ﻿import express from 'express';
+import {
+  createPixCharge,
+  validateWebhookSignature,
+} from './services/pix.service';
+
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { createServer } from 'http';
@@ -68,7 +73,7 @@ app.use(cors({
 
 // ✅ SEGURO: Socket.io com CORS configurado
 const io = new Server(httpServer, {
-  cors: { 
+  cors: {
     origin: allowedOrigins,
     credentials: true,
     methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE']
@@ -126,7 +131,7 @@ const seedSettings = async () => {
     console.log(`   Email: admin@foodsystem.com`);
     console.log(`   Senha: ${adminPassword}`);
     console.log(`   ⚠️ Altere a senha ao primeiro login!\n`);
-    
+
     const restaurant = await prisma.restaurant.create({
       data: {
         name: 'FoodSystem Burger',
@@ -253,7 +258,7 @@ app.post('/api/auth/register', async (req, res) => {
 app.post('/api/auth/login', async (req, res) => {
   try {
     const { email, password } = req.body;
-    const user = await prisma.user.findUnique({ 
+    const user = await prisma.user.findUnique({
       where: { email },
       include: { restaurant: true }
     });
@@ -291,18 +296,18 @@ app.post('/api/auth/forgot-password', async (req, res) => {
       return res.status(400).json({ error: 'Email é obrigatório' });
     }
 
-      // Validar formato de email
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(email)) {
-        return res.status(400).json({ error: 'Email inválido' });
-      }
+    // Validar formato de email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({ error: 'Email inválido' });
+    }
 
-      const user = await prisma.user.findUnique({ where: { email } });
-    
+    const user = await prisma.user.findUnique({ where: { email } });
+
     // Por segurança, sempre retorna sucesso mesmo se email não existe
     if (!user) {
-      return res.json({ 
-        message: 'Se o email existir em nosso sistema, você receberá um link de reset de senha.' 
+      return res.json({
+        message: 'Se o email existir em nosso sistema, você receberá um link de reset de senha.'
       });
     }
 
@@ -341,8 +346,8 @@ app.post('/api/auth/forgot-password', async (req, res) => {
 
     await createAudit(req, 'forgot_password_requested', 'user', user.id, { email: user.email });
 
-    res.json({ 
-      message: 'Se o email existir em nosso sistema, você receberá um link de reset de senha.' 
+    res.json({
+      message: 'Se o email existir em nosso sistema, você receberá um link de reset de senha.'
     });
   } catch (error) {
     console.error('Error in forgot-password:', error);
@@ -366,7 +371,7 @@ app.post('/api/auth/reset-password', async (req, res) => {
     // Validar força da nova senha
     const passwordValidation = validatePasswordStrength(newPassword);
     if (!passwordValidation.isValid) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         error: 'Senha fraca',
         requirements: passwordValidation.errors
       });
@@ -409,7 +414,7 @@ app.post('/api/auth/reset-password', async (req, res) => {
     });
 
     // Auditoria
-    await createAudit(undefined, 'password_reset', 'user', resetToken.userId, { 
+    await createAudit(undefined, 'password_reset', 'user', resetToken.userId, {
       email: resetToken.email,
       success: true
     });
@@ -476,7 +481,7 @@ app.get('/api/admin/users/export', authMiddleware, async (req: AuthRequest, res)
   const users = await prisma.user.findMany({ where, orderBy: { createdAt: 'desc' }, include: { restaurant: true } });
 
   const header = 'id,name,email,role,isApproved,restaurantId,restaurantName,createdAt\n';
-  const rows = users.map(u => `${u.id},"${u.name.replace(/"/g,'""')}","${u.email}",${u.role},${u.isApproved},${u.restaurantId || ''},"${u.restaurant?.name?.replace(/"/g,'""') || ''}",${u.createdAt.toISOString()}`).join('\n');
+  const rows = users.map(u => `${u.id},"${u.name.replace(/"/g, '""')}","${u.email}",${u.role},${u.isApproved},${u.restaurantId || ''},"${u.restaurant?.name?.replace(/"/g, '""') || ''}",${u.createdAt.toISOString()}`).join('\n');
   const csv = header + rows;
 
   res.setHeader('Content-Type', 'text/csv');
@@ -536,7 +541,7 @@ app.get('/api/admin/audit-logs/export', authMiddleware, async (req: AuthRequest,
   const logs = await prisma.auditLog.findMany({ where, orderBy: { createdAt: 'desc' } });
 
   const header = 'id,actorId,actorEmail,action,subjectType,subjectId,details,createdAt\n';
-  const rows = logs.map(l => `${l.id},${l.actorId ?? ''},"${(l.actorEmail||'').replace(/"/g,'""')}","${l.action}","${l.subjectType}",${l.subjectId ?? ''},"${JSON.stringify(l.details || {}).replace(/"/g,'""')}",${l.createdAt.toISOString()}`).join('\n');
+  const rows = logs.map(l => `${l.id},${l.actorId ?? ''},"${(l.actorEmail || '').replace(/"/g, '""')}","${l.action}","${l.subjectType}",${l.subjectId ?? ''},"${JSON.stringify(l.details || {}).replace(/"/g, '""')}",${l.createdAt.toISOString()}`).join('\n');
   const csv = header + rows;
 
   res.setHeader('Content-Type', 'text/csv');
@@ -661,7 +666,7 @@ app.post('/api/users/me/change-password', authMiddleware, async (req: AuthReques
       // Registrar tentativa bloqueada
       const ipAddress = (req.headers['x-forwarded-for'] as string)?.split(',')[0] || req.socket.remoteAddress || 'unknown';
       const userAgent = req.headers['user-agent'] || 'unknown';
-      
+
       await prisma.passwordChangeAttempt.create({
         data: {
           userId,
@@ -672,12 +677,12 @@ app.post('/api/users/me/change-password', authMiddleware, async (req: AuthReques
         }
       });
 
-      await createAudit(req, 'rate_limit_exceeded', 'user', userId, { 
+      await createAudit(req, 'rate_limit_exceeded', 'user', userId, {
         reason: 'Too many password change attempts',
         attempts: recentAttempts
       });
 
-      return res.status(429).json({ 
+      return res.status(429).json({
         error: 'Muitas tentativas de mudança de senha. Tente novamente em 15 minutos.',
         retryAfter: 900
       });
@@ -701,7 +706,7 @@ app.post('/api/users/me/change-password', authMiddleware, async (req: AuthReques
     // Validar força da nova senha
     const passwordValidation = validatePasswordStrength(newPassword);
     if (!passwordValidation.isValid) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         error: 'Senha fraca',
         requirements: passwordValidation.errors
       });
@@ -719,7 +724,7 @@ app.post('/api/users/me/change-password', authMiddleware, async (req: AuthReques
       // Registrar tentativa falha
       const ipAddress = (req.headers['x-forwarded-for'] as string)?.split(',')[0] || req.socket.remoteAddress || 'unknown';
       const userAgent = req.headers['user-agent'] || 'unknown';
-      
+
       await prisma.passwordChangeAttempt.create({
         data: {
           userId,
@@ -746,7 +751,7 @@ app.post('/api/users/me/change-password', authMiddleware, async (req: AuthReques
     // Registrar tentativa bem-sucedida
     const ipAddress = (req.headers['x-forwarded-for'] as string)?.split(',')[0] || req.socket.remoteAddress || 'unknown';
     const userAgent = req.headers['user-agent'] || 'unknown';
-    
+
     await prisma.passwordChangeAttempt.create({
       data: {
         userId,
@@ -757,7 +762,7 @@ app.post('/api/users/me/change-password', authMiddleware, async (req: AuthReques
     });
 
     // Registrar sucesso na auditoria
-    await createAudit(req, 'change_password', 'user', userId, { 
+    await createAudit(req, 'change_password', 'user', userId, {
       success: true,
       timestamp: new Date().toISOString()
     });
@@ -813,7 +818,7 @@ app.post('/api/admin/users/:id/reset-password', authMiddleware, async (req: Auth
   // Validar força da nova senha
   const passwordValidation = validatePasswordStrength(newPassword);
   if (!passwordValidation.isValid) {
-    return res.status(400).json({ 
+    return res.status(400).json({
       error: 'Senha fraca',
       requirements: passwordValidation.errors
     });
@@ -843,7 +848,7 @@ app.post('/api/admin/users/:id/reset-password', authMiddleware, async (req: Auth
     });
 
     console.log(`SuperAdmin ${req.userId} resetou a senha do usuário ${userId}`);
-    await createAudit(req, 'admin_reset_password', 'user', userId, { 
+    await createAudit(req, 'admin_reset_password', 'user', userId, {
       reason: 'Password reset by super admin',
       userEmail: user.email
     });
@@ -919,7 +924,7 @@ app.get('/api/admin/restaurants', authMiddleware, async (req: AuthRequest, res) 
     const where: any = {};
     if (status === 'active') where.isActive = true;
     if (status === 'inactive') where.isActive = false;
-    if (['READY','IN_PROGRESS','PAUSED','DENIED','PENDING'].includes(status)) {
+    if (['READY', 'IN_PROGRESS', 'PAUSED', 'DENIED', 'PENDING'].includes(status)) {
       where.provisioningStatus = status;
     }
 
@@ -1266,8 +1271,8 @@ app.use('/api', tenantMiddleware);
 
 // Settings
 app.get('/api/settings', async (req: TenantRequest, res) => {
-  const settings = await prisma.settings.findUnique({ 
-    where: { restaurantId: req.restaurantId } 
+  const settings = await prisma.settings.findUnique({
+    where: { restaurantId: req.restaurantId }
   });
   if (!settings) {
     return res.status(404).json({ error: 'Configurações não encontradas' });
@@ -1285,7 +1290,7 @@ app.patch('/api/settings', authMiddleware, async (req: AuthRequest, res) => {
   try {
     const { id, restaurantId, createdAt, updatedAt, nextOpeningLabel, isOpen, ...updateData } = req.body;
     const operatingHours = normalizeOperatingHours(updateData.operatingHours);
-    
+
     const settings = await prisma.settings.update({
       where: { restaurantId: req.restaurantId },
       data: {
@@ -1295,7 +1300,7 @@ app.patch('/api/settings', authMiddleware, async (req: AuthRequest, res) => {
         deliveryEtaMinutes: updateData.deliveryEtaMinutes || 35,
       }
     });
-    
+
     io.emit(`settings_updated_${req.restaurant?.slug}`, settings);
     res.json({
       ...settings,
@@ -1312,7 +1317,7 @@ app.patch('/api/settings', authMiddleware, async (req: AuthRequest, res) => {
 // Categories
 app.get('/api/categories', async (req: TenantRequest, res) => {
   try {
-    const categories = await prisma.category.findMany({ 
+    const categories = await prisma.category.findMany({
       where: { restaurantId: req.restaurantId },
       include: { products: true },
       orderBy: { order: 'asc' }
@@ -1327,13 +1332,13 @@ app.get('/api/categories', async (req: TenantRequest, res) => {
 app.post('/api/categories', authMiddleware, async (req: AuthRequest, res) => {
   try {
     const { id, restaurantId, status, ...categoryData } = req.body;
-    
+
     if (categoryData.name) {
       categoryData.name = categoryData.name.toUpperCase().trim();
     }
 
-    const category = await prisma.category.create({ 
-      data: { ...categoryData, restaurantId: req.restaurantId } 
+    const category = await prisma.category.create({
+      data: { ...categoryData, restaurantId: req.restaurantId }
     });
     res.status(201).json(category);
   } catch (error) {
@@ -1352,7 +1357,7 @@ app.patch('/api/categories/:id', authMiddleware, async (req: AuthRequest, res) =
     }
 
     const result = await prisma.category.updateMany({
-      where: { 
+      where: {
         id,
         restaurantId: req.restaurantId
       },
@@ -1373,17 +1378,17 @@ app.patch('/api/categories/:id', authMiddleware, async (req: AuthRequest, res) =
 
 app.delete('/api/categories/:id', authMiddleware, async (req: AuthRequest, res) => {
   try {
-    const result = await prisma.category.deleteMany({ 
-      where: { 
+    const result = await prisma.category.deleteMany({
+      where: {
         id: parseInt(req.params.id),
-        restaurantId: req.restaurantId 
-      } 
+        restaurantId: req.restaurantId
+      }
     });
-    
+
     if (result.count === 0) {
       return res.status(404).json({ error: 'Categoria não encontrada ou sem permissão.' });
     }
-    
+
     res.status(204).send();
   } catch (error) {
     console.error('Error deleting category:', error);
@@ -1394,9 +1399,9 @@ app.delete('/api/categories/:id', authMiddleware, async (req: AuthRequest, res) 
 // Products
 app.get('/api/products', async (req: TenantRequest, res) => {
   try {
-    const products = await prisma.product.findMany({ 
+    const products = await prisma.product.findMany({
       where: { restaurantId: req.restaurantId },
-      include: { category: true } 
+      include: { category: true }
     });
     res.json(products);
   } catch (error) {
@@ -1408,10 +1413,10 @@ app.get('/api/products', async (req: TenantRequest, res) => {
 app.post('/api/products', authMiddleware, async (req: AuthRequest, res) => {
   try {
     const { id, restaurantId, status, ...productData } = req.body;
-    
+
     // Converter categoryId para Int se vier como string
     if (productData.categoryId) {
-        productData.categoryId = parseInt(productData.categoryId);
+      productData.categoryId = parseInt(productData.categoryId);
     }
 
     // Normalizar para CAIXA ALTA
@@ -1429,13 +1434,13 @@ app.post('/api/products', authMiddleware, async (req: AuthRequest, res) => {
     const maxProducts = req.restaurant?.plan?.maxProducts || 10;
 
     if (productCount >= maxProducts) {
-      return res.status(403).json({ 
-        error: `Limite de produtos atingido (${maxProducts}). Faça upgrade do seu plano.` 
+      return res.status(403).json({
+        error: `Limite de produtos atingido (${maxProducts}). Faça upgrade do seu plano.`
       });
     }
 
-    const product = await prisma.product.create({ 
-      data: { ...productData, restaurantId: req.restaurantId } 
+    const product = await prisma.product.create({
+      data: { ...productData, restaurantId: req.restaurantId }
     });
     const allProducts = await prisma.product.findMany({ where: { restaurantId: req.restaurantId } });
     io.emit(`products_updated_${req.restaurant?.slug}`, allProducts);
@@ -1450,10 +1455,10 @@ app.patch('/api/products/:id', authMiddleware, async (req: AuthRequest, res) => 
   try {
     const id = parseInt(req.params.id);
     const { id: bodyId, restaurantId, createdAt, updatedAt, category, status, ...updateData } = req.body;
-    
+
     // Converter categoryId para Int se vier como string
     if (updateData.categoryId) {
-        updateData.categoryId = parseInt(updateData.categoryId);
+      updateData.categoryId = parseInt(updateData.categoryId);
     }
 
     // Normalizar para CAIXA ALTA
@@ -1465,7 +1470,7 @@ app.patch('/api/products/:id', authMiddleware, async (req: AuthRequest, res) => 
 
     // Usamos updateMany para garantir que o produto pertence ao restaurante
     const result = await prisma.product.updateMany({
-      where: { 
+      where: {
         id,
         restaurantId: req.restaurantId
       },
@@ -1486,11 +1491,11 @@ app.patch('/api/products/:id', authMiddleware, async (req: AuthRequest, res) => 
 
 app.delete('/api/products/:id', authMiddleware, async (req: AuthRequest, res) => {
   try {
-    const result = await prisma.product.deleteMany({ 
-      where: { 
+    const result = await prisma.product.deleteMany({
+      where: {
         id: parseInt(req.params.id),
         restaurantId: req.restaurantId
-      } 
+      }
     });
 
     if (result.count === 0) {
@@ -1529,9 +1534,9 @@ app.get('/api/customer/orders/:phone', async (req: TenantRequest, res) => {
 });
 
 app.get('/api/orders', authMiddleware, async (req: AuthRequest, res) => {
-  const orders = await prisma.order.findMany({ 
+  const orders = await prisma.order.findMany({
     where: { restaurantId: req.restaurantId },
-    orderBy: { createdAt: 'desc' } 
+    orderBy: { createdAt: 'desc' }
   });
   res.json(orders);
 });
@@ -1597,7 +1602,7 @@ app.post('/api/orders', async (req: TenantRequest, res) => {
 
 app.patch('/api/orders/:id', authMiddleware, async (req: AuthRequest, res) => {
   const order = await prisma.order.update({
-    where: { 
+    where: {
       id: parseInt(req.params.id),
       restaurantId: req.restaurantId
     },
@@ -1612,16 +1617,16 @@ app.get('/api/stats', authMiddleware, async (req: AuthRequest, res) => {
   const [totalOrders, totalSales, pendingOrders, recentOrders, totalCustomers, topProductsRaw] = await Promise.all([
     prisma.order.count({ where: { restaurantId: req.restaurantId } }),
     prisma.order.aggregate({
-      where: { 
+      where: {
         restaurantId: req.restaurantId,
-        status: 'DELIVERED' 
+        status: 'DELIVERED'
       },
       _sum: { total: true }
     }),
     prisma.order.count({
-      where: { 
+      where: {
         restaurantId: req.restaurantId,
-        NOT: { OR: [{ status: 'DELIVERED' }, { status: 'CANCELLED' }] } 
+        NOT: { OR: [{ status: 'DELIVERED' }, { status: 'CANCELLED' }] }
       }
     }),
     prisma.order.findMany({
@@ -1672,3 +1677,121 @@ app.get('/api/stats', authMiddleware, async (req: AuthRequest, res) => {
 httpServer.listen(PORT, () => {
   console.log(`🚀 API com PostgreSQL rodando em http://localhost:${PORT}`);
 });
+
+// ─── PIX ROUTES ──────────────────────────────────────────────────────────────
+
+// Salvar chave PIX do lojista (apenas a chave PIX, não credenciais Efi)
+apiRouter.put('/pix/settings', authMiddleware, tenantMiddleware, async (req: AuthRequest & TenantRequest, res) => {
+  try {
+    const { pixKey, pixEnabled } = req.body;
+
+    if (!pixKey && pixEnabled) {
+      return res.status(400).json({ error: 'pixKey é obrigatório quando PIX está ativado' });
+    }
+
+    await prisma.settings.update({
+      where: { restaurantId: req.restaurant!.id },
+      data: {
+        pixEnabled: pixEnabled ?? false,
+        pixKey: pixKey ?? null,
+      },
+    });
+
+    res.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erro ao salvar configurações PIX' });
+  }
+});
+
+// Obter status das credenciais PIX do lojista
+apiRouter.get('/pix/settings', authMiddleware, tenantMiddleware, async (req: AuthRequest & TenantRequest, res) => {
+  try {
+    const s = await prisma.settings.findUnique({ where: { restaurantId: req.restaurant!.id } });
+    res.json({
+      pixEnabled: s?.pixEnabled ?? false,
+      pixKey: s?.pixKey ?? null,
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Erro ao buscar configurações PIX' });
+  }
+});
+
+// Criar cobrança PIX para um pedido (chamado pelo frontend após criar o pedido)
+apiRouter.post('/pix/charge/:orderId', tenantMiddleware, async (req: TenantRequest, res) => {
+  try {
+    const orderId = parseInt(req.params.orderId);
+    const order = await prisma.order.findFirst({
+      where: { id: orderId, restaurantId: req.restaurant!.id },
+    });
+
+    if (!order) return res.status(404).json({ error: 'Pedido não encontrado' });
+    if (order.paymentMethod !== 'PIX') {
+      return res.status(400).json({ error: 'Pedido não é PIX' });
+    }
+
+    const s = await prisma.settings.findUnique({ where: { restaurantId: req.restaurant!.id } });
+
+    if (!s?.pixEnabled || !s.pixKey) {
+      return res.status(400).json({ error: 'PIX não configurado nesta loja' });
+    }
+
+    // Chamar serviço com credenciais centrais (via .env) e chave PIX do lojista
+    const charge = await createPixCharge(
+      s.pixKey,
+      order.total,
+      orderId.toString()
+    );
+
+    // Salvar txid no pedido para correlacionar webhook
+    const existingNotes = order.notes ? JSON.parse(order.notes) : {};
+    await prisma.order.update({
+      where: { id: orderId },
+      data: { notes: JSON.stringify({ ...existingNotes, pixTxid: charge.txid }) },
+    });
+
+    res.json(charge);
+  } catch (err: any) {
+    console.error('Erro ao criar cobrança PIX:', err?.response?.data || err.message);
+    res.status(500).json({ error: 'Erro ao gerar cobrança PIX. Verifique a configuração.' });
+  }
+});
+
+// Webhook Efi Bank — confirmação de pagamento PIX
+// Registre no painel Efi: https://seudominio.com/api/pix/webhook
+app.post(
+  '/api/pix/webhook',
+  express.raw({ type: '*/*' }),
+  async (req, res) => {
+    const sig = req.headers['x-hub-signature'] as string | undefined;
+    if (!validateWebhookSignature(req.body as Buffer, sig)) {
+      return res.status(401).json({ error: 'Assinatura inválida' });
+    }
+    try {
+      const payload = JSON.parse((req.body as Buffer).toString());
+      const pixArr: any[] = payload?.pix ?? [];
+      for (const pix of pixArr) {
+        const txid: string = pix.txid;
+        if (!txid) continue;
+        const orders = await prisma.order.findMany({
+          where: { notes: { contains: txid } },
+        });
+        for (const order of orders) {
+          if (order.status === 'PAID') continue;
+          await prisma.order.update({ where: { id: order.id }, data: { status: 'PAID' } });
+          io.emit(`order:${order.restaurantId}:paid`, {
+            orderId: order.id,
+            txid,
+            paidAt: pix.horario,
+            endToEndId: pix.endToEndId,
+          });
+          console.log(`✅ PIX confirmado — Pedido #${order.id}`);
+        }
+      }
+      res.status(200).json({ ok: true });
+    } catch (err) {
+      console.error('Erro no webhook PIX:', err);
+      res.status(500).json({ error: 'Erro interno' });
+    }
+  }
+);

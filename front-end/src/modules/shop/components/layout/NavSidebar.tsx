@@ -22,13 +22,16 @@ export function NavSidebar({ isOpen, onClose, categories, activeCategory, onCate
   const { address } = useLocationStore() as any;
   const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
   const storeName = settings?.storeName || "Food System";
-  const firstName = storeName.split(' ')[0] || "Food";
+  const storeDesignation = storeName.toUpperCase();
+  const nextOpeningLabel = getNextOpeningLabel(settings?.operatingHours);
   const statusTone = settings?.isOpen ? 'text-emerald-500' : 'text-rose-500';
   const statusDot = settings?.isOpen ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]' : 'bg-rose-500';
-  const statusTitle = settings?.isOpen ? 'Serviço aberto' : 'Serviço encerrado';
+  const statusTitle = settings?.isOpen ? 'LOJA ABERTA' : 'LOJA FECHADA';
   const statusDetail = settings?.isOpen
-    ? getOperatingHoursSummary(settings?.operatingHours)
-    : getNextOpeningLabel(settings?.operatingHours);
+    ? `HOJE ${getOperatingHoursSummary(settings?.operatingHours).toUpperCase()}`
+    : nextOpeningLabel === 'Sem próximos horários'
+      ? 'SEM PRÓXIMO HORÁRIO'
+      : `ABRE ${nextOpeningLabel.toUpperCase()}`;
 
   useEffect(() => {
     if (!isOpen) return;
@@ -76,13 +79,13 @@ export function NavSidebar({ isOpen, onClose, categories, activeCategory, onCate
                   <div className="min-w-0">
                     <p className="text-[9px] md:text-[10px] font-black text-slate-300 uppercase tracking-[0.22em] mb-1">Restaurante</p>
                     <h2 className="text-heading-3 md:text-heading-1 font-display font-bold text-slate-950 tracking-tighter uppercase leading-none truncate">
-                      {firstName}
+                      {storeDesignation}
                     </h2>
                     <div className={cn("mt-3 flex items-start gap-2", statusTone)}>
                       <span className={cn("mt-1 w-2 h-2 rounded-full shrink-0", statusDot)} />
                       <div className="min-w-0">
                         <p className="text-label font-body font-semibold uppercase tracking-[0.06em] leading-none">{statusTitle}</p>
-                        <p className="mt-1 text-[10px] font-medium text-slate-500 uppercase tracking-[0.18em] leading-relaxed">
+                        <p className="mt-1 text-[10px] font-semibold text-slate-500 uppercase tracking-widest leading-relaxed">
                           {statusDetail}
                         </p>
                       </div>

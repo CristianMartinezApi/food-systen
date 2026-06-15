@@ -11,6 +11,7 @@ import { CartSidebar } from "../cart/CartSidebar";
 import { AddressModal } from "../modals/AddressModal";
 import { cn } from "../../../../shared/utils";
 import Link from "next/link";
+import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { getNextOpeningLabel } from "../../../../shared/utils/schedule";
 
@@ -41,36 +42,86 @@ export function Header({ onOpenMenu }: HeaderProps) {
     ? `${address.street}, ${address.number}`
     : (settings?.address || "Carregando endereço...");
 
+  const storeNameRaw = settings?.storeName?.trim() || "Food System";
+  const storeNameParts = storeNameRaw.split(/\s+/).filter(Boolean);
+  const storeNameMain = storeNameParts.length > 1
+    ? storeNameParts.slice(0, -1).join(" ")
+    : storeNameRaw;
+  const storeNameAccent = storeNameParts.length > 1
+    ? storeNameParts[storeNameParts.length - 1]
+    : "";
+  const nextOpeningLabel = getNextOpeningLabel(settings?.operatingHours);
+  const closedStatusLabel = nextOpeningLabel === "Sem próximos horários"
+    ? "FECHADA • SEM PRÓXIMO HORÁRIO"
+    : `FECHADA AGORA • ABRE ${nextOpeningLabel.toUpperCase()}`;
+  const desktopStatusLabel = settings?.isOpen ? "ABERTA • PRODUZINDO" : closedStatusLabel;
+  const mobileStatusLabel = settings?.isOpen
+    ? "ABERTA"
+    : nextOpeningLabel === "Sem próximos horários"
+      ? "FECHADA • SEM HORÁRIO"
+      : `ABRE ${nextOpeningLabel.toUpperCase()}`;
+
+  const cartButton = (
+    <button
+      onClick={() => setIsCartOpen(true)}
+      aria-label="Abrir cesto"
+      className="fixed bottom-5 right-4 md:bottom-8 md:right-8 z-70 w-12 h-12 md:w-16 md:h-16 bg-slate-950 text-white rounded-full flex items-center justify-center hover:scale-105 active:scale-95 transition-all duration-300 shadow-2xl shadow-slate-950/35"
+    >
+      <div className="relative">
+        <ShoppingBag size={18} className="md:size-7" />
+        {totalItems > 0 && (
+          <AnimatePresence>
+            <motion.span
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              className="absolute -top-2 -right-2 md:-top-3 md:-right-3 bg-primary text-white text-[9px] md:text-[11px] font-body font-bold min-w-5 h-5 px-1 md:min-w-6 md:h-6 rounded-full flex items-center justify-center border-2 border-slate-950"
+            >
+              {totalItems > 99 ? "99+" : totalItems}
+            </motion.span>
+          </AnimatePresence>
+        )}
+      </div>
+    </button>
+  );
+
   return (
     <>
       <header
         className={cn(
-          "sticky top-0 left-0 right-0 z-50 transition-all duration-500",
+          "sticky top-0 left-0 right-0 z-50 transition-all duration-500 border-b",
           isScrolled
-            ? "py-1.5 sm:py-2 md:py-4 bg-slate-100/90 backdrop-blur-2xl shadow-[0_16px_44px_rgba(15,23,42,0.12)]"
-            : "py-1.5 sm:py-3 md:py-6 bg-slate-100 border-b border-slate-200"
+            ? "py-2 sm:py-2.5 md:py-4 bg-slate-800/95 border-slate-700 backdrop-blur-md shadow-[0_12px_30px_rgba(2,6,23,0.32)]"
+            : "py-2.5 sm:py-3 md:py-5 bg-slate-800 border-slate-700 shadow-[0_10px_24px_rgba(2,6,23,0.28)]"
         )}
       >
-        <div className="container mx-auto px-3 md:px-6">
-          <div className="flex items-center justify-between gap-2 md:gap-8">
+        <div className="w-full px-3 md:px-5 lg:px-7 xl:px-8">
+          <div className="flex items-center justify-between gap-3 md:gap-6 lg:grid lg:grid-cols-[auto_minmax(300px,380px)_auto] lg:items-center lg:gap-5">
 
             {/* Logo Section */}
-            <div className="flex items-center gap-3 md:gap-6 min-w-0">
-              <Link href={`/${slug}`} className="flex items-center gap-3 md:gap-5 group min-w-0">
-                <div className="w-12 h-12 md:w-20 md:h-20 bg-slate-950 rounded-xl md:rounded-3xl flex items-center justify-center shadow-2xl shadow-slate-950/20 group-hover:rotate-6 transition-all duration-500 shrink-0">
+            <div className="flex items-center gap-3 md:gap-5 min-w-0 lg:justify-self-start">
+              <Link href={`/${slug}`} className="flex items-center gap-3 md:gap-4 group min-w-0">
+                <div className="w-11 h-11 md:w-14 md:h-14 bg-slate-900 rounded-xl md:rounded-2xl flex items-center justify-center shadow-xl shadow-black/30 ring-1 ring-white/10 group-hover:rotate-3 transition-all duration-500 shrink-0">
                   {settings?.logo ? (
-                    <img src={settings.logo} alt="Logo" className="w-full h-full object-cover rounded-xl md:rounded-3xl" />
+                    <img src={settings.logo} alt="Logo" className="w-full h-full object-cover rounded-xl md:rounded-2xl" />
                   ) : (
                     <Utensils className="text-primary group-hover:scale-110 transition-transform duration-500" size={20} />
                   )}
                 </div>
                 <div className="flex flex-col min-w-0">
-                  <h1 className="text-[13px] sm:text-[18px] md:text-[26px] lg:text-[30px] font-display font-bold text-slate-950 tracking-tighter leading-none uppercase truncate max-w-52 sm:max-w-none">
-                    {settings?.storeName?.split(' ')[0] || "FOOD"}<span className="hidden sm:inline text-primary">{settings?.storeName?.split(' ')[1] || "SYSTEM"}</span>
+                  <h1
+                    style={{ fontWeight: 900, letterSpacing: '-0.015em' }}
+                    className="text-[24px] sm:text-[28px] md:text-[36px] lg:text-[40px] font-body text-white uppercase tracking-none leading-none truncate max-w-62 sm:max-w-none [text-rendering:optimizeLegibility]"
+                  >
+                    <span className="text-white">{storeNameMain}</span>
+                    {storeNameAccent ? <span className="text-primary">{storeNameAccent}</span> : null}
                   </h1>
-                  <p className="hidden xs:flex text-[9px] md:text-[11px] font-body font-medium text-slate-400 uppercase tracking-[0.06em] mt-0.5 md:mt-1 pr-2 items-center gap-1 whitespace-nowrap">
+                  <p className="flex md:hidden text-[9px] font-body font-semibold text-slate-300 uppercase tracking-wider mt-0.5 pr-2 items-center gap-1 whitespace-nowrap max-w-40 truncate">
+                    <span className={cn("w-1 h-1 rounded-full", settings?.isOpen ? "bg-emerald-500" : "bg-rose-500")} />
+                    {mobileStatusLabel}
+                  </p>
+                  <p className="hidden md:flex text-[10px] font-body font-medium text-slate-300 uppercase tracking-wider mt-0.5 pr-2 items-center gap-1 whitespace-nowrap">
                     <span className={cn("w-1 h-1 md:w-1.5 md:h-1.5 rounded-full", settings?.isOpen ? "bg-emerald-500 animate-pulse" : "bg-rose-500")} />
-                    {settings?.isOpen ? "Produzindo" : `Fechado • ${getNextOpeningLabel(settings?.operatingHours)}`}
+                    {desktopStatusLabel}
                   </p>
                 </div>
               </Link>
@@ -79,67 +130,44 @@ export function Header({ onOpenMenu }: HeaderProps) {
             {/* Middle Section: Address */}
             <div
               onClick={() => setIsAddressModalOpen(true)}
-              className="hidden lg:flex items-center gap-3 md:gap-5 bg-slate-50 shadow-xl shadow-slate-300/40 px-4 md:px-8 py-2 md:py-4 rounded-2xl md:rounded-3xl border border-slate-200 cursor-pointer hover:border-primary/20 hover:shadow-primary/10 transition-all duration-500 group"
+              className="hidden lg:flex lg:justify-self-center items-center h-12 xl:h-14 gap-3 bg-slate-700/70 border border-slate-600 rounded-2xl px-4 xl:px-5 shadow-sm shadow-black/15 cursor-pointer hover:bg-slate-700 hover:border-primary/40 hover:shadow-md hover:shadow-primary/10 transition-all duration-300 group"
             >
-              <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg md:rounded-2xl bg-slate-50 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all duration-500">
-                <MapPin size={16} className="md:size-18" />
+              <div className="w-7 h-7 rounded-lg bg-slate-900/70 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all duration-300">
+                <MapPin size={14} />
               </div>
               <div>
-                <p className="text-[8px] md:text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em] leading-none mb-1">Entregar em</p>
-                <p className="text-[10px] md:text-body-strong font-body text-slate-950 truncate max-w-40 md:max-w-50 uppercase tracking-tighter">
+                <p className="text-[8px] font-body font-semibold text-slate-300 uppercase tracking-wider leading-none mb-0.5">Entregar em</p>
+                <p className="text-[11px] font-body text-slate-100 truncate max-w-44 tracking-tight leading-none">
                   {displayAddress}
                 </p>
               </div>
-              <ChevronRight size={14} className="md:size-16 text-slate-200 group-hover:translate-x-1 transition-transform" />
+              <ChevronRight size={14} className="text-slate-400 group-hover:text-slate-200 group-hover:translate-x-0.5 transition-all" />
             </div>
 
             {/* Right Section: Actions */}
-            <div className="flex items-center gap-1 md:gap-6 shrink-0">
+            <div className="ml-auto flex items-center gap-2 md:gap-4 lg:gap-4 xl:gap-5 shrink-0 lg:ml-0 lg:justify-self-end">
               {/* Search Bar - Aesthetic version */}
               <div className="hidden md:flex relative items-center group">
-                <Search className="absolute left-4 md:left-6 text-slate-300 group-focus-within:text-primary transition-colors duration-300" size={18} />
+                <Search className="absolute left-4 md:left-5 text-slate-300 group-focus-within:text-primary transition-colors duration-300" size={18} />
                 <input
                   placeholder="BUSCAR SABOR..."
-                  className="h-12 md:h-16 w-40 md:w-56 lg:w-80 pl-12 md:pl-16 pr-4 md:pr-6 bg-slate-100 border border-slate-200 rounded-2xl md:rounded-3xl focus:bg-slate-50 focus:ring-[6px] focus:ring-primary/10 focus:border-primary/20 transition-all duration-300 text-[10px] md:text-label font-body font-medium uppercase tracking-[0.06em] outline-none"
+                  className="h-12 xl:h-14 w-40 md:w-56 lg:w-72 pl-11 md:pl-14 pr-4 md:pr-6 bg-slate-700/70 border border-slate-600 rounded-2xl focus:bg-slate-700 focus:ring-[5px] focus:ring-primary/20 focus:border-primary/50 transition-all duration-300 text-[10px] md:text-sm font-body font-medium uppercase tracking-wider text-slate-100 outline-none placeholder:text-slate-300"
                 />
               </div>
-
-              {/* Cart Button */}
-              <button
-                onClick={() => setIsCartOpen(true)}
-                className="relative bg-slate-950 text-white h-9 md:h-18 px-2.5 md:px-10 rounded-lg md:rounded-3xl flex items-center gap-1.5 md:gap-5 hover:scale-105 active:scale-95 transition-all duration-500 shadow-2xl shadow-slate-950/30 group"
-              >
-                <div className="relative">
-                  <ShoppingBag size={15} className="md:size-6 group-hover:rotate-12 transition-transform duration-300" />
-                  {totalItems > 0 && (
-                    <AnimatePresence>
-                      <motion.span
-                        initial={{ scale: 0 }}
-                        animate={{ scale: 1 }}
-                        className="absolute -top-2 -right-2 md:-top-3 md:-right-3 bg-primary text-white text-[7px] md:text-label font-body font-bold w-4 h-4 md:w-7 md:h-7 rounded-full flex items-center justify-center border-2 md:border-4 border-slate-950 shadow-lg"
-                      >
-                        {totalItems}
-                      </motion.span>
-                    </AnimatePresence>
-                  )}
-                </div>
-                <div className="hidden lg:flex flex-col items-start leading-none">
-                  <span className="text-label font-body font-medium uppercase tracking-[0.06em] opacity-40 mb-1">Cesto</span>
-                  <span className="text-body-strong font-body font-bold tracking-tighter uppercase">Ver Agora</span>
-                </div>
-              </button>
 
               {/* Mobile Menu Toggle */}
               <button
                 onClick={onOpenMenu}
-                className="w-9 h-9 md:w-16 md:h-16 bg-slate-50 border border-slate-200 rounded-lg md:rounded-2xl flex items-center justify-center text-slate-950 shadow-md shadow-slate-300/40 active:scale-90 transition-all"
+                className="w-10 h-10 md:w-12 md:h-12 xl:w-14 xl:h-14 bg-slate-700/70 border border-slate-600 rounded-2xl flex items-center justify-center text-slate-100 shadow-sm shadow-black/20 hover:bg-slate-700 hover:border-slate-500 hover:shadow-md active:scale-90 transition-all duration-200"
               >
-                <Menu size={15} className="md:size-6" />
+                <Menu size={16} className="md:size-5 lg:size-6" />
               </button>
             </div>
           </div>
         </div>
       </header>
+
+      {typeof document !== "undefined" ? createPortal(cartButton, document.body) : null}
 
       <CartSidebar isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />
       <AddressModal isOpen={isAddressModalOpen} onClose={() => setIsAddressModalOpen(false)} />

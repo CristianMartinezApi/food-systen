@@ -26,6 +26,21 @@ export function CartSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
     setSlug(getTenantSlug());
   }, []);
 
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const previousBodyOverflow = document.body.style.overflow;
+    const previousHtmlOverflow = document.documentElement.style.overflow;
+
+    document.body.style.overflow = "hidden";
+    document.documentElement.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = previousBodyOverflow;
+      document.documentElement.style.overflow = previousHtmlOverflow;
+    };
+  }, [isOpen]);
+
   const handleEditClick = (index: number, item: any) => {
     const originalProduct = products?.find((p: any) => p.id === item.productId);
     if (originalProduct) {
@@ -69,7 +84,7 @@ export function CartSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
                   <ShoppingBag size={22} className="group-hover:rotate-12 transition-transform duration-500" />
                 </div>
                 <div>
-                  <h3 className="text-heading-3 md:text-heading-2 font-display font-bold text-slate-950 uppercase tracking-tighter leading-none mb-1">Meus Desejos</h3>
+                  <h3 className="text-heading-3 md:text-heading-2 font-display font-bold text-slate-950 uppercase tracking-tighter leading-none mb-1">Carrinho</h3>
                   <div className="flex items-center gap-2">
                     <div className="w-1.5 h-1.5 rounded-full bg-primary" />
                     <p className="text-[10px] md:text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em]">{cartItems.length} {cartItems.length === 1 ? 'item selecionado' : 'itens selecionados'}</p>
@@ -95,7 +110,7 @@ export function CartSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
                     </div>
                   </div>
                   <div className="space-y-4">
-                    <h4 className="text-heading-3 md:text-heading-2 font-display font-bold text-slate-950 uppercase tracking-tight">Opa! Cesto Vazio</h4>
+                    <h4 className="text-heading-3 md:text-heading-2 font-display font-bold text-slate-950 uppercase tracking-tight">Carrinho Vazio</h4>
                     <p className="text-[10px] md:text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em] max-w-50 mx-auto leading-relaxed">Sua próxima experiência inesquecível começa com um clique.</p>
                   </div>
                   <button
