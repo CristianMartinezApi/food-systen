@@ -78,13 +78,13 @@ export function CartSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
             )}
           >
             {/* Header del Carrello con Estetica Moderna */}
-            <div className="px-4 py-4 md:p-10 border-b border-slate-200 flex items-center justify-between bg-slate-100/90 backdrop-blur-xl sticky top-0 z-10">
-              <div className="flex items-center gap-3 md:gap-6 min-w-0">
-                <div className="w-12 h-12 md:w-16 md:h-16 bg-slate-950 rounded-2xl md:rounded-3xl flex items-center justify-center text-primary shadow-2xl shadow-slate-950/20 group cursor-default shrink-0">
+            <div className="px-4 py-3 md:p-8 border-b border-slate-200 flex items-center justify-between bg-slate-100/90 backdrop-blur-xl sticky top-0 z-10">
+              <div className="flex items-center gap-3 md:gap-5 min-w-0">
+                <div className="w-11 h-11 md:w-14 md:h-14 bg-slate-950 rounded-2xl flex items-center justify-center text-primary shadow-xl shadow-slate-950/20 group cursor-default shrink-0">
                   <ShoppingBag size={22} className="group-hover:rotate-12 transition-transform duration-500" />
                 </div>
                 <div>
-                  <h3 className="text-heading-3 md:text-heading-2 font-display font-bold text-slate-950 uppercase tracking-tighter leading-none mb-1">Carrinho</h3>
+                  <h3 className="text-heading-3 md:text-heading-2 font-display font-bold text-slate-950 uppercase tracking-tighter leading-none mb-0.5">Carrinho</h3>
                   <div className="flex items-center gap-2">
                     <div className="w-1.5 h-1.5 rounded-full bg-primary" />
                     <p className="text-[10px] md:text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em]">{cartItems.length} {cartItems.length === 1 ? 'item selecionado' : 'itens selecionados'}</p>
@@ -93,29 +93,29 @@ export function CartSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
               </div>
               <button
                 onClick={onClose}
-                className="w-11 h-11 md:w-14 md:h-14 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-300 hover:text-slate-950 hover:bg-slate-100 hover:shadow-xl transition-all duration-500 hover:rotate-90 shrink-0"
+                className="w-10 h-10 md:w-12 md:h-12 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-300 hover:text-slate-950 hover:bg-slate-100 hover:shadow-lg transition-all duration-500 hover:rotate-90 shrink-0"
               >
                 <X size={20} className="md:size-6" />
               </button>
             </div>
 
             {/* Lista di Prodotto Premium */}
-            <div className="flex-1 overflow-y-auto px-4 py-4 md:p-10 space-y-4 md:space-y-8 no-scrollbar scroll-smooth">
+            <div className="flex-1 overflow-y-auto px-4 py-4 md:p-8 space-y-4 md:space-y-6 no-scrollbar scroll-smooth">
               {cartItems.length === 0 ? (
-                <div className="h-full flex flex-col items-center justify-center text-center space-y-6 md:space-y-10">
+                <div className="h-full flex flex-col items-center justify-center text-center space-y-5 md:space-y-7">
                   <div className="relative">
                     <div className="absolute inset-0 bg-primary/20 rounded-full blur-3xl animate-pulse" />
-                    <div className="relative w-24 h-24 md:w-32 md:h-32 bg-slate-50 rounded-[3rem] md:rounded-[4rem] flex items-center justify-center text-slate-200 border border-slate-200">
-                      <Package size={44} className="md:size-14" />
+                    <div className="relative w-20 h-20 md:w-24 md:h-24 bg-slate-50 rounded-[2.5rem] md:rounded-[3rem] flex items-center justify-center text-slate-200 border border-slate-200">
+                      <Package size={36} className="md:size-11" />
                     </div>
                   </div>
-                  <div className="space-y-4">
+                  <div className="space-y-3">
                     <h4 className="text-heading-3 md:text-heading-2 font-display font-bold text-slate-950 uppercase tracking-tight">Carrinho Vazio</h4>
                     <p className="text-[10px] md:text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em] max-w-50 mx-auto leading-relaxed">Sua próxima experiência inesquecível começa com um clique.</p>
                   </div>
                   <button
                     onClick={onClose}
-                    className="px-8 py-4 md:px-10 md:py-5 bg-slate-950 text-white rounded-2xl text-[10px] md:text-label font-body font-medium uppercase tracking-[0.06em] hover:bg-primary hover:scale-105 active:scale-95 transition-all duration-500 shadow-xl shadow-slate-950/10"
+                    className="px-7 py-3.5 md:px-9 md:py-4 bg-slate-950 text-white rounded-2xl text-[10px] md:text-label font-body font-medium uppercase tracking-[0.06em] hover:bg-primary hover:scale-105 active:scale-95 transition-all duration-500 shadow-lg shadow-slate-950/10"
                   >
                     Ver Cardápio Premium
                   </button>
@@ -187,8 +187,8 @@ export function CartSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
 
             {/* Premium Checkout Footer */}
             {cartItems.length > 0 && (
-              <div className="p-4 md:p-10 bg-slate-100 border-t border-slate-200 shadow-[0_-20px_50px_rgba(15,23,42,0.08)]">
-                <div className="space-y-3 md:space-y-4 mb-6 md:mb-10">
+              <div className="p-4 md:p-7 bg-slate-100 border-t border-slate-200 shadow-[0_-16px_36px_rgba(15,23,42,0.06)]">
+                <div className="space-y-3 md:space-y-3.5 mb-5 md:mb-6">
                   <div className="flex justify-between items-center">
                     <span className="text-[10px] md:text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em]">Subtotal</span>
                     <span className="font-mono font-medium text-slate-950 tracking-tighter">{formatCurrency(total)}</span>
@@ -199,10 +199,7 @@ export function CartSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
                   </div>
                   <div className="h-px bg-slate-100 my-3 md:my-4" />
                   <div className="flex justify-between items-end">
-                    <div className="space-y-1">
-                      <span className="text-[10px] md:text-label font-body font-medium text-slate-950 uppercase tracking-[0.06em]">Total Investido</span>
-                      <p className="text-[10px] md:text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em]">Taxas e serviços inclusos</p>
-                    </div>
+                    <span className="text-[10px] md:text-label font-body font-medium text-slate-950 uppercase tracking-[0.06em]">Total</span>
                     <span className="text-heading-2 md:text-heading-1 font-mono font-medium text-slate-950 tracking-tighter">{formatCurrency(total)}</span>
                   </div>
                 </div>
@@ -210,7 +207,7 @@ export function CartSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
                 <Link
                   href={`/${slug}/checkout`}
                   onClick={onClose}
-                  className="h-14 md:h-20 w-full bg-slate-950 text-white rounded-4xl font-body font-bold uppercase tracking-[0.06em] text-[10px] md:text-label flex items-center justify-center gap-3 md:gap-5 shadow-2xl shadow-slate-950/20 hover:bg-primary hover:scale-[1.02] active:scale-[0.98] transition-all duration-500 group overflow-hidden relative"
+                  className="h-13 md:h-16 w-full bg-slate-950 text-white rounded-3xl font-body font-bold uppercase tracking-[0.06em] text-[10px] md:text-label flex items-center justify-center gap-3 md:gap-4 shadow-xl shadow-slate-950/20 hover:bg-primary hover:scale-[1.02] active:scale-[0.98] transition-all duration-500 group overflow-hidden relative"
                 >
                   <span className="relative z-10 font-body font-bold">Iniciar Finalização</span>
                   <ArrowRight size={18} className="relative z-10 group-hover:translate-x-3 transition-transform duration-500" />
