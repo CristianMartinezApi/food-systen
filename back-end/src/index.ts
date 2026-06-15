@@ -1431,7 +1431,8 @@ app.post('/api/products', authMiddleware, async (req: AuthRequest, res) => {
       where: { restaurantId: req.restaurantId }
     });
 
-    const maxProducts = req.restaurant?.plan?.maxProducts || 10;
+    // Aumentando temporariamente para 100 para permitir que o usuário cadastre produtos
+    const maxProducts = req.restaurant?.plan?.maxProducts || 100;
 
     if (productCount >= maxProducts) {
       return res.status(403).json({
