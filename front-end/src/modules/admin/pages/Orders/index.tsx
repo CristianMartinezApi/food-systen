@@ -21,6 +21,9 @@ import { motion, AnimatePresence } from "framer-motion";
 import { gsap } from "gsap";
 
 export default function OrdersPage() {
+  // Desativar avisos de alvos nulos do GSAP (evita poluição no console quando a lista está vazia)
+  gsap.config({ nullTargetWarn: false });
+
   const [orders, setOrders] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState("ALL");

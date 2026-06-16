@@ -24,6 +24,9 @@ import toast from "react-hot-toast";
 import { gsap } from "gsap";
 
 export default function Dashboard() {
+  // Desativar avisos de alvos nulos do GSAP
+  gsap.config({ nullTargetWarn: false });
+
   const [stats, setStats] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [slug, setSlug] = useState<string>("");

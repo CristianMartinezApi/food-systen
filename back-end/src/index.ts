@@ -1635,6 +1635,27 @@ app.get('/api/orders', authMiddleware, async (req: AuthRequest, res) => {
 app.post('/api/orders', async (req: TenantRequest, res) => {
   try {
     const { customerName, phone, address, paymentMethod, items, subtotal, deliveryFee, total, notes, cpf, changeFor } = req.body;
+
+    // --- CHECK ORDER LIMIT (MONTHLY) ---
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    const orderCount = await prisma.order.count({
+      where: {
+        restaurantId: req.restaurantId!,
+        createdAt: { gte: startOfMonth }
+      }
+    });
+
+    const maxOrders = req.restaurant?.plan?.maxOrders || 100;
+
+    if (orderCount >= maxOrders) {
+      return res.status(403).json({
+        error: `Limite de pedidos mensais atingido (${maxOrders}). Faça upgrade do seu plano para continuar recebendo pedidos.`
+      });
+    }
+    // -----------------------------------
+
     const settings = await prisma.settings.findUnique({
       where: { restaurantId: req.restaurantId! }
     });
