@@ -79,8 +79,8 @@ const io = new Server(httpServer, {
     methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE']
   }
 });
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ limit: '10mb', extended: true }));
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // Helper para criar entradas de auditoria (audit logs)
 async function createAudit(req: AuthRequest | any, action: string, subjectType: string, subjectId?: number | null, details?: any) {
