@@ -41,6 +41,21 @@ export function ProductModal({ product, isOpen, onClose, editIndex = null, initi
         }
     }, [isOpen, product, initialData, initialSize]);
 
+    // Bloquear scroll do body quando o modal estiver aberto
+    useEffect(() => {
+        if (isOpen) {
+            document.body.style.overflow = 'hidden';
+            document.body.style.height = '100vh';
+        } else {
+            document.body.style.overflow = 'unset';
+            document.body.style.height = 'unset';
+        }
+        return () => {
+            document.body.style.overflow = 'unset';
+            document.body.style.height = 'unset';
+        };
+    }, [isOpen]);
+
     const basePrice = useMemo(() => {
         if (!product) return 0;
         return selectedSize ? selectedSize.price : (product.price || 0);
