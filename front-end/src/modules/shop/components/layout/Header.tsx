@@ -110,7 +110,7 @@ export function Header({ onOpenMenu }: HeaderProps) {
                 <div className="flex flex-col min-w-0">
                   <h1
                     style={{ fontWeight: 900, letterSpacing: '-0.02em' }}
-                    className="text-[20px] sm:text-[24px] md:text-[32px] lg:text-[36px] font-body text-white uppercase leading-[0.9] truncate max-w-[140px] xs:max-w-[180px] sm:max-w-[240px] md:max-w-[320px] lg:max-w-[380px] xl:max-w-none [text-rendering:optimizeLegibility]"
+                    className="text-[20px] sm:text-[24px] md:text-[32px] lg:text-[36px] font-body text-white uppercase leading-[0.9] truncate max-w-[240px] sm:max-w-[300px] md:max-w-[320px] lg:max-w-[380px] xl:max-w-none [text-rendering:optimizeLegibility]"
                   >
                     <span className="text-white">{storeNameMain}</span>
                     {storeNameAccent ? <span className="text-primary ml-1">{storeNameAccent}</span> : null}
