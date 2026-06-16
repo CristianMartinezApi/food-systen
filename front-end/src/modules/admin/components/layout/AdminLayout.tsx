@@ -12,7 +12,8 @@ import {
   User,
   Tags,
   ExternalLink,
-  Users
+  Users,
+  CreditCard
 } from "lucide-react";
 import { cn } from "../../../../shared/utils";
 import { motion, AnimatePresence } from "framer-motion";
@@ -204,6 +205,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
     menuItems = [
       { icon: LayoutDashboard, label: "Painel", path: "/admin" },
       { icon: Users, label: "Clientes", path: "/admin/clients" },
+      { icon: CreditCard, label: "Planos", path: "/admin/plans" },
       { icon: ExternalLink, label: "Auditoria", path: "/admin/audit" },
       { icon: Settings, label: "Provisionamento", path: "/admin/provisioning" },
     ];

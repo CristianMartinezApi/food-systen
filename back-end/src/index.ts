@@ -941,6 +941,97 @@ app.get('/api/admin/restaurants', authMiddleware, async (req: AuthRequest, res) 
   }
 });
 
+// Planos - endpoints de administração (apenas SUPER_ADMIN)
+app.get('/api/admin/plans', authMiddleware, async (req: AuthRequest, res) => {
+  if (req.userRole !== 'SUPER_ADMIN') {
+    return res.status(403).json({ error: 'Acesso restrito ao super admin' });
+  }
+
+  try {
+    const plans = await prisma.plan.findMany({
+      orderBy: { price: 'asc' }
+    });
+    res.json(plans);
+  } catch (error) {
+    console.error('Error fetching plans:', error);
+    res.status(500).json({ error: 'Erro ao buscar planos' });
+  }
+});
+
+app.post('/api/admin/plans', authMiddleware, async (req: AuthRequest, res) => {
+  if (req.userRole !== 'SUPER_ADMIN') {
+    return res.status(403).json({ error: 'Acesso restrito ao super admin' });
+  }
+
+  const { name, tier, price, maxProducts, maxOrders } = req.body;
+
+  try {
+    const plan = await prisma.plan.create({
+      data: {
+        name,
+        tier,
+        price: Number(price),
+        maxProducts: Number(maxProducts),
+        maxOrders: Number(maxOrders)
+      }
+    });
+    await createAudit(req, 'create_plan', 'plan', plan.id, { name, tier });
+    res.status(201).json(plan);
+  } catch (error) {
+    console.error('Error creating plan:', error);
+    res.status(400).json({ error: 'Erro ao criar plano' });
+  }
+});
+
+app.patch('/api/admin/plans/:id', authMiddleware, async (req: AuthRequest, res) => {
+  if (req.userRole !== 'SUPER_ADMIN') {
+    return res.status(403).json({ error: 'Acesso restrito ao super admin' });
+  }
+
+  const planId = Number(req.params.id);
+  const { name, tier, price, maxProducts, maxOrders } = req.body;
+
+  try {
+    const plan = await prisma.plan.update({
+      where: { id: planId },
+      data: {
+        ...(name ? { name } : {}),
+        ...(tier ? { tier } : {}),
+        ...(price !== undefined ? { price: Number(price) } : {}),
+        ...(maxProducts !== undefined ? { maxProducts: Number(maxProducts) } : {}),
+        ...(maxOrders !== undefined ? { maxOrders: Number(maxOrders) } : {})
+      }
+    });
+    await createAudit(req, 'update_plan', 'plan', planId, { name, tier });
+    res.json(plan);
+  } catch (error) {
+    console.error('Error updating plan:', error);
+    res.status(400).json({ error: 'Erro ao atualizar plano' });
+  }
+});
+
+app.patch('/api/admin/restaurants/:id/plan', authMiddleware, async (req: AuthRequest, res) => {
+  if (req.userRole !== 'SUPER_ADMIN') {
+    return res.status(403).json({ error: 'Acesso restrito ao super admin' });
+  }
+
+  const restaurantId = Number(req.params.id);
+  const { planId } = req.body;
+
+  try {
+    const restaurant = await prisma.restaurant.update({
+      where: { id: restaurantId },
+      data: { planId: Number(planId) },
+      include: { plan: true }
+    });
+    await createAudit(req, 'update_restaurant_plan', 'restaurant', restaurantId, { planId });
+    res.json(restaurant);
+  } catch (error) {
+    console.error('Error updating restaurant plan:', error);
+    res.status(400).json({ error: 'Erro ao atualizar plano do restaurante' });
+  }
+});
+
 // KPIs para Super Admin
 app.get('/api/admin/kpis', authMiddleware, async (req: AuthRequest, res) => {
   if (req.userRole !== 'SUPER_ADMIN') {
@@ -1431,8 +1522,7 @@ app.post('/api/products', authMiddleware, async (req: AuthRequest, res) => {
       where: { restaurantId: req.restaurantId }
     });
 
-    // Forçando o limite para no mínimo 100 produtos, ignorando o limite restritivo do banco
-    const maxProducts = Math.max(req.restaurant?.plan?.maxProducts || 0, 100);
+    const maxProducts = req.restaurant?.plan?.maxProducts || 10;
 
     if (productCount >= maxProducts) {
       return res.status(403).json({

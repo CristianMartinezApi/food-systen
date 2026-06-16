@@ -27,6 +27,7 @@ export default function ClientsPage() {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<"all" | "approved" | "pending">("all");
   const [restaurants, setRestaurants] = useState<any[]>([]);
+  const [plans, setPlans] = useState<any[]>([]);
   const [isLoadingRestaurants, setIsLoadingRestaurants] = useState(false);
   const [restaurantFilter, setRestaurantFilter] = useState<'all'|'active'|'inactive'|'READY'|'IN_PROGRESS'|'PAUSED'|'DENIED'|'PENDING'>('all');
   const [isLoading, setIsLoading] = useState(true);
@@ -97,10 +98,18 @@ export default function ClientsPage() {
     }
   };
 
+  const loadPlans = async () => {
+    try {
+      const data = await api.get('/admin/plans');
+      setPlans(data || []);
+    } catch (e) { console.error(e); }
+  };
+
   useEffect(() => {
     if (userRole === "SUPER_ADMIN") {
       loadUsers(1, perPage);
       loadRestaurants();
+      loadPlans();
     }
   }, [userRole]);
 
@@ -313,6 +322,16 @@ export default function ClientsPage() {
         }
       },
     });
+  };
+
+  const handleChangePlan = async (restaurantId: number, planId: number) => {
+    try {
+      await api.patch(`/admin/restaurants/${restaurantId}/plan`, { planId });
+      toast.success('Plano atualizado');
+      await loadRestaurants();
+    } catch (error: any) {
+      toast.error(error.message || 'Erro ao atualizar plano');
+    }
   };
 
   if (userRole !== "SUPER_ADMIN") {
@@ -540,6 +559,17 @@ export default function ClientsPage() {
                       <span className="text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em]">{r.slug}</span>
                       <span title={r.isActive ? 'Loja ativa e operante' : 'Loja inativa'} aria-label={r.isActive ? 'Ativa' : 'Inativa'} className={`rounded-2xl px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.2em] ${r.isActive ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-500'}`}>{r.isActive ? 'Ativa' : 'Inativa'}</span>
                       <span title={`Provisioning: ${prov}`} aria-label={`Provisioning ${prov}`} className={`rounded-2xl px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.2em] ${provClass}`}>{prov}</span>
+                      
+                      <select 
+                        value={r.planId || ''} 
+                        onChange={(e) => handleChangePlan(r.id, Number(e.target.value))}
+                        className="rounded-2xl bg-slate-900 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.2em] text-white outline-none border-none cursor-pointer"
+                      >
+                        <option value="">Sem plano</option>
+                        {plans.map(p => (
+                          <option key={p.id} value={p.id}>{p.name}</option>
+                        ))}
+                      </select>
                     </div>
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
