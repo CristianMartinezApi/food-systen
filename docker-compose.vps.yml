@@ -21,7 +21,7 @@ services:
     build:
       context: ./back-end
       dockerfile: Dockerfile
-    command: sh -c "npx prisma migrate deploy && npm start"
+    command: sh -c "npx prisma db push --accept-data-loss && npm start"
     restart: unless-stopped
     ports:
       - "127.0.0.1:8000:8000"
