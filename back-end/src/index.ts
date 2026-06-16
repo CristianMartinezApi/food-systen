@@ -1431,8 +1431,8 @@ app.post('/api/products', authMiddleware, async (req: AuthRequest, res) => {
       where: { restaurantId: req.restaurantId }
     });
 
-    // Aumentando temporariamente para 100 para permitir que o usuário cadastre produtos
-    const maxProducts = req.restaurant?.plan?.maxProducts || 100;
+    // Forçando o limite para no mínimo 100 produtos, ignorando o limite restritivo do banco
+    const maxProducts = Math.max(req.restaurant?.plan?.maxProducts || 0, 100);
 
     if (productCount >= maxProducts) {
       return res.status(403).json({
