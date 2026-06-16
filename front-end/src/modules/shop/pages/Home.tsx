@@ -278,13 +278,13 @@ export default function Home() {
 
           {/* Categories Navigation */}
           <section id="menu-section" className="mt-4 md:mt-8 space-y-4 md:space-y-8">
-            <div className="flex flex-col md:flex-row md:items-end justify-between gap-3 md:gap-6">
-              <div className="home-section-heading space-y-1 md:space-y-2">
+            <div className="flex flex-col xl:flex-row xl:items-end justify-between gap-4 md:gap-6">
+              <div className="home-section-heading space-y-1 md:space-y-2 shrink-0">
                 <h2 className="text-xl md:text-heading-2 font-display font-bold text-slate-950 uppercase tracking-tight">Nosso Cardápio</h2>
                 <div className="h-1 md:h-1.5 w-20 bg-primary rounded-full" />
               </div>
 
-              <div className="flex items-center gap-2 md:gap-4 overflow-x-auto pb-4 md:pb-0 no-scrollbar md:justify-end -mx-6 px-6 md:mx-0 md:px-0 scroll-smooth">
+              <div className="flex items-center gap-2 md:gap-4 overflow-x-auto pb-4 xl:pb-0 no-scrollbar xl:justify-end -mx-6 px-6 md:mx-0 md:px-0 scroll-smooth w-auto max-w-full">
                 <button
                   onClick={() => setActiveCategory('all')}
                   className={cn(
