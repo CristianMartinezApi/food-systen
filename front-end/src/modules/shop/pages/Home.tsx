@@ -284,15 +284,15 @@ export default function Home() {
                 <div className="h-1 md:h-1.5 w-20 bg-primary rounded-full" />
               </div>
 
-              <div className="flex items-center gap-2 md:gap-3 overflow-x-auto pb-2 md:pb-0 no-scrollbar md:justify-end">
+              <div className="flex items-center gap-2 md:gap-4 overflow-x-auto pb-4 md:pb-0 no-scrollbar md:justify-end -mx-6 px-6 md:mx-0 md:px-0">
                 <button
                   onClick={() => setActiveCategory('all')}
                   className={cn(
-                    "home-category-chip",
-                    "px-4 md:px-6 py-2 md:py-3 rounded-lg md:rounded-2xl text-[9px] md:text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap border-2",
+                    "home-category-chip shrink-0",
+                    "px-4 md:px-6 py-2.5 md:py-3.5 rounded-xl md:rounded-2xl text-[10px] md:text-xs font-black uppercase tracking-[0.15em] transition-all whitespace-nowrap border-2",
                     activeCategory === 'all'
-                      ? "bg-slate-950 text-white border-slate-950 shadow-lg"
-                      : "bg-slate-100 text-slate-500 border-slate-200 shadow-sm hover:border-slate-300"
+                      ? "bg-slate-950 text-white border-slate-950 shadow-xl shadow-slate-950/20"
+                      : "bg-slate-100/50 text-slate-500 border-slate-200/60 shadow-sm hover:border-slate-300"
                   )}
                 >
                   Todos
@@ -302,11 +302,11 @@ export default function Home() {
                     key={cat.id}
                     onClick={() => setActiveCategory(cat.id)}
                     className={cn(
-                      "home-category-chip",
-                      "px-4 md:px-6 py-2 md:py-3 rounded-lg md:rounded-2xl text-[9px] md:text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap border-2",
+                      "home-category-chip shrink-0",
+                      "px-4 md:px-6 py-2.5 md:py-3.5 rounded-xl md:rounded-2xl text-[10px] md:text-xs font-black uppercase tracking-[0.15em] transition-all whitespace-nowrap border-2",
                       activeCategory === cat.id
-                        ? "bg-slate-950 text-white border-slate-950 shadow-lg"
-                        : "bg-slate-100 text-slate-500 border-slate-200 shadow-sm hover:border-slate-300"
+                        ? "bg-slate-950 text-white border-slate-950 shadow-xl shadow-slate-950/20"
+                        : "bg-slate-100/50 text-slate-500 border-slate-200/60 shadow-sm hover:border-slate-300"
                     )}
                   >
                     {cat.name}
