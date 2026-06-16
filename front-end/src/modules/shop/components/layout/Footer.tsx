@@ -1,12 +1,12 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { 
-  Instagram, 
-  Facebook, 
-  MapPin, 
-  Phone, 
-  Clock, 
+import {
+  Instagram,
+  Facebook,
+  MapPin,
+  Phone,
+  Clock,
   Utensils,
   Heart,
   ArrowRight
@@ -33,10 +33,10 @@ export function Footer() {
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-px bg-linear-to-r from-transparent via-white/10 to-transparent" />
       <div className="absolute top-0 left-1/4 w-px h-64 bg-linear-to-b from-white/5 to-transparent hidden md:block" />
       <div className="absolute top-0 right-1/4 w-px h-64 bg-linear-to-b from-white/5 to-transparent hidden md:block" />
-      
+
       <div className="container px-4 mx-auto max-w-7xl relative z-10">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8 mb-8 md:mb-24">
-          
+
           {/* Brand & Manifesto */}
           <div className="space-y-4 md:space-y-8">
             <div className="flex items-center gap-3 md:gap-5 group cursor-default">
@@ -69,11 +69,16 @@ export function Footer() {
               <div className="h-px w-8 md:w-10 bg-primary/20" />
             </h4>
             <ul className="space-y-3 md:space-y-6">
-              {['Início', 'Nosso Cardápio', 'Meus Pedidos', 'Sobre o Chef'].map((item) => (
-                <li key={item}>
-                  <Link href={`/${slug}`} className="text-[10px] md:text-label font-body font-bold text-slate-500 hover:text-white transition-all flex items-center gap-3 md:gap-4 group uppercase tracking-widest">
+              {[
+                { label: 'Início', href: `/${slug}` },
+                { label: 'Nosso Cardápio', href: `/${slug}` },
+                { label: 'Meus Pedidos', href: `/${slug}/orders` },
+                { label: 'Sobre o Chef', href: `/${slug}` }
+              ].map((item) => (
+                <li key={item.label}>
+                  <Link href={item.href} className="text-[10px] md:text-label font-body font-bold text-slate-500 hover:text-white transition-all flex items-center gap-3 md:gap-4 group uppercase tracking-widest">
                     <div className="w-1.5 h-1.5 rounded-full bg-primary scale-0 group-hover:scale-100 transition-all duration-500 shadow-[0_0_12px_var(--color-primary)]" />
-                    {item}
+                    {item.label}
                   </Link>
                 </li>
               ))}

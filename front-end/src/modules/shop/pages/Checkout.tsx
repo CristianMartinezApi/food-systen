@@ -54,7 +54,7 @@ export default function Checkout() {
   const [isCepLoading, setIsCepLoading] = useState(false);
 
   const hasHydrated = useHasHydrated();
-  const { items, getSubtotal, clearCart } = useCartStore();
+  const { items, getSubtotal, clearCart, syncTenantCart } = useCartStore();
   const { address: savedAddress } = useLocationStore();
   const cartItems = hasHydrated ? items : [];
   const { settings } = useSettings();
@@ -64,7 +64,8 @@ export default function Checkout() {
 
   useEffect(() => {
     setSlug(getTenantSlug());
-  }, []);
+    syncTenantCart();
+  }, [syncTenantCart]);
 
   useEffect(() => {
     if (!rootRef.current) return;
@@ -288,6 +289,12 @@ export default function Checkout() {
         email: formData.email
       }));
       localStorage.setItem("@FoodSystem:customerPhone", formData.phone);
+      const currentTenantSlug = slug || getTenantSlug();
+      localStorage.setItem(`@FoodSystem:customer:${currentTenantSlug}`, JSON.stringify({
+        name: formData.customerName,
+        phone: formData.phone,
+        email: formData.email
+      }));
 
       if (deliveryMode === "DELIVERY") setStep("address");
       else if (deliveryMode === "DINE_IN") setStep("review");
@@ -444,6 +451,20 @@ export default function Checkout() {
   ];
   // pix e success ficam fora da barra de progresso
   const isPixStep = step === "pix";
+  const successDeliveryLabel = deliveryMode === "DELIVERY"
+    ? "Entrega"
+    : deliveryMode === "PICKUP"
+      ? "Retirada"
+      : "No local";
+  const successPaymentLabel = deliveryMode === "DINE_IN" ? "A combinar no local" : formData.paymentMethod;
+  const successEtaLabel = deliveryMode === "DINE_IN"
+    ? "Atendimento imediato"
+    : `${estimatedDeliveryMinutes} min`;
+  const successAddressLabel = deliveryMode === "DELIVERY"
+    ? `${formData.street || "Endereco"}, ${formData.number || "s/n"}`
+    : deliveryMode === "PICKUP"
+      ? "Retirada no balcao"
+      : "Consumo na unidade";
 
   return (
     <div ref={rootRef} className="min-h-screen bg-slate-100 flex flex-col">
@@ -936,43 +957,64 @@ export default function Checkout() {
 
               {/* PASSO FINAL: SUCESSO - EXPERIÊNCIA PREMIUM */}
               {step === "success" && (
-                <motion.div key="success" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="py-20 text-center max-w-xl mx-auto">
-                  <div className="relative w-40 h-40 mx-auto mb-14">
+                <motion.div key="success" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="py-8 md:py-14 max-w-2xl mx-auto w-full">
+                  <div className="relative w-28 h-28 md:w-36 md:h-36 mx-auto mb-8 md:mb-10">
                     <motion.div
                       initial={{ scale: 0.8, opacity: 0 }}
                       animate={{ scale: 1.4, opacity: 0 }}
                       transition={{ repeat: Infinity, duration: 2.5, ease: "easeOut" }}
                       className="absolute inset-0 rounded-[3.5rem] border-2 border-emerald-500/30"
                     />
-                    <div className="relative w-full h-full bg-emerald-50 text-emerald-500 rounded-[3.5rem] flex items-center justify-center shadow-[0_32px_64px_rgba(16,185,129,0.15)] border border-emerald-100/50">
-                      <CheckCircle2 size={72} strokeWidth={1.5} className="drop-shadow-sm" />
+                    <div className="relative w-full h-full bg-emerald-50 text-emerald-500 rounded-[2.2rem] md:rounded-[3.5rem] flex items-center justify-center shadow-[0_24px_48px_rgba(16,185,129,0.15)] border border-emerald-100/50">
+                      <CheckCircle2 size={52} strokeWidth={1.5} className="drop-shadow-sm md:size-18" />
                     </div>
                   </div>
 
-                  <h2 className="text-display font-display font-bold text-slate-950 uppercase tracking-tighter mb-6 leading-none">
-                    Pedido <br /> Confirmado
+                  <h2 className="text-heading-1 md:text-display font-display font-bold text-slate-950 uppercase tracking-tighter mb-3 text-center leading-none">
+                    Pedido Confirmado
                   </h2>
-                  <p className="text-label font-body font-medium text-slate-400 uppercase tracking-widest mb-16 leading-relaxed max-w-xs mx-auto">
-                    Seu pedido <span className="text-slate-950 font-mono font-bold">#{orderCreatedId}</span> foi recebido e está sendo preparado.
+                  <p className="text-label font-body font-medium text-slate-400 uppercase tracking-widest mb-6 md:mb-8 leading-relaxed text-center max-w-md mx-auto">
+                    Pedido <span className="text-slate-950 font-mono font-bold">#{orderCreatedId}</span> recebido com sucesso. Acompanhe os próximos passos abaixo.
                   </p>
 
-                  <div className="grid grid-cols-1 gap-6">
+                  <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4 md:p-6 mb-6 md:mb-8">
+                    <div className="grid grid-cols-2 gap-3 md:gap-4">
+                      <div className="rounded-2xl border border-slate-200 bg-white p-3 md:p-4">
+                        <p className="text-[10px] font-body font-bold uppercase tracking-[0.12em] text-slate-400">Tipo</p>
+                        <p className="text-xs md:text-sm font-body font-bold text-slate-950 mt-1 uppercase">{successDeliveryLabel}</p>
+                      </div>
+                      <div className="rounded-2xl border border-slate-200 bg-white p-3 md:p-4">
+                        <p className="text-[10px] font-body font-bold uppercase tracking-[0.12em] text-slate-400">Pagamento</p>
+                        <p className="text-xs md:text-sm font-body font-bold text-slate-950 mt-1 uppercase">{successPaymentLabel}</p>
+                      </div>
+                      <div className="rounded-2xl border border-slate-200 bg-white p-3 md:p-4">
+                        <p className="text-[10px] font-body font-bold uppercase tracking-[0.12em] text-slate-400">Previsao</p>
+                        <p className="text-xs md:text-sm font-body font-bold text-slate-950 mt-1 uppercase">{successEtaLabel}</p>
+                      </div>
+                      <div className="rounded-2xl border border-slate-200 bg-white p-3 md:p-4">
+                        <p className="text-[10px] font-body font-bold uppercase tracking-[0.12em] text-slate-400">Destino</p>
+                        <p className="text-xs md:text-sm font-body font-bold text-slate-950 mt-1 uppercase truncate">{successAddressLabel}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-4 md:gap-5">
                     <button
                       onClick={handleWhatsAppNotify}
-                      className="h-24 flex flex-col items-center justify-center bg-emerald-500 text-white rounded-[2.5rem] font-body font-medium shadow-[0_20px_40px_rgba(16,185,129,0.3)] hover:bg-emerald-600 active:scale-[0.98] transition-all group"
+                      className="h-20 md:h-24 flex flex-col items-center justify-center bg-emerald-500 text-white rounded-[1.6rem] md:rounded-[2.5rem] font-body font-medium shadow-[0_20px_40px_rgba(16,185,129,0.3)] hover:bg-emerald-600 active:scale-[0.98] transition-all group"
                     >
-                      <span className="text-label font-body font-bold uppercase tracking-[0.2em] opacity-80 mb-2 text-[10px]">Receba atualizações do seu pedido</span>
-                      <div className="flex items-center gap-4">
-                        <MessageCircle size={24} strokeWidth={2} />
-                        <span className="text-body-strong font-body font-bold uppercase tracking-widest text-lg">Notificar via WhatsApp</span>
+                      <span className="text-label font-body font-bold uppercase tracking-[0.2em] opacity-80 mb-1 text-[10px]">Acompanhamento do pedido</span>
+                      <div className="flex items-center gap-3">
+                        <MessageCircle size={20} strokeWidth={2} className="md:size-6" />
+                        <span className="text-body-strong font-body font-bold uppercase tracking-widest text-base md:text-lg">Notificar via WhatsApp</span>
                       </div>
                     </button>
 
-                    <div className="grid grid-cols-2 gap-4 pt-4">
-                      <Link href={`/${slug}/orders`} className="h-16 flex items-center justify-center bg-slate-950 text-white rounded-2xl font-body font-bold shadow-2xl shadow-slate-950/20 hover:bg-black transition-all uppercase tracking-widest text-label">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                      <Link href={`/${slug}/orders`} className="h-14 md:h-16 flex items-center justify-center bg-slate-950 text-white rounded-2xl font-body font-bold shadow-2xl shadow-slate-950/20 hover:bg-black transition-all uppercase tracking-widest text-label">
                         MEUS PEDIDOS
                       </Link>
-                      <Link href={`/${slug}`} className="h-16 flex items-center justify-center bg-slate-50 border border-slate-200 text-slate-500 rounded-2xl font-body font-bold hover:bg-slate-100 transition-all uppercase tracking-widest text-label">
+                      <Link href={`/${slug}`} className="h-14 md:h-16 flex items-center justify-center bg-slate-50 border border-slate-200 text-slate-500 rounded-2xl font-body font-bold hover:bg-slate-100 transition-all uppercase tracking-widest text-label">
                         VOLTAR AO MENU
                       </Link>
                     </div>

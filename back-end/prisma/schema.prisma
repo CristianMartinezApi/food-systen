@@ -39,6 +39,8 @@ model Restaurant {
   customers          Customer[]
   orders             Order[]
   products           Product[]
+  cashSessions       CashSession[]
+  cashMovements      CashMovement[]
   plan               Plan?      @relation(fields: [planId], references: [id])
   settings           Settings?
   users              User[]
@@ -70,6 +72,9 @@ model User {
   updatedAt    DateTime    @updatedAt
   restaurant   Restaurant? @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
   auditLogs    AuditLog[]
+  openedCashSessions CashSession[] @relation("CashSessionOpenedBy")
+  closedCashSessions CashSession[] @relation("CashSessionClosedBy")
+  cashMovements CashMovement[] @relation("CashMovementCreatedBy")
   passwordChangeAttempts PasswordChangeAttempt[]
   passwordResetTokens PasswordResetToken[]
 
@@ -199,6 +204,7 @@ model Settings {
   bannerImage    String?
   deliveryFee    Float      @default(5)
   minOrderValue  Float      @default(20)
+  cashDifferenceNoteThreshold Float @default(5)
   deliveryEtaMinutes Int    @default(35)
   isOpen         Boolean    @default(true)
   primaryColor   String     @default("#ef4444")
@@ -218,6 +224,50 @@ model Settings {
   pixKey         String?   // chave PIX do lojista (CPF, CNPJ, email, celular ou aleatória)
 
   @@map("settings")
+}
+
+model CashSession {
+  id               Int               @id @default(autoincrement())
+  restaurantId     Int
+  openedById       Int?
+  closedById       Int?
+  openingAmount    Float             @default(0)
+  closingAmount    Float?
+  expectedAmount   Float?
+  differenceAmount Float?
+  status           CashSessionStatus @default(OPEN)
+  notes            String?
+  openedAt         DateTime          @default(now())
+  closedAt         DateTime?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  restaurant       Restaurant        @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  openedBy         User?             @relation("CashSessionOpenedBy", fields: [openedById], references: [id], onDelete: SetNull)
+  closedBy         User?             @relation("CashSessionClosedBy", fields: [closedById], references: [id], onDelete: SetNull)
+  movements        CashMovement[]
+
+  @@index([restaurantId, status])
+  @@index([openedAt])
+  @@map("cash_sessions")
+}
+
+model CashMovement {
+  id           Int              @id @default(autoincrement())
+  cashSessionId Int
+  restaurantId Int
+  createdById  Int?
+  type         CashMovementType
+  amount       Float
+  reason       String?
+  notes        String?
+  createdAt    DateTime         @default(now())
+  cashSession  CashSession      @relation(fields: [cashSessionId], references: [id], onDelete: Cascade)
+  restaurant   Restaurant       @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  createdBy    User?            @relation("CashMovementCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([cashSessionId, createdAt])
+  @@index([restaurantId, type])
+  @@map("cash_movements")
 }
 
 enum PlanTier {
@@ -250,6 +300,17 @@ enum PaymentMethod {
   PIX
   CASH
   CARD
+}
+
+enum CashSessionStatus {
+  OPEN
+  CLOSED
+}
+
+enum CashMovementType {
+  SUPPLY
+  WITHDRAWAL
+  ADJUSTMENT
 }
 
 model AuditLog {

@@ -1,0 +1,2 @@
+ALTER TABLE "settings"
+  ADD COLUMN IF NOT EXISTS "cashDifferenceNoteThreshold" DOUBLE PRECISION NOT NULL DEFAULT 5;

@@ -1,11 +1,11 @@
 ﻿import type { ReactNode } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { 
-  LayoutDashboard, 
-  ShoppingBag, 
-  Package, 
-  Settings, 
+import {
+  LayoutDashboard,
+  ShoppingBag,
+  Package,
+  Settings,
   LogOut,
   ChevronRight,
   Bell,
@@ -13,7 +13,8 @@ import {
   Tags,
   ExternalLink,
   Users,
-  CreditCard
+  CreditCard,
+  Wallet
 } from "lucide-react";
 import { cn } from "../../../../shared/utils";
 import { motion, AnimatePresence } from "framer-motion";
@@ -194,6 +195,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
 
   let menuItems = [
     { icon: LayoutDashboard, label: "Painel", path: "/admin" },
+    { icon: Wallet, label: "Caixa", path: "/admin/caixa" },
     { icon: ShoppingBag, label: "Pedidos", path: "/admin/orders" },
     { icon: Package, label: "Produtos", path: "/admin/products" },
     { icon: Tags, label: "Categorias", path: "/admin/categories" },
@@ -218,7 +220,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
       {/* Sidebar Modernizada - Nível Visual Premium */}
       <AnimatePresence>
         {isSidebarOpen && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -235,21 +237,21 @@ export function AdminLayout({ children }: AdminLayoutProps) {
         <div className="p-10 pb-12 flex items-center justify-between">
           <div className="flex items-center gap-4">
             {settings?.logo ? (
-                <img src={settings.logo} alt="Logo" className="w-12 h-12 rounded-[1.25rem] object-cover shadow-2xl shadow-slate-200" />
+              <img src={settings.logo} alt="Logo" className="w-12 h-12 rounded-[1.25rem] object-cover shadow-2xl shadow-slate-200" />
             ) : (
-                <div className="w-12 h-12 bg-slate-950 rounded-[1.25rem] flex items-center justify-center shadow-lg shadow-slate-950/20">
-                    <Package className="text-white" size={24} />
-                </div>
+              <div className="w-12 h-12 bg-slate-950 rounded-[1.25rem] flex items-center justify-center shadow-lg shadow-slate-950/20">
+                <Package className="text-white" size={24} />
+              </div>
             )}
             <div className="flex flex-col">
-                <span className="text-heading-3 font-display font-bold tracking-tight text-slate-950 uppercase leading-none">
-                    {settings?.storeName?.split(' ')[0] || "Food"}
-                </span>
-                <span className="text-label font-body font-medium text-slate-400 uppercase tracking-widest mt-1">SISTEMA</span>
+              <span className="text-heading-3 font-display font-bold tracking-tight text-slate-950 uppercase leading-none">
+                {settings?.storeName?.split(' ')[0] || "Food"}
+              </span>
+              <span className="text-label font-body font-medium text-slate-400 uppercase tracking-widest mt-1">SISTEMA</span>
             </div>
           </div>
-          
-          <button 
+
+          <button
             onClick={() => setIsSidebarOpen(false)}
             className="lg:hidden w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400 active:scale-95 transition-all"
           >
@@ -266,8 +268,8 @@ export function AdminLayout({ children }: AdminLayoutProps) {
                 href={item.path}
                 className={cn(
                   "flex items-center justify-between px-6 h-16 rounded-[1.25rem] transition-all group font-body font-bold text-label uppercase tracking-[0.08em]",
-                  isActive 
-                    ? "bg-slate-950 text-white shadow-2xl shadow-slate-950/20" 
+                  isActive
+                    ? "bg-slate-950 text-white shadow-2xl shadow-slate-950/20"
                     : "text-slate-400 hover:bg-slate-50 hover:text-slate-950"
                 )}
               >
@@ -279,7 +281,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
                   <span>{item.label}</span>
                 </div>
                 {isActive && (
-                    <motion.div layoutId="nav-active-dot" className="w-1.5 h-1.5 rounded-full bg-primary shadow-[0_0_8px_var(--color-primary)]" />
+                  <motion.div layoutId="nav-active-dot" className="w-1.5 h-1.5 rounded-full bg-primary shadow-[0_0_8px_var(--color-primary)]" />
                 )}
               </Link>
             );
@@ -289,7 +291,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
         {/* Ver Loja */}
         {userRole !== 'SUPER_ADMIN' && (
           <div className="px-8 mb-4">
-            <a 
+            <a
               href={storeUrl}
               target="_blank"
               rel="noreferrer"
@@ -301,16 +303,16 @@ export function AdminLayout({ children }: AdminLayoutProps) {
         )}
 
         <div className="p-8 border-t border-slate-50">
-           <div className="bg-slate-50 rounded-4xl p-5 flex items-center gap-4 mb-6 border border-slate-100">
-                <div className="w-12 h-12 rounded-xl bg-white border flex items-center justify-center shadow-sm">
-                    <User size={20} className="text-slate-200" />
-                </div>
-                <div className="truncate">
-                    <p className="text-body-strong font-body font-bold text-slate-950 truncate uppercase tracking-tight">Diretoria</p>
-                    <p className="text-label font-body font-medium text-slate-400 tracking-[0.06em] truncate uppercase">{settings?.storeName || 'Master Admin'}</p>
-                </div>
-           </div>
-          <button 
+          <div className="bg-slate-50 rounded-4xl p-5 flex items-center gap-4 mb-6 border border-slate-100">
+            <div className="w-12 h-12 rounded-xl bg-white border flex items-center justify-center shadow-sm">
+              <User size={20} className="text-slate-200" />
+            </div>
+            <div className="truncate">
+              <p className="text-body-strong font-body font-bold text-slate-950 truncate uppercase tracking-tight">Diretoria</p>
+              <p className="text-label font-body font-medium text-slate-400 tracking-[0.06em] truncate uppercase">{settings?.storeName || 'Master Admin'}</p>
+            </div>
+          </div>
+          <button
             onClick={handleLogout}
             className="flex items-center gap-4 w-full px-6 h-14 rounded-2xl text-slate-400 hover:text-rose-500 hover:bg-rose-50 transition-all font-body font-bold text-label uppercase tracking-[0.06em]"
           >
@@ -324,34 +326,34 @@ export function AdminLayout({ children }: AdminLayoutProps) {
       <main className="flex-1 flex flex-col h-screen overflow-hidden bg-[#FDFDFD]">
         {/* Header Superior Premium */}
         <header className="h-20 lg:h-24 bg-white/80 backdrop-blur-md border-b border-slate-50 px-6 lg:px-12 flex items-center justify-between sticky top-0 z-40 shrink-0">
-            <div className="flex items-center gap-4">
-                <button 
-                  onClick={() => setIsSidebarOpen(true)}
-                  className="lg:hidden w-12 h-12 rounded-2xl bg-slate-950 flex items-center justify-center text-white shadow-xl active:scale-90 transition-all"
-                >
-                  <LayoutDashboard size={20} />
-                </button>
-                <div className="hidden sm:flex items-center gap-4">
-                  <h2 className="text-label font-body font-medium text-slate-300 uppercase tracking-[0.06em]">Hub Administrativo</h2>
-                  <ChevronRight size={14} className="text-slate-200" />
-                </div>
-                <span className="text-body-strong font-body font-bold text-slate-950 uppercase tracking-tight">
-                    {menuItems.find(m => m.path === pathname)?.label || "Visão Geral"}
-                </span>
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => setIsSidebarOpen(true)}
+              className="lg:hidden w-12 h-12 rounded-2xl bg-slate-950 flex items-center justify-center text-white shadow-xl active:scale-90 transition-all"
+            >
+              <LayoutDashboard size={20} />
+            </button>
+            <div className="hidden sm:flex items-center gap-4">
+              <h2 className="text-label font-body font-medium text-slate-300 uppercase tracking-[0.06em]">Hub Administrativo</h2>
+              <ChevronRight size={14} className="text-slate-200" />
+            </div>
+            <span className="text-body-strong font-body font-bold text-slate-950 uppercase tracking-tight">
+              {menuItems.find(m => m.path === pathname)?.label || "Visão Geral"}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-3 lg:gap-4">
+            <div className="hidden md:flex items-center gap-3 bg-emerald-50 px-5 py-2.5 rounded-xl border border-emerald-100/50">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
+              <span className="text-label font-body font-bold text-emerald-600 uppercase tracking-[0.08em]">Marketplace Online</span>
             </div>
 
-            <div className="flex items-center gap-3 lg:gap-4">
-              <div className="hidden md:flex items-center gap-3 bg-emerald-50 px-5 py-2.5 rounded-xl border border-emerald-100/50">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
-                <span className="text-label font-body font-bold text-emerald-600 uppercase tracking-[0.08em]">Marketplace Online</span>
-              </div>
-
-              <div ref={noticesRef} className="relative">
-                <button
-                  onClick={openNotices}
-                  className="flex items-center gap-3 h-12 px-4 lg:px-5 rounded-2xl bg-white border border-slate-100 hover:border-primary/20 transition-all group shadow-sm disabled:cursor-default"
-                  disabled={userRole !== 'SUPER_ADMIN'}
-                >
+            <div ref={noticesRef} className="relative">
+              <button
+                onClick={openNotices}
+                className="flex items-center gap-3 h-12 px-4 lg:px-5 rounded-2xl bg-white border border-slate-100 hover:border-primary/20 transition-all group shadow-sm disabled:cursor-default"
+                disabled={userRole !== 'SUPER_ADMIN'}
+              >
                 <div className="relative w-10 h-10 rounded-2xl bg-slate-50 flex items-center justify-center">
                   <Bell size={18} className="text-slate-300 group-hover:text-primary transition-colors" />
                   {pendingCount && pendingCount > 0 ? (
@@ -368,108 +370,108 @@ export function AdminLayout({ children }: AdminLayoutProps) {
                     {noticeSummary.label}
                   </span>
                 </div>
-                </button>
-
-                {isNoticesOpen && userRole === 'SUPER_ADMIN' && (
-                  <div className="absolute right-0 top-14 z-50 w-[min(92vw,28rem)] rounded-3xl border border-slate-100 bg-white shadow-[0_28px_80px_rgba(15,23,42,0.18)] overflow-hidden">
-                    <div className="border-b border-slate-100 px-5 py-4 flex items-center justify-between">
-                      <div>
-                        <p className="text-[10px] font-black uppercase tracking-[0.24em] text-slate-300">Avisos reais</p>
-                        <h3 className="mt-1 text-sm font-black uppercase tracking-tight text-slate-950">Pendências que exigem ação</h3>
-                      </div>
-                      <span className="rounded-full bg-slate-950 px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-white">
-                        {pendingCount ?? 0}
-                      </span>
-                    </div>
-
-                    <div className="max-h-96 overflow-auto p-4 space-y-4">
-                      {noticesLoading ? (
-                        <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-500">
-                          Carregando pendências...
-                        </div>
-                      ) : pendingCount === 0 ? (
-                        <div className="rounded-2xl border border-emerald-100 bg-emerald-50/70 px-4 py-6 text-sm font-medium text-emerald-700">
-                          Nenhuma pendência aberta no momento.
-                        </div>
-                      ) : (
-                        <>
-                          <section className="space-y-2">
-                            <div className="flex items-center justify-between">
-                              <h4 className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-400">Usuários pendentes</h4>
-                              <button onClick={() => router.push('/admin/clients')} className="text-[10px] font-black uppercase tracking-[0.18em] text-primary">Ver todos</button>
-                            </div>
-                            {pendingUsers.length === 0 ? (
-                              <div className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3 text-sm text-slate-500">Nenhum usuário aguardando aprovação.</div>
-                            ) : pendingUsers.map((user) => (
-                              <button
-                                key={user.id}
-                                onClick={() => router.push('/admin/clients?filter=pending')}
-                                className="w-full text-left rounded-2xl border border-slate-100 bg-white px-4 py-3 hover:border-primary/20 hover:bg-primary/5 transition-all"
-                              >
-                                <div className="flex items-start justify-between gap-3">
-                                  <div className="min-w-0">
-                                    <p className="text-sm font-bold text-slate-950 truncate">{user.name}</p>
-                                    <p className="mt-0.5 text-xs text-slate-500 truncate">{user.email}</p>
-                                    <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">
-                                      {user.restaurant?.name ? `Loja: ${user.restaurant.name}` : 'Sem loja vinculada'}
-                                    </p>
-                                  </div>
-                                  <span className="rounded-full bg-amber-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-amber-600">Aprovar</span>
-                                </div>
-                              </button>
-                            ))}
-                          </section>
-
-                          <section className="space-y-2">
-                            <div className="flex items-center justify-between">
-                              <h4 className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-400">Lojas em atenção</h4>
-                              <button onClick={() => router.push('/admin/provisioning')} className="text-[10px] font-black uppercase tracking-[0.18em] text-primary">Provisionamento</button>
-                            </div>
-                            {pendingRestaurants.length === 0 ? (
-                              <div className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3 text-sm text-slate-500">Nenhuma loja em fila ou pausa.</div>
-                            ) : pendingRestaurants.map((restaurant) => (
-                              <button
-                                key={restaurant.id}
-                                onClick={() => router.push('/admin/provisioning')}
-                                className="w-full text-left rounded-2xl border border-slate-100 bg-white px-4 py-3 hover:border-primary/20 hover:bg-primary/5 transition-all"
-                              >
-                                <div className="flex items-start justify-between gap-3">
-                                  <div className="min-w-0">
-                                    <p className="text-sm font-bold text-slate-950 truncate">{restaurant.name}</p>
-                                    <p className="mt-0.5 text-xs text-slate-500 truncate">Slug: {restaurant.slug}</p>
-                                    <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">Status: {restaurant.provisioningStatus}</p>
-                                  </div>
-                                  <span className="rounded-full bg-slate-950 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-white">Abrir</span>
-                                </div>
-                              </button>
-                            ))}
-                          </section>
-                        </>
-                      )}
-                    </div>
-
-                    <div className="border-t border-slate-100 px-5 py-3 bg-slate-50 flex items-center justify-between gap-3">
-                      <button onClick={() => router.push('/admin/clients?filter=pending')} className="text-xs font-black uppercase tracking-[0.16em] text-slate-500 hover:text-slate-950 transition-colors">
-                        Gerenciar usuários
-                      </button>
-                      <button onClick={() => router.push('/admin/provisioning')} className="text-xs font-black uppercase tracking-[0.16em] text-primary hover:opacity-80 transition-colors">
-                        Abrir provisionamento
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <button className="flex items-center gap-3 h-12 px-4 lg:px-5 rounded-2xl bg-slate-950 text-white shadow-2xl shadow-slate-950/20">
-                <div className="w-10 h-10 rounded-2xl bg-white/10 flex items-center justify-center text-primary shrink-0">
-                  <User size={18} />
-                </div>
-                <div className="hidden sm:flex flex-col items-start leading-none min-w-0">
-                  <span className="text-[10px] font-black text-white/40 uppercase tracking-[0.24em]">Perfil</span>
-                  <span className="text-[11px] font-bold text-white uppercase tracking-[0.08em] truncate max-w-40">{storeLabel}</span>
-                </div>
               </button>
+
+              {isNoticesOpen && userRole === 'SUPER_ADMIN' && (
+                <div className="absolute right-0 top-14 z-50 w-[min(92vw,28rem)] rounded-3xl border border-slate-100 bg-white shadow-[0_28px_80px_rgba(15,23,42,0.18)] overflow-hidden">
+                  <div className="border-b border-slate-100 px-5 py-4 flex items-center justify-between">
+                    <div>
+                      <p className="text-[10px] font-black uppercase tracking-[0.24em] text-slate-300">Avisos reais</p>
+                      <h3 className="mt-1 text-sm font-black uppercase tracking-tight text-slate-950">Pendências que exigem ação</h3>
+                    </div>
+                    <span className="rounded-full bg-slate-950 px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-white">
+                      {pendingCount ?? 0}
+                    </span>
+                  </div>
+
+                  <div className="max-h-96 overflow-auto p-4 space-y-4">
+                    {noticesLoading ? (
+                      <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-500">
+                        Carregando pendências...
+                      </div>
+                    ) : pendingCount === 0 ? (
+                      <div className="rounded-2xl border border-emerald-100 bg-emerald-50/70 px-4 py-6 text-sm font-medium text-emerald-700">
+                        Nenhuma pendência aberta no momento.
+                      </div>
+                    ) : (
+                      <>
+                        <section className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <h4 className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-400">Usuários pendentes</h4>
+                            <button onClick={() => router.push('/admin/clients')} className="text-[10px] font-black uppercase tracking-[0.18em] text-primary">Ver todos</button>
+                          </div>
+                          {pendingUsers.length === 0 ? (
+                            <div className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3 text-sm text-slate-500">Nenhum usuário aguardando aprovação.</div>
+                          ) : pendingUsers.map((user) => (
+                            <button
+                              key={user.id}
+                              onClick={() => router.push('/admin/clients?filter=pending')}
+                              className="w-full text-left rounded-2xl border border-slate-100 bg-white px-4 py-3 hover:border-primary/20 hover:bg-primary/5 transition-all"
+                            >
+                              <div className="flex items-start justify-between gap-3">
+                                <div className="min-w-0">
+                                  <p className="text-sm font-bold text-slate-950 truncate">{user.name}</p>
+                                  <p className="mt-0.5 text-xs text-slate-500 truncate">{user.email}</p>
+                                  <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">
+                                    {user.restaurant?.name ? `Loja: ${user.restaurant.name}` : 'Sem loja vinculada'}
+                                  </p>
+                                </div>
+                                <span className="rounded-full bg-amber-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-amber-600">Aprovar</span>
+                              </div>
+                            </button>
+                          ))}
+                        </section>
+
+                        <section className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <h4 className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-400">Lojas em atenção</h4>
+                            <button onClick={() => router.push('/admin/provisioning')} className="text-[10px] font-black uppercase tracking-[0.18em] text-primary">Provisionamento</button>
+                          </div>
+                          {pendingRestaurants.length === 0 ? (
+                            <div className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3 text-sm text-slate-500">Nenhuma loja em fila ou pausa.</div>
+                          ) : pendingRestaurants.map((restaurant) => (
+                            <button
+                              key={restaurant.id}
+                              onClick={() => router.push('/admin/provisioning')}
+                              className="w-full text-left rounded-2xl border border-slate-100 bg-white px-4 py-3 hover:border-primary/20 hover:bg-primary/5 transition-all"
+                            >
+                              <div className="flex items-start justify-between gap-3">
+                                <div className="min-w-0">
+                                  <p className="text-sm font-bold text-slate-950 truncate">{restaurant.name}</p>
+                                  <p className="mt-0.5 text-xs text-slate-500 truncate">Slug: {restaurant.slug}</p>
+                                  <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">Status: {restaurant.provisioningStatus}</p>
+                                </div>
+                                <span className="rounded-full bg-slate-950 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-white">Abrir</span>
+                              </div>
+                            </button>
+                          ))}
+                        </section>
+                      </>
+                    )}
+                  </div>
+
+                  <div className="border-t border-slate-100 px-5 py-3 bg-slate-50 flex items-center justify-between gap-3">
+                    <button onClick={() => router.push('/admin/clients?filter=pending')} className="text-xs font-black uppercase tracking-[0.16em] text-slate-500 hover:text-slate-950 transition-colors">
+                      Gerenciar usuários
+                    </button>
+                    <button onClick={() => router.push('/admin/provisioning')} className="text-xs font-black uppercase tracking-[0.16em] text-primary hover:opacity-80 transition-colors">
+                      Abrir provisionamento
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
+
+            <button className="flex items-center gap-3 h-12 px-4 lg:px-5 rounded-2xl bg-slate-950 text-white shadow-2xl shadow-slate-950/20">
+              <div className="w-10 h-10 rounded-2xl bg-white/10 flex items-center justify-center text-primary shrink-0">
+                <User size={18} />
+              </div>
+              <div className="hidden sm:flex flex-col items-start leading-none min-w-0">
+                <span className="text-[10px] font-black text-white/40 uppercase tracking-[0.24em]">Perfil</span>
+                <span className="text-[11px] font-bold text-white uppercase tracking-[0.08em] truncate max-w-40">{storeLabel}</span>
+              </div>
+            </button>
+          </div>
         </header>
 
         <div className="flex-1 overflow-y-auto p-6 md:p-12 no-scrollbar">

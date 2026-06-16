@@ -14,7 +14,7 @@ import { useHasHydrated } from "../../../../core/hooks/useHasHydrated";
 
 export function CartSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   const hasHydrated = useHasHydrated();
-  const { items, removeItem, updateQuantity, getSubtotal } = useCartStore() as any;
+  const { items, removeItem, updateQuantity, getSubtotal, syncTenantCart } = useCartStore() as any;
   const { products } = useProducts() as any;
   const total = hasHydrated ? getSubtotal() : 0;
   const cartItems = hasHydrated ? items : [];
@@ -24,7 +24,8 @@ export function CartSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
 
   useEffect(() => {
     setSlug(getTenantSlug());
-  }, []);
+    syncTenantCart();
+  }, [syncTenantCart]);
 
   useEffect(() => {
     if (!isOpen) return;

@@ -8,6 +8,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
+import type { OrderStatus, PaymentMethod } from '@prisma/client';
 import { prisma } from './lib/prisma';
 import { tenantMiddleware, TenantRequest } from './middlewares/tenant.middleware';
 import { authMiddleware, AuthRequest } from './middlewares/auth.middleware';
@@ -61,6 +62,8 @@ if (!JWT_SECRET) {
 }
 
 const PORT = process.env.PORT || 8000;
+const DEFAULT_CASH_DIFFERENCE_NOTE_THRESHOLD = 5;
+const CASH_COUNTED_ORDER_STATUSES: OrderStatus[] = ['DELIVERED', 'PAID'];
 
 // ✅ SEGURO: CORS configurado explicitamente
 const allowedOrigins = (process.env.ALLOWED_ORIGINS || 'http://localhost:3000').split(',').map(o => o.trim());
@@ -1381,11 +1384,16 @@ app.patch('/api/settings', authMiddleware, async (req: AuthRequest, res) => {
   try {
     const { id, restaurantId, createdAt, updatedAt, nextOpeningLabel, isOpen, ...updateData } = req.body;
     const operatingHours = normalizeOperatingHours(updateData.operatingHours);
+    const parsedDifferenceThreshold = Number(updateData.cashDifferenceNoteThreshold);
+    const cashDifferenceNoteThreshold = Number.isFinite(parsedDifferenceThreshold) && parsedDifferenceThreshold >= 0
+      ? parsedDifferenceThreshold
+      : DEFAULT_CASH_DIFFERENCE_NOTE_THRESHOLD;
 
     const settings = await prisma.settings.update({
       where: { restaurantId: req.restaurantId },
       data: {
         ...updateData,
+        cashDifferenceNoteThreshold,
         operatingHours,
         isOpen: isRestaurantOpenNow(operatingHours),
         deliveryEtaMinutes: updateData.deliveryEtaMinutes || 35,
@@ -1617,18 +1625,28 @@ app.delete('/api/products/:id', authMiddleware, async (req: AuthRequest, res) =>
 app.get('/api/customer/orders/:phone', async (req: TenantRequest, res) => {
   try {
     const { phone } = req.params;
+    const customerName = typeof req.query.customerName === 'string' ? req.query.customerName.trim() : '';
     const orders = await prisma.order.findMany({
       where: {
         phone,
-        restaurantId: req.restaurantId
+        restaurantId: req.restaurantId,
+        ...(customerName
+          ? {
+            customerName: {
+              equals: customerName,
+              mode: 'insensitive',
+            },
+          }
+          : {}),
       },
       orderBy: { createdAt: 'desc' },
       include: {
         items: {
           include: {
-            product: true
+            product: true,
           }
-        }
+        },
+        customer: true,
       }
     });
     res.json(orders);
@@ -1640,7 +1658,19 @@ app.get('/api/customer/orders/:phone', async (req: TenantRequest, res) => {
 app.get('/api/orders', authMiddleware, async (req: AuthRequest, res) => {
   const orders = await prisma.order.findMany({
     where: { restaurantId: req.restaurantId },
-    orderBy: { createdAt: 'desc' }
+    orderBy: { createdAt: 'desc' },
+    include: {
+      items: {
+        include: {
+          product: {
+            include: {
+              category: true
+            }
+          }
+        }
+      },
+      customer: true
+    }
   });
   res.json(orders);
 });
@@ -1648,6 +1678,27 @@ app.get('/api/orders', authMiddleware, async (req: AuthRequest, res) => {
 app.post('/api/orders', async (req: TenantRequest, res) => {
   try {
     const { customerName, phone, address, paymentMethod, items, subtotal, deliveryFee, total, notes, cpf, changeFor } = req.body;
+
+    const normalizedItems = Array.isArray(items)
+      ? items.map((item: any) => ({
+        productId: Number(item.productId || item.id),
+        name: item.name,
+        variation: item.variation,
+        quantity: Number(item.quantity || 0),
+        price: Number(item.price || 0),
+        observations: item.observations,
+        addons: item.addons,
+        removals: item.removals,
+      }))
+      : [];
+
+    if (normalizedItems.length === 0) {
+      return res.status(400).json({ error: 'Pedido sem itens.' });
+    }
+
+    if (normalizedItems.some((item: any) => !item.productId || item.quantity <= 0)) {
+      return res.status(400).json({ error: 'Itens do pedido inválidos.' });
+    }
 
     // --- CHECK ORDER LIMIT (MONTHLY) ---
     const now = new Date();
@@ -1680,54 +1731,109 @@ app.post('/api/orders', async (req: TenantRequest, res) => {
       });
     }
 
-    const order = await prisma.order.create({
-      data: {
-        customerName,
-        phone,
-        address,
-        paymentMethod,
-        cpf,
-        changeFor,
-        subtotal: subtotal || (total - (deliveryFee || 0)),
-        deliveryFee: deliveryFee || 0,
-        total,
-        notes,
-        restaurantId: req.restaurantId!,
-        status: 'PENDING',
-        items: {
-          create: items.map((item: any) => ({
-            productId: item.productId || item.id,
-            name: item.name,
-            variation: item.variation,
-            quantity: item.quantity,
-            price: item.price,
-            observations: item.observations,
-            addons: item.addons,
-            removals: item.removals
-          }))
-        }
-      },
-      include: {
-        items: true
-      }
-    });
+    const order = await prisma.$transaction(async (tx) => {
+      const productIds = [...new Set(normalizedItems.map((item: any) => item.productId))];
 
-    // --- DECREMENT STOCK ---
-    for (const item of items) {
-      const productId = item.productId || item.id;
-      const product = await prisma.product.findUnique({
-        where: { id: productId }
+      const products = await tx.product.findMany({
+        where: {
+          restaurantId: req.restaurantId!,
+          id: { in: productIds },
+        },
+        select: {
+          id: true,
+          name: true,
+          trackStock: true,
+          stockQuantity: true,
+        },
       });
 
-      if (product && product.trackStock) {
-        const newStock = Math.max(0, product.stockQuantity - item.quantity);
-        await prisma.product.update({
-          where: { id: productId },
-          data: { stockQuantity: newStock }
-        });
+      const productMap = new Map(products.map((product: any) => [product.id, product]));
+
+      for (const item of normalizedItems) {
+        const product = productMap.get(item.productId);
+
+        if (!product) {
+          throw new Error('PRODUCT_NOT_FOUND');
+        }
+
+        if (product.trackStock) {
+          const stockUpdated = await tx.product.updateMany({
+            where: {
+              id: item.productId,
+              restaurantId: req.restaurantId!,
+              trackStock: true,
+              stockQuantity: { gte: item.quantity },
+            },
+            data: {
+              stockQuantity: { decrement: item.quantity },
+            },
+          });
+
+          if (stockUpdated.count === 0) {
+            throw new Error(`OUT_OF_STOCK:${product.name}`);
+          }
+        }
       }
-    }
-    // -----------------------
+
+      let customerId: number | undefined;
+      const normalizedPhone = typeof phone === 'string' ? phone.trim() : '';
+
+      if (normalizedPhone) {
+        const existingCustomer = await tx.customer.findFirst({
+          where: {
+            restaurantId: req.restaurantId!,
+            phone: normalizedPhone,
+          },
+        });
+
+        if (existingCustomer) {
+          customerId = existingCustomer.id;
+        } else {
+          const createdCustomer = await tx.customer.create({
+            data: {
+              restaurantId: req.restaurantId!,
+              name: customerName || 'Cliente',
+              phone: normalizedPhone,
+            },
+          });
+          customerId = createdCustomer.id;
+        }
+      }
+
+      return tx.order.create({
+        data: {
+          customerName,
+          phone,
+          address,
+          paymentMethod,
+          cpf,
+          changeFor,
+          subtotal: subtotal || (total - (deliveryFee || 0)),
+          deliveryFee: deliveryFee || 0,
+          total,
+          notes,
+          restaurantId: req.restaurantId!,
+          customerId,
+          status: 'PENDING',
+          items: {
+            create: normalizedItems.map((item: any) => ({
+              productId: item.productId,
+              name: item.name,
+              variation: item.variation,
+              quantity: item.quantity,
+              price: item.price,
+              observations: item.observations,
+              addons: item.addons,
+              removals: item.removals,
+            })),
+          },
+        },
+        include: {
+          items: true,
+          customer: true,
+        },
+      });
+    });
 
     const responseOrder = {
       ...order,
@@ -1738,6 +1844,18 @@ app.post('/api/orders', async (req: TenantRequest, res) => {
     res.status(201).json(responseOrder);
   } catch (error) {
     console.error('Error creating order:', error);
+
+    if (error instanceof Error) {
+      if (error.message.startsWith('OUT_OF_STOCK:')) {
+        const productName = error.message.split(':')[1] || 'produto';
+        return res.status(409).json({ error: `Estoque insuficiente para ${productName}.` });
+      }
+
+      if (error.message === 'PRODUCT_NOT_FOUND') {
+        return res.status(400).json({ error: 'Um ou mais itens do pedido não existem mais.' });
+      }
+    }
+
     res.status(400).json({ error: 'Erro ao processar pedido. Verifique os dados.' });
   }
 });
@@ -1752,6 +1870,772 @@ app.patch('/api/orders/:id', authMiddleware, async (req: AuthRequest, res) => {
   });
   io.emit(`order_status_updated_${req.restaurant?.slug}`, order);
   res.json(order);
+});
+
+// Cashier (Caixa)
+app.get('/api/cashier/session', authMiddleware, async (req: AuthRequest, res) => {
+  try {
+    const activeSession = await prisma.cashSession.findFirst({
+      where: {
+        restaurantId: req.restaurantId,
+        status: 'OPEN',
+      },
+      orderBy: { openedAt: 'desc' },
+      include: {
+        openedBy: { select: { id: true, name: true, email: true } },
+      },
+    });
+
+    if (!activeSession) {
+      return res.json({
+        session: null,
+        totals: {
+          supplies: 0,
+          withdrawals: 0,
+          adjustments: 0,
+          movementsCount: 0,
+          sales: 0,
+          cashSales: 0,
+          expectedAmount: 0,
+        },
+      });
+    }
+
+    const movements = await prisma.cashMovement.findMany({
+      where: { cashSessionId: activeSession.id },
+      orderBy: { createdAt: 'desc' },
+      include: {
+        createdBy: { select: { id: true, name: true, email: true } },
+      },
+      take: 20,
+    });
+
+    const [suppliesAgg, withdrawalsAgg, adjustmentsAgg, salesAgg, cashSalesAgg] = await Promise.all([
+      prisma.cashMovement.aggregate({
+        where: { cashSessionId: activeSession.id, type: 'SUPPLY' },
+        _sum: { amount: true },
+      }),
+      prisma.cashMovement.aggregate({
+        where: { cashSessionId: activeSession.id, type: 'WITHDRAWAL' },
+        _sum: { amount: true },
+      }),
+      prisma.cashMovement.aggregate({
+        where: { cashSessionId: activeSession.id, type: 'ADJUSTMENT' },
+        _sum: { amount: true },
+      }),
+      prisma.order.aggregate({
+        where: {
+          restaurantId: req.restaurantId,
+          createdAt: { gte: activeSession.openedAt },
+          status: { in: CASH_COUNTED_ORDER_STATUSES },
+        },
+        _sum: { total: true },
+      }),
+      prisma.order.aggregate({
+        where: {
+          restaurantId: req.restaurantId,
+          createdAt: { gte: activeSession.openedAt },
+          status: { in: CASH_COUNTED_ORDER_STATUSES },
+          paymentMethod: 'CASH',
+        },
+        _sum: { total: true },
+      }),
+    ]);
+
+    const supplies = Number(suppliesAgg._sum.amount || 0);
+    const withdrawals = Number(withdrawalsAgg._sum.amount || 0);
+    const adjustments = Number(adjustmentsAgg._sum.amount || 0);
+    const sales = Number(salesAgg._sum.total || 0);
+    const cashSales = Number(cashSalesAgg._sum.total || 0);
+    const expectedAmount = Number((activeSession.openingAmount + supplies - withdrawals + adjustments + cashSales).toFixed(2));
+
+    return res.json({
+      session: activeSession,
+      movements,
+      totals: {
+        supplies,
+        withdrawals,
+        adjustments,
+        movementsCount: movements.length,
+        sales,
+        cashSales,
+        expectedAmount,
+      },
+    });
+  } catch (error) {
+    console.error('Error fetching cashier session:', error);
+    res.status(500).json({ error: 'Erro ao carregar sessão de caixa.' });
+  }
+});
+
+app.post('/api/cashier/session/open', authMiddleware, async (req: AuthRequest, res) => {
+  try {
+    const openingAmount = Number(req.body?.openingAmount || 0);
+    const notes = req.body?.notes ? String(req.body.notes) : null;
+
+    if (Number.isNaN(openingAmount) || openingAmount < 0) {
+      return res.status(400).json({ error: 'Valor de abertura inválido.' });
+    }
+
+    const existing = await prisma.cashSession.findFirst({
+      where: {
+        restaurantId: req.restaurantId,
+        status: 'OPEN',
+      },
+    });
+
+    if (existing) {
+      return res.status(409).json({ error: 'Já existe uma sessão de caixa aberta.' });
+    }
+
+    const session = await prisma.cashSession.create({
+      data: {
+        restaurantId: req.restaurantId!,
+        openedById: req.userId,
+        openingAmount,
+        notes,
+        status: 'OPEN',
+      },
+      include: {
+        openedBy: { select: { id: true, name: true, email: true } },
+      },
+    });
+
+    await createAudit(req, 'open_cash_session', 'cash_session', session.id, {
+      openingAmount,
+      notes,
+    });
+
+    res.status(201).json(session);
+  } catch (error) {
+    console.error('Error opening cashier session:', error);
+    res.status(500).json({ error: 'Erro ao abrir sessão de caixa.' });
+  }
+});
+
+app.post('/api/cashier/movements', authMiddleware, async (req: AuthRequest, res) => {
+  try {
+    const type = String(req.body?.type || '');
+    const amount = Number(req.body?.amount || 0);
+    const reason = req.body?.reason ? String(req.body.reason) : null;
+    const notes = req.body?.notes ? String(req.body.notes) : null;
+
+    if (!['SUPPLY', 'WITHDRAWAL', 'ADJUSTMENT'].includes(type)) {
+      return res.status(400).json({ error: 'Tipo de movimento inválido.' });
+    }
+
+    if (Number.isNaN(amount) || amount <= 0) {
+      return res.status(400).json({ error: 'Valor do movimento inválido.' });
+    }
+
+    const activeSession = await prisma.cashSession.findFirst({
+      where: {
+        restaurantId: req.restaurantId,
+        status: 'OPEN',
+      },
+      orderBy: { openedAt: 'desc' },
+    });
+
+    if (!activeSession) {
+      return res.status(409).json({ error: 'Nenhuma sessão de caixa aberta.' });
+    }
+
+    const movement = await prisma.cashMovement.create({
+      data: {
+        cashSessionId: activeSession.id,
+        restaurantId: req.restaurantId!,
+        createdById: req.userId,
+        type: type as any,
+        amount,
+        reason,
+        notes,
+      },
+      include: {
+        createdBy: { select: { id: true, name: true, email: true } },
+      },
+    });
+
+    await createAudit(req, 'create_cash_movement', 'cash_movement', movement.id, {
+      type,
+      amount,
+      reason,
+      cashSessionId: activeSession.id,
+    });
+
+    res.status(201).json(movement);
+  } catch (error) {
+    console.error('Error creating cash movement:', error);
+    res.status(500).json({ error: 'Erro ao registrar movimento de caixa.' });
+  }
+});
+
+app.post('/api/cashier/direct-sales', authMiddleware, async (req: AuthRequest, res) => {
+  try {
+    const paymentMethod = String(req.body?.paymentMethod || '').toUpperCase();
+    const items = Array.isArray(req.body?.items)
+      ? req.body.items.map((item: any) => ({
+        productId: Number(item.productId || item.id),
+        quantity: Number(item.quantity || 0),
+      }))
+      : [];
+    const cashReceivedAmount = req.body?.cashReceivedAmount !== undefined && req.body?.cashReceivedAmount !== null
+      ? Number(req.body.cashReceivedAmount)
+      : null;
+    const customerName = req.body?.customerName ? String(req.body.customerName).trim() : 'Venda Balcao';
+    const notes = req.body?.notes ? String(req.body.notes).trim() : null;
+
+    if (!['PIX', 'CASH', 'CARD'].includes(paymentMethod)) {
+      return res.status(400).json({ error: 'Forma de pagamento invalida.' });
+    }
+
+    if (items.length === 0 || items.some((item: any) => !item.productId || item.quantity <= 0)) {
+      return res.status(400).json({ error: 'Informe ao menos 1 produto valido para a venda direta.' });
+    }
+
+    const activeSession = await prisma.cashSession.findFirst({
+      where: {
+        restaurantId: req.restaurantId,
+        status: 'OPEN',
+      },
+      orderBy: { openedAt: 'desc' },
+    });
+
+    if (!activeSession) {
+      return res.status(409).json({ error: 'Abra o caixa antes de registrar venda direta.' });
+    }
+
+    const order = await prisma.$transaction(async (tx) => {
+      const productIds = Array.from(new Set<number>(
+        items
+          .map((item: any) => Number(item.productId))
+          .filter((id: number) => Number.isInteger(id) && id > 0)
+      ));
+
+      const products = await tx.product.findMany({
+        where: {
+          restaurantId: req.restaurantId!,
+          id: { in: productIds },
+          isActive: true,
+        },
+        select: {
+          id: true,
+          name: true,
+          price: true,
+          discountPercent: true,
+          trackStock: true,
+          stockQuantity: true,
+        },
+      });
+
+      const productMap = new Map(products.map((product: any) => [product.id, product]));
+
+      const normalizedItems = items.map((item: any) => {
+        const product = productMap.get(item.productId);
+        if (!product) {
+          throw new Error('PRODUCT_NOT_FOUND');
+        }
+
+        const unitPrice = Number((product.price * (1 - (Number(product.discountPercent || 0) / 100))).toFixed(2));
+
+        return {
+          productId: product.id,
+          name: product.name,
+          quantity: item.quantity,
+          price: unitPrice,
+          total: Number((unitPrice * item.quantity).toFixed(2)),
+          trackStock: Boolean(product.trackStock),
+        };
+      });
+
+      for (const item of normalizedItems) {
+        if (item.trackStock) {
+          const stockUpdated = await tx.product.updateMany({
+            where: {
+              id: item.productId,
+              restaurantId: req.restaurantId!,
+              trackStock: true,
+              stockQuantity: { gte: item.quantity },
+            },
+            data: {
+              stockQuantity: { decrement: item.quantity },
+            },
+          });
+
+          if (stockUpdated.count === 0) {
+            throw new Error(`OUT_OF_STOCK:${item.name}`);
+          }
+        }
+      }
+
+      const subtotal = Number(normalizedItems.reduce((acc: number, item: any) => acc + item.total, 0).toFixed(2));
+
+      if (paymentMethod === 'CASH' && (cashReceivedAmount === null || Number.isNaN(cashReceivedAmount) || cashReceivedAmount < subtotal)) {
+        throw new Error('INVALID_CASH_RECEIVED');
+      }
+
+      const changeDue = paymentMethod === 'CASH' && cashReceivedAmount !== null
+        ? Number((cashReceivedAmount - subtotal).toFixed(2))
+        : 0;
+
+      return tx.order.create({
+        data: {
+          customerName,
+          paymentMethod: paymentMethod as PaymentMethod,
+          subtotal,
+          deliveryFee: 0,
+          total: subtotal,
+          notes: notes ? `[VENDA_DIRETA] ${notes}` : '[VENDA_DIRETA]',
+          changeFor: paymentMethod === 'CASH' && cashReceivedAmount !== null ? String(cashReceivedAmount) : null,
+          address: {
+            type: 'DINE_IN',
+            details: {
+              source: 'DIRECT_CASHIER',
+              cashSessionId: activeSession.id,
+              cashReceivedAmount,
+              changeDue,
+            },
+          },
+          restaurantId: req.restaurantId!,
+          status: 'DELIVERED',
+          items: {
+            create: normalizedItems.map((item: any) => ({
+              productId: item.productId,
+              name: item.name,
+              quantity: item.quantity,
+              price: item.price,
+            })),
+          },
+        },
+      });
+    });
+
+    await createAudit(req, 'create_direct_sale', 'order', order.id, {
+      items,
+      total: order.total,
+      paymentMethod,
+      cashReceivedAmount,
+      changeDue: paymentMethod === 'CASH' && cashReceivedAmount !== null ? Number((cashReceivedAmount - order.total).toFixed(2)) : 0,
+      cashSessionId: activeSession.id,
+      notes,
+    });
+
+    res.status(201).json(order);
+  } catch (error) {
+    console.error('Error creating direct sale:', error);
+    if (error instanceof Error) {
+      if (error.message.startsWith('OUT_OF_STOCK:')) {
+        const productName = error.message.split(':')[1] || 'produto';
+        return res.status(409).json({ error: `Estoque insuficiente para ${productName}.` });
+      }
+
+      if (error.message === 'PRODUCT_NOT_FOUND') {
+        return res.status(400).json({ error: 'Um ou mais produtos nao estao disponiveis para venda direta.' });
+      }
+
+      if (error.message === 'INVALID_CASH_RECEIVED') {
+        return res.status(400).json({ error: 'Valor recebido em dinheiro deve ser maior ou igual ao total da venda.' });
+      }
+    }
+
+    res.status(500).json({ error: 'Erro ao registrar venda direta.' });
+  }
+});
+
+app.post('/api/cashier/session/close', authMiddleware, async (req: AuthRequest, res) => {
+  try {
+    const closingAmount = Number(req.body?.closingAmount || 0);
+    const notes = req.body?.notes ? String(req.body.notes) : null;
+
+    if (Number.isNaN(closingAmount) || closingAmount < 0) {
+      return res.status(400).json({ error: 'Valor de fechamento inválido.' });
+    }
+
+    const activeSession = await prisma.cashSession.findFirst({
+      where: {
+        restaurantId: req.restaurantId,
+        status: 'OPEN',
+      },
+      orderBy: { openedAt: 'desc' },
+    });
+
+    if (!activeSession) {
+      return res.status(409).json({ error: 'Nenhuma sessão de caixa aberta.' });
+    }
+
+    const [suppliesAgg, withdrawalsAgg, adjustmentsAgg, salesAgg, cashSalesAgg, settings] = await Promise.all([
+      prisma.cashMovement.aggregate({
+        where: { cashSessionId: activeSession.id, type: 'SUPPLY' },
+        _sum: { amount: true },
+      }),
+      prisma.cashMovement.aggregate({
+        where: { cashSessionId: activeSession.id, type: 'WITHDRAWAL' },
+        _sum: { amount: true },
+      }),
+      prisma.cashMovement.aggregate({
+        where: { cashSessionId: activeSession.id, type: 'ADJUSTMENT' },
+        _sum: { amount: true },
+      }),
+      prisma.order.aggregate({
+        where: {
+          restaurantId: req.restaurantId,
+          createdAt: { gte: activeSession.openedAt },
+          status: { in: CASH_COUNTED_ORDER_STATUSES },
+        },
+        _sum: { total: true },
+      }),
+      prisma.order.aggregate({
+        where: {
+          restaurantId: req.restaurantId,
+          createdAt: { gte: activeSession.openedAt },
+          status: { in: CASH_COUNTED_ORDER_STATUSES },
+          paymentMethod: 'CASH',
+        },
+        _sum: { total: true },
+      }),
+      prisma.settings.findUnique({
+        where: { restaurantId: req.restaurantId! },
+        select: { cashDifferenceNoteThreshold: true },
+      }),
+    ]);
+
+    const supplies = Number(suppliesAgg._sum.amount || 0);
+    const withdrawals = Number(withdrawalsAgg._sum.amount || 0);
+    const adjustments = Number(adjustmentsAgg._sum.amount || 0);
+    const sales = Number(salesAgg._sum.total || 0);
+    const cashSales = Number(cashSalesAgg._sum.total || 0);
+    const differenceNoteThreshold = Number(
+      settings?.cashDifferenceNoteThreshold ?? DEFAULT_CASH_DIFFERENCE_NOTE_THRESHOLD
+    );
+    const expectedAmount = Number((activeSession.openingAmount + supplies - withdrawals + adjustments + cashSales).toFixed(2));
+    const differenceAmount = Number((closingAmount - expectedAmount).toFixed(2));
+
+    if (Math.abs(differenceAmount) >= differenceNoteThreshold && !notes?.trim()) {
+      return res.status(400).json({
+        error: `Justificativa obrigatória para divergência igual ou superior a ${differenceNoteThreshold.toFixed(2)}.`,
+      });
+    }
+
+    const session = await prisma.cashSession.update({
+      where: { id: activeSession.id },
+      data: {
+        status: 'CLOSED',
+        closedById: req.userId,
+        closedAt: new Date(),
+        closingAmount,
+        expectedAmount,
+        differenceAmount,
+        notes: notes || activeSession.notes,
+      },
+      include: {
+        openedBy: { select: { id: true, name: true, email: true } },
+        closedBy: { select: { id: true, name: true, email: true } },
+      },
+    });
+
+    await createAudit(req, 'close_cash_session', 'cash_session', session.id, {
+      closingAmount,
+      expectedAmount,
+      differenceAmount,
+      sales,
+      cashSales,
+      notes,
+    });
+
+    res.json(session);
+  } catch (error) {
+    console.error('Error closing cashier session:', error);
+    res.status(500).json({ error: 'Erro ao fechar sessão de caixa.' });
+  }
+});
+
+app.get('/api/cashier/operators', authMiddleware, async (req: AuthRequest, res) => {
+  try {
+    const operators = await prisma.user.findMany({
+      where: {
+        restaurantId: req.restaurantId,
+        isActive: true,
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+      },
+      orderBy: { name: 'asc' },
+    });
+
+    res.json(operators);
+  } catch (error) {
+    console.error('Error listing cashier operators:', error);
+    res.status(500).json({ error: 'Erro ao listar operadores de caixa.' });
+  }
+});
+
+app.post('/api/print-events', authMiddleware, async (req: AuthRequest, res) => {
+  try {
+    const subjectType = String(req.body?.subjectType || '').trim();
+    const subjectId = Number(req.body?.subjectId || 0);
+    const template = String(req.body?.template || '').trim();
+    const printMode = String(req.body?.printMode || '').trim();
+
+    if (!['order', 'cash_session'].includes(subjectType)) {
+      return res.status(400).json({ error: 'Tipo de documento inválido.' });
+    }
+
+    if (!subjectId) {
+      return res.status(400).json({ error: 'Documento inválido.' });
+    }
+
+    if (!['order_ticket', 'cash_closing_report'].includes(template)) {
+      return res.status(400).json({ error: 'Template de impressão inválido.' });
+    }
+
+    if (!['THERMAL', 'A4'].includes(printMode)) {
+      return res.status(400).json({ error: 'Formato de impressão inválido.' });
+    }
+
+    await createAudit(req, 'print_document', subjectType, subjectId, {
+      template,
+      printMode,
+      restaurantId: req.restaurantId,
+      printedAt: new Date().toISOString(),
+    });
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error creating print audit event:', error);
+    res.status(500).json({ error: 'Erro ao registrar evento de impressão.' });
+  }
+});
+
+app.get('/api/print-events/summary', authMiddleware, async (req: AuthRequest, res) => {
+  try {
+    const subjectType = String(req.query.subjectType || '').trim();
+    const rawIds = String(req.query.ids || '').trim();
+
+    if (!['order', 'cash_session'].includes(subjectType)) {
+      return res.status(400).json({ error: 'Tipo de documento inválido.' });
+    }
+
+    const ids = rawIds
+      .split(',')
+      .map((value) => Number(value.trim()))
+      .filter((value) => Number.isInteger(value) && value > 0);
+
+    if (ids.length === 0) {
+      return res.json([]);
+    }
+
+    const logs = await prisma.auditLog.findMany({
+      where: {
+        action: 'print_document',
+        subjectType,
+        subjectId: { in: ids },
+        actor: {
+          restaurantId: req.restaurantId,
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+      include: {
+        actor: {
+          select: { id: true, name: true, email: true },
+        },
+      },
+    });
+
+    const summaryMap = new Map<number, any>();
+    for (const log of logs) {
+      if (!log.subjectId) continue;
+      const current = summaryMap.get(log.subjectId);
+      if (!current) {
+        summaryMap.set(log.subjectId, {
+          subjectId: log.subjectId,
+          printCount: 1,
+          lastPrintedAt: log.createdAt,
+          lastPrintMode: (log.details as any)?.printMode || null,
+          lastTemplate: (log.details as any)?.template || null,
+          actor: log.actor,
+        });
+        continue;
+      }
+
+      current.printCount += 1;
+    }
+
+    res.json(Array.from(summaryMap.values()));
+  } catch (error) {
+    console.error('Error summarizing print events:', error);
+    res.status(500).json({ error: 'Erro ao buscar resumo de impressões.' });
+  }
+});
+
+app.get('/api/cashier/sessions/:id/report', authMiddleware, async (req: AuthRequest, res) => {
+  try {
+    const sessionId = Number(req.params.id);
+    if (!sessionId) {
+      return res.status(400).json({ error: 'Sessão inválida.' });
+    }
+
+    const session = await prisma.cashSession.findFirst({
+      where: {
+        id: sessionId,
+        restaurantId: req.restaurantId,
+      },
+      include: {
+        openedBy: { select: { id: true, name: true, email: true } },
+        closedBy: { select: { id: true, name: true, email: true } },
+      },
+    });
+
+    if (!session) {
+      return res.status(404).json({ error: 'Sessão de caixa não encontrada.' });
+    }
+
+    const movements = await prisma.cashMovement.findMany({
+      where: { cashSessionId: session.id },
+      orderBy: { createdAt: 'asc' },
+      include: {
+        createdBy: { select: { id: true, name: true, email: true } },
+      },
+    });
+
+    const [restaurant, suppliesAgg, withdrawalsAgg, adjustmentsAgg, salesAgg, cashSalesAgg, salesByPaymentRaw] = await Promise.all([
+      prisma.restaurant.findUnique({
+        where: { id: req.restaurantId },
+        select: {
+          id: true,
+          name: true,
+          phone: true,
+        },
+      }),
+      prisma.cashMovement.aggregate({
+        where: { cashSessionId: session.id, type: 'SUPPLY' },
+        _sum: { amount: true },
+      }),
+      prisma.cashMovement.aggregate({
+        where: { cashSessionId: session.id, type: 'WITHDRAWAL' },
+        _sum: { amount: true },
+      }),
+      prisma.cashMovement.aggregate({
+        where: { cashSessionId: session.id, type: 'ADJUSTMENT' },
+        _sum: { amount: true },
+      }),
+      prisma.order.aggregate({
+        where: {
+          restaurantId: req.restaurantId,
+          createdAt: {
+            gte: session.openedAt,
+            ...(session.closedAt ? { lte: session.closedAt } : {}),
+          },
+          status: { in: CASH_COUNTED_ORDER_STATUSES },
+        },
+        _sum: { total: true },
+      }),
+      prisma.order.aggregate({
+        where: {
+          restaurantId: req.restaurantId,
+          createdAt: {
+            gte: session.openedAt,
+            ...(session.closedAt ? { lte: session.closedAt } : {}),
+          },
+          status: { in: CASH_COUNTED_ORDER_STATUSES },
+          paymentMethod: 'CASH',
+        },
+        _sum: { total: true },
+      }),
+      prisma.order.groupBy({
+        by: ['paymentMethod'],
+        where: {
+          restaurantId: req.restaurantId,
+          createdAt: {
+            gte: session.openedAt,
+            ...(session.closedAt ? { lte: session.closedAt } : {}),
+          },
+          status: { in: CASH_COUNTED_ORDER_STATUSES },
+        },
+        _sum: { total: true },
+      }),
+    ]);
+
+    const supplies = Number(suppliesAgg._sum.amount || 0);
+    const withdrawals = Number(withdrawalsAgg._sum.amount || 0);
+    const adjustments = Number(adjustmentsAgg._sum.amount || 0);
+    const sales = Number(salesAgg._sum.total || 0);
+    const cashSales = Number(cashSalesAgg._sum.total || 0);
+    const expectedAmount = Number((session.openingAmount + supplies - withdrawals + adjustments + cashSales).toFixed(2));
+    const closingAmount = Number(session.closingAmount || 0);
+    const differenceAmount = Number(((session.closingAmount ?? expectedAmount) - expectedAmount).toFixed(2));
+    const paymentMethods = ['PIX', 'CASH', 'CARD'];
+    const salesByPayment = paymentMethods.map((method) => {
+      const row = salesByPaymentRaw.find((entry) => entry.paymentMethod === method);
+      return {
+        method,
+        total: Number(row?._sum.total || 0),
+      };
+    });
+
+    res.json({
+      restaurant,
+      session,
+      movements,
+      totals: {
+        supplies,
+        withdrawals,
+        adjustments,
+        sales,
+        cashSales,
+        expectedAmount,
+        closingAmount,
+        differenceAmount,
+        salesByPayment,
+      },
+    });
+  } catch (error) {
+    console.error('Error generating cashier report:', error);
+    res.status(500).json({ error: 'Erro ao gerar relatório da sessão de caixa.' });
+  }
+});
+
+app.get('/api/cashier/sessions', authMiddleware, async (req: AuthRequest, res) => {
+  try {
+    const limit = Math.min(100, Math.max(1, Number(req.query.limit || 10)));
+    const page = Math.max(1, Number(req.query.page || 1));
+    const status = typeof req.query.status === 'string' && ['OPEN', 'CLOSED'].includes(req.query.status)
+      ? req.query.status
+      : undefined;
+    const openedById = Number(req.query.openedById || 0) || undefined;
+    const startDate = typeof req.query.startDate === 'string' ? new Date(req.query.startDate) : undefined;
+    const endDate = typeof req.query.endDate === 'string' ? new Date(req.query.endDate) : undefined;
+
+    const where: any = { restaurantId: req.restaurantId };
+    if (status) where.status = status;
+    if (openedById) where.openedById = openedById;
+    if (startDate || endDate) {
+      where.openedAt = {
+        ...(startDate && !Number.isNaN(startDate.getTime()) ? { gte: startDate } : {}),
+        ...(endDate && !Number.isNaN(endDate.getTime()) ? { lte: endDate } : {}),
+      };
+    }
+
+    const [total, sessions] = await Promise.all([
+      prisma.cashSession.count({ where }),
+      prisma.cashSession.findMany({
+        where,
+        orderBy: { openedAt: 'desc' },
+        skip: (page - 1) * limit,
+        take: limit,
+        include: {
+          openedBy: { select: { id: true, name: true, email: true } },
+          closedBy: { select: { id: true, name: true, email: true } },
+        },
+      }),
+    ]);
+
+    res.json({ data: sessions, total, page, limit });
+  } catch (error) {
+    console.error('Error listing cashier sessions:', error);
+    res.status(500).json({ error: 'Erro ao listar histórico de caixa.' });
+  }
 });
 
 // Stats

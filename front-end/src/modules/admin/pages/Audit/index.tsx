@@ -17,6 +17,25 @@ interface AuditLog {
   createdAt: string;
 }
 
+const actionLabels: Record<string, string> = {
+  print_document: "Impressao de documento",
+};
+
+const subjectTypeLabels: Record<string, string> = {
+  user: "Usuario",
+  restaurant: "Restaurante",
+  order: "Pedido",
+  cash_session: "Sessao de caixa",
+};
+
+function formatAuditAction(action: string) {
+  return actionLabels[action] || action.replaceAll("_", " ");
+}
+
+function formatAuditSubjectType(subjectType: string) {
+  return subjectTypeLabels[subjectType] || subjectType;
+}
+
 function AuditContent() {
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [page, setPage] = useState(1);
@@ -52,7 +71,7 @@ function AuditContent() {
 
   const actionCount = logs.length;
   const userCount = logs.filter((log) => log.subjectType === "user").length;
-  const restaurantCount = logs.filter((log) => log.subjectType === "restaurant").length;
+  const printCount = logs.filter((log) => log.action === "print_document").length;
   const latestLog = logs[0];
 
   return (
@@ -85,11 +104,11 @@ function AuditContent() {
             </div>
             <div className="rounded-[2.5rem] border border-amber-100 bg-amber-50/80 p-5 shadow-sm hover:shadow-2xl hover:shadow-amber-200/40 transition-all duration-500">
               <div className="flex items-center justify-between">
-                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-500">Lojas</span>
+                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-500">Impressoes</span>
                 <ShieldAlert size={16} className="text-amber-600" />
               </div>
-              <div className="mt-3 text-heading-2 font-mono font-bold text-amber-700 tracking-tighter">{restaurantCount}</div>
-              <p className="text-label font-body font-medium text-amber-700/80 uppercase tracking-[0.06em]">ações monitoradas</p>
+              <div className="mt-3 text-heading-2 font-mono font-bold text-amber-700 tracking-tighter">{printCount}</div>
+              <p className="text-label font-body font-medium text-amber-700/80 uppercase tracking-[0.06em]">eventos de impressao</p>
             </div>
           </div>
         </div>
@@ -124,6 +143,8 @@ function AuditContent() {
                 <option value="">Todos</option>
                 <option value="user">Usuário</option>
                 <option value="restaurant">Restaurante</option>
+                <option value="order">Pedido</option>
+                <option value="cash_session">Sessão de caixa</option>
               </select>
             </div>
 
@@ -160,14 +181,14 @@ function AuditContent() {
               <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Último evento</p>
               <div className="mt-2 text-body-strong font-display font-bold text-slate-950 uppercase tracking-tight">{latestLog.action}</div>
               <div className="text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em]">
-                {latestLog.actorEmail || "Sistema"} • {latestLog.subjectType}#{latestLog.subjectId || ""}
+                {latestLog.actorEmail || "Sistema"} • {formatAuditSubjectType(latestLog.subjectType)}#{latestLog.subjectId || ""}
               </div>
             </div>
           )}
         </div>
 
         <div className="rounded-[3rem] border border-slate-50 bg-white p-8 shadow-sm">
-            <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center justify-between gap-3">
             <div>
               <p className="text-label font-body font-bold text-primary uppercase tracking-[0.2em]">Resultados</p>
               <h2 className="text-heading-2 font-display font-bold text-slate-950 uppercase tracking-tight">Linha do tempo</h2>
@@ -197,19 +218,25 @@ function AuditContent() {
                     <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                       <div>
                         <div className="flex flex-wrap items-center gap-2">
-                          <h3 className="text-body-strong font-display font-bold text-slate-950 uppercase tracking-tight">{log.action}</h3>
-                          <span className="rounded-full bg-white px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">{log.subjectType}</span>
+                          <h3 className="text-body-strong font-display font-bold text-slate-950 uppercase tracking-tight">{formatAuditAction(log.action)}</h3>
+                          <span className="rounded-full bg-white px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">{formatAuditSubjectType(log.subjectType)}</span>
                         </div>
                         <p className="mt-1 text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em]">
-                          {log.actorEmail || "Sistema"} • {log.subjectType}#{log.subjectId || ""}
+                          {log.actorEmail || "Sistema"} • {formatAuditSubjectType(log.subjectType)}#{log.subjectId || ""}
                         </p>
                       </div>
                       <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">{new Date(log.createdAt).toLocaleString()}</div>
                     </div>
 
-                    {log.details && (
+                    {log.action === "print_document" ? (
+                      <div className="mt-4 rounded-3xl border border-slate-100 bg-white p-4 text-xs text-slate-600">
+                        <div><strong>Template:</strong> {log.details?.template || "-"}</div>
+                        <div><strong>Formato:</strong> {log.details?.printMode || "-"}</div>
+                        <div><strong>Impresso em:</strong> {log.details?.printedAt ? new Date(log.details.printedAt).toLocaleString() : new Date(log.createdAt).toLocaleString()}</div>
+                      </div>
+                    ) : log.details ? (
                       <pre className="mt-4 overflow-auto rounded-3xl border border-slate-100 bg-white p-4 text-xs text-slate-600">{JSON.stringify(log.details, null, 2)}</pre>
-                    )}
+                    ) : null}
                   </article>
                 ))}
               </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState } from "react";
 import { api } from "../../../core/config/api";
 import { formatCurrency, cn } from "../../../shared/utils";
 import {
@@ -10,16 +10,12 @@ import {
   XCircle,
   ChevronRight,
   ShoppingBag,
-  MapPin,
   Loader2,
   ArrowLeft,
-  CircleDot,
   Bike,
-  Star,
-  Zap,
+  MapPin,
+  CreditCard,
   Phone,
-  MessageCircle,
-  TrendingUp,
   History
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -32,16 +28,20 @@ export default function CustomerOrdersPage() {
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [phone, setPhone] = useState("");
+  const [customerName, setCustomerName] = useState("");
   const [slug, setSlug] = useState<string>("");
+  const [expandedOrderId, setExpandedOrderId] = useState<number | null>(null);
 
   useEffect(() => {
     setSlug(getTenantSlug());
   }, []);
 
-  const fetchOrders = async (phoneToFetch: string) => {
+  const fetchOrders = async (phoneToFetch: string, customerNameToFetch?: string) => {
     try {
       setLoading(true);
-      const data = await api.get(`/customer/orders/${phoneToFetch}`);
+      const queryName = customerNameToFetch?.trim();
+      const query = queryName ? `?customerName=${encodeURIComponent(queryName)}` : "";
+      const data = await api.get(`/customer/orders/${encodeURIComponent(phoneToFetch)}${query}`);
       setOrders(data);
     } catch (error) {
       console.error(error);
@@ -51,16 +51,33 @@ export default function CustomerOrdersPage() {
   };
 
   useEffect(() => {
-    const savedPhone = localStorage.getItem("@FoodSystem:customerPhone");
+    const currentSlug = getTenantSlug();
+    const scopedCustomerRaw = localStorage.getItem(`@FoodSystem:customer:${currentSlug}`);
+    const fallbackCustomerRaw = localStorage.getItem("@FoodSystem:customer");
+
+    let savedPhone = localStorage.getItem("@FoodSystem:customerPhone") || "";
+    let savedName = "";
+
+    try {
+      const parsed = JSON.parse(scopedCustomerRaw || fallbackCustomerRaw || "null");
+      if (parsed?.phone) savedPhone = parsed.phone;
+      if (parsed?.name) savedName = parsed.name;
+    } catch {
+      // noop
+    }
+
     if (savedPhone) {
       setPhone(savedPhone);
-      fetchOrders(savedPhone);
+      setCustomerName(savedName);
+      fetchOrders(savedPhone, savedName);
 
-      const currentSlug = getTenantSlug();
       const eventName = `order_status_updated_${currentSlug}`;
+      const normalizedSavedName = savedName.trim().toLowerCase();
 
       socket.on(eventName, (data: any) => {
-        if (data.phone === savedPhone) {
+        const samePhone = data.phone === savedPhone;
+        const sameName = !normalizedSavedName || (data.customerName || "").trim().toLowerCase() === normalizedSavedName;
+        if (samePhone && sameName) {
           setOrders(prev => prev.map(o => o.id === data.id ? { ...o, status: data.status } : o));
         }
       });
@@ -84,6 +101,55 @@ export default function CustomerOrdersPage() {
       case 'CANCELLED': return { label: 'Pedido Cancelado', icon: <XCircle size={16} />, color: 'text-rose-500', bg: 'bg-rose-50', progress: 0 };
       default: return { label: status, icon: <Clock size={16} />, color: 'text-slate-500', bg: 'bg-slate-50', progress: 0 };
     }
+  };
+
+  const toggleDetails = (orderId: number) => {
+    setExpandedOrderId((prev) => (prev === orderId ? null : orderId));
+  };
+
+  const getOrderTypeLabel = (type?: string) => {
+    if (type === "DELIVERY") return "Entrega";
+    if (type === "PICKUP") return "Retirada";
+    return "Pedido";
+  };
+
+  const getPaymentLabel = (method?: string) => {
+    if (method === "PIX") return "Pix";
+    if (method === "CARD") return "Cartao";
+    if (method === "CASH") return "Dinheiro";
+    return method || "Nao informado";
+  };
+
+  const getOrderAddressLabel = (address: any) => {
+    if (!address) return "";
+    if (typeof address === "string") return address;
+
+    if (typeof address === "object") {
+      const parts = [
+        address.street,
+        address.number,
+        address.neighborhood,
+        address.city,
+        address.state,
+        address.zipCode,
+      ].filter(Boolean);
+
+      const composed = parts.join(", ").trim();
+      if (composed) return composed;
+      return "Endereco nao informado";
+    }
+
+    return String(address);
+  };
+
+  const getItemDisplayName = (item: any) => {
+    return item?.name || item?.product?.name || "Item";
+  };
+
+  const getItemSubtotal = (item: any) => {
+    const price = Number(item?.price ?? item?.product?.price ?? 0);
+    const quantity = Number(item?.quantity ?? 0);
+    return price * quantity;
   };
 
   return (
@@ -123,7 +189,7 @@ export default function CustomerOrdersPage() {
           </div>
         ) : loading ? (
           <div className="flex items-center justify-center py-28 md:py-40">
-            <Loader2 className="animate-spin text-primary" size={40} className="md:size-12" />
+            <Loader2 className="animate-spin text-primary md:size-12" size={40} />
           </div>
         ) : (
           <div className="space-y-6 md:space-y-10">
@@ -146,42 +212,42 @@ export default function CustomerOrdersPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: idx * 0.1 }}
                     key={order.id}
-                    className="bg-slate-50 border border-slate-200 rounded-[2.5rem] p-8 shadow-md shadow-slate-300/25 hover:shadow-2xl hover:shadow-slate-300/40 transition-all duration-500 group"
+                    className="bg-slate-50 border border-slate-200 rounded-4xl md:rounded-[2.5rem] p-4 md:p-8 shadow-md shadow-slate-300/25 hover:shadow-2xl hover:shadow-slate-300/40 transition-all duration-500 group"
                   >
-                    <div className="flex flex-col md:flex-row justify-between gap-8">
-                      <div className="space-y-6 flex-1">
-                        <div className="flex items-center gap-4">
-                          <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center transition-colors duration-500", status.bg, status.color)}>
+                    <div className="flex flex-col md:flex-row justify-between gap-4 md:gap-8">
+                      <div className="space-y-4 md:space-y-6 flex-1">
+                        <div className="flex items-center gap-3 md:gap-4">
+                          <div className={cn("w-12 h-12 md:w-14 md:h-14 rounded-xl md:rounded-2xl flex items-center justify-center transition-colors duration-500", status.bg, status.color)}>
                             {status.icon}
                           </div>
                           <div>
-                            <p className="text-label font-mono text-slate-400 uppercase tracking-widest leading-none mb-1.5">ID: {order.id.toString().padStart(4, '0')}</p>
-                            <h3 className={cn("text-heading-3 font-body font-bold uppercase tracking-tighter leading-none", status.color)}>
+                            <p className="text-[11px] md:text-label font-mono text-slate-400 uppercase tracking-widest leading-none mb-1">ID: {order.id.toString().padStart(4, '0')}</p>
+                            <h3 className={cn("text-base md:text-heading-3 font-body font-bold uppercase tracking-tighter leading-none", status.color)}>
                               {status.label}
                             </h3>
                           </div>
                         </div>
 
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
                           <div className="flex flex-col">
-                            <span className="text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em] mb-1">DATA</span>
-                            <span className="text-numeric font-mono text-slate-800 tracking-tight">{new Date(order.createdAt).toLocaleDateString('pt-BR')}</span>
+                            <span className="text-[10px] md:text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em] mb-1">DATA</span>
+                            <span className="text-sm md:text-numeric font-mono text-slate-800 tracking-tight">{new Date(order.createdAt).toLocaleDateString('pt-BR')}</span>
                           </div>
                           <div className="flex flex-col">
-                            <span className="text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em] mb-1">TOTAL</span>
-                            <span className="text-numeric font-mono text-primary tracking-tight">{formatCurrency(order.total)}</span>
+                            <span className="text-[10px] md:text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em] mb-1">TOTAL</span>
+                            <span className="text-sm md:text-numeric font-mono text-primary tracking-tight">{formatCurrency(order.total)}</span>
                           </div>
                           <div className="flex flex-col md:col-span-2">
-                            <span className="text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em] mb-1">SABORES</span>
-                            <p className="text-body font-body text-slate-600 truncate uppercase tracking-tight">
-                              {order.items.map((i: any) => `${i.quantity}x ${i.name}`).join(", ")}
+                            <span className="text-[10px] md:text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em] mb-1">SABORES</span>
+                            <p className="text-sm md:text-body font-body text-slate-600 truncate uppercase tracking-tight">
+                              {(Array.isArray(order.items) ? order.items : []).map((i: any) => `${i?.quantity ?? 0}x ${getItemDisplayName(i)}`).join(", ")}
                             </p>
                           </div>
                         </div>
 
                         {/* Barra de Progresso Real-time */}
                         {order.status !== 'CANCELLED' && (
-                          <div className="space-y-3 pt-2">
+                          <div className="space-y-2 md:space-y-3 pt-1 md:pt-2">
                             <div className="h-1.5 w-full bg-slate-50 rounded-full overflow-hidden">
                               <motion.div
                                 initial={{ width: 0 }}
@@ -190,7 +256,7 @@ export default function CustomerOrdersPage() {
                                 className={cn("h-full", status.color.replace('text', 'bg'))}
                               />
                             </div>
-                            <div className="flex justify-between items-center text-label font-body font-medium text-slate-200 uppercase tracking-[0.06em]">
+                            <div className="flex justify-between items-center text-[9px] md:text-label font-body font-medium text-slate-200 uppercase tracking-[0.06em]">
                               <span className={status.progress >= 20 ? "text-slate-400" : ""}>SOLICITADO</span>
                               <span className={status.progress >= 60 ? "text-slate-400" : ""}>PREPARO</span>
                               <span className={status.progress >= 90 ? "text-slate-400" : ""}>ENTREGA</span>
@@ -199,17 +265,83 @@ export default function CustomerOrdersPage() {
                         )}
                       </div>
 
-                      <div className="flex md:flex-col gap-3 justify-center min-w-35">
-                        <button className="h-14 px-6 bg-slate-900 text-white rounded-2xl font-body font-medium text-label uppercase tracking-[0.06em] flex items-center justify-center gap-2 hover:bg-primary transition-all shadow-lg active:scale-95">
-                          DETALHES <ChevronRight size={14} />
+                      <div className="flex md:flex-col gap-2.5 md:gap-3 justify-center min-w-32 md:min-w-35">
+                        <button
+                          onClick={() => toggleDetails(order.id)}
+                          className="h-11 md:h-14 px-4 md:px-6 bg-slate-900 text-white rounded-xl md:rounded-2xl font-body font-medium text-[10px] md:text-label uppercase tracking-[0.06em] flex items-center justify-center gap-2 hover:bg-primary transition-all shadow-lg active:scale-95"
+                        >
+                          {expandedOrderId === order.id ? "FECHAR" : "DETALHES"}
+                          <ChevronRight
+                            size={14}
+                            className={cn("transition-transform", expandedOrderId === order.id ? "rotate-90" : "")}
+                          />
                         </button>
-                        {order.status === 'SHIPPED' && (
-                          <button className="h-14 px-6 bg-emerald-500 text-white rounded-2xl font-body font-medium text-label uppercase tracking-[0.06em] flex items-center justify-center gap-2 hover:bg-emerald-600 transition-all shadow-lg active:scale-95">
-                            <MessageCircle size={16} /> AJUDA
-                          </button>
-                        )}
                       </div>
                     </div>
+
+                    <AnimatePresence initial={false}>
+                      {expandedOrderId === order.id && (
+                        <motion.div
+                          initial={{ opacity: 0, height: 0, marginTop: 0 }}
+                          animate={{ opacity: 1, height: "auto", marginTop: 14 }}
+                          exit={{ opacity: 0, height: 0, marginTop: 0 }}
+                          transition={{ duration: 0.25, ease: "easeInOut" }}
+                          className="overflow-hidden"
+                        >
+                          <div className="rounded-2xl border border-slate-200 bg-white/70 p-3 md:p-5 space-y-3 md:space-y-4">
+                            <div className="grid grid-cols-2 gap-3 md:gap-4">
+                              <div className="rounded-xl bg-slate-100 px-3 py-2">
+                                <p className="text-[9px] md:text-[10px] font-body font-bold text-slate-400 uppercase tracking-[0.08em] mb-1">Tipo</p>
+                                <p className="text-xs md:text-sm font-body font-semibold text-slate-700 uppercase tracking-tight">{getOrderTypeLabel(order.orderType)}</p>
+                              </div>
+                              <div className="rounded-xl bg-slate-100 px-3 py-2 flex items-start gap-2">
+                                <CreditCard size={14} className="text-slate-500 mt-0.5 shrink-0" />
+                                <div>
+                                  <p className="text-[9px] md:text-[10px] font-body font-bold text-slate-400 uppercase tracking-[0.08em] mb-1">Pagamento</p>
+                                  <p className="text-xs md:text-sm font-body font-semibold text-slate-700 uppercase tracking-tight">{getPaymentLabel(order.paymentMethod)}</p>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div>
+                              <p className="text-[9px] md:text-[10px] font-body font-bold text-slate-400 uppercase tracking-[0.08em] mb-2">Itens do pedido</p>
+                              <div className="space-y-2">
+                                {(Array.isArray(order.items) ? order.items : []).map((item: any, itemIndex: number) => (
+                                  <div key={`${order.id}-${item?.id ?? itemIndex}`} className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 flex justify-between gap-3">
+                                    <span className="text-xs md:text-sm font-body font-semibold text-slate-700 uppercase tracking-tight truncate">{item?.quantity ?? 0}x {getItemDisplayName(item)}</span>
+                                    <span className="text-xs md:text-sm font-mono font-semibold text-slate-900 whitespace-nowrap">{formatCurrency(getItemSubtotal(item))}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+
+                            {(order.address || order.customer?.phone || order.phone) && (
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-3">
+                                {order.address && (
+                                  <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 flex items-start gap-2">
+                                    <MapPin size={14} className="text-slate-500 mt-0.5 shrink-0" />
+                                    <div>
+                                      <p className="text-[9px] md:text-[10px] font-body font-bold text-slate-400 uppercase tracking-[0.08em] mb-1">Endereço</p>
+                                      <p className="text-xs md:text-sm font-body font-semibold text-slate-700 uppercase tracking-tight wrap-break-word">{getOrderAddressLabel(order.address)}</p>
+                                    </div>
+                                  </div>
+                                )}
+
+                                {(order.customer?.phone || order.phone) && (
+                                  <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 flex items-start gap-2">
+                                    <Phone size={14} className="text-slate-500 mt-0.5 shrink-0" />
+                                    <div>
+                                      <p className="text-[9px] md:text-[10px] font-body font-bold text-slate-400 uppercase tracking-[0.08em] mb-1">Contato</p>
+                                      <p className="text-xs md:text-sm font-body font-semibold text-slate-700 uppercase tracking-tight">{order.customer?.phone || order.phone}</p>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </motion.div>
                 );
               })}

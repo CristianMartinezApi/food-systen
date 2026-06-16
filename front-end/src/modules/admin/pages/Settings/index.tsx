@@ -70,6 +70,7 @@ export default function SettingsPage() {
                 ...settings,
                 operatingHours: normalizeOperatingHours(settings.operatingHours || createDefaultOperatingHours()),
                 deliveryEtaMinutes: settings.deliveryEtaMinutes || 35,
+                cashDifferenceNoteThreshold: settings.cashDifferenceNoteThreshold ?? 5,
             });
             setValue(settings.address || "", false);
         }
@@ -636,6 +637,21 @@ export default function SettingsPage() {
                                             className="w-full h-14 pl-14 pr-5 bg-slate-50 border-2 border-transparent focus:border-primary/20 focus:bg-white rounded-2xl transition-all font-bold text-slate-700 outline-none"
                                         />
                                     </div>
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Divergência sem Justificativa (R$)</label>
+                                    <div className="relative">
+                                        <ShieldCheck className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
+                                        <input
+                                            type="number"
+                                            min={0}
+                                            step="0.01"
+                                            value={formData.cashDifferenceNoteThreshold ?? 5}
+                                            onChange={(e) => setFormData({ ...formData, cashDifferenceNoteThreshold: Number(e.target.value) })}
+                                            className="w-full h-14 pl-14 pr-5 bg-slate-50 border-2 border-transparent focus:border-primary/20 focus:bg-white rounded-2xl transition-all font-bold text-slate-700 outline-none"
+                                        />
+                                    </div>
+                                    <p className="text-[10px] text-slate-400 font-bold uppercase mt-1 ml-1">No fechamento do caixa, divergências iguais ou acima desse valor exigem justificativa.</p>
                                 </div>
                             </div>
                         </section>

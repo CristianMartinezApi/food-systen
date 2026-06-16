@@ -21,7 +21,7 @@ interface HeaderProps {
 
 export function Header({ onOpenMenu }: HeaderProps) {
   const hasHydrated = useHasHydrated();
-  const { getTotalItems } = useCartStore() as any;
+  const { getTotalItems, syncTenantCart } = useCartStore() as any;
   const { address } = useLocationStore();
   const totalItems = hasHydrated ? getTotalItems() : 0;
   const { settings } = useSettings();
@@ -31,11 +31,13 @@ export function Header({ onOpenMenu }: HeaderProps) {
   const [isScrolled, setIsScrolled] = useState(false);
 
   useEffect(() => {
-    setSlug(getTenantSlug());
+    const tenantSlug = getTenantSlug();
+    setSlug(tenantSlug);
+    syncTenantCart();
     const handleScroll = () => setIsScrolled(window.scrollY > 20);
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
+  }, [syncTenantCart]);
 
   // Paridade de endereço: Se o usuário não definiu localização, mostra o endereço da loja
   const displayAddress = address

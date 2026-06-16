@@ -1,13 +1,15 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Home, ShoppingBag, Utensils, Phone, MapPin, Clock, Star, Compass } from "lucide-react";
+import { X, Home, ShoppingBag, Utensils, Phone, MapPin, Clock, Star, Compass, History } from "lucide-react";
 import { useSettings } from "../../../../core/hooks/useSettings";
 import { getNextOpeningLabel, getOperatingHoursSummary } from "../../../../shared/utils/schedule";
 import { useLocationStore } from "../../../../core/stores/useLocationStore";
 import { AddressModal } from "../modals/AddressModal";
 import { useEffect, useState } from "react";
 import { cn } from "../../../../shared/utils";
+import { getTenantSlug } from "../../../../shared/utils/tenant";
+import Link from "next/link";
 
 interface NavSidebarProps {
   isOpen: boolean;
@@ -21,6 +23,7 @@ export function NavSidebar({ isOpen, onClose, categories, activeCategory, onCate
   const { settings } = useSettings() as any;
   const { address } = useLocationStore() as any;
   const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
+  const [slug, setSlug] = useState<string>("");
   const storeName = settings?.storeName || "Food System";
   const storeDesignation = storeName.toUpperCase();
   const nextOpeningLabel = getNextOpeningLabel(settings?.operatingHours);
@@ -32,6 +35,10 @@ export function NavSidebar({ isOpen, onClose, categories, activeCategory, onCate
     : nextOpeningLabel === 'Sem próximos horários'
       ? 'SEM PRÓXIMO HORÁRIO'
       : `ABRE ${nextOpeningLabel.toUpperCase()}`;
+
+  useEffect(() => {
+    setSlug(getTenantSlug());
+  }, []);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -128,6 +135,15 @@ export function NavSidebar({ isOpen, onClose, categories, activeCategory, onCate
               <div className="space-y-4">
                 <h3 className="px-1 text-[10px] font-black text-slate-300 uppercase tracking-[0.24em]">Menu</h3>
                 <div className="grid grid-cols-1 gap-3">
+                  <Link
+                    href={`/${slug}/orders`}
+                    onClick={onClose}
+                    className="w-full flex items-center gap-3 px-4 md:px-6 h-13 md:h-16 rounded-[1.35rem] font-body font-bold uppercase tracking-[0.06em] text-[10px] md:text-label transition-all duration-500 border bg-slate-700 text-slate-100 border-slate-600 hover:border-primary/50 hover:bg-slate-700/80"
+                  >
+                    <History size={17} className="text-slate-300" />
+                    <span className="flex-1 text-left">Meus Pedidos</span>
+                  </Link>
+
                   <button
                     onClick={() => { onCategorySelect('all'); onClose(); }}
                     className={cn(

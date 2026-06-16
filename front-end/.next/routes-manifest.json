@@ -70,6 +70,12 @@
       "namedRegex": "^/admin/audit(?:/)?$"
     },
     {
+      "page": "/admin/caixa",
+      "regex": "^/admin/caixa(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/admin/caixa(?:/)?$"
+    },
+    {
       "page": "/admin/categories",
       "regex": "^/admin/categories(?:/)?$",
       "routeKeys": {},
@@ -98,6 +104,12 @@
       "regex": "^/admin/orders(?:/)?$",
       "routeKeys": {},
       "namedRegex": "^/admin/orders(?:/)?$"
+    },
+    {
+      "page": "/admin/plans",
+      "regex": "^/admin/plans(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/admin/plans(?:/)?$"
     },
     {
       "page": "/admin/products",
