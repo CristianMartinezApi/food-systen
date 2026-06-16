@@ -95,11 +95,11 @@ export function Header({ onOpenMenu }: HeaderProps) {
         )}
       >
         <div className="w-full px-3 md:px-5 lg:px-7 xl:px-8">
-          <div className="flex items-center justify-between gap-3 md:gap-6 lg:grid lg:grid-cols-[auto_minmax(300px,380px)_auto] lg:items-center lg:gap-5">
+          <div className="flex items-center justify-between gap-3 md:gap-6 lg:grid lg:grid-cols-[1fr_auto_1fr] lg:items-center lg:gap-8">
 
             {/* Logo Section */}
-            <div className="flex items-center gap-2 md:gap-5 min-w-0 max-w-[65%] sm:max-w-[70%] lg:max-w-none lg:justify-self-start flex-1 lg:flex-none">
-              <Link href={`/${slug}`} className="flex items-center gap-2.5 md:gap-4 group min-w-0 w-full">
+            <div className="flex items-center gap-2 md:gap-5 min-w-0 lg:justify-self-start">
+              <Link href={`/${slug}`} className="flex items-center gap-2.5 md:gap-4 group min-w-0">
                 <div className="w-10 h-10 md:w-14 md:h-14 bg-slate-900 rounded-xl md:rounded-2xl flex items-center justify-center shadow-xl shadow-black/30 ring-1 ring-white/10 group-hover:rotate-3 transition-all duration-500 shrink-0">
                   {settings?.logo ? (
                     <img src={settings.logo} alt="Logo" className="w-full h-full object-cover rounded-xl md:rounded-2xl" />
@@ -110,7 +110,7 @@ export function Header({ onOpenMenu }: HeaderProps) {
                 <div className="flex flex-col min-w-0">
                   <h1
                     style={{ fontWeight: 900, letterSpacing: '-0.02em' }}
-                    className="text-[20px] sm:text-[24px] md:text-[32px] lg:text-[38px] font-body text-white uppercase leading-[0.9] truncate max-w-[160px] xs:max-w-[200px] sm:max-w-[300px] md:max-w-none [text-rendering:optimizeLegibility]"
+                    className="text-[20px] sm:text-[24px] md:text-[32px] lg:text-[36px] font-body text-white uppercase leading-[0.9] truncate max-w-[140px] xs:max-w-[180px] sm:max-w-[240px] md:max-w-[320px] lg:max-w-[380px] xl:max-w-none [text-rendering:optimizeLegibility]"
                   >
                     <span className="text-white">{storeNameMain}</span>
                     {storeNameAccent ? <span className="text-primary ml-1">{storeNameAccent}</span> : null}
@@ -130,28 +130,28 @@ export function Header({ onOpenMenu }: HeaderProps) {
             {/* Middle Section: Address */}
             <div
               onClick={() => setIsAddressModalOpen(true)}
-              className="hidden lg:flex lg:justify-self-center items-center h-12 xl:h-14 gap-3 bg-slate-700/70 border border-slate-600 rounded-2xl px-4 xl:px-5 shadow-sm shadow-black/15 cursor-pointer hover:bg-slate-700 hover:border-primary/40 hover:shadow-md hover:shadow-primary/10 transition-all duration-300 group"
+              className="hidden lg:flex lg:justify-self-center items-center h-12 xl:h-14 gap-3 bg-slate-700/70 border border-slate-600 rounded-2xl px-4 xl:px-5 shadow-sm shadow-black/15 cursor-pointer hover:bg-slate-700 hover:border-primary/40 hover:shadow-md hover:shadow-primary/10 transition-all duration-300 group max-w-[320px] xl:max-w-[400px]"
             >
-              <div className="w-7 h-7 rounded-lg bg-slate-900/70 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all duration-300">
+              <div className="w-7 h-7 rounded-lg bg-slate-900/70 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all duration-300 shrink-0">
                 <MapPin size={14} />
               </div>
-              <div>
-                <p className="text-[8px] font-body font-semibold text-slate-300 uppercase tracking-wider leading-none mb-0.5">Entregar em</p>
-                <p className="text-[11px] font-body text-slate-100 truncate max-w-44 tracking-tight leading-none">
+              <div className="min-w-0">
+                <p className="text-[8px] font-body font-semibold text-slate-300 uppercase tracking-wider leading-none mb-1">Entregar em</p>
+                <p className="text-[11px] font-body text-slate-100 truncate tracking-tight leading-none">
                   {displayAddress}
                 </p>
               </div>
-              <ChevronRight size={14} className="text-slate-400 group-hover:text-slate-200 group-hover:translate-x-0.5 transition-all" />
+              <ChevronRight size={14} className="text-slate-400 group-hover:text-slate-200 group-hover:translate-x-0.5 transition-all shrink-0" />
             </div>
 
             {/* Right Section: Actions */}
-            <div className="ml-auto flex items-center gap-2 md:gap-4 lg:gap-4 xl:gap-5 shrink-0 lg:ml-0 lg:justify-self-end">
+            <div className="flex items-center gap-2 md:gap-4 lg:gap-4 xl:gap-5 shrink-0 justify-end lg:justify-self-end">
               {/* Search Bar - Aesthetic version */}
-              <div className="hidden md:flex relative items-center group">
+              <div className="hidden xl:flex relative items-center group">
                 <Search className="absolute left-4 md:left-5 text-slate-300 group-focus-within:text-primary transition-colors duration-300" size={18} />
                 <input
                   placeholder="BUSCAR SABOR..."
-                  className="h-12 xl:h-14 w-40 md:w-56 lg:w-72 pl-11 md:pl-14 pr-4 md:pr-6 bg-slate-700/70 border border-slate-600 rounded-2xl focus:bg-slate-700 focus:ring-[5px] focus:ring-primary/20 focus:border-primary/50 transition-all duration-300 text-[10px] md:text-sm font-body font-medium uppercase tracking-wider text-slate-100 outline-none placeholder:text-slate-300"
+                  className="h-12 xl:h-14 w-40 md:w-56 lg:w-60 pl-11 md:pl-14 pr-4 md:pr-6 bg-slate-700/70 border border-slate-600 rounded-2xl focus:bg-slate-700 focus:ring-[5px] focus:ring-primary/20 focus:border-primary/50 transition-all duration-300 text-[10px] md:text-sm font-body font-medium uppercase tracking-wider text-slate-100 outline-none placeholder:text-slate-300"
                 />
               </div>
 

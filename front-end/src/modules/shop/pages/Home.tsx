@@ -291,8 +291,8 @@ export default function Home() {
                     "home-category-chip shrink-0",
                     "px-4 md:px-6 py-2.5 md:py-3.5 rounded-xl md:rounded-2xl text-[10px] md:text-xs font-black uppercase tracking-[0.15em] transition-all whitespace-nowrap border-2",
                     activeCategory === 'all'
-                      ? "bg-slate-950 text-white border-slate-950 shadow-xl shadow-slate-950/20"
-                      : "bg-slate-100/50 text-slate-500 border-slate-200/60 shadow-sm hover:border-slate-300"
+                      ? "bg-slate-950 text-white border-slate-950 shadow-xl shadow-slate-950/30 scale-105 ring-4 ring-slate-950/10"
+                      : "bg-white text-slate-500 border-slate-200/60 shadow-md shadow-black/5 hover:border-primary/30 hover:text-primary hover:shadow-lg hover:-translate-y-0.5"
                   )}
                 >
                   Todos
@@ -305,8 +305,8 @@ export default function Home() {
                       "home-category-chip shrink-0",
                       "px-4 md:px-6 py-2.5 md:py-3.5 rounded-xl md:rounded-2xl text-[10px] md:text-xs font-black uppercase tracking-[0.15em] transition-all whitespace-nowrap border-2",
                       activeCategory === cat.id
-                        ? "bg-slate-950 text-white border-slate-950 shadow-xl shadow-slate-950/20"
-                        : "bg-slate-100/50 text-slate-500 border-slate-200/60 shadow-sm hover:border-slate-300"
+                        ? "bg-slate-950 text-white border-slate-950 shadow-xl shadow-slate-950/30 scale-105 ring-4 ring-slate-950/10"
+                        : "bg-white text-slate-500 border-slate-200/60 shadow-md shadow-black/5 hover:border-primary/30 hover:text-primary hover:shadow-lg hover:-translate-y-0.5"
                     )}
                   >
                     {cat.name}
