@@ -98,29 +98,29 @@ export function Header({ onOpenMenu }: HeaderProps) {
           <div className="flex items-center justify-between gap-3 md:gap-6 lg:grid lg:grid-cols-[auto_minmax(300px,380px)_auto] lg:items-center lg:gap-5">
 
             {/* Logo Section */}
-            <div className="flex items-center gap-3 md:gap-5 min-w-0 lg:justify-self-start">
-              <Link href={`/${slug}`} className="flex items-center gap-3 md:gap-4 group min-w-0">
-                <div className="w-11 h-11 md:w-14 md:h-14 bg-slate-900 rounded-xl md:rounded-2xl flex items-center justify-center shadow-xl shadow-black/30 ring-1 ring-white/10 group-hover:rotate-3 transition-all duration-500 shrink-0">
+            <div className="flex items-center gap-2 md:gap-5 min-w-0 max-w-[65%] sm:max-w-[70%] lg:max-w-none lg:justify-self-start flex-1 lg:flex-none">
+              <Link href={`/${slug}`} className="flex items-center gap-2.5 md:gap-4 group min-w-0 w-full">
+                <div className="w-10 h-10 md:w-14 md:h-14 bg-slate-900 rounded-xl md:rounded-2xl flex items-center justify-center shadow-xl shadow-black/30 ring-1 ring-white/10 group-hover:rotate-3 transition-all duration-500 shrink-0">
                   {settings?.logo ? (
                     <img src={settings.logo} alt="Logo" className="w-full h-full object-cover rounded-xl md:rounded-2xl" />
                   ) : (
-                    <Utensils className="text-primary group-hover:scale-110 transition-transform duration-500" size={20} />
+                    <Utensils className="text-primary group-hover:scale-110 transition-transform duration-500" size={18} />
                   )}
                 </div>
                 <div className="flex flex-col min-w-0">
                   <h1
-                    style={{ fontWeight: 900, letterSpacing: '-0.015em' }}
-                    className="text-[24px] sm:text-[28px] md:text-[36px] lg:text-[40px] font-body text-white uppercase tracking-none leading-none truncate max-w-62 sm:max-w-none [text-rendering:optimizeLegibility]"
+                    style={{ fontWeight: 900, letterSpacing: '-0.02em' }}
+                    className="text-[20px] sm:text-[24px] md:text-[32px] lg:text-[38px] font-body text-white uppercase leading-[0.9] truncate max-w-[160px] xs:max-w-[200px] sm:max-w-[300px] md:max-w-none [text-rendering:optimizeLegibility]"
                   >
                     <span className="text-white">{storeNameMain}</span>
-                    {storeNameAccent ? <span className="text-primary">{storeNameAccent}</span> : null}
+                    {storeNameAccent ? <span className="text-primary ml-1">{storeNameAccent}</span> : null}
                   </h1>
-                  <p className="flex md:hidden text-[9px] font-body font-semibold text-slate-300 uppercase tracking-wider mt-0.5 pr-2 items-center gap-1 whitespace-nowrap max-w-40 truncate">
-                    <span className={cn("w-1 h-1 rounded-full", settings?.isOpen ? "bg-emerald-500" : "bg-rose-500")} />
+                  <p className="flex md:hidden text-[8px] font-body font-bold text-slate-400 uppercase tracking-tighter mt-1 items-center gap-1.5 whitespace-nowrap">
+                    <span className={cn("w-1.5 h-1.5 rounded-full shadow-[0_0_8px_rgba(0,0,0,0.5)]", settings?.isOpen ? "bg-emerald-500 animate-pulse" : "bg-rose-500")} />
                     {mobileStatusLabel}
                   </p>
-                  <p className="hidden md:flex text-[10px] font-body font-medium text-slate-300 uppercase tracking-wider mt-0.5 pr-2 items-center gap-1 whitespace-nowrap">
-                    <span className={cn("w-1 h-1 md:w-1.5 md:h-1.5 rounded-full", settings?.isOpen ? "bg-emerald-500 animate-pulse" : "bg-rose-500")} />
+                  <p className="hidden md:flex text-[10px] font-body font-medium text-slate-300 uppercase tracking-wider mt-1 items-center gap-1.5 whitespace-nowrap">
+                    <span className={cn("w-2 h-2 rounded-full shadow-[0_0_10px_rgba(0,0,0,0.5)]", settings?.isOpen ? "bg-emerald-500 animate-pulse" : "bg-rose-500")} />
                     {desktopStatusLabel}
                   </p>
                 </div>
