@@ -21,7 +21,10 @@ import { motion, AnimatePresence } from "framer-motion";
 import { gsap } from "gsap";
 
 export default function OrdersPage() {
-  // Desativar avisos de alvos nulos do GSAP (evita poluição no console quando a lista está vazia)
+cd foodsystem/food-systen
+git pull origin main
+docker compose build
+docker compose up -d  // Desativar avisos de alvos nulos do GSAP (evita poluição no console quando a lista está vazia)
   gsap.config({ nullTargetWarn: false });
 
   const [orders, setOrders] = useState<any[]>([]);

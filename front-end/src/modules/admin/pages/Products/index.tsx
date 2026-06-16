@@ -213,6 +213,14 @@ export default function ProductsPage() {
                               </p>
                             )}
                           </div>
+                          {product.trackStock && (
+                            <p className={cn(
+                              "text-[10px] font-body font-bold uppercase tracking-widest mt-2",
+                              product.stockQuantity <= 5 ? "text-rose-500" : "text-emerald-500"
+                            )}>
+                              Estoque: {product.stockQuantity} un
+                            </p>
+                          )}
                        </div>
                        <div className="text-right">
                           <p className="text-[10px] font-body font-bold text-slate-300 uppercase tracking-[0.2em] mb-1">Status Ativo</p>

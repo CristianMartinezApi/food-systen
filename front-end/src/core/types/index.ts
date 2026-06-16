@@ -8,6 +8,8 @@ export interface Product {
   image: string;
   isActive: boolean;
   isFeatured?: boolean;
+  stockQuantity: number;
+  trackStock: boolean;
   slug: string;
   sizes?: { name: string; price: number }[];
   addons?: { name: string; price: number }[];

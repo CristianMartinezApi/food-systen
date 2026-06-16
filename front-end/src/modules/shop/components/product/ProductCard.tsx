@@ -18,9 +18,23 @@ export function ProductCard({ product }: ProductCardProps) {
   const discountPercent = clampDiscountPercent(product.discountPercent);
   const salePrice = getProductDiscountedPrice(product.price, discountPercent);
   const isPromotional = hasProductDiscount(discountPercent);
+  const isOutOfStock = product.trackStock && product.stockQuantity <= 0;
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.stopPropagation();
+
+    if (isOutOfStock) {
+      toast.error("PRODUTO ESGOTADO NO MOMENTO", {
+        style: {
+          borderRadius: '24px',
+          background: '#020617',
+          color: '#fff',
+          fontSize: '10px',
+          fontWeight: '900',
+        }
+      });
+      return;
+    }
 
     if (product.sizes && product.sizes.length > 1) {
       setIsModalOpen(true);
@@ -53,12 +67,15 @@ export function ProductCard({ product }: ProductCardProps) {
   return (
     <>
       <motion.div
-        whileHover={{ y: -12 }}
-        onClick={() => setIsModalOpen(true)}
-        className="group bg-slate-100 rounded-xl md:rounded-[3.5rem] border border-slate-200 p-2 md:p-4 shadow-2xl shadow-slate-300/50 hover:shadow-primary/15 transition-all duration-700 relative cursor-pointer overflow-hidden"
+        whileHover={!isOutOfStock ? { y: -12 } : {}}
+        onClick={() => !isOutOfStock && setIsModalOpen(true)}
+        className={cn(
+          "group bg-slate-100 rounded-xl md:rounded-[3.5rem] border border-slate-200 p-2 md:p-4 shadow-2xl shadow-slate-300/50 transition-all duration-700 relative cursor-pointer overflow-hidden",
+          isOutOfStock ? "opacity-60 grayscale cursor-not-allowed" : "hover:shadow-primary/15"
+        )}
       >
         {/* Glow de fundo no hover */}
-        <div className="absolute inset-x-0 bottom-0 h-1/2 bg-linear-to-t from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
+        {!isOutOfStock && <div className="absolute inset-x-0 bottom-0 h-1/2 bg-linear-to-t from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700" />}
 
         <div className="relative h-44 md:h-auto md:aspect-4/5 overflow-hidden rounded-2xl md:rounded-[2.8rem] shadow-inner bg-slate-50">
           <img
@@ -66,6 +83,12 @@ export function ProductCard({ product }: ProductCardProps) {
             alt={product.name}
             className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000 ease-out"
           />
+
+          {isOutOfStock && (
+            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center">
+              <span className="text-white font-black text-sm md:text-xl uppercase tracking-[0.2em] -rotate-12 border-4 border-white px-4 py-2">Esgotado</span>
+            </div>
+          )}
 
           {/* Badge Superior */}
           <div className="absolute top-2 md:top-4 left-2 md:left-6 flex flex-col gap-1 md:gap-1.5">

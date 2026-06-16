@@ -16,6 +16,7 @@ interface ProductModalProps {
 export function ProductModal({ product, isOpen, onClose, editIndex = null, initialData = null }: ProductModalProps) {
     const [quantity, setQuantity] = useState(initialData?.quantity || 1);
     const [added, setAdded] = useState(false);
+    const isOutOfStock = product?.trackStock && product?.stockQuantity <= 0;
 
     const initialSize = useMemo(() => {
         if (!product?.sizes || !initialData?.variation) return product?.sizes?.[0] || null;
@@ -125,19 +126,20 @@ export function ProductModal({ product, isOpen, onClose, editIndex = null, initi
                         className="absolute inset-0 bg-black/60 backdrop-blur-md"
                     />
                     <motion.div
-                        initial={{ scale: 0.9, opacity: 0, y: 20 }}
-                        animate={{ scale: 1, opacity: 1, y: 0 }}
-                        exit={{ scale: 0.9, opacity: 0, y: 20 }}
-                        className="bg-slate-100 w-full max-w-none md:max-w-6xl h-dvh md:h-[min(90vh,900px)] rounded-none md:rounded-[3rem] overflow-hidden shadow-[0_35px_80px_rgba(15,23,42,0.28)] relative z-10 flex flex-col md:flex-row"
+                        initial={{ y: "100%", opacity: 0 }}
+                        animate={{ y: 0, opacity: 1 }}
+                        exit={{ y: "100%", opacity: 0 }}
+                        transition={{ type: "spring", damping: 25, stiffness: 200 }}
+                        className="bg-slate-100 w-full max-w-none md:max-w-6xl h-[92dvh] md:h-[min(90vh,900px)] rounded-t-[2.5rem] md:rounded-[3rem] overflow-hidden shadow-[0_-15px_60px_rgba(15,23,42,0.15)] md:shadow-[0_35px_80px_rgba(15,23,42,0.28)] relative z-10 flex flex-col md:flex-row"
                     >
                         <button
                             onClick={onClose}
-                            className="absolute top-3 md:top-8 right-3 md:right-8 z-50 w-11 h-11 md:w-14 md:h-14 bg-slate-100/95 backdrop-blur-xl rounded-2xl flex items-center justify-center text-slate-900 shadow-2xl border border-slate-200 hover:bg-slate-950 hover:text-white transition-all duration-500 active:scale-90 group"
+                            className="absolute top-4 md:top-8 right-4 md:right-8 z-50 w-10 h-10 md:w-14 md:h-14 bg-white/90 md:bg-slate-100/95 backdrop-blur-xl rounded-full md:rounded-2xl flex items-center justify-center text-slate-900 shadow-xl border border-slate-200/50 hover:bg-slate-950 hover:text-white transition-all duration-500 active:scale-90 group"
                         >
-                            <X size={20} className="md:size-6 group-hover:rotate-90 transition-transform duration-500" />
+                            <X size={18} className="md:size-6 group-hover:rotate-90 transition-transform duration-500" />
                         </button>
 
-                        <div className="relative w-full md:w-1/2 h-56 md:h-full bg-slate-100 shrink-0 group overflow-hidden">
+                        <div className="relative w-full md:w-1/2 h-[35vh] md:h-full bg-slate-200 shrink-0 group overflow-hidden">
                             {product.image ? (
                                 <img
                                     src={product.image}
@@ -145,21 +147,26 @@ export function ProductModal({ product, isOpen, onClose, editIndex = null, initi
                                     className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-[2s] ease-out"
                                 />
                             ) : (
-                                <div className="w-full h-full flex items-center justify-center text-slate-200">
-                                    <ShoppingBag size={96} strokeWidth={1} className="md:size-30" />
+                                <div className="w-full h-full flex items-center justify-center text-slate-300">
+                                    <ShoppingBag size={80} strokeWidth={1} className="md:size-30" />
                                 </div>
                             )}
-                            <div className="absolute inset-x-0 bottom-0 h-1/2 bg-linear-to-t from-black/60 to-transparent md:hidden" />
+                            {/* Gradiente sutil para mobile para leitura do texto */}
+                            <div className="absolute inset-x-0 bottom-0 h-40 bg-linear-to-t from-slate-950/80 via-slate-950/20 to-transparent md:hidden" />
 
-                            <div className="absolute bottom-5 left-5 right-5 md:hidden">
-                                <h2 className="text-heading-2 font-display font-bold text-white uppercase tracking-tighter drop-shadow-xl">
+                            <div className="absolute bottom-6 left-6 right-6 md:hidden">
+                                <div className="flex items-center gap-2 mb-2">
+                                    <span className="h-0.5 w-6 bg-primary" />
+                                    <span className="text-[8px] font-black text-primary uppercase tracking-[0.3em]">Exclusivo</span>
+                                </div>
+                                <h2 className="text-3xl font-display font-bold text-white uppercase tracking-tighter drop-shadow-2xl">
                                     {product.name}
                                 </h2>
                             </div>
                         </div>
 
-                        <div className="flex-1 flex flex-col h-full bg-slate-100 relative overflow-hidden">
-                            <div className="flex-1 overflow-y-auto no-scrollbar p-6 md:p-14">
+                        <div className="flex-1 flex flex-col h-full bg-white md:bg-slate-100 relative overflow-hidden">
+                            <div className="flex-1 overflow-y-auto no-scrollbar p-6 md:p-14 pb-32 md:pb-14">
                                 <div className="hidden md:block mb-12">
                                     <div className="flex items-center gap-3 mb-4">
                                         <span className="h-0.5 w-10 bg-primary" />
@@ -296,41 +303,41 @@ export function ProductModal({ product, isOpen, onClose, editIndex = null, initi
                                 </div>
                             </div>
 
-                            <div className="p-8 md:p-14 bg-slate-100 border-t border-slate-200 shadow-[0_-20px_40px_rgba(15,23,42,0.08)] flex flex-col sm:flex-row items-center gap-8">
-                                <div className="flex items-center gap-6 bg-slate-50 p-2 rounded-2xl border border-slate-200">
+                            <div className="p-6 md:p-14 bg-white md:bg-slate-100 border-t border-slate-100 md:border-slate-200 shadow-[0_-15px_40px_rgba(15,23,42,0.06)] md:shadow-[0_-20px_40px_rgba(15,23,42,0.08)] flex flex-row items-center gap-4 md:gap-8 sticky bottom-0 z-30">
+                                <div className="flex items-center gap-3 md:gap-6 bg-slate-50 p-1 md:p-2 rounded-xl md:rounded-2xl border border-slate-200">
                                     <button
                                         onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                                        className="w-14 h-14 rounded-xl flex items-center justify-center text-slate-400 hover:text-slate-950 transition-colors"
+                                        className="w-10 h-10 md:w-14 md:h-14 rounded-lg md:rounded-xl flex items-center justify-center text-slate-400 hover:text-slate-950 transition-colors"
                                     >
-                                        <Minus size={24} />
+                                        <Minus size={18} className="md:size-6" />
                                     </button>
-                                    <span className="w-12 text-center text-heading-3 font-mono font-bold text-slate-950">{quantity}</span>
+                                    <span className="w-6 md:w-12 text-center text-lg md:text-heading-3 font-mono font-bold text-slate-950">{quantity}</span>
                                     <button
                                         onClick={() => setQuantity(quantity + 1)}
-                                        className="w-14 h-14 rounded-xl bg-slate-950 text-white flex items-center justify-center shadow-xl shadow-slate-950/20 active:scale-95 transition-all"
+                                        className="w-10 h-10 md:w-14 md:h-14 rounded-lg md:rounded-xl bg-slate-950 text-white flex items-center justify-center shadow-lg md:shadow-xl shadow-slate-950/20 active:scale-95 transition-all"
                                     >
-                                        <Plus size={24} />
+                                        <Plus size={18} className="md:size-6" />
                                     </button>
                                 </div>
 
                                 <button
                                     onClick={handleAdd}
-                                    disabled={added}
+                                    disabled={added || isOutOfStock}
                                     className={cn(
-                                        "flex-1 h-20 rounded-3xl flex items-center justify-between px-10 transition-all duration-500 active:scale-[0.98]",
-                                        added ? "bg-emerald-500 text-white" : "bg-primary text-white shadow-2xl shadow-primary/30 hover:scale-[1.02]"
+                                        "flex-1 h-14 md:h-20 rounded-2xl md:rounded-3xl flex items-center justify-between px-4 md:px-10 transition-all duration-500 active:scale-[0.98]",
+                                        added ? "bg-emerald-500 text-white" : (isOutOfStock ? "bg-slate-400 cursor-not-allowed" : "bg-primary text-white shadow-xl md:shadow-2xl shadow-primary/30 hover:scale-[1.02]")
                                     )}
                                 >
-                                    <span className="text-label font-body font-bold uppercase tracking-widest">
+                                    <span className="text-[10px] md:text-label font-body font-bold uppercase tracking-widest\">
                                         {added ? (
-                                            <span className="flex items-center gap-3">
-                                                <Check size={20} strokeWidth={3} /> Item Adicionado
+                                            <span className="flex items-center gap-2 md:gap-3">
+                                                <Check size={16} className="md:size-5" strokeWidth={3} /> Adicionado
                                             </span>
-                                        ) : editIndex !== null ? "Atualizar Reserva" : "Adicionar ao Carrinho"}
+                                        ) : (isOutOfStock ? "Esgotado" : (editIndex !== null ? "Atualizar" : "No Carrinho"))}
                                     </span>
-                                    <div className="flex items-center gap-4">
-                                        <div className="h-8 w-px bg-white/20" />
-                                        <span className="text-heading-3 font-mono font-medium tracking-tighter">
+                                    <div className="flex items-center gap-2 md:gap-4">
+                                        <div className="h-6 md:h-8 w-px bg-white/20" />
+                                        <span className="text-sm md:text-heading-3 font-mono font-medium tracking-tighter">
                                             {formatCurrency(totalPrice)}
                                         </span>
                                     </div>

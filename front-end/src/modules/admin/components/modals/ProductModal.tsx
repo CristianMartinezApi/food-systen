@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { X, ImagePlus, Loader2, Save, Plus, Trash2 } from "lucide-react";
 import { api } from "../../../../core/config/api";
-import { formatCurrency } from "../../../../shared/utils";
+import { formatCurrency, cn } from "../../../../shared/utils";
 import { clampDiscountPercent, getProductDiscountedPrice } from "../../../../shared/utils/product";
 
 interface ProductModalProps {
@@ -20,6 +20,8 @@ export function ProductModal({ isOpen, onClose, onSave, product }: ProductModalP
     categoryId: "",
     image: "",
     isActive: true,
+    stockQuantity: 0,
+    trackStock: false,
     addons: [],
     sizes: [],
     ingredients: []
@@ -69,6 +71,8 @@ export function ProductModal({ isOpen, onClose, onSave, product }: ProductModalP
         ...product,
         categoryId: product.categoryId?.toString() || "",
         isActive: product.isActive !== undefined ? product.isActive : true,
+        stockQuantity: product.stockQuantity || 0,
+        trackStock: product.trackStock || false,
         discountPercent: clampDiscountPercent(product.discountPercent),
         addons: product.addons || [],
         sizes: product.sizes || [],
@@ -79,6 +83,8 @@ export function ProductModal({ isOpen, onClose, onSave, product }: ProductModalP
         name: "",
         description: "",
         price: "" as any,
+        stockQuantity: 0,
+        trackStock: false,
         discountPercent: 0,
         categoryId: "",
         image: "",
@@ -296,6 +302,31 @@ export function ProductModal({ isOpen, onClose, onSave, product }: ProductModalP
                         placeholder="0,00"
                         className="w-full h-14 px-5 bg-slate-50 border-2 border-transparent focus:border-primary/20 focus:bg-white rounded-2xl transition-all font-bold text-slate-700 outline-none"
                     />
+                </div>
+
+                <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Gerenciar Estoque?</label>
+                    <div className="flex items-center gap-4 h-14">
+                      <button
+                        type="button"
+                        onClick={() => setFormData({...formData, trackStock: !formData.trackStock})}
+                        className={cn(
+                          "px-6 h-10 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all",
+                          formData.trackStock ? "bg-primary text-white shadow-lg" : "bg-slate-50 text-slate-400"
+                        )}
+                      >
+                        {formData.trackStock ? "Ativado" : "Desativado"}
+                      </button>
+                      {formData.trackStock && (
+                        <input 
+                          type="number"
+                          value={formData.stockQuantity}
+                          onChange={(e) => setFormData({...formData, stockQuantity: parseInt(e.target.value) || 0})}
+                          placeholder="Qtd"
+                          className="flex-1 h-14 px-5 bg-slate-50 border-2 border-transparent focus:border-primary/20 focus:bg-white rounded-2xl transition-all font-bold text-slate-700 outline-none"
+                        />
+                      )}
+                    </div>
                 </div>
 
                     <div className="space-y-2">
