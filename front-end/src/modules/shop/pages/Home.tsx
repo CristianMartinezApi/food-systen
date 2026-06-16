@@ -284,7 +284,7 @@ export default function Home() {
                 <div className="h-1 md:h-1.5 w-20 bg-primary rounded-full" />
               </div>
 
-              <div className="flex items-center gap-2 md:gap-4 overflow-x-auto pb-4 md:pb-0 no-scrollbar md:justify-end -mx-6 px-6 md:mx-0 md:px-0">
+              <div className="flex items-center gap-2 md:gap-4 overflow-x-auto pb-4 md:pb-0 no-scrollbar md:justify-end -mx-6 px-6 md:mx-0 md:px-0 scroll-smooth">
                 <button
                   onClick={() => setActiveCategory('all')}
                   className={cn(
