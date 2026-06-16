@@ -24,7 +24,7 @@ import {
     Navigation
 } from "lucide-react";
 import { useSettings } from "../../../../core/hooks/useSettings";
-import { cn } from "../../../../shared/utils";
+import { cn, normalizeMoneyInput, parseMoneyInput, toMoneyInputValue, formatMoneyInputRealtime } from "../../../../shared/utils";
 import toast from "react-hot-toast";
 import { gsap } from "gsap";
 import { createDefaultOperatingHours, getNextOpeningLabel, isRestaurantOpenNow, normalizeOperatingHours } from "../../../../shared/utils/schedule";
@@ -159,8 +159,14 @@ export default function SettingsPage() {
         e.preventDefault();
         setIsSaving(true);
         try {
-            console.log("Enviando dados:", formData);
-            await updateSettings(formData);
+            const dataToSave = {
+                ...formData,
+                deliveryFee: parseMoneyInput(formData.deliveryFee),
+                minOrderValue: parseMoneyInput(formData.minOrderValue),
+                cashDifferenceNoteThreshold: parseMoneyInput(formData.cashDifferenceNoteThreshold),
+            };
+            console.log("Enviando dados:", dataToSave);
+            await updateSettings(dataToSave);
             toast.success("Configurações atualizadas com sucesso!");
         } catch (error) {
             console.error("Erro ao salvar:", error);
@@ -602,10 +608,10 @@ export default function SettingsPage() {
                                     <div className="relative">
                                         <DollarSign className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
                                         <input
-                                            type="number"
-                                            step="0.01"
-                                            value={formData.deliveryFee}
-                                            onChange={(e) => setFormData({ ...formData, deliveryFee: parseFloat(e.target.value) })}
+                                            type="text"
+                                            inputMode="decimal"
+                                            value={toMoneyInputValue(formData.deliveryFee)}
+                                            onChange={(e) => setFormData({ ...formData, deliveryFee: formatMoneyInputRealtime(e.target.value) })}
                                             className="w-full h-14 pl-14 pr-5 bg-slate-50 border-2 border-transparent focus:border-primary/20 focus:bg-white rounded-2xl transition-all font-bold text-slate-700 outline-none"
                                         />
                                     </div>
@@ -630,10 +636,10 @@ export default function SettingsPage() {
                                     <div className="relative">
                                         <DollarSign className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
                                         <input
-                                            type="number"
-                                            step="0.01"
-                                            value={formData.minOrderValue}
-                                            onChange={(e) => setFormData({ ...formData, minOrderValue: parseFloat(e.target.value) })}
+                                            type="text"
+                                            inputMode="decimal"
+                                            value={toMoneyInputValue(formData.minOrderValue)}
+                                            onChange={(e) => setFormData({ ...formData, minOrderValue: formatMoneyInputRealtime(e.target.value) })}
                                             className="w-full h-14 pl-14 pr-5 bg-slate-50 border-2 border-transparent focus:border-primary/20 focus:bg-white rounded-2xl transition-all font-bold text-slate-700 outline-none"
                                         />
                                     </div>
@@ -643,11 +649,10 @@ export default function SettingsPage() {
                                     <div className="relative">
                                         <ShieldCheck className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
                                         <input
-                                            type="number"
-                                            min={0}
-                                            step="0.01"
-                                            value={formData.cashDifferenceNoteThreshold ?? 5}
-                                            onChange={(e) => setFormData({ ...formData, cashDifferenceNoteThreshold: Number(e.target.value) })}
+                                            type="text"
+                                            inputMode="decimal"
+                                            value={toMoneyInputValue(formData.cashDifferenceNoteThreshold ?? 5)}
+                                            onChange={(e) => setFormData({ ...formData, cashDifferenceNoteThreshold: formatMoneyInputRealtime(e.target.value) })}
                                             className="w-full h-14 pl-14 pr-5 bg-slate-50 border-2 border-transparent focus:border-primary/20 focus:bg-white rounded-2xl transition-all font-bold text-slate-700 outline-none"
                                         />
                                     </div>

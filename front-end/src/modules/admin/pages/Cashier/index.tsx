@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Wallet, Receipt, ArrowDownCircle, ArrowUpCircle, ShieldCheck, Loader2, Archive, PlusCircle, MinusCircle, Scale, Printer } from "lucide-react";
 import { api } from "../../../../core/config/api";
-import { formatCurrency } from "../../../../shared/utils";
+import { formatCurrency, normalizeMoneyInput, parseMoneyInput, formatMoneyInputRealtime } from "../../../../shared/utils";
 import toast from "react-hot-toast";
 import { PrintModeModal, type PrintMode } from "../../components/modals/PrintModeModal";
 import { ConfirmActionModal } from "../../components/modals/ConfirmActionModal";
@@ -123,11 +123,11 @@ export default function CashierPage() {
         () => Object.fromEntries(HOMOLOGATION_STEPS.map((step) => [step.id, false])) as Record<string, boolean>
     );
     const printModeLabel = printMode === "THERMAL" ? "Termica 80mm" : "A4";
-    const closingDifference = Number((Number(closingAmount || 0) - (totals.expectedAmount || 0)).toFixed(2));
+    const closingDifference = Number((parseMoneyInput(closingAmount) - (totals.expectedAmount || 0)).toFixed(2));
     const directSaleAmountNumber = Number(
         directSaleItems.reduce((acc, item) => acc + (item.price * item.quantity), 0).toFixed(2)
     );
-    const directSaleCashReceivedNumber = Number(directSaleCashReceivedAmount || 0);
+    const directSaleCashReceivedNumber = parseMoneyInput(directSaleCashReceivedAmount || 0);
     const directSaleChangeDue = directSalePaymentMethod === "CASH"
         ? Number((directSaleCashReceivedNumber - directSaleAmountNumber).toFixed(2))
         : 0;
@@ -236,7 +236,7 @@ export default function CashierPage() {
     }, [filterStatus, filterOperatorId, filterStartDate, filterEndDate]);
 
     const handleOpenSession = async () => {
-        const parsed = Number(openingAmount);
+        const parsed = parseMoneyInput(openingAmount);
         if (Number.isNaN(parsed) || parsed < 0) {
             toast.error("Valor de abertura invalido");
             return;
@@ -256,7 +256,7 @@ export default function CashierPage() {
     };
 
     const handleCreateMovement = async () => {
-        const parsed = Number(movementAmount);
+        const parsed = parseMoneyInput(movementAmount);
         if (Number.isNaN(parsed) || parsed <= 0) {
             toast.error("Valor do movimento invalido");
             return;
@@ -344,7 +344,7 @@ export default function CashierPage() {
         }
 
         const cashReceivedParsed = directSalePaymentMethod === "CASH"
-            ? Number(directSaleCashReceivedAmount)
+            ? parseMoneyInput(directSaleCashReceivedAmount)
             : null;
 
         if (directSalePaymentMethod === "CASH") {
@@ -382,7 +382,7 @@ export default function CashierPage() {
     };
 
     const handleCloseSession = async () => {
-        const parsed = Number(closingAmount);
+        const parsed = parseMoneyInput(closingAmount);
         if (Number.isNaN(parsed) || parsed < 0) {
             toast.error("Valor de fechamento invalido");
             return;
@@ -407,7 +407,7 @@ export default function CashierPage() {
     };
 
     const requestCloseSession = () => {
-        const parsed = Number(closingAmount);
+        const parsed = parseMoneyInput(closingAmount);
         if (Number.isNaN(parsed) || parsed < 0) {
             toast.error("Valor de fechamento invalido");
             return;
@@ -739,10 +739,10 @@ export default function CashierPage() {
                                     <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Valor de abertura</span>
                                     <input
                                         value={openingAmount}
-                                        onChange={(e) => setOpeningAmount(e.target.value)}
-                                        type="number"
-                                        min="0"
-                                        step="0.01"
+                                        onChange={(e) => setOpeningAmount(formatMoneyInputRealtime(e.target.value))}
+                                        type="text"
+                                        inputMode="decimal"
+                                        placeholder="0,00"
                                         className="mt-2 h-12 w-full rounded-2xl border border-slate-200 px-4 outline-none"
                                     />
                                 </label>
@@ -798,10 +798,10 @@ export default function CashierPage() {
                                     <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Valor em caixa no fechamento</span>
                                     <input
                                         value={closingAmount}
-                                        onChange={(e) => setClosingAmount(e.target.value)}
-                                        type="number"
-                                        min="0"
-                                        step="0.01"
+                                        onChange={(e) => setClosingAmount(formatMoneyInputRealtime(e.target.value))}
+                                        type="text"
+                                        inputMode="decimal"
+                                        placeholder="0,00"
                                         className="mt-2 h-12 w-full rounded-2xl border border-slate-200 px-4 outline-none"
                                     />
                                 </label>
@@ -820,7 +820,7 @@ export default function CashierPage() {
                                         </div>
                                         <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
                                             <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Informado</p>
-                                            <p className="text-xs font-black text-slate-900">{formatCurrency(Number(closingAmount || 0))}</p>
+                                            <p className="text-xs font-black text-slate-900">{formatCurrency(parseMoneyInput(closingAmount || 0))}</p>
                                         </div>
                                         <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
                                             <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Divergencia</p>
@@ -987,10 +987,9 @@ export default function CashierPage() {
                                                 <>
                                                     <input
                                                         value={directSaleCashReceivedAmount}
-                                                        onChange={(e) => setDirectSaleCashReceivedAmount(e.target.value)}
-                                                        type="number"
-                                                        min="0"
-                                                        step="0.01"
+                                                        onChange={(e) => setDirectSaleCashReceivedAmount(formatMoneyInputRealtime(e.target.value))}
+                                                        type="text"
+                                                        inputMode="decimal"
                                                         placeholder="Valor recebido"
                                                         className="h-11 rounded-2xl border border-emerald-200 bg-white px-4 outline-none"
                                                     />
@@ -1034,10 +1033,9 @@ export default function CashierPage() {
                                             </select>
                                             <input
                                                 value={movementAmount}
-                                                onChange={(e) => setMovementAmount(e.target.value)}
-                                                type="number"
-                                                min="0"
-                                                step="0.01"
+                                                onChange={(e) => setMovementAmount(formatMoneyInputRealtime(e.target.value))}
+                                                type="text"
+                                                inputMode="decimal"
                                                 placeholder="Valor"
                                                 className="h-12 rounded-2xl border border-slate-200 px-4 outline-none"
                                             />
@@ -1250,7 +1248,7 @@ export default function CashierPage() {
                     </div>
                     <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500">
                         <span>Valor informado</span>
-                        <span className="text-slate-900">{formatCurrency(Number(closingAmount || 0))}</span>
+                        <span className="text-slate-900">{formatCurrency(parseMoneyInput(closingAmount || 0))}</span>
                     </div>
                     <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-[0.12em]">
                         <span className="text-slate-500">Divergencia</span>

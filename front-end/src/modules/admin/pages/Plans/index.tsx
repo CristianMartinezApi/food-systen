@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { api } from "@/core/config/api";
 import { Loader2, Plus, CreditCard, Edit, Trash, Save, X } from "lucide-react";
 import toast from "react-hot-toast";
+import { formatCurrency, normalizeMoneyInput, parseMoneyInput, formatMoneyInputRealtime } from "@/shared/utils";
 
 interface Plan {
   id: number;
@@ -19,12 +20,13 @@ export default function PlansPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [editingPlan, setEditingPlan] = useState<Plan | null>(null);
+  const [editingPriceInput, setEditingPriceInput] = useState("");
   const [isCreating, setIsCreating] = useState(false);
 
   const [formData, setFormData] = useState({
     name: "",
     tier: "FREE",
-    price: 0,
+    price: "0,00",
     maxProducts: 10,
     maxOrders: 100
   });
@@ -49,10 +51,13 @@ export default function PlansPage() {
     e.preventDefault();
     try {
       setIsSaving(true);
-      await api.post("/admin/plans", formData);
+      await api.post("/admin/plans", {
+        ...formData,
+        price: parseMoneyInput(formData.price),
+      });
       toast.success("Plano criado com sucesso");
       setIsCreating(false);
-      setFormData({ name: "", tier: "FREE", price: 0, maxProducts: 10, maxOrders: 100 });
+      setFormData({ name: "", tier: "FREE", price: "0,00", maxProducts: 10, maxOrders: 100 });
       loadPlans();
     } catch (error: any) {
       toast.error(error.message || "Erro ao criar plano");
@@ -66,9 +71,13 @@ export default function PlansPage() {
     if (!editingPlan) return;
     try {
       setIsSaving(true);
-      await api.patch(`/admin/plans/${editingPlan.id}`, editingPlan);
+      await api.patch(`/admin/plans/${editingPlan.id}`, {
+        ...editingPlan,
+        price: parseMoneyInput(editingPriceInput),
+      });
       toast.success("Plano atualizado com sucesso");
       setEditingPlan(null);
+      setEditingPriceInput("");
       loadPlans();
     } catch (error: any) {
       toast.error(error.message || "Erro ao atualizar plano");
@@ -138,11 +147,13 @@ export default function PlansPage() {
             <div className="space-y-2">
               <label className="text-xs font-bold uppercase text-slate-400">Preço Mensal (R$)</label>
               <input
-                type="number"
+                type="text"
+                inputMode="decimal"
                 required
                 value={formData.price}
-                onChange={(e) => setFormData({ ...formData, price: Number(e.target.value) })}
+                onChange={(e) => setFormData({ ...formData, price: formatMoneyInputRealtime(e.target.value) })}
                 className="w-full px-4 py-3 rounded-xl border border-slate-100 focus:outline-none focus:ring-2 focus:ring-slate-900 transition-all"
+                placeholder="0,00"
               />
             </div>
             <div className="space-y-2">
@@ -198,10 +209,11 @@ export default function PlansPage() {
                     <div className="space-y-2">
                       <label className="text-[10px] font-bold uppercase text-slate-400">Preço</label>
                       <input
-                        type="number"
+                        type="text"
+                        inputMode="decimal"
                         className="w-full px-3 py-2 text-sm rounded-lg border border-slate-100 focus:ring-1 focus:ring-slate-900 outline-none"
-                        value={editingPlan.price}
-                        onChange={(e) => setEditingPlan({ ...editingPlan, price: Number(e.target.value) })}
+                        value={editingPriceInput}
+                        onChange={(e) => setEditingPriceInput(formatMoneyInputRealtime(e.target.value))}
                       />
                     </div>
                     <div className="space-y-2">
@@ -260,7 +272,10 @@ export default function PlansPage() {
                       {plan.tier}
                     </span>
                     <button
-                      onClick={() => setEditingPlan(plan)}
+                      onClick={() => {
+                        setEditingPlan(plan);
+                        setEditingPriceInput(String(plan.price).replace(".", ","));
+                      }}
                       className="text-slate-200 hover:text-slate-950 transition-colors"
                     >
                       <Edit size={18} />
@@ -270,7 +285,7 @@ export default function PlansPage() {
                   <div className="mt-4 space-y-3">
                     <div className="flex items-center justify-between">
                       <span className="text-slate-400 text-xs font-bold uppercase tracking-wider">Preço</span>
-                      <span className="text-slate-950 font-bold">R$ {plan.price.toFixed(2)}</span>
+                      <span className="text-slate-950 font-bold">{formatCurrency(plan.price)}</span>
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-slate-400 text-xs font-bold uppercase tracking-wider">Produtos</span>

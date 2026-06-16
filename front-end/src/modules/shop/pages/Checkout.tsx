@@ -8,7 +8,7 @@ import { useLocationStore } from "../../../core/stores/useLocationStore";
 import { useSettings } from "../../../core/hooks/useSettings";
 import { useHasHydrated } from "../../../core/hooks/useHasHydrated";
 import { Footer } from "../components/layout/Footer";
-import { formatCurrency, cn } from "../../../shared/utils";
+import { formatCurrency, cn, normalizeMoneyInput, parseMoneyInput, formatMoneyInputRealtime } from "../../../shared/utils";
 import {
   ChevronLeft,
   ChevronRight,
@@ -320,7 +320,7 @@ export default function Checkout() {
 
     if (step === "payment") {
       if (formData.paymentMethod === 'CASH' && formData.needsChange) {
-        const changeVal = Number(formData.changeFor.replace(/\D/g, ''));
+        const changeVal = parseMoneyInput(formData.changeFor);
         if (!changeVal || changeVal <= total) {
           toast.error(`O valor para troco deve ser maior que o total (${formatCurrency(total)})`);
           return;
@@ -374,7 +374,7 @@ export default function Checkout() {
           } : (deliveryMode === "PICKUP" ? "Retirada no Balcão" : "Consumo no Local")
         },
         paymentMethod: deliveryMode === "DINE_IN" ? "CASH" : formData.paymentMethod,
-        changeFor: formData.paymentMethod === 'CASH' && formData.needsChange ? formData.changeFor : null,
+        changeFor: formData.paymentMethod === 'CASH' && formData.needsChange ? parseMoneyInput(formData.changeFor) : null,
         cpf: formData.cpf || null,
         items: items.map((i: any) => ({
           productId: i.productId,
@@ -798,16 +798,17 @@ export default function Checkout() {
                               <span className="absolute left-6 top-[50%] translate-y-[-50%] text-slate-400 font-mono text-lg">R$</span>
                               <input
                                 type="text"
+                                inputMode="decimal"
                                 placeholder="0,00"
                                 value={formData.changeFor}
-                                onChange={(e) => setFormData({ ...formData, changeFor: e.target.value.replace(/\D/g, '') })}
+                                onChange={(e) => setFormData({ ...formData, changeFor: formatMoneyInputRealtime(e.target.value) })}
                                 className={cn(
                                   "w-full h-16 pl-16 pr-6 bg-slate-50 rounded-[1.25rem] border border-slate-200 focus:ring-4 focus:ring-slate-950/10 focus:border-slate-950/20 font-mono text-numeric text-xl text-slate-950 outline-none transition-all",
-                                  formData.needsChange && Number(formData.changeFor) > 0 && Number(formData.changeFor) <= total && "border-rose-500 ring-4 ring-rose-500/5 text-rose-500"
+                                  formData.needsChange && parseMoneyInput(formData.changeFor) > 0 && parseMoneyInput(formData.changeFor) <= total && "border-rose-500 ring-4 ring-rose-500/5 text-rose-500"
                                 )}
                               />
                             </div>
-                            {formData.changeFor && Number(formData.changeFor) <= total && (
+                            {formData.changeFor && parseMoneyInput(formData.changeFor) <= total && (
                               <p className="text-label font-body font-medium text-rose-500 mt-3 uppercase tracking-tight flex items-center gap-2">
                                 <div className="w-1.5 h-1.5 rounded-full bg-rose-500" />
                                 O valor deve superar {formatCurrency(total)}
