@@ -1428,6 +1428,19 @@ app.post('/api/categories', authMiddleware, async (req: AuthRequest, res) => {
       categoryData.name = categoryData.name.toUpperCase().trim();
     }
 
+    // Verificar limite de categorias do plano
+    const categoryCount = await prisma.category.count({
+      where: { restaurantId: req.restaurantId }
+    });
+
+    const maxCategories = req.restaurant?.plan?.maxCategories || 5;
+
+    if (categoryCount >= maxCategories) {
+      return res.status(403).json({
+        error: `Limite de categorias atingido (${maxCategories}). Faça upgrade do seu plano.`
+      });
+    }
+
     const category = await prisma.category.create({
       data: { ...categoryData, restaurantId: req.restaurantId }
     });
@@ -1698,6 +1711,23 @@ app.post('/api/orders', async (req: TenantRequest, res) => {
         items: true
       }
     });
+
+    // --- DECREMENT STOCK ---
+    for (const item of items) {
+      const productId = item.productId || item.id;
+      const product = await prisma.product.findUnique({
+        where: { id: productId }
+      });
+
+      if (product && product.trackStock) {
+        const newStock = Math.max(0, product.stockQuantity - item.quantity);
+        await prisma.product.update({
+          where: { id: productId },
+          data: { stockQuantity: newStock }
+        });
+      }
+    }
+    // -----------------------
 
     const responseOrder = {
       ...order,

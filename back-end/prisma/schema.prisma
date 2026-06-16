@@ -119,6 +119,8 @@ model Product {
   isActive     Boolean     @default(true)
   isFeatured   Boolean     @default(false)
   discountPercent Float    @default(0)
+  stockQuantity Int        @default(0)
+  trackStock   Boolean     @default(false)
   restaurantId Int
   categoryId   Int
   createdAt    DateTime    @default(now())
