@@ -9,7 +9,9 @@ import {
   Phone,
   MessageCircle,
   XCircle,
-  Printer
+  Printer,
+  Volume2,
+  VolumeX
 } from "lucide-react";
 import { api } from "../../../../core/config/api";
 import { socket } from "../../../../core/config/socket";
@@ -27,16 +29,31 @@ export default function OrdersPage() {
   const [orders, setOrders] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState("ALL");
-   const rootRef = useRef<HTMLDivElement>(null);
+  const [isMuted, setIsMuted] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
 
-   const filteredOrders = orders.filter(o => 
+  const filteredOrders = orders.filter(o => 
       statusFilter === "ALL" ? true : o.status === statusFilter
-   );
+  );
 
-  const fetchOrders = async () => {
+  const playNotificationSound = () => {
+    if (isMuted) return;
+    
+    if (!audioRef.current) {
+      audioRef.current = new Audio("https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3");
+    }
+    
+    audioRef.current.play().catch(err => console.log("Erro ao tocar som (interação do usuário necessária):", err));
+  };
+
+  const fetchOrders = async (shouldPlaySound = false) => {
     try {
       const data = await api.get("/orders");
       setOrders(data);
+      if (shouldPlaySound) {
+        playNotificationSound();
+      }
     } catch (error) {
       console.error("Erro ao buscar pedidos:", error);
     } finally {
@@ -58,7 +75,7 @@ export default function OrdersPage() {
     const slug = getTenantSlug();
     const eventName = `new_order_${slug}`;
     
-    socket.on(eventName, () => fetchOrders());
+    socket.on(eventName, () => fetchOrders(true));
     return () => {
       socket.off(eventName);
     };
@@ -85,7 +102,18 @@ export default function OrdersPage() {
           <p className="text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em] mt-2">Gestão logística e acompanhamento de fluxo em tempo real.</p>
         </div>
         
-      <div className="orders-filters flex bg-white p-2 rounded-3xl border border-slate-100 shadow-sm">
+      <div className="orders-filters flex bg-white p-2 rounded-3xl border border-slate-100 shadow-sm items-center">
+            <button
+                onClick={() => setIsMuted(!isMuted)}
+                className={cn(
+                  "w-12 h-12 flex items-center justify-center rounded-2xl transition-all mr-2",
+                  isMuted ? "bg-rose-50 text-rose-500" : "bg-slate-50 text-slate-400 hover:text-slate-600"
+                )}
+                title={isMuted ? "Ativar som" : "Mutar som"}
+            >
+                {isMuted ? <VolumeX size={20} /> : <Volume2 size={20} />}
+            </button>
+
             {[
               { id: "ALL", label: "Global" },
               { id: "PENDING", label: "Novos" },
