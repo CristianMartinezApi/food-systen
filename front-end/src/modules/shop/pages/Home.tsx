@@ -32,68 +32,76 @@ export default function Home() {
   useEffect(() => {
     if (productsLoading || !rootRef.current) return;
 
-    const ctx = gsap.context(() => {
-      const tl = gsap.timeline({ defaults: { ease: "power3.out" } });
+    // Aguarda um pequeno delay para garantir que o layout final do Next.js terminou de assentar
+    const timer = setTimeout(() => {
+      const ctx = gsap.context(() => {
+        const tl = gsap.timeline({ defaults: { ease: "power3.out" } });
 
-      tl.from(".home-header", {
-        y: -18,
-        opacity: 0,
-        duration: 0.7,
-        stagger: 0.06,
-      })
-        .from(".home-hero-badge", {
-          y: 18,
-          opacity: 0,
-          duration: 0.55,
-        }, "-=0.2")
-        .from(".home-hero-title", {
-          y: 34,
-          opacity: 0,
-          duration: 0.85,
-        }, "-=0.16")
-        .from(".home-hero-copy", {
-          y: 22,
+        tl.from(".home-header", {
+          y: -18,
           opacity: 0,
           duration: 0.7,
-        }, "-=0.45")
-        .from(".home-hero-actions", {
-          y: 18,
+          stagger: 0.06,
+        })
+          .from(".home-hero-badge", {
+            y: 18,
+            opacity: 0,
+            duration: 0.55,
+          }, "-=0.2")
+          .from(".home-hero-title", {
+            y: 34,
+            opacity: 0,
+            duration: 0.85,
+          }, "-=0.16")
+          .from(".home-hero-copy", {
+            y: 22,
+            opacity: 0,
+            duration: 0.7,
+          }, "-=0.45")
+          .from(".home-hero-actions", {
+            y: 18,
+            opacity: 0,
+            duration: 0.6,
+          }, "-=0.4")
+          .from(".home-hero-art", {
+            scale: 0.96,
+            opacity: 0,
+            duration: 0.9,
+          }, "-=0.65");
+
+        gsap.from(".home-section-heading", {
+          scrollTrigger: {
+            trigger: "#menu-section",
+            start: "top 80%",
+            invalidateOnRefresh: true,
+          },
+          y: 24,
           opacity: 0,
           duration: 0.6,
-        }, "-=0.4")
-        .from(".home-hero-art", {
-          scale: 0.96,
+          stagger: 0.1,
+          ease: "power3.out",
+        });
+
+        gsap.from(".home-category-chip", {
+          scrollTrigger: {
+            trigger: "#menu-section",
+            start: "top 75%",
+            invalidateOnRefresh: true,
+          },
+          y: 14,
           opacity: 0,
-          duration: 0.9,
-        }, "-=0.65");
+          duration: 0.45,
+          stagger: 0.06,
+          ease: "power3.out",
+        });
 
-      gsap.from(".home-section-heading", {
-        scrollTrigger: {
-          trigger: "#menu-section",
-          start: "top 80%",
-        },
-        y: 24,
-        opacity: 0,
-        duration: 0.6,
-        stagger: 0.1,
-        ease: "power3.out",
-      });
+      }, rootRef);
+    }, 100);
 
-      gsap.from(".home-category-chip", {
-        scrollTrigger: {
-          trigger: "#menu-section",
-          start: "top 75%",
-        },
-        y: 14,
-        opacity: 0,
-        duration: 0.45,
-        stagger: 0.06,
-        ease: "power3.out",
-      });
-
-    }, rootRef);
-
-    return () => ctx.revert();
+    return () => {
+      clearTimeout(timer);
+      ScrollTrigger.getAll().forEach(t => t.kill());
+    };
   }, [productsLoading]);
 
   const filteredProducts = useMemo(() => {
