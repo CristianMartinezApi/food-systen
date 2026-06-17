@@ -1851,6 +1851,7 @@ app.post('/api/orders', async (req: TenantRequest, res) => {
     });
 
     if (settings && !isRestaurantOpenNow(settings.operatingHours)) {
+      console.warn(`[OrderBlocked] Restaurante fechado: restaurantId=${req.restaurantId}`);
       return res.status(403).json({
         error: 'Restaurante fechado no momento.',
         nextOpeningLabel: getNextOpeningLabel(settings.operatingHours)

@@ -27,6 +27,7 @@ export const tenantMiddleware = async (req: TenantRequest, res: Response, next: 
     }
 
     if (!restaurant.isActive) {
+      console.warn(`[Tenant] Tentativa de acesso a restaurante inativo: "${slug}"`);
       return res.status(403).json({ error: 'Restaurant is inactive' });
     }
 

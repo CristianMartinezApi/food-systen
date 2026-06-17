@@ -414,8 +414,9 @@ export default function Checkout() {
         clearCart();
         toast.success("Pedido enviado com sucesso!");
       }
-    } catch (error) {
-      toast.error("Erro ao enviar pedido. Tente novamente.");
+    } catch (error: any) {
+      console.error("Order error:", error);
+      toast.error(error.message || "Erro ao enviar pedido. Tente novamente.");
     } finally {
       setIsSubmitting(false);
     }
