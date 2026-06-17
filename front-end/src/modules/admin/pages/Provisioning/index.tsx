@@ -44,10 +44,10 @@ export default function ProvisioningPanel() {
   const visibleList = selectedStatus === 'all'
     ? list
     : list.filter((item) => {
-        if (selectedStatus === 'active') return item.isActive;
-        if (selectedStatus === 'inactive') return !item.isActive;
-        return item.provisioningStatus === selectedStatus;
-      });
+      if (selectedStatus === 'active') return item.isActive;
+      if (selectedStatus === 'inactive') return !item.isActive;
+      return item.provisioningStatus === selectedStatus;
+    });
 
   const toggleLogs = async (id: number) => {
     if (expanded === id) {
@@ -73,7 +73,7 @@ export default function ProvisioningPanel() {
 
   return (
     <div className="space-y-8">
-      <div className="relative overflow-hidden rounded-4xl border border-slate-200 bg-white shadow-[0_20px_60px_rgba(15,23,42,0.08)]">
+      <div className="system-hero-band relative overflow-hidden rounded-4xl p-2">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(34,197,94,0.12),transparent_30%),linear-gradient(135deg,rgba(15,23,42,0.02),transparent_45%)]" />
         <div className="relative p-6 md:p-8 grid gap-6 xl:grid-cols-[1.1fr_0.9fr] items-center">
           <div>

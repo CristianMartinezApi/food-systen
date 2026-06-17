@@ -76,7 +76,7 @@ function AuditContent() {
 
   return (
     <div className="space-y-8">
-      <div className="relative overflow-hidden rounded-[3.5rem] border border-slate-50 bg-white shadow-sm">
+      <div className="system-hero-band relative overflow-hidden rounded-[3.5rem] p-2">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(14,165,233,0.12),transparent_30%),linear-gradient(135deg,rgba(15,23,42,0.02),transparent_45%)]" />
         <div className="relative p-8 md:p-10 grid gap-8 xl:grid-cols-[1.1fr_0.9fr] items-center">
           <div>

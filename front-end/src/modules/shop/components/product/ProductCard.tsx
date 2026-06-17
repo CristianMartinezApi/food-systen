@@ -70,14 +70,14 @@ export function ProductCard({ product }: ProductCardProps) {
         whileHover={!isOutOfStock ? { y: -12 } : {}}
         onClick={() => !isOutOfStock && setIsModalOpen(true)}
         className={cn(
-          "group bg-slate-100 rounded-xl md:rounded-[3.5rem] border border-slate-200 p-2 md:p-4 shadow-2xl shadow-slate-300/50 transition-all duration-700 relative cursor-pointer overflow-hidden",
-          isOutOfStock ? "opacity-60 grayscale cursor-not-allowed" : "hover:shadow-primary/15"
+          "group bg-[#fff8ef] rounded-lg md:rounded-2xl border border-amber-100/70 p-2 md:p-4 shadow-[0_20px_40px_rgba(15,23,42,0.18)] transition-all duration-700 relative cursor-pointer overflow-hidden",
+          isOutOfStock ? "opacity-60 grayscale cursor-not-allowed" : "hover:shadow-[0_30px_56px_rgba(239,68,68,0.22)]"
         )}
       >
         {/* Glow de fundo no hover */}
-        {!isOutOfStock && <div className="absolute inset-x-0 bottom-0 h-1/2 bg-linear-to-t from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700" />}
+        {!isOutOfStock && <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(239,68,68,0.14),transparent_34%),radial-gradient(circle_at_bottom_left,rgba(245,158,11,0.16),transparent_38%)] opacity-80 group-hover:opacity-100 transition-opacity duration-700" />}
 
-        <div className="relative h-44 md:h-auto md:aspect-4/5 overflow-hidden rounded-2xl md:rounded-[2.8rem] shadow-inner bg-slate-50">
+        <div className="relative h-48 md:h-auto md:aspect-4/5 overflow-hidden rounded-lg md:rounded-2xl shadow-inner bg-amber-50">
           <img
             src={product.image}
             alt={product.name}
@@ -92,7 +92,7 @@ export function ProductCard({ product }: ProductCardProps) {
 
           {/* Badge Superior */}
           <div className="absolute top-2 md:top-4 left-2 md:left-6 flex flex-col gap-1 md:gap-1.5">
-            <div className="bg-slate-100/95 backdrop-blur-xl px-2 md:px-3 py-1 rounded-xl md:rounded-2xl shadow-lg border border-slate-200 flex items-center gap-1 md:gap-1.5">
+            <div className="bg-[#fff8ef]/95 backdrop-blur-xl px-2 md:px-3 py-1 rounded-xl md:rounded-2xl shadow-lg border border-amber-100 flex items-center gap-1 md:gap-1.5">
               <Star size={10} className="text-primary fill-primary md:h-4 md:w-4" />
               <span className="text-[8px] md:text-[9px] font-body font-medium text-slate-900 uppercase tracking-[0.06em]">Escolha Premium</span>
             </div>
@@ -128,28 +128,28 @@ export function ProductCard({ product }: ProductCardProps) {
             <span className="text-label font-body font-medium text-primary uppercase tracking-[0.06em] leading-none">
               {product.category?.name || "SIGNATURE"}
             </span>
-            <h3 className="font-display font-bold text-xl md:text-heading-2 text-slate-950 leading-none tracking-tighter uppercase group-hover:text-primary transition-colors">
+            <h3 className="font-display font-bold text-xl md:text-heading-2 text-slate-950 leading-none tracking-tighter uppercase [text-shadow:0_1px_0_rgba(148,163,184,0.55)] transition-colors">
               {product.name}
             </h3>
           </div>
 
-          <p className="text-slate-400 text-[10px] md:text-body line-clamp-2 leading-relaxed font-body uppercase tracking-wider opacity-60">
+          <p className="text-slate-600 text-[10px] md:text-body line-clamp-2 leading-relaxed font-body uppercase tracking-wider">
             {product.description || "Ingredientes selecionados para uma experiência gastronômica inesquecível e luxuosa."}
           </p>
 
           <div className="pt-2 md:pt-4 flex items-center justify-between">
             <div className="flex flex-col">
-              <span className="text-[10px] uppercase tracking-[0.06em] text-slate-300">Inicia em</span>
+              <span className="text-[10px] uppercase tracking-[0.06em] text-slate-500">Inicia em</span>
               <span className="text-numeric font-mono text-slate-900 tracking-tighter">{formatCurrency(isPromotional ? salePrice : product.price)}</span>
             </div>
 
             <motion.button
               whileTap={{ scale: 0.9 }}
               onClick={handleAddToCart}
-              className="bg-slate-100 text-slate-950 w-12 h-12 md:w-16 md:h-16 rounded-2xl md:rounded-[1.8rem] flex items-center justify-center hover:bg-slate-950 hover:text-white transition-all duration-500 border border-slate-200 shadow-md shadow-slate-300/30 group/btn relative"
+              className="bg-slate-950 text-white w-12 h-12 md:w-16 md:h-16 rounded-lg md:rounded-xl flex items-center justify-center hover:bg-primary transition-all duration-500 border border-slate-900 shadow-[0_10px_28px_rgba(15,23,42,0.35)] group/btn relative"
             >
               <Plus size={20} className="md:size-6 group-hover/btn:rotate-90 transition-transform duration-500" />
-              <div className="absolute -top-2 -right-2 w-5 h-5 md:w-6 md:h-6 bg-primary rounded-full flex items-center justify-center scale-0 group-hover/btn:scale-100 transition-all shadow-lg shadow-primary/40">
+              <div className="absolute -top-2 -right-2 w-5 h-5 md:w-6 md:h-6 bg-amber-400 rounded-full flex items-center justify-center scale-0 group-hover/btn:scale-100 transition-all shadow-lg shadow-amber-400/50">
                 <ShoppingCart size={10} className="text-white" />
               </div>
             </motion.button>

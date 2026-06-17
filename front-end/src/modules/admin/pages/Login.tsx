@@ -32,7 +32,7 @@ export default function Login() {
 
     try {
       const response = await api.post("/auth/login", { email, password });
-      
+
       localStorage.setItem("@FoodSystem:token", response.token);
       localStorage.setItem("@FoodSystem:user", JSON.stringify(response.user));
       if (response.restaurant) {
@@ -40,7 +40,7 @@ export default function Login() {
       } else {
         localStorage.removeItem("@FoodSystem:restaurant");
       }
-      
+
       toast.success("Bem-vindo de volta!");
       if (response.user.role === 'SUPER_ADMIN') {
         router.push("/admin");
@@ -59,7 +59,7 @@ export default function Login() {
   return (
     <div ref={rootRef} className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
-        <div className="login-hero text-center mb-10">
+        <div className="login-hero system-hero-band text-center mb-10 p-8 md:p-10">
           <div className="w-16 h-16 bg-primary rounded-4xl flex items-center justify-center shadow-xl shadow-primary/30 mx-auto mb-6">
             <Utensils className="text-white" size={32} />
           </div>
@@ -67,12 +67,12 @@ export default function Login() {
           <p className="text-slate-500 font-medium">Acesse sua conta para gerenciar sua loja</p>
         </div>
 
-        <form onSubmit={handleLogin} className="login-form bg-white rounded-[2.5rem] p-8 shadow-sm border border-slate-100 space-y-6">
+        <form onSubmit={handleLogin} className="login-form system-hero-band bg-white rounded-[2.5rem] p-8 md:p-10 space-y-6">
           <div className="space-y-2">
             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Seu E-mail</label>
             <div className="relative">
               <Mail className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300" size={20} />
-              <input 
+              <input
                 type="email"
                 required
                 value={email}
@@ -87,7 +87,7 @@ export default function Login() {
             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Sua Senha</label>
             <div className="relative">
               <Lock className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300" size={20} />
-              <input 
+              <input
                 type="password"
                 required
                 value={password}
@@ -98,7 +98,7 @@ export default function Login() {
             </div>
           </div>
 
-          <button 
+          <button
             type="submit"
             disabled={isLoading}
             className="w-full h-16 bg-slate-900 text-white rounded-2xl font-black shadow-xl shadow-slate-900/10 hover:bg-black transition-all flex items-center justify-center gap-3 disabled:opacity-50"

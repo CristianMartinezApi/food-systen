@@ -62,7 +62,7 @@ export default function OnboardingPage() {
   if (!tokenExists) {
     return (
       <div className="min-h-[70vh] flex items-center justify-center p-6">
-        <div className="w-full max-w-xl bg-white rounded-[3rem] border border-slate-100 p-8 md:p-12 shadow-sm text-center">
+        <div className="system-hero-band w-full max-w-xl rounded-[3rem] p-8 md:p-12 text-center">
           <div className="w-16 h-16 rounded-2xl bg-slate-950 text-white flex items-center justify-center mx-auto mb-6">
             <ShieldCheck size={28} />
           </div>
@@ -95,7 +95,7 @@ export default function OnboardingPage() {
 
   return (
     <div className="min-h-[80vh] flex items-center justify-center p-6 py-12">
-      <div className="w-full max-w-2xl bg-white rounded-[3rem] border border-slate-100 p-8 md:p-12 shadow-sm">
+      <div className="system-hero-band w-full max-w-2xl rounded-[3rem] p-8 md:p-12">
         <div className="flex items-center gap-4 mb-8">
           <div className="w-14 h-14 rounded-2xl bg-primary text-white flex items-center justify-center shadow-xl shadow-primary/20">
             <Store size={28} />

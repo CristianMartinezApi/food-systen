@@ -470,7 +470,7 @@ export default function Checkout() {
     <div ref={rootRef} className="min-h-screen bg-slate-100 flex flex-col">
       {/* Header Simplificado de Checkout */}
       {/* Header Simplificado de Checkout Premium */}
-      <header className="checkout-header bg-slate-100/90 backdrop-blur-md border-b border-slate-200 sticky top-0 z-50 shadow-[0_10px_30px_rgba(15,23,42,0.08)]">
+      <header className="checkout-header fixed inset-x-0 top-0 bg-slate-100/90 backdrop-blur-md border-b border-slate-200 z-50 shadow-[0_10px_30px_rgba(15,23,42,0.08)]">
         <div className="container mx-auto px-4 md:px-6 h-14 md:h-24 flex items-center justify-between max-w-5xl">
           <button
             onClick={handleBack}
@@ -495,7 +495,7 @@ export default function Checkout() {
         </div>
       </header>
 
-      <main className="container mx-auto px-4 md:px-6 py-6 md:py-16 max-w-5xl flex-1">
+      <main className="container mx-auto px-4 md:px-6 pt-24 md:pt-32 pb-6 md:pb-16 max-w-5xl flex-1">
         {!isOpenNow && (
           <div className="checkout-summary mb-10 rounded-4xl border border-rose-100 bg-rose-50/70 p-5 text-rose-700">
             <p className="text-label font-body font-bold uppercase tracking-[0.08em]">Fechado no momento</p>

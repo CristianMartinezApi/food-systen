@@ -246,7 +246,7 @@ export default function SettingsPage() {
                 strategy="afterInteractive"
             />
             <div ref={rootRef}>
-                <div className="settings-hero flex items-center justify-between mb-12">
+                <div className="settings-hero system-hero-band flex items-center justify-between mb-12 p-8 md:p-10">
                     <div>
                         <h1 className="text-heading-1 font-display font-bold text-slate-950 uppercase tracking-tight">Arquitetura de Marca</h1>
                         <p className="text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em] mt-2">Defina a identidade visual e os parâmetros operacionais do seu ecossistema.</p>

@@ -1,313 +1,385 @@
 "use client";
 
-import { useEffect, useRef } from "react";
 import Link from "next/link";
-import { 
-  Utensils, 
-  Smartphone, 
-  BarChart3, 
-  Zap, 
-  ShieldCheck, 
-  ArrowRight
-} from "lucide-react";
-import { gsap } from "gsap";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { ArrowRight, CheckCircle2, Clock3, LayoutDashboard, MessageSquare, ReceiptText, ShieldCheck, Store, Users, Utensils, Zap } from "lucide-react";
 import { useSettings } from "../../../core/hooks/useSettings";
+import { sendToWhatsApp } from "../../../shared/utils/whatsapp";
 
-gsap.registerPlugin(ScrollTrigger);
+const PRODUCT_SURFACES = [
+    {
+        title: "Cardápio digital",
+        description: "Categorias, produtos, variações, tamanhos, adicionais e preços organizados para publicar a loja.",
+        icon: ReceiptText,
+    },
+    {
+        title: "Pedidos e checkout",
+        description: "Fluxo de compra do cliente com entrega, retirada, formas de pagamento e acompanhamento do pedido.",
+        icon: Store,
+    },
+    {
+        title: "Caixa operacional",
+        description: "Abertura, fechamento, sangria, suprimento e conferência de divergência no fechamento.",
+        icon: Clock3,
+    },
+    {
+        title: "Painel administrativo",
+        description: "Clientes, lojas, onboarding, auditoria e provisioning para manter a operação organizada.",
+        icon: LayoutDashboard,
+    },
+];
+
+const WHO_IT_IS_FOR = [
+    "Pizzarias",
+    "Hamburguerias",
+    "Restaurantes de bairro",
+    "Dark kitchens",
+    "Marmitarias",
+    "Lanchonetes",
+];
+
+const HOW_IT_WORKS = [
+    {
+        step: "01",
+        title: "Entendemos a operação",
+        description: "Falamos com o responsável, ajustamos o cenário da loja e organizamos a entrada com clareza.",
+    },
+    {
+        step: "02",
+        title: "Configuramos a loja",
+        description: "Cardápio, preço, entrega, pagamentos e apresentação da marca ficam prontos para uso.",
+    },
+    {
+        step: "03",
+        title: "A equipe começa a operar",
+        description: "O time passa a receber pedidos, acompanhar vendas e executar o dia a dia com mais previsibilidade.",
+    },
+];
+
+const OPERATIONAL_PROMISES = [
+    "Canal próprio de venda",
+    "Fluxo de pedidos mais organizado",
+    "Configuração orientada por suporte",
+    "Foco em operação real, não em promessa vaga",
+];
+
+const FAQ = [
+    {
+        question: "Isso é para restaurante que está começando?",
+        answer: "Sim. A proposta é justamente ajudar restaurantes em fase inicial ou em crescimento a ter um canal digital organizado desde o começo.",
+    },
+    {
+        question: "Vocês fazem implantação ou eu preciso configurar tudo sozinho?",
+        answer: "A entrada é guiada. A ideia é apoiar a configuração para que a loja comece com menos atrito e mais segurança.",
+    },
+    {
+        question: "Preciso ter equipe técnica?",
+        answer: "Não. A operação é pensada para o uso comercial e operacional, não para exigir conhecimento técnico da sua equipe.",
+    },
+    {
+        question: "Como a empresa se posiciona se ainda está entrando no mercado?",
+        answer: "Com seriedade, transparência e suporte próximo. É melhor prometer o que conseguimos entregar do que inflar números sem base real.",
+    },
+];
 
 export default function LandingPage() {
-  const { settings } = useSettings();
+    const { settings } = useSettings();
+    const contactPhone = settings?.phone || settings?.contact?.phones?.[0] || settings?.contact?.social?.whatsapp || "";
 
-  const bannerBadge = settings?.bannerBadge ?? "Plataforma completa para restaurantes e dark kitchens";
-  const bannerTitle = settings?.bannerTitleLine1 || settings?.bannerTitleLine2
-    ? `${settings?.bannerTitleLine1 ?? ""}${settings?.bannerTitleLine2 ? ` ${settings?.bannerTitleLine2}` : ""}`.trim()
-    : "A plataforma que vende por você — operação, entrega e pagamentos.";
-  const bannerDescription = settings?.bannerDescription ?? "Aceite pedidos via web e app, gerencie cardápio e promoções, controle entregas e comissões em um painel único. Reduza chamadas, aumente ticket médio e automatize sua operação.";
-  const bannerCta = settings?.bannerCtaLabel ?? "Teste grátis — 14 dias";
-  const bannerImage = settings?.bannerImage ?? "/hero-illustration.png";
-  const rootRef = useRef<HTMLDivElement>(null);
+    const bannerBadge = settings?.bannerBadge ?? "Sistema comercial e operacional para restaurantes";
+    const bannerTitle = settings?.bannerTitleLine1 || settings?.bannerTitleLine2
+        ? `${settings?.bannerTitleLine1 ?? ""}${settings?.bannerTitleLine2 ? ` ${settings.bannerTitleLine2}` : ""}`.trim()
+        : "Tudo o que seu restaurante precisa para vender direto e operar com controle.";
+    const bannerDescription = settings?.bannerDescription ?? "Cardápio digital, checkout, pedidos, caixa e painel administrativo em uma plataforma construída para a rotina do restaurante. Sem exagero, sem promessa vazia e com foco em operação real.";
+    const bannerCta = settings?.bannerCtaLabel ?? "Solicitar acesso";
+    const bannerImage = settings?.bannerImage ?? "/hero-illustration.png";
 
-  useEffect(() => {
-    if (!rootRef.current) return;
+    const openLeadWhatsApp = () => {
+        if (!contactPhone) return;
 
-    const ctx = gsap.context(() => {
-      const tl = gsap.timeline({ defaults: { ease: "power3.out" } });
+        sendToWhatsApp(
+            contactPhone,
+            "Olá! Quero entender como o FoodSystem pode ajudar minha loja a operar melhor e vender direto."
+        );
+    };
 
-      tl.from(".landing-nav", {
-        y: -24,
-        opacity: 0,
-        duration: 0.7,
-        stagger: 0.08,
-      })
-        .from(".landing-hero-badge", {
-          y: 20,
-          opacity: 0,
-          duration: 0.55,
-        }, "-=0.25")
-        .from(".landing-hero-title", {
-          y: 36,
-          opacity: 0,
-          duration: 0.85,
-        }, "-=0.18")
-        .from(".landing-hero-copy", {
-          y: 24,
-          opacity: 0,
-          duration: 0.7,
-        }, "-=0.5")
-        .from(".landing-hero-actions", {
-          y: 20,
-          opacity: 0,
-          duration: 0.65,
-        }, "-=0.42")
-        .from(".landing-bg-orb", {
-          scale: 0.75,
-          opacity: 0,
-          duration: 0.9,
-          stagger: 0.12,
-        }, "-=0.7");
+    return (
+        <div className="min-h-screen bg-white text-slate-900 flex flex-col selection:bg-primary selection:text-white">
+            <header className="sticky top-0 z-50 border-b border-slate-100 bg-white/90 backdrop-blur-xl">
+                <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-4">
+                    <Link href="/" className="flex items-center gap-3">
+                        <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-950 text-primary shadow-lg shadow-slate-950/15">
+                            <Utensils size={22} />
+                        </div>
+                        <div className="leading-tight">
+                            <p className="text-[10px] font-black uppercase tracking-[0.28em] text-slate-400">FoodSystem</p>
+                            <p className="text-sm font-black uppercase tracking-[0.14em] text-slate-950">Para restaurantes</p>
+                        </div>
+                    </Link>
 
-      gsap.from(".landing-stat", {
-        scrollTrigger: {
-          trigger: ".landing-stats",
-          start: "top 80%",
-        },
-        y: 24,
-        opacity: 0,
-        duration: 0.65,
-        stagger: 0.12,
-        ease: "power3.out",
-      });
+                    <nav className="hidden items-center gap-8 text-[11px] font-black uppercase tracking-[0.18em] text-slate-500 md:flex">
+                        <a href="#solucao" className="transition-colors hover:text-primary">Solução</a>
+                        <a href="#para-quem" className="transition-colors hover:text-primary">Para quem</a>
+                        <a href="#processo" className="transition-colors hover:text-primary">Como funciona</a>
+                        <a href="#acesso" className="transition-colors hover:text-primary">Acesso</a>
+                        <a href="#faq" className="transition-colors hover:text-primary">FAQ</a>
+                    </nav>
 
-      gsap.from(".landing-feature", {
-        scrollTrigger: {
-          trigger: "#features",
-          start: "top 72%",
-        },
-        y: 36,
-        opacity: 0,
-        duration: 0.75,
-        stagger: 0.12,
-        ease: "power3.out",
-      });
-    }, rootRef);
+                    <div className="flex items-center gap-3">
+                        {contactPhone ? (
+                            <button
+                                type="button"
+                                onClick={openLeadWhatsApp}
+                                className="inline-flex h-12 items-center gap-2 rounded-2xl bg-slate-950 px-5 text-[11px] font-black uppercase tracking-[0.16em] text-white transition-all hover:bg-black"
+                            >
+                                Solicitar acesso <ArrowRight size={14} />
+                            </button>
+                        ) : (
+                            <Link href="#faq" className="inline-flex h-12 items-center gap-2 rounded-2xl bg-slate-950 px-5 text-[11px] font-black uppercase tracking-[0.16em] text-white transition-all hover:bg-black">
+                                Solicitar acesso <ArrowRight size={14} />
+                            </Link>
+                        )}
+                    </div>
+                </div>
+            </header>
 
-    return () => ctx.revert();
-  }, []);
+            <main className="flex-1">
+                <section className="relative overflow-hidden border-b border-slate-100 bg-linear-to-br from-white via-slate-50 to-slate-100 py-16 md:py-24">
+                    <div className="mx-auto grid max-w-7xl grid-cols-1 items-center gap-14 px-4 lg:grid-cols-[1.05fr_0.95fr]">
+                        <div className="max-w-3xl">
+                            <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-[10px] font-black uppercase tracking-[0.24em] text-slate-500 shadow-sm">
+                                <ShieldCheck size={12} className="text-emerald-600" /> {bannerBadge}
+                            </div>
 
-  return (
-    <div ref={rootRef} className="min-h-screen bg-white text-slate-900 font-sans selection:bg-primary selection:text-white flex flex-col">
-      {/* Header / Navbar */}
-      <header className="fixed top-0 w-full bg-white/80 backdrop-blur-md z-50 border-b border-slate-100">
-        <div className="container mx-auto max-w-7xl px-4 h-20 flex items-center justify-between">
-          <Link href="/" className="landing-nav flex items-center gap-2">
-            <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center shadow-lg shadow-primary/20">
-              <Utensils className="text-white" size={24} />
-            </div>
-            <span className="text-2xl font-black tracking-tighter uppercase italic">
-              Food<span className="text-primary">System</span>
-            </span>
-          </Link>
+                            <h1 className="mt-6 max-w-2xl text-4xl font-black leading-[0.94] tracking-tighter text-slate-950 md:text-6xl lg:text-7xl">
+                                {bannerTitle}
+                            </h1>
 
-          <nav className="landing-nav hidden md:flex items-center gap-10 font-bold text-sm uppercase tracking-widest text-slate-500">
-            <a href="#features" className="hover:text-primary transition-colors">Funcionalidades</a>
-            <a href="#pricing" className="hover:text-primary transition-colors">Planos</a>
-            <a href="#about" className="hover:text-primary transition-colors">Sobre</a>
-          </nav>
+                            <p className="mt-6 max-w-2xl text-base leading-relaxed text-slate-600 md:text-lg">
+                                {bannerDescription}
+                            </p>
 
-          <div className="landing-nav flex items-center gap-4">
-            <Link href="/admin/login" className="hidden sm:block text-slate-500 font-bold hover:text-slate-900 transition-colors uppercase text-xs tracking-widest">
-              Entrar
-            </Link>
-            <Link 
-              href="/admin/register" 
-              className="bg-slate-900 text-white px-6 h-12 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-black transition-all shadow-xl shadow-slate-900/10 flex items-center gap-2"
-            >
-              Criar Loja <ArrowRight size={14} />
-            </Link>
-          </div>
+                            <div className="mt-8 flex flex-col gap-4 sm:flex-row">
+                                <button type="button" onClick={openLeadWhatsApp} className="inline-flex h-14 items-center justify-center gap-3 rounded-3xl bg-primary px-8 text-sm font-black uppercase tracking-[0.16em] text-white shadow-xl shadow-primary/20 transition-transform hover:scale-[1.02]">
+                                    {bannerCta} <Zap size={18} />
+                                </button>
+                                <Link href="#solucao" className="inline-flex h-14 items-center justify-center gap-3 rounded-3xl border border-slate-200 bg-white px-8 text-sm font-black uppercase tracking-[0.16em] text-slate-900 transition-colors hover:border-slate-400 hover:bg-slate-50">
+                                    Ver o que entregamos
+                                    <MessageSquare size={18} />
+                                </Link>
+                            </div>
+
+                            <div className="mt-10 grid gap-4 sm:grid-cols-2">
+                                <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+                                    <p className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-400">Compromisso</p>
+                                    <p className="mt-2 text-sm font-semibold leading-relaxed text-slate-700">
+                                        Apoiar restaurantes com implantação guiada, suporte próximo e foco no que a operação realmente usa no dia a dia.
+                                    </p>
+                                </div>
+                                <div className="rounded-3xl border border-slate-950 bg-slate-950 p-5 text-white shadow-sm">
+                                    <p className="text-[10px] font-black uppercase tracking-[0.22em] text-primary">O que já existe</p>
+                                    <p className="mt-2 text-sm font-semibold leading-relaxed text-slate-200">
+                                        Cardápio digital, checkout, pedidos, caixa operacional, painel administrativo e fluxo de apoio para a loja.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="relative">
+                            <div className="absolute -left-8 top-8 h-24 w-24 rounded-full bg-primary/10 blur-3xl" />
+                            <div className="rounded-4xl border border-slate-200 bg-white p-5 shadow-2xl shadow-slate-200/60 md:p-7">
+                                <div className="rounded-3xl border border-slate-100 bg-slate-50 p-4">
+                                    <img src={bannerImage} alt="Apresentação do sistema" className="h-72 w-full rounded-[1.2rem] object-cover" />
+                                </div>
+
+                                <div className="mt-6 grid gap-3">
+                                    {OPERATIONAL_PROMISES.map((item) => (
+                                        <div key={item} className="flex items-center gap-3 rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3">
+                                            <CheckCircle2 size={16} className="text-emerald-600" />
+                                            <span className="text-sm font-semibold text-slate-700">{item}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section id="solucao" className="border-b border-slate-100 py-20 md:py-28">
+                    <div className="mx-auto max-w-7xl px-4">
+                        <div className="max-w-3xl">
+                            <p className="text-[10px] font-black uppercase tracking-[0.28em] text-primary">Solução</p>
+                            <h2 className="mt-4 text-3xl font-black tracking-tighter text-slate-950 md:text-5xl">
+                                O que entregamos para o restaurante operar com mais ordem e menos improviso.
+                            </h2>
+                        </div>
+
+                        <div className="mt-12 grid gap-6 md:grid-cols-3">
+                            {PRODUCT_SURFACES.map((item) => (
+                                <article key={item.title} className="rounded-4xl border border-slate-100 bg-white p-7 shadow-sm transition-shadow hover:shadow-lg">
+                                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-950 text-primary">
+                                        <item.icon size={20} />
+                                    </div>
+                                    <h3 className="mt-5 text-xl font-black tracking-tight text-slate-950">{item.title}</h3>
+                                    <p className="mt-3 text-sm leading-relaxed text-slate-600">{item.description}</p>
+                                </article>
+                            ))}
+                        </div>
+                    </div>
+                </section>
+
+                <section id="para-quem" className="border-b border-slate-100 bg-slate-50 py-20 md:py-28">
+                    <div className="mx-auto grid max-w-7xl grid-cols-1 gap-10 px-4 lg:grid-cols-[0.9fr_1.1fr] lg:items-start">
+                        <div>
+                            <p className="text-[10px] font-black uppercase tracking-[0.28em] text-primary">Para quem é</p>
+                            <h2 className="mt-4 text-3xl font-black tracking-tighter text-slate-950 md:text-5xl">
+                                Feito para quem quer profissionalizar a venda sem perder o controle da operação.
+                            </h2>
+                            <p className="mt-5 max-w-xl text-base leading-relaxed text-slate-600">
+                                A plataforma foi pensada para negócios de alimentação que precisam vender com mais organização e manter relacionamento direto com o cliente.
+                            </p>
+                        </div>
+
+                        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                            {WHO_IT_IS_FOR.map((item) => (
+                                <div key={item} className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+                                    <div className="flex items-center gap-3">
+                                        <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-950 text-primary">
+                                            <Store size={18} />
+                                        </div>
+                                        <p className="text-sm font-black uppercase tracking-[0.14em] text-slate-900">{item}</p>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </section>
+
+                <section id="processo" className="border-b border-slate-100 py-20 md:py-28">
+                    <div className="mx-auto max-w-7xl px-4">
+                        <div className="max-w-3xl">
+                            <p className="text-[10px] font-black uppercase tracking-[0.28em] text-primary">Como funciona</p>
+                            <h2 className="mt-4 text-3xl font-black tracking-tighter text-slate-950 md:text-5xl">
+                                A entrada é simples: organizar a loja, publicar o cardápio e começar a operar.
+                            </h2>
+                        </div>
+
+                        <div className="mt-12 grid gap-6 lg:grid-cols-3">
+                            {HOW_IT_WORKS.map((item) => (
+                                <article key={item.step} className="rounded-4xl border border-slate-100 bg-white p-7 shadow-sm">
+                                    <p className="text-[10px] font-black uppercase tracking-[0.28em] text-primary">Etapa {item.step}</p>
+                                    <h3 className="mt-4 text-xl font-black tracking-tight text-slate-950">{item.title}</h3>
+                                    <p className="mt-3 text-sm leading-relaxed text-slate-600">{item.description}</p>
+                                </article>
+                            ))}
+                        </div>
+                    </div>
+                </section>
+
+                <section id="acesso" className="border-b border-slate-100 bg-slate-950 py-20 text-white md:py-28">
+                    <div className="mx-auto max-w-7xl px-4">
+                        <div className="max-w-3xl">
+                            <p className="text-[10px] font-black uppercase tracking-[0.28em] text-primary">Acesso</p>
+                            <h2 className="mt-4 text-3xl font-black tracking-tighter md:text-5xl">
+                                Neste momento, a oferta mais correta é acesso guiado, configuração assistida e conversa direta com a equipe.
+                            </h2>
+                            <p className="mt-5 text-base leading-relaxed text-slate-300">
+                                Como a empresa está entrando agora, a comunicação precisa ser séria: mostrar o que já existe, como funciona e como o restaurante entra com apoio.
+                            </p>
+                        </div>
+
+                        <div className="mt-12 grid gap-6 lg:grid-cols-3">
+                            {[
+                                {
+                                    name: "Configuração guiada",
+                                    detail: "Ajuda para publicar loja, ajustar cardápio e deixar a operação pronta.",
+                                },
+                                {
+                                    name: "Canal próprio",
+                                    detail: "Venda direta com cardápio, checkout e fluxo da loja sob controle.",
+                                },
+                                {
+                                    name: "Atendimento próximo",
+                                    detail: "Contato humano e acompanhamento para sair do papel com segurança.",
+                                },
+                            ].map((plan) => (
+                                <article key={plan.name} className="rounded-4xl border border-white/10 bg-white/5 p-7 backdrop-blur-sm">
+                                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary text-white">
+                                        <Clock3 size={20} />
+                                    </div>
+                                    <h3 className="mt-5 text-xl font-black tracking-tight text-white">{plan.name}</h3>
+                                    <p className="mt-3 text-sm leading-relaxed text-slate-300">{plan.detail}</p>
+                                </article>
+                            ))}
+                        </div>
+                    </div>
+                </section>
+
+                <section id="faq" className="border-b border-slate-100 py-20 md:py-28">
+                    <div className="mx-auto max-w-7xl px-4">
+                        <div className="max-w-3xl">
+                            <p className="text-[10px] font-black uppercase tracking-[0.28em] text-primary">FAQ</p>
+                            <h2 className="mt-4 text-3xl font-black tracking-tighter text-slate-950 md:text-5xl">
+                                Respostas diretas para perguntas que um restaurante sério faz antes de começar.
+                            </h2>
+                        </div>
+
+                        <div className="mt-12 grid gap-4 lg:grid-cols-2">
+                            {FAQ.map((item) => (
+                                <article key={item.question} className="rounded-[1.75rem] border border-slate-100 bg-slate-50 p-6">
+                                    <h3 className="text-base font-black tracking-tight text-slate-950">{item.question}</h3>
+                                    <p className="mt-3 text-sm leading-relaxed text-slate-600">{item.answer}</p>
+                                </article>
+                            ))}
+                        </div>
+                    </div>
+                </section>
+
+                <section className="py-20 md:py-28">
+                    <div className="mx-auto max-w-7xl px-4">
+                        <div className="rounded-[2.25rem] border border-slate-100 bg-linear-to-br from-slate-950 to-slate-900 p-8 text-white md:p-12">
+                            <div className="grid gap-8 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
+                                <div>
+                                    <p className="text-[10px] font-black uppercase tracking-[0.28em] text-primary">Próximo passo</p>
+                                    <h2 className="mt-4 text-3xl font-black tracking-tighter md:text-5xl">
+                                        Se faz sentido para o seu restaurante, vamos conversar de forma objetiva.
+                                    </h2>
+                                    <p className="mt-5 max-w-2xl text-base leading-relaxed text-slate-300">
+                                        A entrada é pensada para quem quer ser atendido com seriedade, sem discurso genérico e com foco em implantação real.
+                                    </p>
+                                </div>
+
+                                <div className="flex flex-col gap-4 sm:flex-row lg:justify-end">
+                                    <button
+                                        type="button"
+                                        onClick={openLeadWhatsApp}
+                                        className="inline-flex h-14 items-center justify-center gap-3 rounded-3xl bg-white px-8 text-sm font-black uppercase tracking-[0.16em] text-slate-950 transition-colors hover:bg-slate-100"
+                                    >
+                                        Solicitar acesso <ArrowRight size={18} />
+                                    </button>
+                                    <Link href="#faq" className="inline-flex h-14 items-center justify-center gap-3 rounded-3xl border border-white/10 bg-white/5 px-8 text-sm font-black uppercase tracking-[0.16em] text-white transition-colors hover:bg-white/10">
+                                        Ver dúvidas
+                                        <Users size={18} />
+                                    </Link>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </main>
+
+            <footer className="border-t border-slate-100 bg-white py-10">
+                <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 md:flex-row md:items-center md:justify-between">
+                    <p className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-400">
+                        © 2026 FOODSYSTEM.SAAS - TODOS OS DIREITOS RESERVADOS.
+                    </p>
+                    <div className="flex flex-wrap gap-5 text-[10px] font-black uppercase tracking-[0.22em] text-slate-400">
+                        <a href="#solucao" className="transition-colors hover:text-primary">Solução</a>
+                        <a href="#para-quem" className="transition-colors hover:text-primary">Para quem</a>
+                        <a href="#acesso" className="transition-colors hover:text-primary">Acesso</a>
+                        <a href="#faq" className="transition-colors hover:text-primary">FAQ</a>
+                    </div>
+                </div>
+            </footer>
         </div>
-      </header>
-
-      <main className="pt-20 flex-1">
-        {/* Hero Section - atualizado para versão mais profissional */}
-        <section className="relative overflow-hidden py-20 md:py-28">
-          <div className="container mx-auto max-w-7xl px-4 relative z-10">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-              <div className="max-w-2xl">
-                <div className="landing-hero-badge inline-flex items-center gap-2 bg-primary/10 text-primary px-4 py-2 rounded-full font-black text-[10px] uppercase tracking-[0.18em] mb-6">
-                  <Zap size={12} className="fill-primary" /> {bannerBadge}
-                </div>
-
-                <h1 className="landing-hero-title text-4xl md:text-6xl lg:text-7xl font-black text-slate-900 tracking-tighter leading-tight mb-6">
-                  {bannerTitle}
-                </h1>
-
-                <p className="landing-hero-copy text-base md:text-lg text-slate-600 font-medium leading-relaxed mb-6 max-w-xl">
-                  {bannerDescription}
-                </p>
-
-                <div className="landing-hero-actions flex flex-col sm:flex-row gap-4 mb-6">
-                  <Link href="/admin/register" className="bg-primary text-white h-14 px-8 rounded-3xl font-black text-lg uppercase tracking-tight hover:scale-105 transition-all shadow-xl flex items-center justify-center gap-3">
-                    {bannerCta} <Zap size={18} />
-                  </Link>
-                  <Link href="#demo" className="border border-slate-100 text-slate-900 h-14 px-8 rounded-3xl font-black text-lg uppercase tracking-tight hover:bg-slate-50 transition-all flex items-center justify-center gap-3">
-                    Agendar demo
-                  </Link>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-6">
-                  <div className="flex items-start gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center text-primary font-black">1</div>
-                    <div>
-                      <p className="font-bold text-sm">Cardápio Online</p>
-                      <p className="text-xs text-slate-500">Personalize categorias, variações e combos.</p>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center text-primary font-black">2</div>
-                    <div>
-                      <p className="font-bold text-sm">Gestão de Pedidos</p>
-                      <p className="text-xs text-slate-500">Fila inteligente, preparação e integração com entregas.</p>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center text-primary font-black">3</div>
-                    <div>
-                      <p className="font-bold text-sm">Relatórios</p>
-                      <p className="text-xs text-slate-500">Vendas, campanhas e performance por canal.</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Ilustração / imagem do produto */}
-              <div className="flex items-center justify-center lg:justify-end">
-                <div className="w-full max-w-lg bg-gradient-to-br from-white to-slate-50 rounded-3xl p-8 shadow-2xl">
-                    <div className="w-full h-64 bg-center bg-cover rounded-2xl" style={{ backgroundImage: `url(${bannerImage})` }} />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Background Decorativo simplificado */}
-          <div className="landing-bg-orb absolute top-0 right-0 -translate-y-1/4 translate-x-1/4 w-80 h-80 bg-primary/6 rounded-full blur-3xl -z-10" />
-          <div className="landing-bg-orb absolute bottom-0 left-0 translate-y-1/4 -translate-x-1/4 w-60 h-60 bg-slate-100 rounded-full blur-3xl -z-10" />
-        </section>
-
-        {/* Stats Section */}
-        <section className="bg-slate-900 py-16 landing-stats">
-          <div className="container mx-auto max-w-7xl px-4">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-              {[
-                { label: "Lojas Ativas", val: "500+" },
-                { label: "Pedidos/Mês", val: "100k" },
-                { label: "Uptime", val: "99.9%" },
-                { label: "Suporte", val: "24/7" },
-              ].map((stat, i) => (
-                <div key={i} className="landing-stat text-center">
-                  <p className="text-3xl md:text-5xl font-black text-white tracking-tighter mb-2">{stat.val}</p>
-                  <p className="text-slate-500 font-bold uppercase text-[10px] tracking-widest">{stat.label}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* Features Section */}
-        <section id="features" className="py-32">
-          <div className="container mx-auto max-w-7xl px-4 text-center mb-24">
-            <h2 className="text-xs font-black text-primary uppercase tracking-[0.3em] mb-4">Funcionalidades</h2>
-            <h3 className="text-4xl md:text-6xl font-black text-slate-900 tracking-tighter uppercase leading-tight">
-              Tudo o que você precisa <br/> para <span className="text-primary italic">dominar</span> o mercado.
-            </h3>
-          </div>
-
-          <div className="container mx-auto max-w-7xl px-4 grid grid-cols-1 md:grid-cols-3 gap-8">
-            {[
-              { 
-                icon: Smartphone, 
-                title: "Cardápio Digital", 
-                desc: "Seu cliente faz o pedido direto pelo celular, sem precisar baixar nada."
-              },
-              { 
-                icon: BarChart3, 
-                title: "Gestão Inteligente", 
-                desc: "Relatórios de vendas, categorias e performance da sua loja em tempo real."
-              },
-              { 
-                icon: ShieldCheck, 
-                title: "Sua Marca, Seu Link", 
-                desc: "Sua loja terá um slug exclusivo (seu-restaurante.foodsystem.com)."
-              }
-            ].map((feature, i) => (
-              <div key={i} className="landing-feature bg-slate-50 p-12 rounded-[3.5rem] border border-transparent hover:border-slate-100 hover:bg-white hover:shadow-2xl hover:shadow-slate-200/50 transition-all group">
-                <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center shadow-lg group-hover:bg-primary group-hover:text-white transition-all mb-8">
-                  <feature.icon size={32} />
-                </div>
-                <h4 className="text-2xl font-black text-slate-900 uppercase tracking-tighter mb-4">{feature.title}</h4>
-                <p className="text-slate-500 font-medium leading-relaxed">{feature.desc}</p>
-              </div>
-            ))}
-          </div>
-        </section>
-
-      </main>
-
-      {/* SaaS Footer */}
-      <footer className="bg-white pt-32 pb-16 border-t border-slate-100">
-        <div className="container mx-auto max-w-7xl px-4">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-16 mb-24">
-             <div className="md:col-span-2">
-                <div className="flex items-center gap-2 mb-8">
-                    <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center shadow-lg shadow-primary/20">
-                    <Utensils className="text-white" size={24} />
-                    </div>
-                    <span className="text-2xl font-black tracking-tighter uppercase italic text-slate-900">
-                    Food<span className="text-primary">System</span>
-                    </span>
-                </div>
-                <p className="text-slate-500 font-medium max-w-sm mb-10 leading-relaxed text-lg">
-                    Ajudando empreendedores da gastronomia a escalar seus negócios através da tecnologia.
-                </p>
-                <div className="flex gap-4">
-                    <div className="w-12 h-12 rounded-2xl bg-slate-900 flex items-center justify-center text-white" />
-                    <div className="w-12 h-12 rounded-2xl bg-slate-900 flex items-center justify-center text-white" />
-                    <div className="w-12 h-12 rounded-2xl bg-slate-900 flex items-center justify-center text-white" />
-                </div>
-             </div>
-             
-             <div>
-                <h5 className="font-black text-slate-900 uppercase tracking-widest text-xs mb-8">Plataforma</h5>
-                <ul className="space-y-4 font-bold text-sm text-slate-500 uppercase tracking-wider">
-                    <li><a href="#" className="hover:text-primary transition-colors">Funcionalidades</a></li>
-                    <li><a href="#" className="hover:text-primary transition-colors">Marketplace</a></li>
-                    <li><a href="#" className="hover:text-primary transition-colors">Segurança</a></li>
-                </ul>
-             </div>
-
-             <div>
-                <h5 className="font-black text-slate-900 uppercase tracking-widest text-xs mb-8">Empresa</h5>
-                <ul className="space-y-4 font-bold text-sm text-slate-500 uppercase tracking-wider">
-                    <li><a href="#" className="hover:text-primary transition-colors">Sobre</a></li>
-                    <li><a href="#" className="hover:text-primary transition-colors">Blog</a></li>
-                    <li><a href="#" className="hover:text-primary transition-colors">Carreiras</a></li>
-                </ul>
-             </div>
-          </div>
-
-          <div className="pt-12 border-t border-slate-100 flex flex-col md:flex-row justify-between items-center gap-6">
-             <p className="text-slate-400 font-bold text-[10px] uppercase tracking-widest">
-                © 2026 FOODSYSTEM.SAAS - TODOS OS DIREITOS RESERVADOS.
-             </p>
-             <div className="flex gap-8 font-bold text-[10px] uppercase tracking-widest text-slate-400">
-                <a href="#">Privacidade</a>
-                <a href="#">Termos</a>
-                <a href="#">Cookies</a>
-             </div>
-          </div>
-        </div>
-      </footer>
-    </div>
-  );
+    );
 }

@@ -29,7 +29,7 @@ export default function ClientsPage() {
   const [restaurants, setRestaurants] = useState<any[]>([]);
   const [plans, setPlans] = useState<any[]>([]);
   const [isLoadingRestaurants, setIsLoadingRestaurants] = useState(false);
-  const [restaurantFilter, setRestaurantFilter] = useState<'all'|'active'|'inactive'|'READY'|'IN_PROGRESS'|'PAUSED'|'DENIED'|'PENDING'>('all');
+  const [restaurantFilter, setRestaurantFilter] = useState<'all' | 'active' | 'inactive' | 'READY' | 'IN_PROGRESS' | 'PAUSED' | 'DENIED' | 'PENDING'>('all');
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [confirmState, setConfirmState] = useState<{
@@ -336,15 +336,16 @@ export default function ClientsPage() {
 
   if (userRole !== "SUPER_ADMIN") {
     return (
-      <div className="bg-white rounded-2xl border p-6">
-        <div className="flex items-center gap-4 mb-4">
-          <div className="w-12 h-12 rounded bg-slate-900 text-white flex items-center justify-center"><Shield size={20} /></div>
+      <div className="system-hero-band mx-auto max-w-3xl p-8 md:p-10 shadow-[0_30px_90px_rgba(15,23,42,0.12)]">
+        <div className="flex items-center gap-4 mb-6">
+          <div className="w-14 h-14 rounded-2xl bg-slate-950 text-white flex items-center justify-center shadow-lg shadow-slate-950/20"><Shield size={20} /></div>
           <div>
-            <h1 className="text-2xl font-bold">Clientes</h1>
+            <p className="text-[10px] font-black uppercase tracking-[0.24em] text-primary">Hub Administrativo</p>
+            <h1 className="text-3xl font-black uppercase tracking-tight text-slate-950">Clientes</h1>
             <p className="text-sm text-slate-500">Área restrita ao super admin.</p>
           </div>
         </div>
-        <p className="text-slate-600">Seu perfil atual não tem permissão para acessar este painel.</p>
+        <p className="max-w-xl text-sm md:text-base text-slate-600">Seu perfil atual não tem permissão para acessar este painel.</p>
       </div>
     );
   }
@@ -358,12 +359,12 @@ export default function ClientsPage() {
             <p className="text-sm text-slate-600 mt-2">{confirmState.message}</p>
             <div className="mt-4 flex justify-end gap-2">
               <button onClick={() => setConfirmState({ open: false })} className="px-3 py-1 border rounded-full">Cancelar</button>
-              <button onClick={async () => { setConfirmState((s)=>({ ...s, open: false })); try { if (confirmState.onConfirm) await confirmState.onConfirm(); } catch (e) { console.error(e); } }} className="px-3 py-1 bg-primary text-white rounded-full">Confirmar</button>
+              <button onClick={async () => { setConfirmState((s) => ({ ...s, open: false })); try { if (confirmState.onConfirm) await confirmState.onConfirm(); } catch (e) { console.error(e); } }} className="px-3 py-1 bg-primary text-white rounded-full">Confirmar</button>
             </div>
           </div>
         </div>
       )}
-      <div className="clients-hero relative overflow-hidden rounded-[3.5rem] border border-slate-50 bg-white shadow-sm">
+      <div className="clients-hero system-hero-band relative overflow-hidden rounded-[3.5rem] p-6 md:p-8">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(249,115,22,0.12),transparent_30%),linear-gradient(135deg,rgba(15,23,42,0.02),transparent_45%)]" />
         <div className="relative p-8 md:p-10 flex flex-col gap-8">
           <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
@@ -445,9 +446,9 @@ export default function ClientsPage() {
               <div className="flex h-16 items-center gap-2 rounded-3xl border border-slate-100 bg-slate-50 px-5 shadow-inner shadow-slate-50/80">
                 <Filter size={18} className="text-slate-300" />
                 <select value={filter} onChange={(e) => setFilter(e.target.value as any)} className="h-full w-full bg-transparent outline-none font-body font-medium text-slate-600 text-label uppercase tracking-[0.04em]">
-                <option value="all">Todos</option>
-                <option value="pending">Pendente</option>
-                <option value="approved">Liberado</option>
+                  <option value="all">Todos</option>
+                  <option value="pending">Pendente</option>
+                  <option value="approved">Liberado</option>
                 </select>
               </div>
               <button onClick={() => loadUsers(1, perPage)} className="h-16 px-6 rounded-full border border-slate-100 bg-white text-label font-body font-bold text-slate-400 uppercase tracking-[0.06em] transition hover:bg-slate-50 shadow-sm">Buscar</button>
@@ -456,7 +457,7 @@ export default function ClientsPage() {
             </div>
           </div>
 
-            <div className="mt-4 flex flex-wrap items-center gap-2 rounded-[2rem] bg-slate-50 p-4 border border-slate-100">
+          <div className="mt-4 flex flex-wrap items-center gap-2 rounded-4xl bg-slate-50 p-4 border border-slate-100">
             <button onClick={selectAll} className="rounded-full border border-slate-100 bg-white px-4 py-3 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">{selected.length === filteredUsers.length ? 'Desmarcar tudo' : 'Selecionar tudo'}</button>
             <button onClick={() => handleBulkAction('approve')} className="rounded-full bg-primary px-4 py-3 text-[10px] font-black uppercase tracking-[0.2em] text-white">Aprovar selecionados</button>
             <button onClick={() => handleBulkAction('delete')} className="rounded-full bg-rose-600 px-4 py-3 text-[10px] font-black uppercase tracking-[0.2em] text-white">Excluir selecionados</button>
@@ -484,7 +485,7 @@ export default function ClientsPage() {
                     ) : (
                       <button onClick={() => handleActivateUser(u.id)} className="rounded-full bg-slate-900 px-4 py-3 text-[10px] font-black uppercase tracking-[0.2em] text-white">Ativar acesso</button>
                     )}
-                    <AdminResetPassword 
+                    <AdminResetPassword
                       userId={u.id}
                       userEmail={u.email}
                       userName={u.name}
@@ -518,72 +519,72 @@ export default function ClientsPage() {
             <div className="flex items-center gap-2 rounded-3xl border border-slate-100 bg-slate-50 px-4 py-3">
               <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Filtrar</label>
               <select value={restaurantFilter} onChange={(e) => { setRestaurantFilter(e.target.value as any); loadRestaurants(e.target.value); }} className="bg-transparent text-label font-body font-medium text-slate-600 uppercase tracking-[0.04em] outline-none">
-                    <option value="all">Todos</option>
-                    <option value="active">Ativas</option>
-                    <option value="inactive">Inativas</option>
-                    <option value="READY">READY</option>
-                    <option value="IN_PROGRESS">IN_PROGRESS</option>
-                    <option value="PAUSED">PAUSED</option>
-                    <option value="DENIED">DENIED</option>
-                    <option value="PENDING">PENDING</option>
+                <option value="all">Todos</option>
+                <option value="active">Ativas</option>
+                <option value="inactive">Inativas</option>
+                <option value="READY">READY</option>
+                <option value="IN_PROGRESS">IN_PROGRESS</option>
+                <option value="PAUSED">PAUSED</option>
+                <option value="DENIED">DENIED</option>
+                <option value="PENDING">PENDING</option>
               </select>
             </div>
           </div>
           <div className="space-y-4 mt-4">
-              {isLoadingRestaurants ? (
+            {isLoadingRestaurants ? (
               <div className="space-y-3">
-                {[0,1].map((i)=> (
-                    <div key={i} className="flex items-center justify-between rounded-[2.5rem] border border-slate-50 bg-slate-50 p-5 animate-pulse">
-                      <div className="w-2/3">
-                        <div className="h-4 bg-slate-200 rounded w-1/3 mb-2" />
-                        <div className="h-3 bg-slate-100 rounded w-1/2" />
-                      </div>
-                      <div className="w-1/3 flex items-center gap-2 justify-end">
-                        <div className="h-8 w-20 bg-slate-100 rounded" />
-                        <div className="h-8 w-20 bg-slate-100 rounded" />
-                      </div>
+                {[0, 1].map((i) => (
+                  <div key={i} className="flex items-center justify-between rounded-[2.5rem] border border-slate-50 bg-slate-50 p-5 animate-pulse">
+                    <div className="w-2/3">
+                      <div className="h-4 bg-slate-200 rounded w-1/3 mb-2" />
+                      <div className="h-3 bg-slate-100 rounded w-1/2" />
                     </div>
+                    <div className="w-1/3 flex items-center gap-2 justify-end">
+                      <div className="h-8 w-20 bg-slate-100 rounded" />
+                      <div className="h-8 w-20 bg-slate-100 rounded" />
+                    </div>
+                  </div>
                 ))}
               </div>
             ) : restaurants.length === 0 ? (
               <div className="py-8 text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em]">Nenhuma loja cadastrada.</div>
             ) : (
               restaurants.map((r) => {
-              const prov = (r.provisioningStatus || '').toString();
-              const provClass = prov === 'READY' ? 'bg-emerald-100 text-emerald-700' : prov === 'IN_PROGRESS' ? 'bg-sky-100 text-sky-700' : prov === 'DENIED' ? 'bg-rose-100 text-rose-700' : 'bg-amber-100 text-amber-700';
-              return (
+                const prov = (r.provisioningStatus || '').toString();
+                const provClass = prov === 'READY' ? 'bg-emerald-100 text-emerald-700' : prov === 'IN_PROGRESS' ? 'bg-sky-100 text-sky-700' : prov === 'DENIED' ? 'bg-rose-100 text-rose-700' : 'bg-amber-100 text-amber-700';
+                return (
                   <div key={r.id} className="clients-card flex flex-col gap-4 rounded-[2.5rem] border border-slate-50 bg-white p-5 shadow-sm hover:shadow-2xl hover:shadow-slate-200/50 transition-all duration-700 md:flex-row md:items-center md:justify-between group">
-                  <div>
-                    <div className="text-body-strong font-display font-bold text-slate-950 uppercase tracking-tight leading-tight">{r.name}</div>
-                    <div className="flex flex-wrap items-center gap-2 text-sm mt-3">
-                      <span className="text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em]">{r.slug}</span>
-                      <span title={r.isActive ? 'Loja ativa e operante' : 'Loja inativa'} aria-label={r.isActive ? 'Ativa' : 'Inativa'} className={`rounded-2xl px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.2em] ${r.isActive ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-500'}`}>{r.isActive ? 'Ativa' : 'Inativa'}</span>
-                      <span title={`Provisioning: ${prov}`} aria-label={`Provisioning ${prov}`} className={`rounded-2xl px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.2em] ${provClass}`}>{prov}</span>
-                      
-                      <select 
-                        value={r.planId || ''} 
-                        onChange={(e) => handleChangePlan(r.id, Number(e.target.value))}
-                        className="rounded-2xl bg-slate-900 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.2em] text-white outline-none border-none cursor-pointer"
-                      >
-                        <option value="">Sem plano</option>
-                        {plans.map(p => (
-                          <option key={p.id} value={p.id}>{p.name}</option>
-                        ))}
-                      </select>
+                    <div>
+                      <div className="text-body-strong font-display font-bold text-slate-950 uppercase tracking-tight leading-tight">{r.name}</div>
+                      <div className="flex flex-wrap items-center gap-2 text-sm mt-3">
+                        <span className="text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em]">{r.slug}</span>
+                        <span title={r.isActive ? 'Loja ativa e operante' : 'Loja inativa'} aria-label={r.isActive ? 'Ativa' : 'Inativa'} className={`rounded-2xl px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.2em] ${r.isActive ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-500'}`}>{r.isActive ? 'Ativa' : 'Inativa'}</span>
+                        <span title={`Provisioning: ${prov}`} aria-label={`Provisioning ${prov}`} className={`rounded-2xl px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.2em] ${provClass}`}>{prov}</span>
+
+                        <select
+                          value={r.planId || ''}
+                          onChange={(e) => handleChangePlan(r.id, Number(e.target.value))}
+                          className="rounded-2xl bg-slate-900 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.2em] text-white outline-none border-none cursor-pointer"
+                        >
+                          <option value="">Sem plano</option>
+                          {plans.map(p => (
+                            <option key={p.id} value={p.id}>{p.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      {r.isActive ? (
+                        <button aria-label="Pausar loja" onClick={() => handlePauseRestaurant(r.id)} className="rounded-2xl bg-amber-500 px-4 py-3 text-[10px] font-black uppercase tracking-[0.2em] text-white">Pausar</button>
+                      ) : (
+                        <button aria-label="Ativar loja" onClick={() => handleApproveRestaurant(r.id)} className="rounded-2xl bg-slate-950 px-4 py-3 text-[10px] font-black uppercase tracking-[0.2em] text-white">Ativar</button>
+                      )}
+                      <button onClick={() => handleDeleteRestaurant(r.id)} className="inline-flex items-center gap-2 rounded-2xl bg-rose-600 px-4 py-3 text-[10px] font-black uppercase tracking-[0.2em] text-white"><Trash size={14} />Excluir</button>
                     </div>
                   </div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    {r.isActive ? (
-                      <button aria-label="Pausar loja" onClick={() => handlePauseRestaurant(r.id)} className="rounded-2xl bg-amber-500 px-4 py-3 text-[10px] font-black uppercase tracking-[0.2em] text-white">Pausar</button>
-                    ) : (
-                      <button aria-label="Ativar loja" onClick={() => handleApproveRestaurant(r.id)} className="rounded-2xl bg-slate-950 px-4 py-3 text-[10px] font-black uppercase tracking-[0.2em] text-white">Ativar</button>
-                    )}
-                    <button onClick={() => handleDeleteRestaurant(r.id)} className="inline-flex items-center gap-2 rounded-2xl bg-rose-600 px-4 py-3 text-[10px] font-black uppercase tracking-[0.2em] text-white"><Trash size={14}/>Excluir</button>
-                  </div>
-                </div>
-              );
-            })
-          )}
+                );
+              })
+            )}
           </div>
         </div>
       </div>

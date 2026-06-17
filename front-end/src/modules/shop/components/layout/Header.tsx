@@ -90,10 +90,10 @@ export function Header({ onOpenMenu }: HeaderProps) {
     <>
       <header
         className={cn(
-          "sticky top-0 left-0 right-0 z-50 transition-all duration-500 border-b",
+          "fixed inset-x-0 top-0 z-50 transition-all duration-500 border-b",
           isScrolled
             ? "py-2 sm:py-2.5 md:py-4 bg-slate-800/95 border-slate-700 backdrop-blur-md shadow-[0_12px_30px_rgba(2,6,23,0.32)]"
-            : "py-2.5 sm:py-3 md:py-5 bg-slate-800 border-slate-700 shadow-[0_10px_24px_rgba(2,6,23,0.28)]"
+            : "py-2.5 sm:py-3 md:py-5 bg-slate-800/98 border-slate-700 shadow-[0_10px_24px_rgba(2,6,23,0.28)]"
         )}
       >
         <div className="w-full px-3 md:px-5 lg:px-7 xl:px-8">
@@ -112,7 +112,7 @@ export function Header({ onOpenMenu }: HeaderProps) {
                 <div className="flex flex-col min-w-0">
                   <h1
                     style={{ fontWeight: 900, letterSpacing: '-0.02em' }}
-                    className="text-[20px] sm:text-[24px] md:text-[32px] lg:text-[36px] font-body text-white uppercase leading-[0.9] truncate max-w-[240px] sm:max-w-[300px] md:max-w-[320px] lg:max-w-[380px] xl:max-w-none [text-rendering:optimizeLegibility]"
+                    className="text-[20px] sm:text-[24px] md:text-[32px] lg:text-[36px] font-body text-white uppercase leading-[0.9] truncate max-w-60 sm:max-w-75 md:max-w-[320px] lg:max-w-95 xl:max-w-none [text-rendering:optimizeLegibility]"
                   >
                     <span className="text-white">{storeNameMain}</span>
                     {storeNameAccent ? <span className="text-primary ml-1">{storeNameAccent}</span> : null}
@@ -132,7 +132,7 @@ export function Header({ onOpenMenu }: HeaderProps) {
             {/* Middle Section: Address */}
             <div
               onClick={() => setIsAddressModalOpen(true)}
-              className="hidden lg:flex lg:justify-self-center items-center h-12 xl:h-14 gap-3 bg-slate-700/70 border border-slate-600 rounded-2xl px-4 xl:px-5 shadow-sm shadow-black/15 cursor-pointer hover:bg-slate-700 hover:border-primary/40 hover:shadow-md hover:shadow-primary/10 transition-all duration-300 group max-w-[320px] xl:max-w-[400px]"
+              className="hidden lg:flex lg:justify-self-center items-center h-12 xl:h-14 gap-3 bg-slate-700/70 border border-slate-600 rounded-2xl px-4 xl:px-5 shadow-sm shadow-black/15 cursor-pointer hover:bg-slate-700 hover:border-primary/40 hover:shadow-md hover:shadow-primary/10 transition-all duration-300 group max-w-[320px] xl:max-w-100"
             >
               <div className="w-7 h-7 rounded-lg bg-slate-900/70 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all duration-300 shrink-0">
                 <MapPin size={14} />
