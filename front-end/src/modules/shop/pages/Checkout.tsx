@@ -73,10 +73,22 @@ export default function Checkout() {
     const ctx = gsap.context(() => {
       const tl = gsap.timeline({ defaults: { ease: "power3.out" } });
 
-      tl.from(".checkout-header", { y: -18, opacity: 0, duration: 0.7 })
-        .from(".checkout-progress", { y: 18, opacity: 0, duration: 0.7 }, "-=0.2")
-        .from(".checkout-step-panel", { y: 28, opacity: 0, duration: 0.8, stagger: 0.1 }, "-=0.35")
-        .from(".checkout-summary", { x: 20, opacity: 0, duration: 0.8 }, "-=0.45");
+      // Animação condicional para evitar avisos de target não encontrado
+      if (document.querySelector(".checkout-header")) {
+        tl.from(".checkout-header", { y: -18, opacity: 0, duration: 0.7 });
+      }
+      
+      if (document.querySelector(".checkout-progress")) {
+        tl.from(".checkout-progress", { y: 18, opacity: 0, duration: 0.7 }, "-=0.2");
+      }
+      
+      if (document.querySelector(".checkout-step-panel")) {
+        tl.from(".checkout-step-panel", { y: 28, opacity: 0, duration: 0.8, stagger: 0.1 }, "-=0.35");
+      }
+      
+      if (document.querySelector(".checkout-summary")) {
+        tl.from(".checkout-summary", { x: 20, opacity: 0, duration: 0.8 }, "-=0.45");
+      }
     }, rootRef);
 
     return () => ctx.revert();

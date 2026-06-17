@@ -1836,9 +1836,10 @@ app.post('/api/orders', async (req: TenantRequest, res) => {
       }
     });
 
-    const maxOrders = req.restaurant?.plan?.maxOrders || 100;
+    const maxOrders = req.restaurant?.plan?.maxOrders || 1000;
 
     if (orderCount >= maxOrders) {
+      console.warn(`[OrderLimit] Bloqueando pedido para restaurantId=${req.restaurantId}. Count=${orderCount}, Limit=${maxOrders}`);
       return res.status(403).json({
         error: `Limite de pedidos mensais atingido (${maxOrders}). Faça upgrade do seu plano para continuar recebendo pedidos.`
       });
