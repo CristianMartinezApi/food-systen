@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Script from "next/script";
 import { AdminLayout } from "../../../src/modules/admin/components/layout/AdminLayout";
 
 export default function Layout({ children }: { children: React.ReactNode }) {
@@ -21,5 +22,13 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     return null;
   }
 
-  return <AdminLayout>{children}</AdminLayout>;
+  return (
+    <>
+      <Script
+        src={`https://maps.googleapis.com/maps/api/js?key=AIzaSyCV4EcVeyozyk9VHH7XFhFuLXU4fS7Gjds&libraries=places&loading=async`}
+        strategy="afterInteractive"
+      />
+      <AdminLayout>{children}</AdminLayout>
+    </>
+  );
 }

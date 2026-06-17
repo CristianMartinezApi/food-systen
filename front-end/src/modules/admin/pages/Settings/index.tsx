@@ -1,5 +1,4 @@
 ﻿import { useState, useEffect, useRef } from "react";
-import Script from "next/script";
 import usePlacesAutocomplete, {
     getGeocode,
     getLatLng,
@@ -21,7 +20,8 @@ import {
     Truck,
     DollarSign,
     Map as MapIcon,
-    Navigation
+    Navigation,
+    ShieldCheck
 } from "lucide-react";
 import { useSettings } from "../../../../core/hooks/useSettings";
 import { cn, normalizeMoneyInput, parseMoneyInput, toMoneyInputValue, formatMoneyInputRealtime } from "../../../../shared/utils";
@@ -240,13 +240,8 @@ export default function SettingsPage() {
     };
 
     return (
-        <>
-            <Script
-                src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCV4EcVeyozyk9VHH7XFhFuLXU4fS7Gjds&libraries=places&loading=async"
-                strategy="afterInteractive"
-            />
-            <div ref={rootRef}>
-                <div className="settings-hero system-hero-band flex items-center justify-between mb-12 p-8 md:p-10">
+        <div ref={rootRef}>
+            <div className="settings-hero system-hero-band flex items-center justify-between mb-12 p-8 md:p-10">
                     <div>
                         <h1 className="text-heading-1 font-display font-bold text-slate-950 uppercase tracking-tight">Arquitetura de Marca</h1>
                         <p className="text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em] mt-2">Defina a identidade visual e os parâmetros operacionais do seu ecossistema.</p>
@@ -845,6 +840,5 @@ export default function SettingsPage() {
                     </div>
                 </div>
             </div>
-        </>
     );
 }
