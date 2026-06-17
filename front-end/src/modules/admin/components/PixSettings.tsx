@@ -25,10 +25,10 @@ export default function PixSettings() {
         api
             .get("/pix/settings")
             .then((res) => {
-                setStatus(res.data);
+                setStatus(res);
                 setForm({
-                    pixKey: res.data.pixKey || "",
-                    pixEnabled: res.data.pixEnabled || false,
+                    pixKey: res.pixKey || "",
+                    pixEnabled: res.pixEnabled || false,
                 });
             })
             .catch(() => toast.error("Erro ao carregar status PIX"))

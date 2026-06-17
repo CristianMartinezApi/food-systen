@@ -90,6 +90,11 @@ ${addressInfo}
 
 export const sendToWhatsApp = (phone: string, message: string) => {
   const cleanPhone = phone.replace(/\D/g, '');
-  const url = `https://wa.me/55${cleanPhone}?text=${message}`;
+  // Se o número já começa com 55 e tem 12 ou 13 dígitos, não adicionamos 55 novamente
+  const finalPhone = (cleanPhone.length >= 12 && cleanPhone.startsWith('55')) 
+    ? cleanPhone 
+    : `55${cleanPhone}`;
+    
+  const url = `https://wa.me/${finalPhone}?text=${message}`;
   window.open(url, '_blank');
 };

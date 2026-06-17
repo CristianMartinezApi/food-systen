@@ -425,7 +425,13 @@ export default function Checkout() {
   const handleWhatsAppNotify = () => {
     if (!createdOrder) return;
     const msg = formatWhatsAppMessage(createdOrder, settings?.storeName || "FoodSystem");
-    sendToWhatsApp(settings?.phone || "5511999999999", msg);
+    // Remove o número padrão 5511... e usa uma string vazia como fallback para evitar números inválidos
+    const storePhone = settings?.phone || "";
+    if (!storePhone) {
+      toast.error("Telefone da loja não configurado.");
+      return;
+    }
+    sendToWhatsApp(storePhone, msg);
   };
 
   if (items.length === 0 && step !== "success") {
