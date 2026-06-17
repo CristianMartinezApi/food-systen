@@ -64,6 +64,22 @@ if (!JWT_SECRET) {
 const PORT = process.env.PORT || 8000;
 const DEFAULT_CASH_DIFFERENCE_NOTE_THRESHOLD = 5;
 const CASH_COUNTED_ORDER_STATUSES: OrderStatus[] = ['DELIVERED', 'PAID'];
+const CASHIER_OPERATION_ROLES = new Set(['SUPER_ADMIN', 'OWNER', 'MANAGER', 'EMPLOYEE']);
+const CASHIER_OPEN_CLOSE_ROLES = new Set(['SUPER_ADMIN', 'OWNER', 'MANAGER']);
+
+function ensureCashierPermission(
+  req: AuthRequest,
+  res: express.Response,
+  allowedRoles: Set<string>,
+  actionLabel: string
+): boolean {
+  if (!req.userRole || !allowedRoles.has(req.userRole)) {
+    res.status(403).json({ error: `Sem permissão para ${actionLabel}.` });
+    return false;
+  }
+
+  return true;
+}
 
 // ✅ SEGURO: CORS configurado explicitamente
 const allowedOrigins = (process.env.ALLOWED_ORIGINS || 'http://localhost:3000').split(',').map(o => o.trim());
@@ -937,7 +953,45 @@ app.get('/api/admin/restaurants', authMiddleware, async (req: AuthRequest, res) 
       include: { settings: true, users: true, plan: true }
     });
 
-    res.json(restaurants);
+    const restaurantIds = restaurants.map((restaurant) => restaurant.id);
+
+    let retryLogs: Array<{ restaurantId: number; message: string; createdAt: Date }> = [];
+    if (restaurantIds.length > 0) {
+      retryLogs = await prisma.provisioningLog.findMany({
+        where: {
+          restaurantId: { in: restaurantIds },
+          message: { contains: 'Motivo:' }
+        },
+        select: { restaurantId: true, message: true, createdAt: true },
+        orderBy: { createdAt: 'desc' }
+      });
+    }
+
+    const latestRetryByRestaurant = new Map<number, { reason: string | null; createdAt: Date }>();
+
+    for (const log of retryLogs) {
+      if (latestRetryByRestaurant.has(log.restaurantId)) continue;
+
+      const reason = log.message.includes('Motivo:')
+        ? log.message.split('Motivo:')[1]?.trim() || null
+        : null;
+
+      latestRetryByRestaurant.set(log.restaurantId, {
+        reason,
+        createdAt: log.createdAt
+      });
+    }
+
+    const enrichedRestaurants = restaurants.map((restaurant) => {
+      const latestRetry = latestRetryByRestaurant.get(restaurant.id);
+      return {
+        ...restaurant,
+        lastRetryReason: latestRetry?.reason || null,
+        lastRetryAt: latestRetry?.createdAt || null
+      };
+    });
+
+    res.json(enrichedRestaurants);
   } catch (error) {
     console.error('Error fetching restaurants:', error);
     res.status(500).json({ error: 'Erro ao buscar restaurantes' });
@@ -1126,9 +1180,48 @@ app.get('/api/admin/provisioning', authMiddleware, async (req: AuthRequest, res)
   try {
     const restaurants = await prisma.restaurant.findMany({
       orderBy: { createdAt: 'desc' },
-      select: { id: true, name: true, slug: true, provisioningStatus: true, databaseName: true, createdAt: true }
+      select: { id: true, name: true, slug: true, provisioningStatus: true, databaseName: true, isActive: true, createdAt: true }
     });
-    res.json(restaurants);
+
+    const restaurantIds = restaurants.map((restaurant) => restaurant.id);
+
+    let retryLogs: Array<{ restaurantId: number; message: string; createdAt: Date }> = [];
+    if (restaurantIds.length > 0) {
+      retryLogs = await prisma.provisioningLog.findMany({
+        where: {
+          restaurantId: { in: restaurantIds },
+          message: { contains: 'Motivo:' }
+        },
+        select: { restaurantId: true, message: true, createdAt: true },
+        orderBy: { createdAt: 'desc' }
+      });
+    }
+
+    const latestRetryByRestaurant = new Map<number, { reason: string | null; createdAt: Date }>();
+
+    for (const log of retryLogs) {
+      if (latestRetryByRestaurant.has(log.restaurantId)) continue;
+
+      const reason = log.message.includes('Motivo:')
+        ? log.message.split('Motivo:')[1]?.trim() || null
+        : null;
+
+      latestRetryByRestaurant.set(log.restaurantId, {
+        reason,
+        createdAt: log.createdAt
+      });
+    }
+
+    const enrichedRestaurants = restaurants.map((restaurant) => {
+      const latestRetry = latestRetryByRestaurant.get(restaurant.id);
+      return {
+        ...restaurant,
+        lastRetryReason: latestRetry?.reason || null,
+        lastRetryAt: latestRetry?.createdAt || null
+      };
+    });
+
+    res.json(enrichedRestaurants);
   } catch (error) {
     console.error('Error fetching provisioning list:', error);
     res.status(500).json({ error: 'Erro ao buscar provisioning' });
@@ -1142,13 +1235,35 @@ app.post('/api/admin/restaurants/:id/retry-provisioning', authMiddleware, async 
   }
 
   const restaurantId = Number(req.params.id);
+  const reason = (req.body?.reason || '').toString().trim();
+
+  if (!reason || reason.length < 8) {
+    return res.status(400).json({ error: 'Informe um motivo com pelo menos 8 caracteres para reiniciar o provisioning.' });
+  }
+
   try {
+    const restaurant = await prisma.restaurant.findUnique({ where: { id: restaurantId }, select: { id: true, name: true, slug: true, provisioningStatus: true } });
+    if (!restaurant) {
+      return res.status(404).json({ error: 'Restaurante não encontrado' });
+    }
+
     await prisma.restaurant.update({ where: { id: restaurantId }, data: { provisioningStatus: 'IN_PROGRESS' } });
 
     // Create a provisioning log entry (start)
     try {
-      await prisma.provisioningLog.create({ data: { restaurantId, message: 'Provisioning retried by super-admin', level: 'info' } });
-      await createAudit(req, 'retry_provisioning_start', 'restaurant', restaurantId, { note: 'Retry started by super admin' });
+      await prisma.provisioningLog.create({
+        data: {
+          restaurantId,
+          message: `Provisioning retried by super-admin. Motivo: ${reason}`,
+          level: 'info'
+        }
+      });
+      await createAudit(req, 'retry_provisioning_start', 'restaurant', restaurantId, {
+        note: 'Retry started by super admin',
+        reason,
+        previousStatus: restaurant.provisioningStatus,
+        restaurantSlug: restaurant.slug
+      });
     } catch (e) {
       console.warn('Could not create provisioning log (start):', e);
     }
@@ -1158,8 +1273,18 @@ app.post('/api/admin/restaurants/:id/retry-provisioning', authMiddleware, async 
 
     // Create a provisioning log entry (ready)
     try {
-      await prisma.provisioningLog.create({ data: { restaurantId, message: 'Provisioning finished (simulated) - READY', level: 'info' } });
-      await createAudit(req, 'retry_provisioning_finish', 'restaurant', restaurantId, { note: 'Retry finished (simulated)' });
+      await prisma.provisioningLog.create({
+        data: {
+          restaurantId,
+          message: 'Provisioning finished (simulated) - READY',
+          level: 'info'
+        }
+      });
+      await createAudit(req, 'retry_provisioning_finish', 'restaurant', restaurantId, {
+        note: 'Retry finished (simulated)',
+        reason,
+        finalStatus: 'READY'
+      });
     } catch (e) {
       console.warn('Could not create provisioning log (finish):', e);
     }
@@ -1874,6 +1999,10 @@ app.patch('/api/orders/:id', authMiddleware, async (req: AuthRequest, res) => {
 
 // Cashier (Caixa)
 app.get('/api/cashier/session', authMiddleware, async (req: AuthRequest, res) => {
+  if (!ensureCashierPermission(req, res, CASHIER_OPERATION_ROLES, 'consultar o caixa')) {
+    return;
+  }
+
   try {
     const activeSession = await prisma.cashSession.findFirst({
       where: {
@@ -1910,7 +2039,7 @@ app.get('/api/cashier/session', authMiddleware, async (req: AuthRequest, res) =>
       take: 20,
     });
 
-    const [suppliesAgg, withdrawalsAgg, adjustmentsAgg, salesAgg, cashSalesAgg] = await Promise.all([
+    const [suppliesAgg, withdrawalsAgg, adjustmentsAgg, salesAgg, cashSalesAgg, movementsCount] = await Promise.all([
       prisma.cashMovement.aggregate({
         where: { cashSessionId: activeSession.id, type: 'SUPPLY' },
         _sum: { amount: true },
@@ -1940,6 +2069,9 @@ app.get('/api/cashier/session', authMiddleware, async (req: AuthRequest, res) =>
         },
         _sum: { total: true },
       }),
+      prisma.cashMovement.count({
+        where: { cashSessionId: activeSession.id },
+      }),
     ]);
 
     const supplies = Number(suppliesAgg._sum.amount || 0);
@@ -1956,7 +2088,7 @@ app.get('/api/cashier/session', authMiddleware, async (req: AuthRequest, res) =>
         supplies,
         withdrawals,
         adjustments,
-        movementsCount: movements.length,
+        movementsCount,
         sales,
         cashSales,
         expectedAmount,
@@ -1969,11 +2101,15 @@ app.get('/api/cashier/session', authMiddleware, async (req: AuthRequest, res) =>
 });
 
 app.post('/api/cashier/session/open', authMiddleware, async (req: AuthRequest, res) => {
+  if (!ensureCashierPermission(req, res, CASHIER_OPEN_CLOSE_ROLES, 'abrir o caixa')) {
+    return;
+  }
+
   try {
-    const openingAmount = Number(req.body?.openingAmount || 0);
+    const openingAmount = Number(req.body?.openingAmount);
     const notes = req.body?.notes ? String(req.body.notes) : null;
 
-    if (Number.isNaN(openingAmount) || openingAmount < 0) {
+    if (Number.isNaN(openingAmount) || openingAmount <= 0) {
       return res.status(400).json({ error: 'Valor de abertura inválido.' });
     }
 
@@ -2008,16 +2144,24 @@ app.post('/api/cashier/session/open', authMiddleware, async (req: AuthRequest, r
 
     res.status(201).json(session);
   } catch (error) {
+    if ((error as any)?.code === 'P2002') {
+      return res.status(409).json({ error: 'Já existe uma sessão de caixa aberta.' });
+    }
+
     console.error('Error opening cashier session:', error);
     res.status(500).json({ error: 'Erro ao abrir sessão de caixa.' });
   }
 });
 
 app.post('/api/cashier/movements', authMiddleware, async (req: AuthRequest, res) => {
+  if (!ensureCashierPermission(req, res, CASHIER_OPERATION_ROLES, 'registrar movimentos de caixa')) {
+    return;
+  }
+
   try {
     const type = String(req.body?.type || '');
     const amount = Number(req.body?.amount || 0);
-    const reason = req.body?.reason ? String(req.body.reason) : null;
+    const reason = req.body?.reason ? String(req.body.reason).trim() : null;
     const notes = req.body?.notes ? String(req.body.notes) : null;
 
     if (!['SUPPLY', 'WITHDRAWAL', 'ADJUSTMENT'].includes(type)) {
@@ -2026,6 +2170,10 @@ app.post('/api/cashier/movements', authMiddleware, async (req: AuthRequest, res)
 
     if (Number.isNaN(amount) || amount <= 0) {
       return res.status(400).json({ error: 'Valor do movimento inválido.' });
+    }
+
+    if (['WITHDRAWAL', 'ADJUSTMENT'].includes(type) && !reason) {
+      return res.status(400).json({ error: 'Motivo é obrigatório para sangria e ajuste.' });
     }
 
     const activeSession = await prisma.cashSession.findFirst({
@@ -2070,6 +2218,10 @@ app.post('/api/cashier/movements', authMiddleware, async (req: AuthRequest, res)
 });
 
 app.post('/api/cashier/direct-sales', authMiddleware, async (req: AuthRequest, res) => {
+  if (!ensureCashierPermission(req, res, CASHIER_OPERATION_ROLES, 'registrar venda direta')) {
+    return;
+  }
+
   try {
     const paymentMethod = String(req.body?.paymentMethod || '').toUpperCase();
     const items = Array.isArray(req.body?.items)
@@ -2242,6 +2394,10 @@ app.post('/api/cashier/direct-sales', authMiddleware, async (req: AuthRequest, r
 });
 
 app.post('/api/cashier/session/close', authMiddleware, async (req: AuthRequest, res) => {
+  if (!ensureCashierPermission(req, res, CASHIER_OPEN_CLOSE_ROLES, 'fechar o caixa')) {
+    return;
+  }
+
   try {
     const closingAmount = Number(req.body?.closingAmount || 0);
     const notes = req.body?.notes ? String(req.body.notes) : null;
@@ -2349,6 +2505,10 @@ app.post('/api/cashier/session/close', authMiddleware, async (req: AuthRequest, 
 });
 
 app.get('/api/cashier/operators', authMiddleware, async (req: AuthRequest, res) => {
+  if (!ensureCashierPermission(req, res, CASHIER_OPERATION_ROLES, 'listar operadores de caixa')) {
+    return;
+  }
+
   try {
     const operators = await prisma.user.findMany({
       where: {
@@ -2470,6 +2630,10 @@ app.get('/api/print-events/summary', authMiddleware, async (req: AuthRequest, re
 });
 
 app.get('/api/cashier/sessions/:id/report', authMiddleware, async (req: AuthRequest, res) => {
+  if (!ensureCashierPermission(req, res, CASHIER_OPERATION_ROLES, 'emitir relatório de caixa')) {
+    return;
+  }
+
   try {
     const sessionId = Number(req.params.id);
     if (!sessionId) {
@@ -2597,6 +2761,10 @@ app.get('/api/cashier/sessions/:id/report', authMiddleware, async (req: AuthRequ
 });
 
 app.get('/api/cashier/sessions', authMiddleware, async (req: AuthRequest, res) => {
+  if (!ensureCashierPermission(req, res, CASHIER_OPERATION_ROLES, 'consultar histórico do caixa')) {
+    return;
+  }
+
   try {
     const limit = Math.min(100, Math.max(1, Number(req.query.limit || 10)));
     const page = Math.max(1, Number(req.query.page || 1));

@@ -140,10 +140,11 @@ docker compose down
 
 ## 🔑 Credenciais Padrão (Desenvolvimento)
 
-Os containers são iniciados com seeding automático:
+Os containers são iniciados com seeding automático.
+As senhas iniciais devem vir do seu arquivo `.env` (INITIAL_SUPERADMIN_PASSWORD e INITIAL_ADMIN_PASSWORD).
 
-- **Usuário Super Admin:** `superadmin@foodsystem.com` / `superadmin123`
-- **Usuário Admin Padrão:** `admin@restaurant.com` / `AdminPass2026Secure`
+- **Usuário Super Admin:** `superadmin@foodsystem.com` / senha definida em `INITIAL_SUPERADMIN_PASSWORD`
+- **Usuário Admin Padrão:** `admin@restaurant.com` / senha definida em `INITIAL_ADMIN_PASSWORD`
 
 ⚠️ **Em produção, altere essas senhas imediatamente via variáveis de ambiente!**
 

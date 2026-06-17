@@ -1,16 +1,25 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { api } from "@/core/config/api";
 import { Activity, DatabaseZap, Loader2, RefreshCcw, Search } from "lucide-react";
 import toast from "react-hot-toast";
 
 export default function ProvisioningPanel() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [list, setList] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [accessStatus, setAccessStatus] = useState<"checking" | "authorized" | "denied">("checking");
   const [logsMap, setLogsMap] = useState<Record<number, any[]>>({});
   const [expanded, setExpanded] = useState<number | null>(null);
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
+  const [restaurantSearch, setRestaurantSearch] = useState<string>('');
+  const [onlyWithRetry, setOnlyWithRetry] = useState(false);
+  const [retryModal, setRetryModal] = useState<{ open: boolean; id?: number; restaurantName?: string }>({ open: false });
+  const [retryReason, setRetryReason] = useState('');
+  const [retrySaving, setRetrySaving] = useState(false);
 
   const totalCount = list.length;
   const readyCount = list.filter((item) => item.provisioningStatus === 'READY').length;
@@ -29,11 +38,38 @@ export default function ProvisioningPanel() {
     }
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    const userData = localStorage.getItem("@FoodSystem:user");
 
-  const handleRetry = async (id: number) => {
+    if (!userData) {
+      router.push("/admin/login");
+      return;
+    }
+
     try {
-      await api.post(`/admin/restaurants/${id}/retry-provisioning`, {});
+      const user = JSON.parse(userData);
+      if (user.role !== "SUPER_ADMIN") {
+        router.push("/admin");
+        setAccessStatus("denied");
+        return;
+      }
+
+      setAccessStatus("authorized");
+      const statusFromQuery = searchParams.get("status");
+      const restaurantFromQuery = searchParams.get("restaurant");
+      const hasRetryFromQuery = searchParams.get("hasRetry");
+      if (statusFromQuery) setSelectedStatus(statusFromQuery);
+      if (restaurantFromQuery) setRestaurantSearch(restaurantFromQuery);
+      if (hasRetryFromQuery === '1') setOnlyWithRetry(true);
+      load();
+    } catch {
+      router.push("/admin/login");
+    }
+  }, [router, searchParams]);
+
+  const handleRetry = async (id: number, reason: string) => {
+    try {
+      await api.post(`/admin/restaurants/${id}/retry-provisioning`, { reason });
       toast.success('Provisioning reiniciado');
       await load();
     } catch (e: any) {
@@ -41,13 +77,48 @@ export default function ProvisioningPanel() {
     }
   };
 
-  const visibleList = selectedStatus === 'all'
+  const openRetryModal = (id: number, restaurantName: string) => {
+    setRetryReason('');
+    setRetryModal({ open: true, id, restaurantName });
+  };
+
+  const confirmRetry = async () => {
+    const reason = retryReason.trim();
+    if (!reason || reason.length < 8) {
+      toast.error('Informe um motivo com pelo menos 8 caracteres');
+      return;
+    }
+
+    if (!retryModal.id) return;
+
+    try {
+      setRetrySaving(true);
+      await handleRetry(retryModal.id, reason);
+      setRetryModal({ open: false });
+      setRetryReason('');
+    } finally {
+      setRetrySaving(false);
+    }
+  };
+
+  const visibleListByStatus = selectedStatus === 'all'
     ? list
     : list.filter((item) => {
       if (selectedStatus === 'active') return item.isActive;
       if (selectedStatus === 'inactive') return !item.isActive;
       return item.provisioningStatus === selectedStatus;
     });
+
+  const visibleList = restaurantSearch
+    ? visibleListByStatus.filter((item) => {
+      const value = `${item.name || ''} ${item.slug || ''}`.toLowerCase();
+      return value.includes(restaurantSearch.toLowerCase());
+    })
+    : visibleListByStatus;
+
+  const finalVisibleList = onlyWithRetry
+    ? visibleList.filter((item) => Boolean(item.lastRetryReason))
+    : visibleList;
 
   const toggleLogs = async (id: number) => {
     if (expanded === id) {
@@ -69,10 +140,53 @@ export default function ProvisioningPanel() {
     setExpanded(id);
   };
 
+  if (accessStatus === "checking") {
+    return <div className="rounded-[1.75rem] border border-slate-200 bg-white p-6 shadow-[0_20px_50px_rgba(15,23,42,0.06)]">Validando acesso...</div>;
+  }
+
+  if (accessStatus === "denied") {
+    return null;
+  }
+
   if (loading) return <div className="rounded-[1.75rem] border border-slate-200 bg-white p-6 shadow-[0_20px_50px_rgba(15,23,42,0.06)]">Carregando...</div>;
 
   return (
     <div className="space-y-8">
+      {retryModal.open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-lg rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl">
+            <p className="text-xs font-black uppercase tracking-[0.2em] text-amber-500">Ação crítica</p>
+            <h3 className="mt-1 text-xl font-black text-slate-950">Confirmar retry de provisioning</h3>
+            <p className="mt-2 text-sm text-slate-500">
+              Loja: <strong>{retryModal.restaurantName || '-'}</strong>. Informe o motivo para registrar na auditoria.
+            </p>
+
+            <textarea
+              value={retryReason}
+              onChange={(e) => setRetryReason(e.target.value)}
+              placeholder="Ex: Ajuste de credenciais e reprocessamento de provisionamento"
+              className="mt-4 h-28 w-full rounded-2xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700 outline-none focus:border-slate-300"
+            />
+
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                onClick={() => setRetryModal({ open: false })}
+                className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-600"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={confirmRetry}
+                disabled={retrySaving}
+                className="rounded-full bg-slate-950 px-4 py-2 text-sm font-bold text-white disabled:opacity-60"
+              >
+                {retrySaving ? 'Processando...' : 'Confirmar retry'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="system-hero-band relative overflow-hidden rounded-4xl p-2">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(34,197,94,0.12),transparent_30%),linear-gradient(135deg,rgba(15,23,42,0.02),transparent_45%)]" />
         <div className="relative p-6 md:p-8 grid gap-6 xl:grid-cols-[1.1fr_0.9fr] items-center">
@@ -134,20 +248,31 @@ export default function ProvisioningPanel() {
                 {status === 'all' ? 'Todos' : status === 'active' ? 'Ativas' : status === 'inactive' ? 'Inativas' : status}
               </button>
             ))}
+            <button
+              onClick={() => setOnlyWithRetry((prev) => !prev)}
+              className={`rounded-full px-4 py-2 text-sm font-bold transition ${onlyWithRetry ? 'bg-amber-600 text-white' : 'bg-amber-100 text-amber-700 hover:bg-amber-200'}`}
+            >
+              Apenas com retry
+            </button>
           </div>
         </div>
 
         <div className="mt-4 flex items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
           <Search size={16} className="text-slate-400" />
-          <div className="text-sm text-slate-500">A lista já vem do servidor; use os chips para trocar o contexto visual sem perder clareza.</div>
+          <input
+            value={restaurantSearch}
+            onChange={(e) => setRestaurantSearch(e.target.value)}
+            placeholder="Buscar por nome ou slug da loja"
+            className="w-full bg-transparent text-sm text-slate-500 outline-none"
+          />
         </div>
       </div>
 
       <div className="grid gap-4">
-        {visibleList.length === 0 ? (
+        {finalVisibleList.length === 0 ? (
           <div className="rounded-[1.75rem] border border-dashed border-slate-200 bg-white p-8 text-sm text-slate-500">Nenhuma loja encontrada.</div>
         ) : (
-          visibleList.map((r) => {
+          finalVisibleList.map((r) => {
             const statusClass =
               r.provisioningStatus === 'READY'
                 ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
@@ -170,9 +295,15 @@ export default function ProvisioningPanel() {
                     </div>
                     <p className="mt-2 text-sm text-slate-500">{r.slug} • DB: {r.databaseName || '—'}</p>
                     <p className="mt-1 text-xs text-slate-400">Criada em {new Date(r.createdAt).toLocaleString()}</p>
+                    {r.lastRetryReason && (
+                      <p className="mt-2 text-xs text-amber-700">
+                        Último retry: {r.lastRetryReason}
+                        {r.lastRetryAt ? ` • ${new Date(r.lastRetryAt).toLocaleString()}` : ''}
+                      </p>
+                    )}
                   </div>
                   <div className="flex items-center gap-2">
-                    <button onClick={() => handleRetry(r.id)} className="inline-flex items-center gap-2 rounded-full bg-slate-950 px-4 py-2 text-sm font-bold text-white transition hover:-translate-y-0.5">
+                    <button onClick={() => openRetryModal(r.id, r.name)} className="inline-flex items-center gap-2 rounded-full bg-slate-950 px-4 py-2 text-sm font-bold text-white transition hover:-translate-y-0.5">
                       <RefreshCcw size={14} /> Retry
                     </button>
                     <button onClick={() => toggleLogs(r.id)} className="rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-bold text-slate-700">{expanded === r.id ? 'Ocultar logs' : 'Ver logs'}</button>

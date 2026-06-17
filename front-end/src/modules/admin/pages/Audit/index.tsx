@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { api } from "@/core/config/api";
 import { BadgeCheck, Download, FileText, Filter, Search, ShieldAlert } from "lucide-react";
 import toast from "react-hot-toast";
@@ -36,7 +36,36 @@ function formatAuditSubjectType(subjectType: string) {
   return subjectTypeLabels[subjectType] || subjectType;
 }
 
+async function downloadAuditCsv(search: string, subjectType: string) {
+  const q = new URLSearchParams();
+  if (search) q.set("search", search);
+  if (subjectType) q.set("subjectType", subjectType);
+
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
+  const token = localStorage.getItem("@FoodSystem:token");
+
+  const response = await fetch(`${apiUrl}/admin/audit-logs/export?${q.toString()}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.error || "Erro ao exportar auditoria");
+  }
+
+  const blob = await response.blob();
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "audit_logs_export.csv";
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(url);
+}
+
 function AuditContent() {
+  const searchParams = useSearchParams();
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [page, setPage] = useState(1);
   const [perPage] = useState(20);
@@ -66,6 +95,11 @@ function AuditContent() {
   };
 
   useEffect(() => {
+    const initialSearch = searchParams.get("search") || "";
+    const initialSubjectType = searchParams.get("subjectType") || "";
+
+    setSearch(initialSearch);
+    setSubjectType(initialSubjectType);
     load(1);
   }, []);
 
@@ -163,11 +197,13 @@ function AuditContent() {
                 Limpar
               </button>
               <button
-                onClick={() => {
-                  const q = new URLSearchParams();
-                  if (search) q.set("search", search);
-                  if (subjectType) q.set("subjectType", subjectType);
-                  window.open(`http://localhost:8000/api/admin/audit-logs/export?${q.toString()}`, "_blank");
+                onClick={async () => {
+                  try {
+                    await downloadAuditCsv(search, subjectType);
+                    toast.success("CSV exportado com sucesso");
+                  } catch (error: any) {
+                    toast.error(error.message || "Erro ao exportar CSV");
+                  }
                 }}
                 className="inline-flex h-16 items-center justify-center gap-2 rounded-full bg-slate-100 px-5 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 shadow-sm transition hover:bg-slate-200 hover:-translate-y-0.5"
               >

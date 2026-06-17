@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { api } from "@/core/config/api";
-import { Loader2, Plus, Shield, Trash, Search, Users, Store, BadgeCheck, CirclePause, Sparkles, Filter } from "lucide-react";
+import { Loader2, Plus, Shield, Trash, Search, Users, Store, BadgeCheck, CirclePause, Sparkles, Filter, FileSearch, Workflow, RefreshCcw, Eye, EyeOff, WandSparkles } from "lucide-react";
 import toast from "react-hot-toast";
 import { gsap } from "gsap";
 import AdminResetPassword from "../../components/AdminResetPassword";
@@ -17,6 +17,34 @@ interface AdminUser {
   restaurant?: { id: number; name: string; slug: string } | null;
 }
 
+async function downloadUsersCsv(search: string, filter: "all" | "approved" | "pending") {
+  const q = new URLSearchParams();
+  if (search) q.set("search", search);
+  if (filter) q.set("filter", filter);
+
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
+  const token = localStorage.getItem("@FoodSystem:token");
+
+  const response = await fetch(`${apiUrl}/admin/users/export?${q.toString()}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.error || "Erro ao exportar clientes");
+  }
+
+  const blob = await response.blob();
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "users_export.csv";
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(url);
+}
+
 export default function ClientsPage() {
   const [userRole, setUserRole] = useState("");
   const [users, setUsers] = useState<AdminUser[]>([]);
@@ -26,10 +54,14 @@ export default function ClientsPage() {
   const [selected, setSelected] = useState<number[]>([]);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<"all" | "approved" | "pending">("all");
+  const [viewMode, setViewMode] = useState<'users' | 'stores' | 'inconsistencies'>('users');
+  const [inconsistencyScope, setInconsistencyScope] = useState<'all' | 'critical'>('all');
+  const [userSort, setUserSort] = useState<'recent' | 'name_asc' | 'pending_first'>('recent');
   const [restaurants, setRestaurants] = useState<any[]>([]);
   const [plans, setPlans] = useState<any[]>([]);
   const [isLoadingRestaurants, setIsLoadingRestaurants] = useState(false);
   const [restaurantFilter, setRestaurantFilter] = useState<'all' | 'active' | 'inactive' | 'READY' | 'IN_PROGRESS' | 'PAUSED' | 'DENIED' | 'PENDING'>('all');
+  const [restaurantSort, setRestaurantSort] = useState<'created_desc' | 'retry_desc'>('created_desc');
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [confirmState, setConfirmState] = useState<{
@@ -39,6 +71,8 @@ export default function ClientsPage() {
     onConfirm?: () => Promise<void> | void;
   }>({ open: false });
   const [formData, setFormData] = useState({ name: "", email: "", password: "" });
+  const [createdCredentials, setCreatedCredentials] = useState<{ open: boolean; name?: string; email?: string; password?: string }>({ open: false });
+  const [showCreatePassword, setShowCreatePassword] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const hasAnimatedRef = useRef(false);
 
@@ -46,6 +80,41 @@ export default function ClientsPage() {
   const activeUsers = users.filter((user) => user.isActive !== false).length;
   const activeRestaurants = restaurants.filter((restaurant) => restaurant.isActive).length;
   const pausedRestaurants = restaurants.filter((restaurant) => !restaurant.isActive).length;
+  const usersWithoutRestaurant = users.filter((user) => !user.restaurant).length;
+  const usersLinkedToInactiveStore = users.filter((user) => user.restaurant && (user.restaurant as any).isActive === false).length;
+  const storesWithoutClient = restaurants.filter((restaurant) => {
+    if (!Array.isArray(restaurant.users)) return true;
+    return !restaurant.users.some((user: any) => user.role !== 'SUPER_ADMIN');
+  }).length;
+
+  const inconsistentUsersBase = users.filter((user) => {
+    if (!user.restaurant) return true;
+    return (user.restaurant as any).isActive === false;
+  });
+
+  const inconsistentStoresBase = restaurants.filter((restaurant) => {
+    if (!Array.isArray(restaurant.users)) return true;
+    const nonSuperUsers = restaurant.users.filter((user: any) => user.role !== 'SUPER_ADMIN');
+    return nonSuperUsers.length === 0;
+  });
+
+  const inconsistentUsers = inconsistencyScope === 'critical'
+    ? inconsistentUsersBase.filter((user) => !user.restaurant)
+    : inconsistentUsersBase;
+
+  const inconsistentStores = inconsistencyScope === 'critical'
+    ? inconsistentStoresBase.filter((store) => store.isActive)
+    : inconsistentStoresBase;
+
+  const sortedRestaurants = [...restaurants].sort((a, b) => {
+    if (restaurantSort === 'retry_desc') {
+      const aTime = a.lastRetryAt ? new Date(a.lastRetryAt).getTime() : 0;
+      const bTime = b.lastRetryAt ? new Date(b.lastRetryAt).getTime() : 0;
+      return bTime - aTime;
+    }
+
+    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+  });
 
   useEffect(() => {
     const userData = localStorage.getItem("@FoodSystem:user");
@@ -137,12 +206,108 @@ export default function ClientsPage() {
   // server-side filtered users are loaded into `users`
   const filteredUsers = users;
 
+  const sortedUsers = [...filteredUsers].sort((a, b) => {
+    if (userSort === 'name_asc') {
+      return a.name.localeCompare(b.name, 'pt-BR');
+    }
+
+    if (userSort === 'pending_first') {
+      if (a.isApproved === b.isApproved) return 0;
+      return a.isApproved ? 1 : -1;
+    }
+
+    return 0;
+  });
+
+  const createPasswordChecks = {
+    minLength: formData.password.length >= 8,
+    hasUpper: /[A-Z]/.test(formData.password),
+    hasLower: /[a-z]/.test(formData.password),
+    hasNumber: /\d/.test(formData.password),
+    hasSpecial: /[^A-Za-z0-9]/.test(formData.password),
+  };
+
+  const createPasswordStrength = Object.values(createPasswordChecks).filter(Boolean).length;
+  const isCreateNameValid = formData.name.trim().length >= 3;
+  const isCreateEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim());
+  const isCreatePasswordValid = createPasswordStrength >= 4;
+  const canSubmitCreateClient = isCreateNameValid && isCreateEmailValid && isCreatePasswordValid && !isSaving;
+
+  const generateStrongPassword = () => {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%*?';
+    const randomChar = () => chars[Math.floor(Math.random() * chars.length)];
+
+    let generated = '';
+    while (generated.length < 14) {
+      generated += randomChar();
+    }
+
+    // Garante diversidade mínima para evitar senha fraca.
+    const safeGenerated = `Aa1!${generated.slice(4)}`;
+    setFormData((prev) => ({ ...prev, password: safeGenerated }));
+    setShowCreatePassword(true);
+    toast.success('Senha forte gerada');
+  };
+
+  const copyGeneratedPassword = async () => {
+    const password = formData.password.trim();
+    if (!password) {
+      toast.error('Nenhuma senha para copiar');
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(password);
+      toast.success('Senha copiada');
+    } catch {
+      toast.error('Não foi possível copiar a senha');
+    }
+  };
+
+  const copyCreatedCredentials = async () => {
+    if (!createdCredentials.email || !createdCredentials.password) {
+      toast.error('Credenciais indisponíveis para copiar');
+      return;
+    }
+
+    const content = `Cliente: ${createdCredentials.name || '-'}\nEmail: ${createdCredentials.email}\nSenha inicial: ${createdCredentials.password}`;
+
+    try {
+      await navigator.clipboard.writeText(content);
+      toast.success('Credenciais copiadas');
+    } catch {
+      toast.error('Não foi possível copiar as credenciais');
+    }
+  };
+
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!isCreateNameValid) {
+      toast.error('Nome deve ter pelo menos 3 caracteres');
+      return;
+    }
+
+    if (!isCreateEmailValid) {
+      toast.error('Informe um email válido');
+      return;
+    }
+
+    if (!isCreatePasswordValid) {
+      toast.error('Senha inicial fraca. Use no mínimo força 4/5.');
+      return;
+    }
+
     try {
       setIsSaving(true);
+      const credentialsSnapshot = {
+        name: formData.name,
+        email: formData.email,
+        password: formData.password,
+      };
       await api.post("/admin/users", formData);
       toast.success("Cliente cadastrado com sucesso");
+      setCreatedCredentials({ open: true, ...credentialsSnapshot });
       setFormData({ name: "", email: "", password: "" });
       await loadUsers();
     } catch (error: any) {
@@ -364,6 +529,23 @@ export default function ClientsPage() {
           </div>
         </div>
       )}
+      {createdCredentials.open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-lg rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl">
+            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-600">Cadastro concluído</p>
+            <h3 className="mt-1 text-xl font-black text-slate-950">Credenciais iniciais do cliente</h3>
+            <div className="mt-4 space-y-2 rounded-2xl border border-slate-100 bg-slate-50 p-4 text-sm text-slate-700">
+              <p><strong>Cliente:</strong> {createdCredentials.name || '-'}</p>
+              <p><strong>Email:</strong> {createdCredentials.email || '-'}</p>
+              <p><strong>Senha:</strong> {createdCredentials.password || '-'}</p>
+            </div>
+            <div className="mt-4 flex justify-end gap-2">
+              <button onClick={copyCreatedCredentials} className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-600">Copiar tudo</button>
+              <button onClick={() => setCreatedCredentials({ open: false })} className="rounded-full bg-slate-950 px-4 py-2 text-sm font-bold text-white">Fechar</button>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="clients-hero system-hero-band relative overflow-hidden rounded-[3.5rem] p-6 md:p-8">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(249,115,22,0.12),transparent_30%),linear-gradient(135deg,rgba(15,23,42,0.02),transparent_45%)]" />
         <div className="relative p-8 md:p-10 flex flex-col gap-8">
@@ -373,7 +555,13 @@ export default function ClientsPage() {
               <h1 className="text-heading-1 font-display font-bold text-slate-950 uppercase tracking-tight">Clientes e Liberações</h1>
               <p className="mt-2 max-w-2xl text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em]">Curadoria de acessos, aprovações e estado operacional das lojas.</p>
             </div>
-            <button onClick={() => document.getElementById('create-client')?.scrollIntoView({ behavior: 'smooth', block: 'start' })} className="h-16 px-10 bg-slate-950 text-white rounded-full font-body font-bold text-label uppercase tracking-[0.06em] flex items-center gap-3 shadow-2xl shadow-slate-950/20 hover:bg-primary transition-all whitespace-nowrap active:scale-95">
+            <button
+              onClick={() => {
+                setViewMode('users');
+                setTimeout(() => document.getElementById('create-client')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
+              }}
+              className="h-16 px-10 bg-slate-950 text-white rounded-full font-body font-bold text-label uppercase tracking-[0.06em] flex items-center gap-3 shadow-2xl shadow-slate-950/20 hover:bg-primary transition-all whitespace-nowrap active:scale-95"
+            >
               <Sparkles size={20} /> Novo cliente
             </button>
           </div>
@@ -415,17 +603,136 @@ export default function ClientsPage() {
         </div>
       </div>
 
+      <div className="clients-panel rounded-[3rem] border border-slate-50 bg-white p-6 shadow-sm">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setViewMode('users')}
+              className={`rounded-full px-5 py-2.5 text-[10px] font-black uppercase tracking-[0.2em] transition ${viewMode === 'users' ? 'bg-slate-950 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+            >
+              Usuários
+            </button>
+            <button
+              onClick={() => setViewMode('stores')}
+              className={`rounded-full px-5 py-2.5 text-[10px] font-black uppercase tracking-[0.2em] transition ${viewMode === 'stores' ? 'bg-slate-950 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+            >
+              Lojas
+            </button>
+            <button
+              onClick={() => setViewMode('inconsistencies')}
+              className={`rounded-full px-5 py-2.5 text-[10px] font-black uppercase tracking-[0.2em] transition ${viewMode === 'inconsistencies' ? 'bg-slate-950 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+            >
+              Inconsistências
+            </button>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="rounded-full bg-amber-50 px-4 py-2 text-[10px] font-black uppercase tracking-[0.2em] text-amber-700">Usuários sem loja: {usersWithoutRestaurant}</span>
+            <span className="rounded-full bg-rose-50 px-4 py-2 text-[10px] font-black uppercase tracking-[0.2em] text-rose-700">Usuários em loja inativa: {usersLinkedToInactiveStore}</span>
+            <span className="rounded-full bg-sky-50 px-4 py-2 text-[10px] font-black uppercase tracking-[0.2em] text-sky-700">Lojas sem cliente: {storesWithoutClient}</span>
+          </div>
+        </div>
+      </div>
+
+      {viewMode === 'users' && (
       <div className="grid gap-6 xl:grid-cols-[0.92fr_1.08fr] items-start">
-        <form id="create-client" onSubmit={handleCreateUser} className="clients-panel rounded-[3rem] border border-slate-50 bg-white p-8 shadow-sm space-y-5 sticky top-6">
+        <form id="create-client" onSubmit={handleCreateUser} className="clients-panel rounded-[3rem] border border-slate-50 bg-white p-8 shadow-sm space-y-6 sticky top-6">
           <div>
             <p className="text-label font-body font-bold text-primary uppercase tracking-[0.2em]">Novo cliente</p>
             <h2 className="mt-1 text-heading-2 font-display font-bold text-slate-950 uppercase tracking-tight">Criar acesso</h2>
-            <p className="text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em]">Defina nome, email e senha inicial para liberar o onboarding.</p>
+            <p className="text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em]">Cadastro rápido com senha assistida e validação antes da liberação.</p>
           </div>
-          <input required value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} placeholder="Nome do cliente" className="h-16 px-6 rounded-3xl border border-slate-100 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-slate-950/5 transition-all font-body font-medium text-slate-600 text-label uppercase tracking-[0.04em] outline-none" />
-          <input required type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} placeholder="email@cliente.com" className="h-16 px-6 rounded-3xl border border-slate-100 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-slate-950/5 transition-all font-body font-medium text-slate-600 text-label uppercase tracking-[0.04em] outline-none" />
-          <input required type="password" value={formData.password} onChange={(e) => setFormData({ ...formData, password: e.target.value })} placeholder="Senha inicial" className="h-16 px-6 rounded-3xl border border-slate-100 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-slate-950/5 transition-all font-body font-medium text-slate-600 text-label uppercase tracking-[0.04em] outline-none" />
-          <button type="submit" disabled={isSaving} className="h-16 px-10 bg-slate-950 text-white rounded-full font-body font-bold text-label uppercase tracking-[0.06em] flex items-center gap-3 shadow-2xl shadow-slate-950/20 hover:bg-primary transition-all whitespace-nowrap active:scale-95 disabled:opacity-60">{isSaving ? <Loader2 className="animate-spin" /> : <><Plus size={14} /> Cadastrar cliente</>}</button>
+
+          <div className="grid gap-4">
+            <div>
+              <label className="mb-2 block text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Nome do cliente</label>
+              <input
+                required
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                placeholder="Ex: João Silva"
+                className="h-14 w-full px-5 rounded-2xl border border-slate-100 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-slate-950/5 transition-all font-body font-medium text-slate-700 text-sm tracking-[0.02em] outline-none"
+              />
+              {formData.name.length > 0 && !isCreateNameValid && (
+                <p className="mt-2 text-[11px] font-bold uppercase tracking-[0.12em] text-rose-600">Nome mínimo de 3 caracteres</p>
+              )}
+            </div>
+
+            <div>
+              <label className="mb-2 block text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Email de acesso</label>
+              <input
+                required
+                type="email"
+                value={formData.email}
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                placeholder="email@cliente.com"
+                className="h-14 w-full px-5 rounded-2xl border border-slate-100 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-slate-950/5 transition-all font-body font-medium text-slate-700 text-sm tracking-[0.02em] outline-none"
+              />
+              {formData.email.length > 0 && !isCreateEmailValid && (
+                <p className="mt-2 text-[11px] font-bold uppercase tracking-[0.12em] text-rose-600">Formato de email inválido</p>
+              )}
+            </div>
+
+            <div>
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Senha inicial</label>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={copyGeneratedPassword}
+                    className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-slate-600"
+                  >
+                    Copiar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={generateStrongPassword}
+                    className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-slate-600"
+                  >
+                    <WandSparkles size={12} /> Gerar forte
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 rounded-2xl border border-slate-100 bg-slate-50 px-3">
+                <input
+                  required
+                  type={showCreatePassword ? "text" : "password"}
+                  value={formData.password}
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  placeholder="Defina a senha inicial"
+                  className="h-14 w-full bg-transparent px-2 font-body font-medium text-slate-700 text-sm tracking-[0.02em] outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowCreatePassword((prev) => !prev)}
+                  className="rounded-full p-2 text-slate-500 hover:bg-white"
+                  aria-label={showCreatePassword ? 'Ocultar senha' : 'Mostrar senha'}
+                >
+                  {showCreatePassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
+
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <span className={`rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.18em] ${createPasswordChecks.minLength ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>8+ chars</span>
+                <span className={`rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.18em] ${createPasswordChecks.hasUpper ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>Maiúscula</span>
+                <span className={`rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.18em] ${createPasswordChecks.hasLower ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>Minúscula</span>
+                <span className={`rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.18em] ${createPasswordChecks.hasNumber ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>Número</span>
+                <span className={`rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.18em] ${createPasswordChecks.hasSpecial ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>Especial</span>
+              </div>
+
+              <p className="mt-2 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">
+                Força atual: {createPasswordStrength}/5
+              </p>
+              {formData.password.length > 0 && !isCreatePasswordValid && (
+                <p className="mt-2 text-[11px] font-bold uppercase tracking-[0.12em] text-rose-600">Use uma senha com força mínima 4/5</p>
+              )}
+            </div>
+          </div>
+
+          <button type="submit" disabled={!canSubmitCreateClient} className="h-14 w-full px-10 bg-slate-950 text-white rounded-full font-body font-bold text-label uppercase tracking-[0.06em] flex items-center justify-center gap-3 shadow-2xl shadow-slate-950/20 hover:bg-primary transition-all active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed">
+            {isSaving ? <Loader2 className="animate-spin" /> : <><Plus size={14} /> Cadastrar cliente</>}
+          </button>
         </form>
 
         <div className="clients-panel rounded-[3rem] border border-slate-50 bg-white p-8 shadow-sm">
@@ -438,7 +745,7 @@ export default function ClientsPage() {
               <div className="rounded-2xl bg-slate-50 px-4 py-2 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">{selected.length} selecionado(s)</div>
             </div>
 
-            <div className="grid gap-4 xl:grid-cols-[1.35fr_0.7fr_0.5fr_0.5fr_auto_auto] clients-filters">
+            <div className="grid gap-4 xl:grid-cols-[1.2fr_0.7fr_0.7fr_0.5fr_0.5fr_auto_auto] clients-filters">
               <div className="flex h-16 items-center gap-2 rounded-3xl border border-slate-100 bg-slate-50 px-5 focus-within:border-primary focus-within:bg-white transition-all shadow-inner shadow-slate-50/80">
                 <Search size={18} className="text-slate-300" />
                 <input placeholder="Buscar nome ou email" value={search} onChange={(e) => setSearch(e.target.value)} className="h-full w-full bg-transparent outline-none font-body font-medium text-slate-600 text-label uppercase tracking-[0.04em]" />
@@ -451,27 +758,52 @@ export default function ClientsPage() {
                   <option value="approved">Liberado</option>
                 </select>
               </div>
+              <div className="flex h-16 items-center gap-2 rounded-3xl border border-slate-100 bg-slate-50 px-5 shadow-inner shadow-slate-50/80">
+                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Ordem</label>
+                <select value={userSort} onChange={(e) => setUserSort(e.target.value as 'recent' | 'name_asc' | 'pending_first')} className="h-full w-full bg-transparent outline-none font-body font-medium text-slate-600 text-label uppercase tracking-[0.04em]">
+                  <option value="recent">Mais recentes</option>
+                  <option value="name_asc">Nome (A-Z)</option>
+                  <option value="pending_first">Pendentes primeiro</option>
+                </select>
+              </div>
               <button onClick={() => loadUsers(1, perPage)} className="h-16 px-6 rounded-full border border-slate-100 bg-white text-label font-body font-bold text-slate-400 uppercase tracking-[0.06em] transition hover:bg-slate-50 shadow-sm">Buscar</button>
               <button onClick={() => { setSearch(''); setFilter('all'); loadUsers(1, perPage); }} className="h-16 px-6 rounded-full border border-slate-100 bg-white text-label font-body font-bold text-slate-400 uppercase tracking-[0.06em] transition hover:bg-slate-50 shadow-sm">Limpar</button>
-              <button onClick={() => { const q = new URLSearchParams(); if (search) q.set('search', search); if (filter) q.set('filter', filter); window.open(`http://localhost:8000/api/admin/users/export?${q.toString()}`, '_blank'); }} className="h-16 px-6 rounded-full bg-slate-950 text-white text-label font-body font-bold uppercase tracking-[0.06em] transition hover:bg-primary shadow-xl shadow-slate-950/20">Exportar CSV</button>
+              <button
+                onClick={async () => {
+                  try {
+                    await downloadUsersCsv(search, filter);
+                    toast.success("CSV exportado com sucesso");
+                  } catch (error: any) {
+                    toast.error(error.message || "Erro ao exportar CSV");
+                  }
+                }}
+                className="h-16 px-6 rounded-full bg-slate-950 text-white text-label font-body font-bold uppercase tracking-[0.06em] transition hover:bg-primary shadow-xl shadow-slate-950/20"
+              >
+                Exportar CSV
+              </button>
             </div>
           </div>
 
           <div className="mt-4 flex flex-wrap items-center gap-2 rounded-4xl bg-slate-50 p-4 border border-slate-100">
-            <button onClick={selectAll} className="rounded-full border border-slate-100 bg-white px-4 py-3 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">{selected.length === filteredUsers.length ? 'Desmarcar tudo' : 'Selecionar tudo'}</button>
+            <button onClick={selectAll} className="rounded-full border border-slate-100 bg-white px-4 py-3 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">{selected.length === sortedUsers.length ? 'Desmarcar tudo' : 'Selecionar tudo'}</button>
             <button onClick={() => handleBulkAction('approve')} className="rounded-full bg-primary px-4 py-3 text-[10px] font-black uppercase tracking-[0.2em] text-white">Aprovar selecionados</button>
             <button onClick={() => handleBulkAction('delete')} className="rounded-full bg-rose-600 px-4 py-3 text-[10px] font-black uppercase tracking-[0.2em] text-white">Excluir selecionados</button>
           </div>
 
-          {isLoading ? <div className="py-10 text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em]">Carregando...</div> : filteredUsers.length === 0 ? <div className="py-10 text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em]">Nenhum cliente</div> : (
+          {isLoading ? <div className="py-10 text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em]">Carregando...</div> : sortedUsers.length === 0 ? <div className="py-10 text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em]">Nenhum cliente</div> : (
             <div className="mt-4 space-y-4">
-              {filteredUsers.map((u) => (
+              {sortedUsers.map((u) => (
                 <div key={u.id} className="clients-card flex flex-col gap-4 rounded-[2.5rem] border border-slate-50 bg-white p-5 shadow-sm hover:shadow-2xl hover:shadow-slate-200/50 transition-all duration-700 md:flex-row md:items-center md:justify-between group">
                   <div className="flex items-start gap-3">
                     <input type="checkbox" checked={selected.includes(u.id)} onChange={() => toggleSelect(u.id)} className="mt-1 h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary" />
                     <div>
                       <div className="text-body-strong font-display font-bold text-slate-950 uppercase tracking-tight leading-tight">{u.name}</div>
                       <div className="text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em] mt-1">{u.email}</div>
+                      <div className="mt-2 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">
+                        {u.restaurant
+                          ? `Loja vinculada: ${u.restaurant.name} (${u.restaurant.slug})`
+                          : 'Sem loja vinculada'}
+                      </div>
                       <div className="mt-3 flex flex-wrap items-center gap-2">
                         <span className={`inline-flex items-center gap-2 rounded-2xl px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.2em] ${u.isApproved ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>{u.isApproved ? 'Liberado' : 'Pendente'}</span>
                         <span className={`inline-flex items-center gap-2 rounded-2xl px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.2em] ${u.isActive ? 'bg-slate-50 text-slate-600' : 'bg-slate-100 text-slate-400'}`}>{u.isActive ? 'Ativo' : 'Pausado'}</span>
@@ -508,7 +840,9 @@ export default function ClientsPage() {
           </div>
         </div>
       </div>
+      )}
 
+      {viewMode === 'stores' && (
       <div>
         <div className="clients-panel rounded-[3rem] border border-slate-50 bg-white p-8 shadow-sm">
           <div className="flex items-center justify-between gap-3">
@@ -516,18 +850,27 @@ export default function ClientsPage() {
               <p className="text-label font-body font-bold text-primary uppercase tracking-[0.2em]">Lojas cadastradas</p>
               <h2 className="text-heading-2 font-display font-bold text-slate-950 uppercase tracking-tight">Operação por status</h2>
             </div>
-            <div className="flex items-center gap-2 rounded-3xl border border-slate-100 bg-slate-50 px-4 py-3">
-              <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Filtrar</label>
-              <select value={restaurantFilter} onChange={(e) => { setRestaurantFilter(e.target.value as any); loadRestaurants(e.target.value); }} className="bg-transparent text-label font-body font-medium text-slate-600 uppercase tracking-[0.04em] outline-none">
-                <option value="all">Todos</option>
-                <option value="active">Ativas</option>
-                <option value="inactive">Inativas</option>
-                <option value="READY">READY</option>
-                <option value="IN_PROGRESS">IN_PROGRESS</option>
-                <option value="PAUSED">PAUSED</option>
-                <option value="DENIED">DENIED</option>
-                <option value="PENDING">PENDING</option>
-              </select>
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="flex items-center gap-2 rounded-3xl border border-slate-100 bg-slate-50 px-4 py-3">
+                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Filtrar</label>
+                <select value={restaurantFilter} onChange={(e) => { setRestaurantFilter(e.target.value as any); loadRestaurants(e.target.value); }} className="bg-transparent text-label font-body font-medium text-slate-600 uppercase tracking-[0.04em] outline-none">
+                  <option value="all">Todos</option>
+                  <option value="active">Ativas</option>
+                  <option value="inactive">Inativas</option>
+                  <option value="READY">READY</option>
+                  <option value="IN_PROGRESS">IN_PROGRESS</option>
+                  <option value="PAUSED">PAUSED</option>
+                  <option value="DENIED">DENIED</option>
+                  <option value="PENDING">PENDING</option>
+                </select>
+              </div>
+              <div className="flex items-center gap-2 rounded-3xl border border-slate-100 bg-slate-50 px-4 py-3">
+                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Ordenar</label>
+                <select value={restaurantSort} onChange={(e) => setRestaurantSort(e.target.value as 'created_desc' | 'retry_desc')} className="bg-transparent text-label font-body font-medium text-slate-600 uppercase tracking-[0.04em] outline-none">
+                  <option value="created_desc">Mais novas</option>
+                  <option value="retry_desc">Último retry</option>
+                </select>
+              </div>
             </div>
           </div>
           <div className="space-y-4 mt-4">
@@ -546,20 +889,36 @@ export default function ClientsPage() {
                   </div>
                 ))}
               </div>
-            ) : restaurants.length === 0 ? (
+            ) : sortedRestaurants.length === 0 ? (
               <div className="py-8 text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em]">Nenhuma loja cadastrada.</div>
             ) : (
-              restaurants.map((r) => {
+              sortedRestaurants.map((r) => {
                 const prov = (r.provisioningStatus || '').toString();
                 const provClass = prov === 'READY' ? 'bg-emerald-100 text-emerald-700' : prov === 'IN_PROGRESS' ? 'bg-sky-100 text-sky-700' : prov === 'DENIED' ? 'bg-rose-100 text-rose-700' : 'bg-amber-100 text-amber-700';
+                const linkedUsers = Array.isArray(r.users)
+                  ? r.users.filter((user: any) => user.role !== 'SUPER_ADMIN')
+                  : [];
+                const linkedUsersLabel = linkedUsers.length > 0
+                  ? linkedUsers.map((user: any) => user.email || user.name).join(', ')
+                  : 'Sem cliente vinculado';
                 return (
                   <div key={r.id} className="clients-card flex flex-col gap-4 rounded-[2.5rem] border border-slate-50 bg-white p-5 shadow-sm hover:shadow-2xl hover:shadow-slate-200/50 transition-all duration-700 md:flex-row md:items-center md:justify-between group">
                     <div>
                       <div className="text-body-strong font-display font-bold text-slate-950 uppercase tracking-tight leading-tight">{r.name}</div>
+                      <div className="mt-2 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">Cliente(s): {linkedUsersLabel}</div>
                       <div className="flex flex-wrap items-center gap-2 text-sm mt-3">
                         <span className="text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em]">{r.slug}</span>
                         <span title={r.isActive ? 'Loja ativa e operante' : 'Loja inativa'} aria-label={r.isActive ? 'Ativa' : 'Inativa'} className={`rounded-2xl px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.2em] ${r.isActive ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-500'}`}>{r.isActive ? 'Ativa' : 'Inativa'}</span>
                         <span title={`Provisioning: ${prov}`} aria-label={`Provisioning ${prov}`} className={`rounded-2xl px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.2em] ${provClass}`}>{prov}</span>
+                        {r.lastRetryReason && (
+                          <span
+                            title={r.lastRetryAt ? `Ultimo retry em ${new Date(r.lastRetryAt).toLocaleString()}: ${r.lastRetryReason}` : `Ultimo retry: ${r.lastRetryReason}`}
+                            aria-label="Loja com histórico de retry"
+                            className="rounded-2xl px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.2em] bg-amber-100 text-amber-700"
+                          >
+                            Retry registrado
+                          </span>
+                        )}
 
                         <select
                           value={r.planId || ''}
@@ -574,6 +933,39 @@ export default function ClientsPage() {
                       </div>
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
+                      <button
+                        onClick={() => {
+                          const q = new URLSearchParams();
+                          q.set("status", (r.provisioningStatus || "all").toString());
+                          q.set("restaurant", r.slug || r.name || "");
+                          window.location.href = `/admin/provisioning?${q.toString()}`;
+                        }}
+                        className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-[10px] font-black uppercase tracking-[0.2em] text-slate-600"
+                      >
+                        <Workflow size={14} /> Provisioning
+                      </button>
+                      <button
+                        onClick={() => {
+                          const q = new URLSearchParams();
+                          q.set("hasRetry", "1");
+                          q.set("restaurant", r.slug || r.name || "");
+                          window.location.href = `/admin/provisioning?${q.toString()}`;
+                        }}
+                        className="inline-flex items-center gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-[10px] font-black uppercase tracking-[0.2em] text-amber-700"
+                      >
+                        <RefreshCcw size={14} /> Com retry
+                      </button>
+                      <button
+                        onClick={() => {
+                          const q = new URLSearchParams();
+                          q.set("subjectType", "restaurant");
+                          q.set("search", r.slug || r.name || "");
+                          window.location.href = `/admin/audit?${q.toString()}`;
+                        }}
+                        className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-[10px] font-black uppercase tracking-[0.2em] text-slate-600"
+                      >
+                        <FileSearch size={14} /> Auditoria
+                      </button>
                       {r.isActive ? (
                         <button aria-label="Pausar loja" onClick={() => handlePauseRestaurant(r.id)} className="rounded-2xl bg-amber-500 px-4 py-3 text-[10px] font-black uppercase tracking-[0.2em] text-white">Pausar</button>
                       ) : (
@@ -588,6 +980,100 @@ export default function ClientsPage() {
           </div>
         </div>
       </div>
+      )}
+
+      {viewMode === 'inconsistencies' && (
+      <div className="grid gap-6 xl:grid-cols-2">
+        <div className="clients-panel rounded-[3rem] border border-rose-100 bg-white p-8 shadow-sm">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-label font-body font-bold text-rose-500 uppercase tracking-[0.2em]">Usuários</p>
+              <h2 className="text-heading-2 font-display font-bold text-slate-950 uppercase tracking-tight">Sem vínculo correto</h2>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setInconsistencyScope('all')}
+                className={`rounded-full px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.2em] ${inconsistencyScope === 'all' ? 'bg-slate-950 text-white' : 'bg-slate-100 text-slate-600'}`}
+              >
+                Todas
+              </button>
+              <button
+                onClick={() => setInconsistencyScope('critical')}
+                className={`rounded-full px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.2em] ${inconsistencyScope === 'critical' ? 'bg-rose-600 text-white' : 'bg-rose-50 text-rose-700'}`}
+              >
+                Críticas
+              </button>
+              <span className="rounded-full bg-rose-50 px-4 py-2 text-[10px] font-black uppercase tracking-[0.2em] text-rose-700">{inconsistentUsers.length}</span>
+            </div>
+          </div>
+          <div className="mt-4 space-y-2">
+            {inconsistentUsers.length === 0 ? (
+              <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4 text-sm text-slate-500">Nenhuma inconsistência encontrada.</div>
+            ) : (
+              inconsistentUsers.slice(0, 8).map((user) => (
+                <div key={user.id} className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
+                  <div className="text-sm font-bold text-slate-900">{user.name}</div>
+                  <div className="text-xs text-slate-500">{user.email}</div>
+                  <div className="mt-1 text-[11px] font-bold uppercase tracking-[0.12em] text-rose-700">{user.restaurant ? 'Loja vinculada inativa' : 'Sem loja vinculada'}</div>
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                    {!user.isApproved && (
+                      <button onClick={() => handleApprove(user.id)} className="rounded-full bg-slate-950 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.2em] text-white">Liberar</button>
+                    )}
+                    {user.isActive === false && (
+                      <button onClick={() => handleActivateUser(user.id)} className="rounded-full bg-emerald-600 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.2em] text-white">Ativar acesso</button>
+                    )}
+                    {!user.restaurant && (
+                      <button onClick={() => setViewMode('users')} className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.2em] text-slate-600">Revisar vínculo</button>
+                    )}
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+          <button onClick={() => setViewMode('users')} className="mt-4 rounded-full bg-slate-950 px-5 py-2 text-[10px] font-black uppercase tracking-[0.2em] text-white">Ir para usuários</button>
+        </div>
+
+        <div className="clients-panel rounded-[3rem] border border-sky-100 bg-white p-8 shadow-sm">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-label font-body font-bold text-sky-500 uppercase tracking-[0.2em]">Lojas</p>
+              <h2 className="text-heading-2 font-display font-bold text-slate-950 uppercase tracking-tight">Sem cliente responsável</h2>
+            </div>
+            <span className="rounded-full bg-sky-50 px-4 py-2 text-[10px] font-black uppercase tracking-[0.2em] text-sky-700">{inconsistentStores.length}</span>
+          </div>
+          <div className="mt-4 space-y-2">
+            {inconsistentStores.length === 0 ? (
+              <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4 text-sm text-slate-500">Nenhuma inconsistência encontrada.</div>
+            ) : (
+              inconsistentStores.slice(0, 8).map((store) => (
+                <div key={store.id} className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
+                  <div className="text-sm font-bold text-slate-900">{store.name}</div>
+                  <div className="text-xs text-slate-500">{store.slug}</div>
+                  <div className="mt-1 text-[11px] font-bold uppercase tracking-[0.12em] text-sky-700">Sem cliente vinculado</div>
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                    {!store.isActive && (
+                      <button onClick={() => handleApproveRestaurant(store.id)} className="rounded-full bg-slate-950 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.2em] text-white">Ativar loja</button>
+                    )}
+                    <button
+                      onClick={() => {
+                        const q = new URLSearchParams();
+                        q.set('status', (store.provisioningStatus || 'all').toString());
+                        q.set('restaurant', store.slug || store.name || '');
+                        window.location.href = `/admin/provisioning?${q.toString()}`;
+                      }}
+                      className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.2em] text-slate-600"
+                    >
+                      Abrir provisioning
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+          <button onClick={() => setViewMode('stores')} className="mt-4 rounded-full bg-slate-950 px-5 py-2 text-[10px] font-black uppercase tracking-[0.2em] text-white">Ir para lojas</button>
+        </div>
+      </div>
+      )}
     </div>
   );
 }

@@ -99,7 +99,7 @@ export default function CashierPage() {
         expectedAmount: 0,
     });
 
-    const [openingAmount, setOpeningAmount] = useState("0");
+    const [openingAmount, setOpeningAmount] = useState("");
     const [closingAmount, setClosingAmount] = useState("");
     const [closingNotes, setClosingNotes] = useState("");
     const [movementType, setMovementType] = useState<"SUPPLY" | "WITHDRAWAL" | "ADJUSTMENT">("SUPPLY");
@@ -127,6 +127,9 @@ export default function CashierPage() {
     const directSaleAmountNumber = Number(
         directSaleItems.reduce((acc, item) => acc + (item.price * item.quantity), 0).toFixed(2)
     );
+    const openingAmountNumber = parseMoneyInput(openingAmount);
+    const canOpenSession = !Number.isNaN(openingAmountNumber) && openingAmountNumber > 0;
+    const requiresMovementReason = movementType === "WITHDRAWAL" || movementType === "ADJUSTMENT";
     const directSaleCashReceivedNumber = parseMoneyInput(directSaleCashReceivedAmount || 0);
     const directSaleChangeDue = directSalePaymentMethod === "CASH"
         ? Number((directSaleCashReceivedNumber - directSaleAmountNumber).toFixed(2))
@@ -237,8 +240,8 @@ export default function CashierPage() {
 
     const handleOpenSession = async () => {
         const parsed = parseMoneyInput(openingAmount);
-        if (Number.isNaN(parsed) || parsed < 0) {
-            toast.error("Valor de abertura invalido");
+        if (Number.isNaN(parsed) || parsed <= 0) {
+            toast.error("Informe um valor de abertura maior que zero");
             return;
         }
 
@@ -259,6 +262,11 @@ export default function CashierPage() {
         const parsed = parseMoneyInput(movementAmount);
         if (Number.isNaN(parsed) || parsed <= 0) {
             toast.error("Valor do movimento invalido");
+            return;
+        }
+
+        if (requiresMovementReason && !movementReason.trim()) {
+            toast.error("Informe o motivo para sangria ou ajuste");
             return;
         }
 
@@ -453,6 +461,8 @@ export default function CashierPage() {
                                         h2 { margin: 0 0 2px; font-size: 11px; text-transform: uppercase; }
                                         .line { display: flex; justify-content: space-between; margin: 2px 0; }
                                         .strong { font-weight: 700; }
+                                        .signature-block { margin-top: 10px; }
+                                        .signature-line { margin-top: 14px; border-top: 1px solid #000; text-align: center; font-size: 10px; padding-top: 3px; }
                                         table { width: 100%; border-collapse: collapse; }
                                         th, td { text-align: left; padding: 3px 0; font-size: 10px; border-bottom: 1px dotted #999; }
                                     </style>
@@ -502,6 +512,11 @@ export default function CashierPage() {
                                         </tbody>
                                     </table>
 
+                                    <div class="signature-block">
+                                        <div class="muted">Operador responsavel: ${reportSession.closedBy?.name || "Nao informado"}</div>
+                                        <div class="signature-line">Assinatura do operador</div>
+                                    </div>
+
                                     <div class="sep"></div>
                                     <div class="center muted">Impresso em ${new Date().toLocaleString()}</div>
                                 </body>
@@ -521,6 +536,9 @@ export default function CashierPage() {
                                         .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 8px; }
                                         .card { border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px; }
                                         .line { display: flex; justify-content: space-between; margin: 3px 0; }
+                                        .signature-block { margin-top: 20px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+                                        .signature-card { border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; min-height: 76px; display: flex; flex-direction: column; justify-content: flex-end; }
+                                        .signature-line { border-top: 1px solid #0f172a; padding-top: 4px; font-size: 11px; text-align: center; }
                                         table { width: 100%; border-collapse: collapse; margin-top: 8px; }
                                         th, td { border-bottom: 1px solid #e2e8f0; padding: 8px 4px; font-size: 12px; }
                                         .right { text-align: right; }
@@ -565,6 +583,16 @@ export default function CashierPage() {
                     .join("") || '<tr><td colspan="4">Sem movimentos</td></tr>'}
                                         </tbody>
                                     </table>
+
+                                    <h2>Assinaturas</h2>
+                                    <div class="signature-block">
+                                        <div class="signature-card">
+                                            <div class="signature-line">Operador de fechamento: ${reportSession.closedBy?.name || "Nao informado"}</div>
+                                        </div>
+                                        <div class="signature-card">
+                                            <div class="signature-line">Conferencia da gerencia</div>
+                                        </div>
+                                    </div>
                                 </body>
                             </html>
                         `;
@@ -747,12 +775,17 @@ export default function CashierPage() {
                                     />
                                 </label>
                                 <button
-                                    disabled={submitting}
+                                    disabled={submitting || !canOpenSession}
                                     onClick={handleOpenSession}
-                                    className="h-12 px-6 rounded-2xl bg-slate-950 text-white text-[10px] font-black uppercase tracking-[0.2em]"
+                                    className="h-12 px-6 rounded-2xl bg-slate-950 text-white text-[10px] font-black uppercase tracking-[0.2em] disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
                                     Abrir Caixa
                                 </button>
+                                {!canOpenSession && (
+                                    <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-amber-600">
+                                        Informe um valor maior que zero para abrir o caixa.
+                                    </p>
+                                )}
                             </div>
                         ) : (
                             <div className="mt-5 space-y-4">
@@ -1043,8 +1076,8 @@ export default function CashierPage() {
                                                 value={movementReason}
                                                 onChange={(e) => setMovementReason(e.target.value)}
                                                 type="text"
-                                                placeholder="Motivo"
-                                                className="h-12 rounded-2xl border border-slate-200 px-4 outline-none"
+                                                placeholder={requiresMovementReason ? "Motivo (obrigatorio)" : "Motivo"}
+                                                className={`h-12 rounded-2xl border px-4 outline-none ${requiresMovementReason ? "border-amber-300 bg-amber-50/40" : "border-slate-200"}`}
                                             />
                                         </div>
                                         <button
@@ -1054,6 +1087,11 @@ export default function CashierPage() {
                                         >
                                             Registrar Movimento
                                         </button>
+                                        {requiresMovementReason && !movementReason.trim() && (
+                                            <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-amber-600">
+                                                Sangria e ajuste exigem justificativa.
+                                            </p>
+                                        )}
                                     </>
                                 )}
                             </div>
