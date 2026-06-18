@@ -8,10 +8,9 @@ import { Footer } from "../components/layout/Footer";
 import { ProductCard } from "../components/product/ProductCard";
 import { Button } from "../../../shared/components/ui/button";
 import { useSettings } from "../../../core/hooks/useSettings";
-import { Skeleton } from "../../../shared/components/ui/skeleton";
 import { AnimatePresence, motion } from "framer-motion";
 import { Utensils, ArrowRight, Flame } from "lucide-react";
-import { cn, formatCurrency } from "../../../shared/utils";
+import { cn } from "../../../shared/utils";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 
@@ -118,6 +117,8 @@ export default function Home() {
   const heroDescription = settings?.bannerDescription || settings?.bio || "Experiência gastronômica executiva com ingredientes selecionados e preparo artesanal.";
   const heroCtaLabel = settings?.bannerCtaLabel || "Explorar Menu";
   const heroImage = settings?.bannerImage || "https://images.unsplash.com/photo-1550547660-d9450f859349?q=80&w=2000";
+  const heroImageVersion = settings?.updatedAt ? new Date(settings.updatedAt).getTime() : "default";
+  const heroImageUrl = `${heroImage}${heroImage.includes("?") ? "&" : "?"}v=${heroImageVersion}`;
 
   useEffect(() => {
     const update = () => setIsMobile(window.innerWidth < 768);
@@ -130,7 +131,7 @@ export default function Home() {
   useEffect(() => {
     setSplashReady(false);
     splashStartRef.current = Date.now();
-  }, [heroImage]);
+  }, [heroImageUrl]);
 
   useEffect(() => {
     const maxWaitTimer = window.setTimeout(() => {
@@ -246,7 +247,7 @@ export default function Home() {
                     <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(15,23,42,0.45),rgba(15,23,42,0.18)_35%,rgba(2,6,23,0.65))]" />
                     <div
                       className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-                      style={{ backgroundImage: `url(${heroImage})` }}
+                      style={{ backgroundImage: `url(${heroImageUrl})` }}
                     />
                     <div className="absolute inset-0 bg-linear-to-b from-black/20 via-black/10 to-black/55 md:bg-none md:[background:linear-gradient(to_right,rgba(15,23,42,0.6),rgba(15,23,42,0.3),transparent)]" />
                     <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(239,68,68,0.18),transparent_32%),linear-gradient(180deg,rgba(15,23,42,0.12),rgba(2,6,23,0.55))]" />
