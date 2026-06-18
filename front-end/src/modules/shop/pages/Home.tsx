@@ -24,6 +24,7 @@ export default function Home() {
   const [isNavOpen, setIsNavOpen] = useState(false);
   const [splashReady, setSplashReady] = useState(false);
   const [forceShowContent, setForceShowContent] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
   const splashStartRef = useRef<number>(Date.now());
 
   const rootRef = useRef<HTMLDivElement>(null);
@@ -31,6 +32,7 @@ export default function Home() {
 
   useEffect(() => {
     if (productsLoading || !rootRef.current) return;
+    if (isMobile) return;
 
     // Aguarda um pequeno delay para garantir que o layout final do Next.js terminou de assentar
     const timer = setTimeout(() => {
@@ -102,7 +104,7 @@ export default function Home() {
       clearTimeout(timer);
       ScrollTrigger.getAll().forEach(t => t.kill());
     };
-  }, [productsLoading]);
+  }, [productsLoading, isMobile]);
 
   const filteredProducts = useMemo(() => {
     if (!products) return [];
@@ -116,6 +118,14 @@ export default function Home() {
   const heroDescription = settings?.bannerDescription || settings?.bio || "Experiência gastronômica executiva com ingredientes selecionados e preparo artesanal.";
   const heroCtaLabel = settings?.bannerCtaLabel || "Explorar Menu";
   const heroImage = settings?.bannerImage || "https://images.unsplash.com/photo-1550547660-d9450f859349?q=80&w=2000";
+
+  useEffect(() => {
+    const update = () => setIsMobile(window.innerWidth < 768);
+    update();
+    window.addEventListener("resize", update);
+
+    return () => window.removeEventListener("resize", update);
+  }, []);
 
   useEffect(() => {
     setSplashReady(false);
@@ -226,18 +236,23 @@ export default function Home() {
             {/* Hero Section Premium com GSAP */}
             <section className="relative mt-0">
               <div className="relative left-1/2 w-dvw max-w-none -translate-x-1/2">
-                <div ref={heroRef} className="home-hero-art relative overflow-hidden shadow-[0_30px_80px_rgba(0,0,0,0.24)] min-h-[72vw] sm:min-h-80 md:min-h-150 flex items-center">
+                <div
+                  ref={heroRef}
+                  className="home-hero-art relative overflow-hidden shadow-[0_30px_80px_rgba(0,0,0,0.24)] aspect-[4/5] sm:aspect-[16/10] md:aspect-[21/9] min-h-[540px] sm:min-h-80 md:min-h-[600px] flex items-end"
+                  style={{ backgroundColor: "#0f172a" }}
+                >
                   {/* Background Art (full-bleed) */}
                   <div className="absolute inset-0 z-0">
-                    <img
-                      src={heroImage}
-                      className="w-full h-full object-cover object-center"
-                      alt={settings?.storeName || "Fundo Gourmet"}
+                    <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(15,23,42,0.45),rgba(15,23,42,0.18)_35%,rgba(2,6,23,0.65))]" />
+                    <div
+                      className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+                      style={{ backgroundImage: `url(${heroImage})` }}
                     />
-                    <div className="absolute inset-0 bg-linear-to-b from-black/50 via-black/30 to-black/60 md:bg-none md:[background:linear-gradient(to_right,rgba(15,23,42,0.6),rgba(15,23,42,0.3),transparent)]" />
+                    <div className="absolute inset-0 bg-linear-to-b from-black/20 via-black/10 to-black/55 md:bg-none md:[background:linear-gradient(to_right,rgba(15,23,42,0.6),rgba(15,23,42,0.3),transparent)]" />
+                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(239,68,68,0.18),transparent_32%),linear-gradient(180deg,rgba(15,23,42,0.12),rgba(2,6,23,0.55))]" />
                   </div>
 
-                  <div className="relative z-10 p-5 pt-16 sm:pt-20 md:pt-12 md:p-12 max-w-2xl space-y-2 md:space-y-5">
+                  <div className="relative z-10 w-full p-5 pt-16 pb-8 sm:pt-20 sm:pb-10 md:pt-12 md:p-12 max-w-2xl space-y-2 md:space-y-5">
                     <div>
                       <div className="home-hero-badge inline-flex items-center mb-3 md:mb-6 ml-0.5 md:ml-1">
                         <div className="bg-primary/25 backdrop-blur-xl border border-primary/35 px-3 md:px-4 py-1 md:py-1.5 rounded-full inline-flex items-center gap-2 md:gap-2.5 shadow-lg shadow-primary/15">
