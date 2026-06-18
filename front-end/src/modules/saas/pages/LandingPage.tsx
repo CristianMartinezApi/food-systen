@@ -93,7 +93,7 @@ export default function LandingPage() {
         : "Tudo o que seu restaurante precisa para vender direto e operar com controle.";
     const bannerDescription = settings?.bannerDescription ?? "Cardápio digital, checkout, pedidos, caixa e painel administrativo em uma plataforma construída para a rotina do restaurante. Sem exagero, sem promessa vazia e com foco em operação real.";
     const bannerCta = settings?.bannerCtaLabel ?? "Solicitar acesso";
-    const bannerImage = settings?.bannerImage ?? "/hero-illustration.png";
+    const bannerImage = "/hero-mockup.png";
 
     const openLeadWhatsApp = () => {
         sendToWhatsApp(
@@ -187,8 +187,8 @@ export default function LandingPage() {
                         <div className="relative">
                             <div className="absolute -left-8 top-8 h-24 w-24 rounded-full bg-primary/10 blur-3xl" />
                             <div className="rounded-4xl border border-slate-200 bg-white p-5 shadow-2xl shadow-slate-200/60 md:p-7">
-                                <div className="rounded-3xl border border-slate-100 bg-slate-50 p-4">
-                                    <img src={bannerImage} alt="Apresentação do sistema" className="h-72 w-full rounded-[1.2rem] object-cover" />
+                                <div className="rounded-3xl border border-slate-100 bg-slate-50 p-2">
+                                    <img src={bannerImage} alt="Apresentação do sistema" className="w-full rounded-[1.2rem] shadow-sm" />
                                 </div>
 
                                 <div className="mt-6 grid gap-3">
@@ -207,7 +207,7 @@ export default function LandingPage() {
                 <section id="solucao" className="border-b border-slate-100 py-20 md:py-28">
                     <div className="mx-auto max-w-7xl px-4">
                         <div className="max-w-3xl">
-                            <p className="text-[10px] font-black uppercase tracking-[0.28em] text-primary">Solução</p>
+                            <p className="text-xs font-black uppercase tracking-[0.28em] text-orange-600">Solução</p>
                             <h2 className="mt-4 text-3xl font-black tracking-tighter text-slate-950 md:text-5xl">
                                 O que entregamos para o restaurante operar com mais ordem e menos improviso.
                             </h2>
@@ -216,7 +216,7 @@ export default function LandingPage() {
                         <div className="mt-12 grid gap-6 md:grid-cols-3">
                             {PRODUCT_SURFACES.map((item) => (
                                 <article key={item.title} className="rounded-4xl border border-slate-100 bg-white p-7 shadow-sm transition-shadow hover:shadow-lg">
-                                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-950 text-primary">
+                                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-950 text-orange-500">
                                         <item.icon size={20} />
                                     </div>
                                     <h3 className="mt-5 text-xl font-black tracking-tight text-slate-950">{item.title}</h3>
@@ -230,7 +230,7 @@ export default function LandingPage() {
                 <section id="para-quem" className="border-b border-slate-100 bg-slate-50 py-20 md:py-28">
                     <div className="mx-auto grid max-w-7xl grid-cols-1 gap-10 px-4 lg:grid-cols-[0.9fr_1.1fr] lg:items-start">
                         <div>
-                            <p className="text-[10px] font-black uppercase tracking-[0.28em] text-primary">Para quem é</p>
+                            <p className="text-xs font-black uppercase tracking-[0.28em] text-orange-600">Para quem é</p>
                             <h2 className="mt-4 text-3xl font-black tracking-tighter text-slate-950 md:text-5xl">
                                 Feito para quem quer profissionalizar a venda sem perder o controle da operação.
                             </h2>
@@ -243,10 +243,10 @@ export default function LandingPage() {
                             {WHO_IT_IS_FOR.map((item) => (
                                 <div key={item} className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
                                     <div className="flex items-center gap-3">
-                                        <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-950 text-primary">
+                                        <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-950 text-orange-500">
                                             <Store size={18} />
                                         </div>
-                                        <p className="text-sm font-black uppercase tracking-[0.14em] text-slate-900">{item}</p>
+                                        <p className="text-[11px] font-black uppercase tracking-[0.14em] text-slate-900">{item}</p>
                                     </div>
                                 </div>
                             ))}
@@ -257,7 +257,7 @@ export default function LandingPage() {
                 <section id="processo" className="border-b border-slate-100 py-20 md:py-28">
                     <div className="mx-auto max-w-7xl px-4">
                         <div className="max-w-3xl">
-                            <p className="text-[10px] font-black uppercase tracking-[0.28em] text-primary">Como funciona</p>
+                            <p className="text-xs font-black uppercase tracking-[0.28em] text-orange-600">Como funciona</p>
                             <h2 className="mt-4 text-3xl font-black tracking-tighter text-slate-950 md:text-5xl">
                                 A entrada é simples: organizar a loja, publicar o cardápio e começar a operar.
                             </h2>
@@ -266,7 +266,7 @@ export default function LandingPage() {
                         <div className="mt-12 grid gap-6 lg:grid-cols-3">
                             {HOW_IT_WORKS.map((item) => (
                                 <article key={item.step} className="rounded-4xl border border-slate-100 bg-white p-7 shadow-sm">
-                                    <p className="text-[10px] font-black uppercase tracking-[0.28em] text-primary">Etapa {item.step}</p>
+                                    <p className="text-xs font-black uppercase tracking-[0.28em] text-orange-600">Etapa {item.step}</p>
                                     <h3 className="mt-4 text-xl font-black tracking-tight text-slate-950">{item.title}</h3>
                                     <p className="mt-3 text-sm leading-relaxed text-slate-600">{item.description}</p>
                                 </article>
