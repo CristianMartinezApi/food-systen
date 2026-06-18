@@ -207,7 +207,7 @@ export default function LandingPage() {
                 <section id="solucao" className="border-b border-slate-100 py-20 md:py-28">
                     <div className="mx-auto max-w-7xl px-4">
                         <div className="max-w-3xl">
-                            <p className="text-xs font-black uppercase tracking-[0.28em] text-orange-600">Solução</p>
+                            <p className="text-sm font-black uppercase tracking-[0.28em] text-orange-600">Solução</p>
                             <h2 className="mt-4 text-3xl font-black tracking-tighter text-slate-950 md:text-5xl">
                                 O que entregamos para o restaurante operar com mais ordem e menos improviso.
                             </h2>
@@ -230,7 +230,7 @@ export default function LandingPage() {
                 <section id="para-quem" className="border-b border-slate-100 bg-slate-50 py-20 md:py-28">
                     <div className="mx-auto grid max-w-7xl grid-cols-1 gap-10 px-4 lg:grid-cols-[0.9fr_1.1fr] lg:items-start">
                         <div>
-                            <p className="text-xs font-black uppercase tracking-[0.28em] text-orange-600">Para quem é</p>
+                            <p className="text-sm font-black uppercase tracking-[0.28em] text-orange-600">Para quem é</p>
                             <h2 className="mt-4 text-3xl font-black tracking-tighter text-slate-950 md:text-5xl">
                                 Feito para quem quer profissionalizar a venda sem perder o controle da operação.
                             </h2>
@@ -257,7 +257,7 @@ export default function LandingPage() {
                 <section id="processo" className="border-b border-slate-100 py-20 md:py-28">
                     <div className="mx-auto max-w-7xl px-4">
                         <div className="max-w-3xl">
-                            <p className="text-xs font-black uppercase tracking-[0.28em] text-orange-600">Como funciona</p>
+                            <p className="text-sm font-black uppercase tracking-[0.28em] text-orange-600">Como funciona</p>
                             <h2 className="mt-4 text-3xl font-black tracking-tighter text-slate-950 md:text-5xl">
                                 A entrada é simples: organizar a loja, publicar o cardápio e começar a operar.
                             </h2>
@@ -266,7 +266,7 @@ export default function LandingPage() {
                         <div className="mt-12 grid gap-6 lg:grid-cols-3">
                             {HOW_IT_WORKS.map((item) => (
                                 <article key={item.step} className="rounded-4xl border border-slate-100 bg-white p-7 shadow-sm">
-                                    <p className="text-xs font-black uppercase tracking-[0.28em] text-orange-600">Etapa {item.step}</p>
+                                    <p className="text-sm font-black uppercase tracking-[0.28em] text-orange-600">Etapa {item.step}</p>
                                     <h3 className="mt-4 text-xl font-black tracking-tight text-slate-950">{item.title}</h3>
                                     <p className="mt-3 text-sm leading-relaxed text-slate-600">{item.description}</p>
                                 </article>
@@ -278,7 +278,7 @@ export default function LandingPage() {
                 <section id="acesso" className="border-b border-slate-100 bg-slate-950 py-20 text-white md:py-28">
                     <div className="mx-auto max-w-7xl px-4">
                         <div className="max-w-3xl">
-                            <p className="text-[10px] font-black uppercase tracking-[0.28em] text-primary">Acesso</p>
+                            <p className="text-sm font-black uppercase tracking-[0.28em] text-orange-500">Acesso</p>
                             <h2 className="mt-4 text-3xl font-black tracking-tighter md:text-5xl">
                                 Neste momento, a oferta mais correta é acesso guiado, configuração assistida e conversa direta com a equipe.
                             </h2>
@@ -317,7 +317,7 @@ export default function LandingPage() {
                 <section id="faq" className="border-b border-slate-100 py-20 md:py-28">
                     <div className="mx-auto max-w-7xl px-4">
                         <div className="max-w-3xl">
-                            <p className="text-[10px] font-black uppercase tracking-[0.28em] text-primary">FAQ</p>
+                            <p className="text-sm font-black uppercase tracking-[0.28em] text-orange-600">FAQ</p>
                             <h2 className="mt-4 text-3xl font-black tracking-tighter text-slate-950 md:text-5xl">
                                 Respostas diretas para perguntas que um restaurante sério faz antes de começar.
                             </h2>
@@ -339,7 +339,7 @@ export default function LandingPage() {
                         <div className="rounded-[2.25rem] border border-slate-100 bg-linear-to-br from-slate-950 to-slate-900 p-8 text-white md:p-12">
                             <div className="grid gap-8 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
                                 <div>
-                                    <p className="text-[10px] font-black uppercase tracking-[0.28em] text-primary">Próximo passo</p>
+                                    <p className="text-sm font-black uppercase tracking-[0.28em] text-orange-500">Próximo passo</p>
                                     <h2 className="mt-4 text-3xl font-black tracking-tighter md:text-5xl">
                                         Se faz sentido para o seu restaurante, vamos conversar de forma objetiva.
                                     </h2>
