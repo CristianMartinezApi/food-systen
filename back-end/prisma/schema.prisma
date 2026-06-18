@@ -235,6 +235,8 @@ model CashSession {
   closingAmount    Float?
   expectedAmount   Float?
   differenceAmount Float?
+  informedCardAmount Float?            @default(0)
+  informedPixAmount  Float?            @default(0)
   status           CashSessionStatus @default(OPEN)
   notes            String?
   openedAt         DateTime          @default(now())
@@ -300,6 +302,8 @@ enum PaymentMethod {
   PIX
   CASH
   CARD
+  DEBIT
+  CREDIT
 }
 
 enum CashSessionStatus {

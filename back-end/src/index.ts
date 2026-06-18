@@ -2041,7 +2041,7 @@ app.get('/api/cashier/session', authMiddleware, async (req: AuthRequest, res) =>
       take: 20,
     });
 
-    const [suppliesAgg, withdrawalsAgg, adjustmentsAgg, salesAgg, cashSalesAgg, movementsCount] = await Promise.all([
+    const [suppliesAgg, withdrawalsAgg, adjustmentsAgg, salesAgg, cashSalesAgg, cardSalesAgg, debitSalesAgg, creditSalesAgg, pixSalesAgg, movementsCount] = await Promise.all([
       prisma.cashMovement.aggregate({
         where: { cashSessionId: activeSession.id, type: 'SUPPLY' },
         _sum: { amount: true },
@@ -2071,6 +2071,42 @@ app.get('/api/cashier/session', authMiddleware, async (req: AuthRequest, res) =>
         },
         _sum: { total: true },
       }),
+      prisma.order.aggregate({
+        where: {
+          restaurantId: req.restaurantId,
+          createdAt: { gte: activeSession.openedAt },
+          status: { in: CASH_COUNTED_ORDER_STATUSES },
+          paymentMethod: 'CARD',
+        },
+        _sum: { total: true },
+      }),
+      prisma.order.aggregate({
+        where: {
+          restaurantId: req.restaurantId,
+          createdAt: { gte: activeSession.openedAt },
+          status: { in: CASH_COUNTED_ORDER_STATUSES },
+          paymentMethod: 'DEBIT',
+        },
+        _sum: { total: true },
+      }),
+      prisma.order.aggregate({
+        where: {
+          restaurantId: req.restaurantId,
+          createdAt: { gte: activeSession.openedAt },
+          status: { in: CASH_COUNTED_ORDER_STATUSES },
+          paymentMethod: 'CREDIT',
+        },
+        _sum: { total: true },
+      }),
+      prisma.order.aggregate({
+        where: {
+          restaurantId: req.restaurantId,
+          createdAt: { gte: activeSession.openedAt },
+          status: { in: CASH_COUNTED_ORDER_STATUSES },
+          paymentMethod: 'PIX',
+        },
+        _sum: { total: true },
+      }),
       prisma.cashMovement.count({
         where: { cashSessionId: activeSession.id },
       }),
@@ -2081,6 +2117,10 @@ app.get('/api/cashier/session', authMiddleware, async (req: AuthRequest, res) =>
     const adjustments = Number(adjustmentsAgg._sum.amount || 0);
     const sales = Number(salesAgg._sum.total || 0);
     const cashSales = Number(cashSalesAgg._sum.total || 0);
+    const cardSales = Number(cardSalesAgg._sum.total || 0);
+    const debitSales = Number(debitSalesAgg._sum.total || 0);
+    const creditSales = Number(creditSalesAgg._sum.total || 0);
+    const pixSales = Number(pixSalesAgg._sum.total || 0);
     const expectedAmount = Number((activeSession.openingAmount + supplies - withdrawals + adjustments + cashSales).toFixed(2));
 
     return res.json({
@@ -2093,6 +2133,10 @@ app.get('/api/cashier/session', authMiddleware, async (req: AuthRequest, res) =>
         movementsCount,
         sales,
         cashSales,
+        cardSales,
+        debitSales,
+        creditSales,
+        pixSales,
         expectedAmount,
       },
     });
@@ -2238,7 +2282,7 @@ app.post('/api/cashier/direct-sales', authMiddleware, async (req: AuthRequest, r
     const customerName = req.body?.customerName ? String(req.body.customerName).trim() : 'Venda Balcao';
     const notes = req.body?.notes ? String(req.body.notes).trim() : null;
 
-    if (!['PIX', 'CASH', 'CARD'].includes(paymentMethod)) {
+    if (!['PIX', 'CASH', 'CARD', 'DEBIT', 'CREDIT'].includes(paymentMethod)) {
       return res.status(400).json({ error: 'Forma de pagamento invalida.' });
     }
 
@@ -2402,6 +2446,8 @@ app.post('/api/cashier/session/close', authMiddleware, async (req: AuthRequest, 
 
   try {
     const closingAmount = Number(req.body?.closingAmount || 0);
+    const informedCardAmount = Number(req.body?.informedCardAmount || 0);
+    const informedPixAmount = Number(req.body?.informedPixAmount || 0);
     const notes = req.body?.notes ? String(req.body.notes) : null;
 
     if (Number.isNaN(closingAmount) || closingAmount < 0) {
@@ -2420,7 +2466,7 @@ app.post('/api/cashier/session/close', authMiddleware, async (req: AuthRequest, 
       return res.status(409).json({ error: 'Nenhuma sessão de caixa aberta.' });
     }
 
-    const [suppliesAgg, withdrawalsAgg, adjustmentsAgg, salesAgg, cashSalesAgg, settings] = await Promise.all([
+    const [suppliesAgg, withdrawalsAgg, adjustmentsAgg, salesAgg, cashSalesAgg, debitSalesAgg, creditSalesAgg, cardSalesAgg, pixSalesAgg, settings] = await Promise.all([
       prisma.cashMovement.aggregate({
         where: { cashSessionId: activeSession.id, type: 'SUPPLY' },
         _sum: { amount: true },
@@ -2450,6 +2496,42 @@ app.post('/api/cashier/session/close', authMiddleware, async (req: AuthRequest, 
         },
         _sum: { total: true },
       }),
+      prisma.order.aggregate({
+        where: {
+          restaurantId: req.restaurantId,
+          createdAt: { gte: activeSession.openedAt },
+          status: { in: CASH_COUNTED_ORDER_STATUSES },
+          paymentMethod: 'DEBIT',
+        },
+        _sum: { total: true },
+      }),
+      prisma.order.aggregate({
+        where: {
+          restaurantId: req.restaurantId,
+          createdAt: { gte: activeSession.openedAt },
+          status: { in: CASH_COUNTED_ORDER_STATUSES },
+          paymentMethod: 'CREDIT',
+        },
+        _sum: { total: true },
+      }),
+      prisma.order.aggregate({
+        where: {
+          restaurantId: req.restaurantId,
+          createdAt: { gte: activeSession.openedAt },
+          status: { in: CASH_COUNTED_ORDER_STATUSES },
+          paymentMethod: 'CARD',
+        },
+        _sum: { total: true },
+      }),
+      prisma.order.aggregate({
+        where: {
+          restaurantId: req.restaurantId,
+          createdAt: { gte: activeSession.openedAt },
+          status: { in: CASH_COUNTED_ORDER_STATUSES },
+          paymentMethod: 'PIX',
+        },
+        _sum: { total: true },
+      }),
       prisma.settings.findUnique({
         where: { restaurantId: req.restaurantId! },
         select: { cashDifferenceNoteThreshold: true },
@@ -2461,6 +2543,10 @@ app.post('/api/cashier/session/close', authMiddleware, async (req: AuthRequest, 
     const adjustments = Number(adjustmentsAgg._sum.amount || 0);
     const sales = Number(salesAgg._sum.total || 0);
     const cashSales = Number(cashSalesAgg._sum.total || 0);
+    const debitSales = Number(debitSalesAgg._sum.total || 0);
+    const creditSales = Number(creditSalesAgg._sum.total || 0);
+    const cardSales = Number(cardSalesAgg._sum.total || 0);
+    const pixSales = Number(pixSalesAgg._sum.total || 0);
     const differenceNoteThreshold = Number(
       settings?.cashDifferenceNoteThreshold ?? DEFAULT_CASH_DIFFERENCE_NOTE_THRESHOLD
     );
@@ -2482,6 +2568,8 @@ app.post('/api/cashier/session/close', authMiddleware, async (req: AuthRequest, 
         closingAmount,
         expectedAmount,
         differenceAmount,
+        informedCardAmount,
+        informedPixAmount,
         notes: notes || activeSession.notes,
       },
       include: {
@@ -2494,8 +2582,14 @@ app.post('/api/cashier/session/close', authMiddleware, async (req: AuthRequest, 
       closingAmount,
       expectedAmount,
       differenceAmount,
+      informedCardAmount,
+      informedPixAmount,
       sales,
       cashSales,
+      debitSales,
+      creditSales,
+      cardSales,
+      pixSales,
       notes,
     });
 
@@ -2730,13 +2824,23 @@ app.get('/api/cashier/sessions/:id/report', authMiddleware, async (req: AuthRequ
     const cashSales = Number(cashSalesAgg._sum.total || 0);
     const expectedAmount = Number((session.openingAmount + supplies - withdrawals + adjustments + cashSales).toFixed(2));
     const closingAmount = Number(session.closingAmount || 0);
+    const informedCardAmount = Number(session.informedCardAmount || 0);
+    const informedPixAmount = Number(session.informedPixAmount || 0);
+
     const differenceAmount = Number(((session.closingAmount ?? expectedAmount) - expectedAmount).toFixed(2));
     const paymentMethods = ['PIX', 'CASH', 'CARD'];
     const salesByPayment = paymentMethods.map((method) => {
       const row = salesByPaymentRaw.find((entry) => entry.paymentMethod === method);
+      const total = Number(row?._sum.total || 0);
+      let difference = 0;
+      if (method === 'CARD' && session.status === 'CLOSED') difference = Number((informedCardAmount - total).toFixed(2));
+      if (method === 'PIX' && session.status === 'CLOSED') difference = Number((informedPixAmount - total).toFixed(2));
+
       return {
         method,
-        total: Number(row?._sum.total || 0),
+        total,
+        informed: method === 'CASH' ? closingAmount : (method === 'CARD' ? informedCardAmount : informedPixAmount),
+        difference
       };
     });
 
@@ -2748,6 +2852,16 @@ app.get('/api/cashier/sessions/:id/report', authMiddleware, async (req: AuthRequ
         supplies,
         withdrawals,
         adjustments,
+        sales,
+        cashSales,
+        expectedAmount,
+        closingAmount,
+        informedCardAmount,
+        informedPixAmount,
+        differenceAmount,
+        salesByPayment
+      }
+    });
         sales,
         cashSales,
         expectedAmount,
