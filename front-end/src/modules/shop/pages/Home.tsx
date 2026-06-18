@@ -117,8 +117,6 @@ export default function Home() {
   const heroDescription = settings?.bannerDescription || settings?.bio || "Experiência gastronômica executiva com ingredientes selecionados e preparo artesanal.";
   const heroCtaLabel = settings?.bannerCtaLabel || "Explorar Menu";
   const heroImage = settings?.bannerImage || "https://images.unsplash.com/photo-1550547660-d9450f859349?q=80&w=2000";
-  const heroImageVersion = settings?.updatedAt ? new Date(settings.updatedAt).getTime() : "default";
-  const heroImageUrl = `${heroImage}${heroImage.includes("?") ? "&" : "?"}v=${heroImageVersion}`;
 
   useEffect(() => {
     const update = () => setIsMobile(window.innerWidth < 768);
@@ -131,7 +129,7 @@ export default function Home() {
   useEffect(() => {
     setSplashReady(false);
     splashStartRef.current = Date.now();
-  }, [heroImageUrl]);
+  }, [heroImage]);
 
   useEffect(() => {
     const maxWaitTimer = window.setTimeout(() => {
@@ -233,13 +231,13 @@ export default function Home() {
             onCategorySelect={setActiveCategory}
           />
 
-          <main className="flex-1 container mx-auto px-4 md:px-6 pt-24 sm:pt-28 pb-6 md:pb-12 space-y-8 md:space-y-24">
+          <main className="flex-1 container mx-auto px-4 md:px-6 pt-0 pb-6 md:pb-12 space-y-8 md:space-y-24">
             {/* Hero Section Premium com GSAP */}
             <section className="relative mt-0">
-              <div className="relative w-full max-w-full">
+              <div className="relative left-1/2 w-dvw max-w-none -translate-x-1/2">
                 <div
                   ref={heroRef}
-                  className="home-hero-art relative overflow-hidden shadow-[0_30px_80px_rgba(0,0,0,0.24)] aspect-[4/5] sm:aspect-[16/10] md:aspect-[21/9] min-h-[540px] sm:min-h-80 md:min-h-[600px] flex items-end rounded-[2rem] sm:rounded-[2.5rem]"
+                  className="home-hero-art relative overflow-hidden shadow-[0_30px_80px_rgba(0,0,0,0.24)] aspect-[4/5] sm:aspect-[16/10] md:aspect-[21/9] min-h-[540px] sm:min-h-80 md:min-h-[600px] flex items-end"
                   style={{ backgroundColor: "#0f172a" }}
                 >
                   {/* Background Art (full-bleed) */}
@@ -247,7 +245,7 @@ export default function Home() {
                     <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(15,23,42,0.45),rgba(15,23,42,0.18)_35%,rgba(2,6,23,0.65))]" />
                     <div
                       className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-                      style={{ backgroundImage: `url(${heroImageUrl})` }}
+                      style={{ backgroundImage: `url(${heroImage})` }}
                     />
                     <div className="absolute inset-0 bg-linear-to-b from-black/20 via-black/10 to-black/55 md:bg-none md:[background:linear-gradient(to_right,rgba(15,23,42,0.6),rgba(15,23,42,0.3),transparent)]" />
                     <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(239,68,68,0.18),transparent_32%),linear-gradient(180deg,rgba(15,23,42,0.12),rgba(2,6,23,0.55))]" />
