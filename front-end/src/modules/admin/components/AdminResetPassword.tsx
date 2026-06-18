@@ -95,9 +95,9 @@ export default function AdminResetPassword({
     return (
       <button
         onClick={() => setIsOpen(true)}
-        className="px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg text-xs font-bold uppercase tracking-tight hover:bg-blue-100 transition-colors"
+        className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1 rounded-full border border-blue-200 bg-blue-50 px-4 py-2.5 sm:py-3 text-[10px] font-black uppercase tracking-[0.2em] text-blue-700 hover:bg-blue-100 transition-colors"
       >
-        <Lock size={14} className="inline mr-1" />
+        <Lock size={14} />
         Reset Senha
       </button>
     );
@@ -107,7 +107,7 @@ export default function AdminResetPassword({
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-lg">
+      <div className="bg-white rounded-2xl p-4 sm:p-6 max-w-xs sm:max-w-md w-full shadow-lg">
         <div className="flex items-center gap-3 mb-4">
           <div className="w-10 h-10 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center flex-shrink-0">
             <Lock size={20} />
@@ -178,7 +178,7 @@ export default function AdminResetPassword({
           </div>
 
           {/* Botões */}
-          <div className="flex gap-2 pt-2">
+          <div className="flex flex-col-reverse sm:flex-row gap-2 pt-2">
             <button
               type="button"
               onClick={() => setIsOpen(false)}

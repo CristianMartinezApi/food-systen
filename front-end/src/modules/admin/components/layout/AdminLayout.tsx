@@ -267,7 +267,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
                 key={item.path}
                 href={item.path}
                 className={cn(
-                  "flex items-center justify-between px-6 h-16 rounded-[1.25rem] transition-all group font-body font-bold text-label uppercase tracking-[0.08em]",
+                  "flex items-center justify-between px-4 sm:px-6 h-12 sm:h-14 lg:h-16 rounded-[1.25rem] transition-all group font-body font-bold text-[11px] sm:text-label uppercase tracking-[0.08em]",
                   isActive
                     ? "bg-slate-950 text-white shadow-2xl shadow-slate-950/20"
                     : "text-slate-400 hover:bg-slate-50 hover:text-slate-950"
@@ -295,7 +295,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
               href={storeUrl}
               target="_blank"
               rel="noreferrer"
-              className="flex items-center justify-center gap-3 w-full h-14 bg-white border border-slate-100 text-slate-400 rounded-2xl text-label font-body font-bold uppercase tracking-[0.06em] hover:bg-slate-50 hover:border-primary/20 hover:text-primary transition-all shadow-sm"
+              className="flex items-center justify-center gap-3 w-full h-12 sm:h-14 bg-white border border-slate-100 text-slate-400 rounded-2xl text-[11px] sm:text-label font-body font-bold uppercase tracking-[0.06em] hover:bg-slate-50 hover:border-primary/20 hover:text-primary transition-all shadow-sm"
             >
               Acessar Vitrine <ExternalLink size={14} />
             </a>
@@ -314,7 +314,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
           </div>
           <button
             onClick={handleLogout}
-            className="flex items-center gap-4 w-full px-6 h-14 rounded-2xl text-slate-400 hover:text-rose-500 hover:bg-rose-50 transition-all font-body font-bold text-label uppercase tracking-[0.06em]"
+            className="flex items-center gap-4 w-full px-4 sm:px-6 h-12 sm:h-14 rounded-2xl text-slate-400 hover:text-rose-500 hover:bg-rose-50 transition-all font-body font-bold text-[11px] sm:text-label uppercase tracking-[0.06em]"
           >
             <LogOut size={20} />
             <span>Encerrar Sessão</span>

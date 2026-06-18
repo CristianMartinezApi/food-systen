@@ -141,23 +141,23 @@ export default function ProvisioningPanel() {
   };
 
   if (accessStatus === "checking") {
-    return <div className="rounded-[1.75rem] border border-slate-200 bg-white p-6 shadow-[0_20px_50px_rgba(15,23,42,0.06)]">Validando acesso...</div>;
+    return <div className="rounded-xl sm:rounded-[1.75rem] border border-slate-200 bg-white p-4 sm:p-6 shadow-[0_20px_50px_rgba(15,23,42,0.06)]">Validando acesso...</div>;
   }
 
   if (accessStatus === "denied") {
     return null;
   }
 
-  if (loading) return <div className="rounded-[1.75rem] border border-slate-200 bg-white p-6 shadow-[0_20px_50px_rgba(15,23,42,0.06)]">Carregando...</div>;
+  if (loading) return <div className="rounded-xl sm:rounded-[1.75rem] border border-slate-200 bg-white p-4 sm:p-6 shadow-[0_20px_50px_rgba(15,23,42,0.06)]">Carregando...</div>;
 
   return (
     <div className="space-y-8">
       {retryModal.open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-lg rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl">
-            <p className="text-xs font-black uppercase tracking-[0.2em] text-amber-500">Ação crítica</p>
-            <h3 className="mt-1 text-xl font-black text-slate-950">Confirmar retry de provisioning</h3>
-            <p className="mt-2 text-sm text-slate-500">
+          <div className="w-full max-w-xs sm:max-w-sm md:max-w-lg rounded-2xl sm:rounded-3xl border border-slate-200 bg-white p-4 sm:p-6 shadow-2xl">
+            <p className="text-[11px] sm:text-xs font-black uppercase tracking-[0.2em] text-amber-500">Ação crítica</p>
+            <h3 className="mt-1 text-lg sm:text-xl font-black text-slate-950">Confirmar retry de provisioning</h3>
+            <p className="mt-2 text-[13px] sm:text-sm text-slate-500">
               Loja: <strong>{retryModal.restaurantName || '-'}</strong>. Informe o motivo para registrar na auditoria.
             </p>
 
@@ -165,20 +165,20 @@ export default function ProvisioningPanel() {
               value={retryReason}
               onChange={(e) => setRetryReason(e.target.value)}
               placeholder="Ex: Ajuste de credenciais e reprocessamento de provisionamento"
-              className="mt-4 h-28 w-full rounded-2xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700 outline-none focus:border-slate-300"
+              className="mt-4 h-24 sm:h-28 w-full rounded-xl sm:rounded-2xl border border-slate-200 bg-slate-50 p-2 sm:p-3 text-[13px] sm:text-sm text-slate-700 outline-none focus:border-slate-300"
             />
 
-            <div className="mt-4 flex justify-end gap-2">
+            <div className="mt-4 flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
               <button
                 onClick={() => setRetryModal({ open: false })}
-                className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-600"
+                className="rounded-full border border-slate-200 bg-white px-4 py-2 text-[13px] sm:text-sm font-bold text-slate-600"
               >
                 Cancelar
               </button>
               <button
                 onClick={confirmRetry}
                 disabled={retrySaving}
-                className="rounded-full bg-slate-950 px-4 py-2 text-sm font-bold text-white disabled:opacity-60"
+                className="rounded-full bg-slate-950 px-4 py-2 text-[13px] sm:text-sm font-bold text-white disabled:opacity-60"
               >
                 {retrySaving ? 'Processando...' : 'Confirmar retry'}
               </button>
@@ -187,52 +187,52 @@ export default function ProvisioningPanel() {
         </div>
       )}
 
-      <div className="system-hero-band relative overflow-hidden rounded-4xl p-2">
+      <div className="system-hero-band relative overflow-hidden rounded-2xl sm:rounded-4xl p-2">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(34,197,94,0.12),transparent_30%),linear-gradient(135deg,rgba(15,23,42,0.02),transparent_45%)]" />
-        <div className="relative p-6 md:p-8 grid gap-6 xl:grid-cols-[1.1fr_0.9fr] items-center">
+        <div className="relative p-4 sm:p-6 md:p-8 grid gap-4 sm:gap-6 xl:grid-cols-[1.1fr_0.9fr] items-center">
           <div>
             <p className="text-xs font-black uppercase tracking-[0.24em] text-primary">Provisionamento</p>
-            <h1 className="mt-2 text-3xl md:text-4xl font-black tracking-tight text-slate-950">Painel de provisionamento</h1>
-            <p className="mt-2 max-w-2xl text-sm md:text-base text-slate-500">Acompanhe o estado de criação das lojas, revise logs e reenvie o processo sem sair do fluxo.</p>
+            <h1 className="mt-2 text-2xl sm:text-3xl md:text-4xl font-black tracking-tight text-slate-950">Painel de provisionamento</h1>
+            <p className="mt-2 max-w-2xl text-[13px] sm:text-sm md:text-base text-slate-500">Acompanhe o estado de criação das lojas, revise logs e reenvie o processo sem sair do fluxo.</p>
           </div>
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-            <div className="rounded-2xl border border-slate-200 bg-white/90 p-4 shadow-sm">
+            <div className="rounded-2xl border border-slate-200 bg-white/90 p-3 sm:p-4 shadow-sm">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">Total</span>
                 <Activity size={16} className="text-primary" />
               </div>
-              <div className="mt-3 text-3xl font-black text-slate-950">{totalCount}</div>
-              <p className="text-sm text-slate-500">lojas monitoradas</p>
+              <div className="mt-3 text-2xl sm:text-3xl font-black text-slate-950">{totalCount}</div>
+              <p className="text-[12px] sm:text-sm text-slate-500">lojas monitoradas</p>
             </div>
-            <div className="rounded-2xl border border-emerald-100 bg-emerald-50/80 p-4 shadow-sm">
+            <div className="rounded-2xl border border-emerald-100 bg-emerald-50/80 p-3 sm:p-4 shadow-sm">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold uppercase tracking-[0.18em] text-emerald-500">READY</span>
                 <DatabaseZap size={16} className="text-emerald-600" />
               </div>
-              <div className="mt-3 text-3xl font-black text-emerald-700">{readyCount}</div>
-              <p className="text-sm text-emerald-700/80">concluídas</p>
+              <div className="mt-3 text-2xl sm:text-3xl font-black text-emerald-700">{readyCount}</div>
+              <p className="text-[12px] sm:text-sm text-emerald-700/80">concluídas</p>
             </div>
-            <div className="rounded-2xl border border-sky-100 bg-sky-50/80 p-4 shadow-sm">
+            <div className="rounded-2xl border border-sky-100 bg-sky-50/80 p-3 sm:p-4 shadow-sm">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold uppercase tracking-[0.18em] text-sky-500">Em fila</span>
                 <Loader2 size={16} className="text-sky-600" />
               </div>
-              <div className="mt-3 text-3xl font-black text-sky-700">{inProgressCount}</div>
-              <p className="text-sm text-sky-700/80">em andamento</p>
+              <div className="mt-3 text-2xl sm:text-3xl font-black text-sky-700">{inProgressCount}</div>
+              <p className="text-[12px] sm:text-sm text-sky-700/80">em andamento</p>
             </div>
-            <div className="rounded-2xl border border-amber-100 bg-amber-50/80 p-4 shadow-sm">
+            <div className="rounded-2xl border border-amber-100 bg-amber-50/80 p-3 sm:p-4 shadow-sm">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold uppercase tracking-[0.18em] text-amber-500">PAUSED</span>
                 <RefreshCcw size={16} className="text-amber-600" />
               </div>
-              <div className="mt-3 text-3xl font-black text-amber-700">{pausedCount}</div>
-              <p className="text-sm text-amber-700/80">pausadas</p>
+              <div className="mt-3 text-2xl sm:text-3xl font-black text-amber-700">{pausedCount}</div>
+              <p className="text-[12px] sm:text-sm text-amber-700/80">pausadas</p>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="rounded-[1.75rem] border border-slate-200 bg-white p-6 shadow-[0_20px_50px_rgba(15,23,42,0.06)]">
+      <div className="rounded-xl sm:rounded-[1.75rem] border border-slate-200 bg-white p-4 sm:p-6 shadow-[0_20px_50px_rgba(15,23,42,0.06)]">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <p className="text-xs font-black uppercase tracking-[0.2em] text-slate-400">Filtragem</p>
@@ -243,14 +243,14 @@ export default function ProvisioningPanel() {
               <button
                 key={status}
                 onClick={() => setSelectedStatus(status)}
-                className={`rounded-full px-4 py-2 text-sm font-bold transition ${selectedStatus === status ? 'bg-slate-950 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+                className={`rounded-full px-3 sm:px-4 py-1 sm:py-2 text-[11px] sm:text-sm font-bold transition ${selectedStatus === status ? 'bg-slate-950 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
               >
                 {status === 'all' ? 'Todos' : status === 'active' ? 'Ativas' : status === 'inactive' ? 'Inativas' : status}
               </button>
             ))}
             <button
               onClick={() => setOnlyWithRetry((prev) => !prev)}
-              className={`rounded-full px-4 py-2 text-sm font-bold transition ${onlyWithRetry ? 'bg-amber-600 text-white' : 'bg-amber-100 text-amber-700 hover:bg-amber-200'}`}
+              className={`rounded-full px-3 sm:px-4 py-1 sm:py-2 text-[11px] sm:text-sm font-bold transition ${onlyWithRetry ? 'bg-amber-600 text-white' : 'bg-amber-100 text-amber-700 hover:bg-amber-200'}`}
             >
               Apenas com retry
             </button>
@@ -263,14 +263,14 @@ export default function ProvisioningPanel() {
             value={restaurantSearch}
             onChange={(e) => setRestaurantSearch(e.target.value)}
             placeholder="Buscar por nome ou slug da loja"
-            className="w-full bg-transparent text-sm text-slate-500 outline-none"
+            className="w-full bg-transparent text-[13px] sm:text-sm text-slate-500 outline-none"
           />
         </div>
       </div>
 
       <div className="grid gap-4">
         {finalVisibleList.length === 0 ? (
-          <div className="rounded-[1.75rem] border border-dashed border-slate-200 bg-white p-8 text-sm text-slate-500">Nenhuma loja encontrada.</div>
+          <div className="rounded-xl sm:rounded-[1.75rem] border border-dashed border-slate-200 bg-white p-6 sm:p-8 text-[13px] sm:text-sm text-slate-500">Nenhuma loja encontrada.</div>
         ) : (
           finalVisibleList.map((r) => {
             const statusClass =
@@ -285,15 +285,15 @@ export default function ProvisioningPanel() {
                       : 'bg-slate-100 text-slate-600 border-slate-200';
 
             return (
-              <div key={r.id} className="rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-[0_20px_50px_rgba(15,23,42,0.06)]">
+              <div key={r.id} className="rounded-xl sm:rounded-[1.75rem] border border-slate-200 bg-white p-4 sm:p-5 shadow-[0_20px_50px_rgba(15,23,42,0.06)]">
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                   <div>
                     <div className="flex flex-wrap items-center gap-2">
-                      <h3 className="text-lg font-black text-slate-950">{r.name}</h3>
+                      <h3 className="text-base sm:text-lg font-black text-slate-950 break-words">{r.name}</h3>
                       <span className={`rounded-full border px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.18em] ${statusClass}`}>{r.provisioningStatus}</span>
                       <span className={`rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.18em] ${r.isActive ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>{r.isActive ? 'Ativa' : 'Inativa'}</span>
                     </div>
-                    <p className="mt-2 text-sm text-slate-500">{r.slug} • DB: {r.databaseName || '—'}</p>
+                    <p className="mt-2 text-[13px] sm:text-sm text-slate-500 break-all">{r.slug} • DB: {r.databaseName || '—'}</p>
                     <p className="mt-1 text-xs text-slate-400">Criada em {new Date(r.createdAt).toLocaleString()}</p>
                     {r.lastRetryReason && (
                       <p className="mt-2 text-xs text-amber-700">
@@ -302,11 +302,11 @@ export default function ProvisioningPanel() {
                       </p>
                     )}
                   </div>
-                  <div className="flex items-center gap-2">
-                    <button onClick={() => openRetryModal(r.id, r.name)} className="inline-flex items-center gap-2 rounded-full bg-slate-950 px-4 py-2 text-sm font-bold text-white transition hover:-translate-y-0.5">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button onClick={() => openRetryModal(r.id, r.name)} className="inline-flex items-center gap-2 rounded-full bg-slate-950 px-4 py-2 text-[13px] sm:text-sm font-bold text-white transition hover:-translate-y-0.5 flex-1 sm:flex-none justify-center">
                       <RefreshCcw size={14} /> Retry
                     </button>
-                    <button onClick={() => toggleLogs(r.id)} className="rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-bold text-slate-700">{expanded === r.id ? 'Ocultar logs' : 'Ver logs'}</button>
+                    <button onClick={() => toggleLogs(r.id)} className="rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-[13px] sm:text-sm font-bold text-slate-700 flex-1 sm:flex-none">{expanded === r.id ? 'Ocultar logs' : 'Ver logs'}</button>
                   </div>
                 </div>
 

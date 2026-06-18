@@ -88,30 +88,31 @@ export default function Dashboard() {
 
   return (
     <div ref={rootRef}>
-      <div className="dashboard-hero system-hero-band mb-12 p-8 md:p-10">
-        <h1 className="text-heading-1 font-display font-bold text-slate-950 uppercase tracking-tight leading-none">Visão de Topo</h1>
-        <p className="text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em] mt-2">Gestão Estratégica & Performance Operacional</p>
+      <div className="dashboard-hero system-hero-band mb-8 sm:mb-12 p-4 sm:p-6 md:p-10">
+        <h1 className="text-2xl sm:text-3xl md:text-heading-1 font-display font-bold text-slate-950 uppercase tracking-tight leading-none">Visão de Topo</h1>
+        <p className="text-[12px] sm:text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em] mt-2">Gestão Estratégica & Performance Operacional</p>
       </div>
 
       {/* Card de Link da Loja - Super Visível */}
-      <div className="dashboard-link-card mb-12 bg-slate-950 rounded-[3rem] p-10 text-white shadow-2xl shadow-slate-950/20 relative overflow-hidden group">
-        <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:scale-110 group-hover:rotate-12 transition-transform duration-1000">
-          <ExternalLink size={160} />
+      <div className="dashboard-link-card mb-8 sm:mb-12 bg-slate-950 rounded-2xl sm:rounded-[3rem] p-4 sm:p-6 md:p-10 text-white shadow-2xl shadow-slate-950/20 relative overflow-hidden group">
+        <div className="absolute top-0 right-0 p-4 sm:p-8 opacity-5 group-hover:scale-110 group-hover:rotate-12 transition-transform duration-1000">
+          <ExternalLink size={120} className="sm:hidden" />
+          <ExternalLink size={160} className="hidden sm:block" />
         </div>
 
-        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-10">
+        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6 sm:gap-10">
           <div>
-            <div className="flex items-center gap-3 mb-4">
+            <div className="flex items-center gap-3 mb-3 sm:mb-4">
               <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
-              <span className="text-label font-body font-medium uppercase tracking-[0.06em] text-emerald-500">Operação Digital Ativa</span>
+              <span className="text-[12px] sm:text-label font-body font-medium uppercase tracking-[0.06em] text-emerald-500">Operação Digital Ativa</span>
             </div>
-            <h2 className="text-heading-2 font-display font-bold uppercase tracking-tight mb-2">Seu Portal Gourmet</h2>
-            <p className="text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em]">Compartilhe o acesso exclusivo para seus clientes.</p>
+            <h2 className="text-xl sm:text-heading-2 font-display font-bold uppercase tracking-tight mb-2">Seu Portal Gourmet</h2>
+            <p className="text-[12px] sm:text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em]">Compartilhe o acesso exclusivo para seus clientes.</p>
           </div>
 
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
-            <div className="bg-white/5 backdrop-blur-3xl border border-white/10 px-8 py-5 rounded-2xl flex items-center gap-4 group/link cursor-pointer hover:bg-white/10 transition-all">
-              <code className="text-primary font-mono font-medium text-lg tracking-tighter">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4">
+            <div className="bg-white/5 backdrop-blur-3xl border border-white/10 px-4 sm:px-8 py-3 sm:py-5 rounded-2xl flex items-center gap-3 sm:gap-4 group/link cursor-pointer hover:bg-white/10 transition-all min-w-0">
+              <code className="text-primary font-mono font-medium text-sm sm:text-lg tracking-tighter break-all">
                 {storeUrl.replace('http://', '').replace('https://', '')}
               </code>
             </div>
@@ -121,7 +122,7 @@ export default function Dashboard() {
                 navigator.clipboard.writeText(storeUrl);
                 toast.success("Link copiado para a área de transferência!");
               }}
-              className="h-16 px-10 bg-white text-slate-950 rounded-full font-body font-bold text-label uppercase tracking-[0.06em] hover:bg-primary hover:text-white transition-all shadow-xl active:scale-95 flex items-center justify-center gap-3"
+              className="h-10 sm:h-12 md:h-16 px-4 sm:px-6 md:px-10 bg-white text-slate-950 rounded-full font-body font-bold text-[11px] sm:text-label uppercase tracking-[0.06em] hover:bg-primary hover:text-white transition-all shadow-xl active:scale-95 flex items-center justify-center gap-2 sm:gap-3 w-full sm:w-auto"
             >
               Copiando Link
             </button>
@@ -129,7 +130,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-16">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 md:gap-8 mb-10 sm:mb-16">
         <StatCard
           title="Faturamento Bruto"
           value={formatCurrency(stats?.totalSales || 0)}
@@ -160,23 +161,23 @@ export default function Dashboard() {
         />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 md:gap-10">
         {/* Lista de Pedidos Modernizada */}
-        <div className="dashboard-panel lg:col-span-2 bg-white rounded-[3rem] border border-slate-50 p-10 shadow-sm">
-          <div className="flex items-center justify-between mb-10">
+        <div className="dashboard-panel lg:col-span-2 bg-white rounded-2xl sm:rounded-[3rem] border border-slate-50 p-4 sm:p-6 md:p-10 shadow-sm">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6 sm:mb-10">
             <div>
-              <h3 className="text-heading-3 font-display font-bold text-slate-950 uppercase tracking-tight">Fluxo Recente</h3>
-              <p className="text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em] mt-1">Últimas interações em tempo real</p>
+              <h3 className="text-xl sm:text-heading-3 font-display font-bold text-slate-950 uppercase tracking-tight">Fluxo Recente</h3>
+              <p className="text-[12px] sm:text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em] mt-1">Últimas interações em tempo real</p>
             </div>
-            <Link href="/admin/orders" className="text-label font-body font-bold text-primary hover:bg-primary/5 px-6 py-3 rounded-xl transition-all uppercase tracking-[0.06em] border-2 border-primary/10">
+            <Link href="/admin/orders" className="text-[11px] sm:text-label font-body font-bold text-primary hover:bg-primary/5 px-4 sm:px-6 h-10 sm:h-auto sm:py-3 rounded-xl transition-all uppercase tracking-[0.06em] border-2 border-primary/10 inline-flex items-center justify-center w-full sm:w-auto">
               Relatório Completo
             </Link>
           </div>
 
           <div className="space-y-6">
             {stats?.recentOrders?.length === 0 ? (
-              <div className="py-24 text-center border-2 border-dashed border-slate-100 rounded-[2.5rem]">
-                <p className="text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em]">Nenhuma atividade registrada hoje.</p>
+              <div className="py-12 sm:py-24 text-center border-2 border-dashed border-slate-100 rounded-2xl sm:rounded-[2.5rem]">
+                <p className="text-[12px] sm:text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em]">Nenhuma atividade registrada hoje.</p>
               </div>
             ) : (
               stats?.recentOrders?.map((order: any, idx: number) => (
@@ -185,9 +186,9 @@ export default function Dashboard() {
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: idx * 0.1 }}
                   key={order.id}
-                  className="flex items-center justify-between p-6 border border-slate-50 rounded-4xl hover:bg-slate-50/50 transition-all group cursor-pointer"
+                  className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 sm:p-6 border border-slate-50 rounded-2xl sm:rounded-4xl hover:bg-slate-50/50 transition-all group cursor-pointer"
                 >
-                  <div className="flex items-center gap-6">
+                  <div className="flex items-center gap-3 sm:gap-6 min-w-0">
                     <div className="w-16 h-16 rounded-2xl bg-white border border-slate-100 flex items-center justify-center font-mono font-medium text-slate-300 group-hover:border-primary/20 group-hover:text-primary transition-all shadow-sm">
                       #{order.id.toString().slice(-3)}
                     </div>

@@ -28,7 +28,7 @@ services:
     environment:
       - PORT=8000
       - TZ=America/Sao_Paulo
-      - DATABASE_URL=${DATABASE_URL}
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
       - JWT_SECRET=${JWT_SECRET}
       - FRONTEND_URL=${FRONTEND_URL:-https://vps67951.publiccloud.com.br}
       - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-https://vps67951.publiccloud.com.br}

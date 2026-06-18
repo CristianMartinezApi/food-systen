@@ -1,21 +1,21 @@
 {
   "/_not-found/page": "/_not-found",
   "/[slug]/checkout/page": "/[slug]/checkout",
-  "/[slug]/page": "/[slug]",
   "/[slug]/orders/page": "/[slug]/orders",
+  "/[slug]/page": "/[slug]",
   "/admin/login/page": "/admin/login",
-  "/admin/register/page": "/admin/register",
-  "/admin/reset-password/page": "/admin/reset-password",
   "/page": "/",
-  "/admin/(dashboard)/audit/page": "/admin/audit",
+  "/admin/reset-password/page": "/admin/reset-password",
+  "/admin/register/page": "/admin/register",
   "/admin/(dashboard)/caixa/page": "/admin/caixa",
   "/admin/(dashboard)/clients/page": "/admin/clients",
+  "/admin/(dashboard)/audit/page": "/admin/audit",
   "/admin/(dashboard)/categories/page": "/admin/categories",
   "/admin/(dashboard)/orders/page": "/admin/orders",
+  "/admin/(dashboard)/page": "/admin",
   "/admin/(dashboard)/onboarding/page": "/admin/onboarding",
   "/admin/(dashboard)/plans/page": "/admin/plans",
-  "/admin/(dashboard)/provisioning/page": "/admin/provisioning",
   "/admin/(dashboard)/products/page": "/admin/products",
-  "/admin/(dashboard)/settings/page": "/admin/settings",
-  "/admin/(dashboard)/page": "/admin"
+  "/admin/(dashboard)/provisioning/page": "/admin/provisioning",
+  "/admin/(dashboard)/settings/page": "/admin/settings"
 }

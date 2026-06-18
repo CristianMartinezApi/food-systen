@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { api } from "@/core/config/api";
 import { Loader2, Plus, Shield, Trash, Search, Users, Store, BadgeCheck, CirclePause, Sparkles, Filter, FileSearch, Workflow, RefreshCcw, Eye, EyeOff, WandSparkles } from "lucide-react";
 import toast from "react-hot-toast";
@@ -46,6 +47,7 @@ async function downloadUsersCsv(search: string, filter: "all" | "approved" | "pe
 }
 
 export default function ClientsPage() {
+  const router = useRouter();
   const [userRole, setUserRole] = useState("");
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [page, setPage] = useState(1);
@@ -518,109 +520,109 @@ export default function ClientsPage() {
   return (
     <div ref={rootRef} className="space-y-8">
       {confirmState.open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-md">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="bg-white rounded-2xl p-4 sm:p-6 w-full max-w-xs sm:max-w-md">
             <h3 className="font-bold text-lg">{confirmState.title}</h3>
-            <p className="text-sm text-slate-600 mt-2">{confirmState.message}</p>
-            <div className="mt-4 flex justify-end gap-2">
-              <button onClick={() => setConfirmState({ open: false })} className="px-3 py-1 border rounded-full">Cancelar</button>
-              <button onClick={async () => { setConfirmState((s) => ({ ...s, open: false })); try { if (confirmState.onConfirm) await confirmState.onConfirm(); } catch (e) { console.error(e); } }} className="px-3 py-1 bg-primary text-white rounded-full">Confirmar</button>
+            <p className="text-[13px] sm:text-sm text-slate-600 mt-2">{confirmState.message}</p>
+            <div className="mt-4 flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
+              <button onClick={() => setConfirmState({ open: false })} className="px-3 py-2 border rounded-full text-[13px] sm:text-sm">Cancelar</button>
+              <button onClick={async () => { setConfirmState((s) => ({ ...s, open: false })); try { if (confirmState.onConfirm) await confirmState.onConfirm(); } catch (e) { console.error(e); } }} className="px-3 py-2 bg-primary text-white rounded-full text-[13px] sm:text-sm">Confirmar</button>
             </div>
           </div>
         </div>
       )}
       {createdCredentials.open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-lg rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl">
+          <div className="w-full max-w-xs sm:max-w-sm md:max-w-lg rounded-2xl sm:rounded-3xl border border-slate-200 bg-white p-4 sm:p-6 shadow-2xl">
             <p className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-600">Cadastro concluído</p>
-            <h3 className="mt-1 text-xl font-black text-slate-950">Credenciais iniciais do cliente</h3>
-            <div className="mt-4 space-y-2 rounded-2xl border border-slate-100 bg-slate-50 p-4 text-sm text-slate-700">
+            <h3 className="mt-1 text-lg sm:text-xl font-black text-slate-950">Credenciais iniciais do cliente</h3>
+            <div className="mt-4 space-y-2 rounded-2xl border border-slate-100 bg-slate-50 p-3 sm:p-4 text-[13px] sm:text-sm text-slate-700">
               <p><strong>Cliente:</strong> {createdCredentials.name || '-'}</p>
               <p><strong>Email:</strong> {createdCredentials.email || '-'}</p>
               <p><strong>Senha:</strong> {createdCredentials.password || '-'}</p>
             </div>
-            <div className="mt-4 flex justify-end gap-2">
-              <button onClick={copyCreatedCredentials} className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-600">Copiar tudo</button>
-              <button onClick={() => setCreatedCredentials({ open: false })} className="rounded-full bg-slate-950 px-4 py-2 text-sm font-bold text-white">Fechar</button>
+            <div className="mt-4 flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
+              <button onClick={copyCreatedCredentials} className="rounded-full border border-slate-200 bg-white px-4 py-2 text-[13px] sm:text-sm font-bold text-slate-600">Copiar tudo</button>
+              <button onClick={() => setCreatedCredentials({ open: false })} className="rounded-full bg-slate-950 px-4 py-2 text-[13px] sm:text-sm font-bold text-white">Fechar</button>
             </div>
           </div>
         </div>
       )}
-      <div className="clients-hero system-hero-band relative overflow-hidden rounded-[3.5rem] p-6 md:p-8">
+      <div className="clients-hero system-hero-band relative overflow-hidden rounded-2xl sm:rounded-[3.5rem] p-2 sm:p-4 md:p-8">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(249,115,22,0.12),transparent_30%),linear-gradient(135deg,rgba(15,23,42,0.02),transparent_45%)]" />
-        <div className="relative p-8 md:p-10 flex flex-col gap-8">
+        <div className="relative p-4 sm:p-6 md:p-10 flex flex-col gap-4 sm:gap-6 md:gap-8">
           <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
             <div>
-              <p className="text-label font-body font-bold text-primary uppercase tracking-[0.2em]">Hub Administrativo</p>
-              <h1 className="text-heading-1 font-display font-bold text-slate-950 uppercase tracking-tight">Clientes e Liberações</h1>
-              <p className="mt-2 max-w-2xl text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em]">Curadoria de acessos, aprovações e estado operacional das lojas.</p>
+              <p className="text-[10px] sm:text-label font-body font-bold text-primary uppercase tracking-[0.2em]">Hub Administrativo</p>
+              <h1 className="text-2xl sm:text-3xl md:text-heading-1 font-display font-bold text-slate-950 uppercase tracking-tight">Clientes e Liberações</h1>
+              <p className="mt-2 max-w-2xl text-[12px] sm:text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em]">Curadoria de acessos, aprovações e estado operacional das lojas.</p>
             </div>
             <button
               onClick={() => {
                 setViewMode('users');
                 setTimeout(() => document.getElementById('create-client')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
               }}
-              className="h-16 px-10 bg-slate-950 text-white rounded-full font-body font-bold text-label uppercase tracking-[0.06em] flex items-center gap-3 shadow-2xl shadow-slate-950/20 hover:bg-primary transition-all whitespace-nowrap active:scale-95"
+              className="h-10 sm:h-12 md:h-16 px-4 sm:px-6 md:px-10 bg-slate-950 text-white rounded-full font-body font-bold text-[11px] sm:text-label uppercase tracking-[0.06em] flex items-center justify-center gap-2 sm:gap-3 shadow-2xl shadow-slate-950/20 hover:bg-primary transition-all whitespace-nowrap active:scale-95 w-full sm:w-auto"
             >
               <Sparkles size={20} /> Novo cliente
             </button>
           </div>
 
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-            <div className="clients-card rounded-[2.5rem] border border-slate-50 bg-white/95 p-5 shadow-sm hover:shadow-2xl hover:shadow-slate-200/40 transition-all duration-500">
+            <div className="clients-card rounded-2xl sm:rounded-[2.5rem] border border-slate-50 bg-white/95 p-4 sm:p-5 shadow-sm hover:shadow-2xl hover:shadow-slate-200/40 transition-all duration-500">
               <div className="flex items-center justify-between">
                 <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Clientes</span>
                 <Users size={16} className="text-primary" />
               </div>
-              <div className="mt-3 text-heading-2 font-mono font-bold text-slate-950 tracking-tighter">{total}</div>
-              <p className="text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em]">cadastros encontrados</p>
+              <div className="mt-3 text-xl sm:text-heading-2 font-mono font-bold text-slate-950 tracking-tighter">{total}</div>
+              <p className="text-[12px] sm:text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em]">cadastros encontrados</p>
             </div>
-            <div className="clients-card rounded-[2.5rem] border border-emerald-100 bg-emerald-50/80 p-5 shadow-sm hover:shadow-2xl hover:shadow-emerald-200/40 transition-all duration-500">
+            <div className="clients-card rounded-2xl sm:rounded-[2.5rem] border border-emerald-100 bg-emerald-50/80 p-4 sm:p-5 shadow-sm hover:shadow-2xl hover:shadow-emerald-200/40 transition-all duration-500">
               <div className="flex items-center justify-between">
                 <span className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-500">Liberados</span>
                 <BadgeCheck size={16} className="text-emerald-600" />
               </div>
-              <div className="mt-3 text-heading-2 font-mono font-bold text-emerald-700 tracking-tighter">{approvedUsers}</div>
-              <p className="text-label font-body font-medium text-emerald-700/80 uppercase tracking-[0.06em]">contas aprovadas</p>
+              <div className="mt-3 text-xl sm:text-heading-2 font-mono font-bold text-emerald-700 tracking-tighter">{approvedUsers}</div>
+              <p className="text-[12px] sm:text-label font-body font-medium text-emerald-700/80 uppercase tracking-[0.06em]">contas aprovadas</p>
             </div>
-            <div className="clients-card rounded-[2.5rem] border border-amber-100 bg-amber-50/80 p-5 shadow-sm hover:shadow-2xl hover:shadow-amber-200/40 transition-all duration-500">
+            <div className="clients-card rounded-2xl sm:rounded-[2.5rem] border border-amber-100 bg-amber-50/80 p-4 sm:p-5 shadow-sm hover:shadow-2xl hover:shadow-amber-200/40 transition-all duration-500">
               <div className="flex items-center justify-between">
                 <span className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-500">Pendentes</span>
                 <CirclePause size={16} className="text-amber-600" />
               </div>
-              <div className="mt-3 text-heading-2 font-mono font-bold text-amber-700 tracking-tighter">{total - approvedUsers}</div>
-              <p className="text-label font-body font-medium text-amber-700/80 uppercase tracking-[0.06em]">aguardando liberação</p>
+              <div className="mt-3 text-xl sm:text-heading-2 font-mono font-bold text-amber-700 tracking-tighter">{total - approvedUsers}</div>
+              <p className="text-[12px] sm:text-label font-body font-medium text-amber-700/80 uppercase tracking-[0.06em]">aguardando liberação</p>
             </div>
-            <div className="clients-card rounded-[2.5rem] border border-slate-200 bg-slate-50 p-5 shadow-sm hover:shadow-2xl hover:shadow-slate-200/40 transition-all duration-500">
+            <div className="clients-card rounded-2xl sm:rounded-[2.5rem] border border-slate-200 bg-slate-50 p-4 sm:p-5 shadow-sm hover:shadow-2xl hover:shadow-slate-200/40 transition-all duration-500">
               <div className="flex items-center justify-between">
                 <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Lojas</span>
                 <Store size={16} className="text-slate-600" />
               </div>
-              <div className="mt-3 text-heading-2 font-mono font-bold text-slate-900 tracking-tighter">{activeRestaurants}</div>
-              <p className="text-label font-body font-medium text-slate-500 uppercase tracking-[0.06em]">{pausedRestaurants} pausadas</p>
+              <div className="mt-3 text-xl sm:text-heading-2 font-mono font-bold text-slate-900 tracking-tighter">{activeRestaurants}</div>
+              <p className="text-[12px] sm:text-label font-body font-medium text-slate-500 uppercase tracking-[0.06em]">{pausedRestaurants} pausadas</p>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="clients-panel rounded-[3rem] border border-slate-50 bg-white p-6 shadow-sm">
+      <div className="clients-panel rounded-2xl sm:rounded-[3rem] border border-slate-50 bg-white p-4 sm:p-6 shadow-sm">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             <button
               onClick={() => setViewMode('users')}
-              className={`rounded-full px-5 py-2.5 text-[10px] font-black uppercase tracking-[0.2em] transition ${viewMode === 'users' ? 'bg-slate-950 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+              className={`shrink-0 rounded-full px-3 sm:px-5 py-2 sm:py-2.5 text-[10px] font-black uppercase tracking-[0.2em] transition ${viewMode === 'users' ? 'bg-slate-950 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
             >
               Usuários
             </button>
             <button
               onClick={() => setViewMode('stores')}
-              className={`rounded-full px-5 py-2.5 text-[10px] font-black uppercase tracking-[0.2em] transition ${viewMode === 'stores' ? 'bg-slate-950 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+              className={`shrink-0 rounded-full px-3 sm:px-5 py-2 sm:py-2.5 text-[10px] font-black uppercase tracking-[0.2em] transition ${viewMode === 'stores' ? 'bg-slate-950 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
             >
               Lojas
             </button>
             <button
               onClick={() => setViewMode('inconsistencies')}
-              className={`rounded-full px-5 py-2.5 text-[10px] font-black uppercase tracking-[0.2em] transition ${viewMode === 'inconsistencies' ? 'bg-slate-950 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+              className={`shrink-0 rounded-full px-3 sm:px-5 py-2 sm:py-2.5 text-[10px] font-black uppercase tracking-[0.2em] transition ${viewMode === 'inconsistencies' ? 'bg-slate-950 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
             >
               Inconsistências
             </button>
@@ -635,12 +637,12 @@ export default function ClientsPage() {
       </div>
 
       {viewMode === 'users' && (
-      <div className="grid gap-6 xl:grid-cols-[0.92fr_1.08fr] items-start">
-        <form id="create-client" onSubmit={handleCreateUser} className="clients-panel rounded-[3rem] border border-slate-50 bg-white p-8 shadow-sm space-y-6 sticky top-6">
+      <div className="grid gap-4 sm:gap-6 xl:grid-cols-[0.92fr_1.08fr] items-start">
+        <form id="create-client" onSubmit={handleCreateUser} className="clients-panel rounded-2xl sm:rounded-[3rem] border border-slate-50 bg-white p-4 sm:p-6 md:p-8 shadow-sm space-y-4 sm:space-y-6 md:sticky md:top-6">
           <div>
-            <p className="text-label font-body font-bold text-primary uppercase tracking-[0.2em]">Novo cliente</p>
-            <h2 className="mt-1 text-heading-2 font-display font-bold text-slate-950 uppercase tracking-tight">Criar acesso</h2>
-            <p className="text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em]">Cadastro rápido com senha assistida e validação antes da liberação.</p>
+            <p className="text-[10px] sm:text-label font-body font-bold text-primary uppercase tracking-[0.2em]">Novo cliente</p>
+            <h2 className="mt-1 text-xl sm:text-heading-2 font-display font-bold text-slate-950 uppercase tracking-tight">Criar acesso</h2>
+            <p className="text-[12px] sm:text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em]">Cadastro rápido com senha assistida e validação antes da liberação.</p>
           </div>
 
           <div className="grid gap-4">
@@ -651,7 +653,7 @@ export default function ClientsPage() {
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 placeholder="Ex: João Silva"
-                className="h-14 w-full px-5 rounded-2xl border border-slate-100 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-slate-950/5 transition-all font-body font-medium text-slate-700 text-sm tracking-[0.02em] outline-none"
+                className="h-10 sm:h-12 md:h-14 w-full px-4 sm:px-5 rounded-2xl border border-slate-100 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-slate-950/5 transition-all font-body font-medium text-[13px] sm:text-sm tracking-[0.02em] outline-none"
               />
               {formData.name.length > 0 && !isCreateNameValid && (
                 <p className="mt-2 text-[11px] font-bold uppercase tracking-[0.12em] text-rose-600">Nome mínimo de 3 caracteres</p>
@@ -666,7 +668,7 @@ export default function ClientsPage() {
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                 placeholder="email@cliente.com"
-                className="h-14 w-full px-5 rounded-2xl border border-slate-100 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-slate-950/5 transition-all font-body font-medium text-slate-700 text-sm tracking-[0.02em] outline-none"
+                className="h-10 sm:h-12 md:h-14 w-full px-4 sm:px-5 rounded-2xl border border-slate-100 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-slate-950/5 transition-all font-body font-medium text-[13px] sm:text-sm tracking-[0.02em] outline-none"
               />
               {formData.email.length > 0 && !isCreateEmailValid && (
                 <p className="mt-2 text-[11px] font-bold uppercase tracking-[0.12em] text-rose-600">Formato de email inválido</p>
@@ -674,20 +676,20 @@ export default function ClientsPage() {
             </div>
 
             <div>
-              <div className="mb-2 flex items-center justify-between gap-2">
+              <div className="mb-2 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                 <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Senha inicial</label>
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
                     onClick={copyGeneratedPassword}
-                    className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-slate-600"
+                    className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.18em] text-slate-600"
                   >
                     Copiar
                   </button>
                   <button
                     type="button"
                     onClick={generateStrongPassword}
-                    className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-slate-600"
+                    className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.18em] text-slate-600"
                   >
                     <WandSparkles size={12} /> Gerar forte
                   </button>
@@ -701,7 +703,7 @@ export default function ClientsPage() {
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                   placeholder="Defina a senha inicial"
-                  className="h-14 w-full bg-transparent px-2 font-body font-medium text-slate-700 text-sm tracking-[0.02em] outline-none"
+                  className="h-10 sm:h-12 md:h-14 w-full bg-transparent px-2 font-body font-medium text-[13px] sm:text-sm tracking-[0.02em] outline-none"
                 />
                 <button
                   type="button"
@@ -730,44 +732,44 @@ export default function ClientsPage() {
             </div>
           </div>
 
-          <button type="submit" disabled={!canSubmitCreateClient} className="h-14 w-full px-10 bg-slate-950 text-white rounded-full font-body font-bold text-label uppercase tracking-[0.06em] flex items-center justify-center gap-3 shadow-2xl shadow-slate-950/20 hover:bg-primary transition-all active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed">
+          <button type="submit" disabled={!canSubmitCreateClient} className="h-10 sm:h-12 md:h-14 w-full px-4 sm:px-6 md:px-10 bg-slate-950 text-white rounded-full font-body font-bold text-[11px] sm:text-label uppercase tracking-[0.06em] flex items-center justify-center gap-2 sm:gap-3 shadow-2xl shadow-slate-950/20 hover:bg-primary transition-all active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed">
             {isSaving ? <Loader2 className="animate-spin" /> : <><Plus size={14} /> Cadastrar cliente</>}
           </button>
         </form>
 
-        <div className="clients-panel rounded-[3rem] border border-slate-50 bg-white p-8 shadow-sm">
+        <div className="clients-panel rounded-2xl sm:rounded-[3rem] border border-slate-50 bg-white p-4 sm:p-6 md:p-8 shadow-sm">
           <div className="flex flex-col gap-4">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <p className="text-label font-body font-bold text-primary uppercase tracking-[0.2em]">Clientes</p>
-                <h2 className="text-heading-2 font-display font-bold text-slate-950 uppercase tracking-tight">Base de acessos</h2>
+                <p className="text-[10px] sm:text-label font-body font-bold text-primary uppercase tracking-[0.2em]">Clientes</p>
+                <h2 className="text-xl sm:text-heading-2 font-display font-bold text-slate-950 uppercase tracking-tight">Base de acessos</h2>
               </div>
-              <div className="rounded-2xl bg-slate-50 px-4 py-2 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">{selected.length} selecionado(s)</div>
+              <div className="rounded-2xl bg-slate-50 px-3 sm:px-4 py-2 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">{selected.length} selecionado(s)</div>
             </div>
 
-            <div className="grid gap-4 xl:grid-cols-[1.2fr_0.7fr_0.7fr_0.5fr_0.5fr_auto_auto] clients-filters">
-              <div className="flex h-16 items-center gap-2 rounded-3xl border border-slate-100 bg-slate-50 px-5 focus-within:border-primary focus-within:bg-white transition-all shadow-inner shadow-slate-50/80">
+            <div className="grid gap-2 sm:gap-3 md:gap-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-[1.2fr_0.7fr_0.7fr_0.5fr_0.5fr_auto_auto] clients-filters">
+              <div className="flex h-10 sm:h-12 md:h-16 items-center gap-2 rounded-2xl sm:rounded-3xl border border-slate-100 bg-slate-50 px-3 sm:px-5 focus-within:border-primary focus-within:bg-white transition-all shadow-inner shadow-slate-50/80 sm:col-span-2 xl:col-span-1">
                 <Search size={18} className="text-slate-300" />
-                <input placeholder="Buscar nome ou email" value={search} onChange={(e) => setSearch(e.target.value)} className="h-full w-full bg-transparent outline-none font-body font-medium text-slate-600 text-label uppercase tracking-[0.04em]" />
+                <input placeholder="Buscar nome ou email" value={search} onChange={(e) => setSearch(e.target.value)} className="h-full w-full bg-transparent outline-none font-body font-medium text-slate-600 text-[12px] sm:text-label uppercase tracking-[0.04em]" />
               </div>
-              <div className="flex h-16 items-center gap-2 rounded-3xl border border-slate-100 bg-slate-50 px-5 shadow-inner shadow-slate-50/80">
+              <div className="flex h-10 sm:h-12 md:h-16 items-center gap-2 rounded-2xl sm:rounded-3xl border border-slate-100 bg-slate-50 px-3 sm:px-5 shadow-inner shadow-slate-50/80">
                 <Filter size={18} className="text-slate-300" />
-                <select value={filter} onChange={(e) => setFilter(e.target.value as any)} className="h-full w-full bg-transparent outline-none font-body font-medium text-slate-600 text-label uppercase tracking-[0.04em]">
+                <select value={filter} onChange={(e) => setFilter(e.target.value as any)} className="h-full w-full bg-transparent outline-none font-body font-medium text-slate-600 text-[12px] sm:text-label uppercase tracking-[0.04em]">
                   <option value="all">Todos</option>
                   <option value="pending">Pendente</option>
                   <option value="approved">Liberado</option>
                 </select>
               </div>
-              <div className="flex h-16 items-center gap-2 rounded-3xl border border-slate-100 bg-slate-50 px-5 shadow-inner shadow-slate-50/80">
+              <div className="flex h-10 sm:h-12 md:h-16 items-center gap-2 rounded-2xl sm:rounded-3xl border border-slate-100 bg-slate-50 px-3 sm:px-5 shadow-inner shadow-slate-50/80">
                 <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Ordem</label>
-                <select value={userSort} onChange={(e) => setUserSort(e.target.value as 'recent' | 'name_asc' | 'pending_first')} className="h-full w-full bg-transparent outline-none font-body font-medium text-slate-600 text-label uppercase tracking-[0.04em]">
+                <select value={userSort} onChange={(e) => setUserSort(e.target.value as 'recent' | 'name_asc' | 'pending_first')} className="h-full w-full bg-transparent outline-none font-body font-medium text-slate-600 text-[12px] sm:text-label uppercase tracking-[0.04em]">
                   <option value="recent">Mais recentes</option>
                   <option value="name_asc">Nome (A-Z)</option>
                   <option value="pending_first">Pendentes primeiro</option>
                 </select>
               </div>
-              <button onClick={() => loadUsers(1, perPage)} className="h-16 px-6 rounded-full border border-slate-100 bg-white text-label font-body font-bold text-slate-400 uppercase tracking-[0.06em] transition hover:bg-slate-50 shadow-sm">Buscar</button>
-              <button onClick={() => { setSearch(''); setFilter('all'); loadUsers(1, perPage); }} className="h-16 px-6 rounded-full border border-slate-100 bg-white text-label font-body font-bold text-slate-400 uppercase tracking-[0.06em] transition hover:bg-slate-50 shadow-sm">Limpar</button>
+              <button onClick={() => loadUsers(1, perPage)} className="h-10 sm:h-12 md:h-16 px-4 sm:px-6 rounded-full border border-slate-100 bg-white text-[11px] sm:text-label font-body font-bold text-slate-400 uppercase tracking-[0.06em] transition hover:bg-slate-50 shadow-sm">Buscar</button>
+              <button onClick={() => { setSearch(''); setFilter('all'); loadUsers(1, perPage); }} className="h-10 sm:h-12 md:h-16 px-4 sm:px-6 rounded-full border border-slate-100 bg-white text-[11px] sm:text-label font-body font-bold text-slate-400 uppercase tracking-[0.06em] transition hover:bg-slate-50 shadow-sm">Limpar</button>
               <button
                 onClick={async () => {
                   try {
@@ -777,28 +779,28 @@ export default function ClientsPage() {
                     toast.error(error.message || "Erro ao exportar CSV");
                   }
                 }}
-                className="h-16 px-6 rounded-full bg-slate-950 text-white text-label font-body font-bold uppercase tracking-[0.06em] transition hover:bg-primary shadow-xl shadow-slate-950/20"
+                className="h-10 sm:h-12 md:h-16 px-4 sm:px-6 rounded-full bg-slate-950 text-white text-[11px] sm:text-label font-body font-bold uppercase tracking-[0.06em] transition hover:bg-primary shadow-xl shadow-slate-950/20"
               >
                 Exportar CSV
               </button>
             </div>
           </div>
 
-          <div className="mt-4 flex flex-wrap items-center gap-2 rounded-4xl bg-slate-50 p-4 border border-slate-100">
-            <button onClick={selectAll} className="rounded-full border border-slate-100 bg-white px-4 py-3 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">{selected.length === sortedUsers.length ? 'Desmarcar tudo' : 'Selecionar tudo'}</button>
-            <button onClick={() => handleBulkAction('approve')} className="rounded-full bg-primary px-4 py-3 text-[10px] font-black uppercase tracking-[0.2em] text-white">Aprovar selecionados</button>
-            <button onClick={() => handleBulkAction('delete')} className="rounded-full bg-rose-600 px-4 py-3 text-[10px] font-black uppercase tracking-[0.2em] text-white">Excluir selecionados</button>
+          <div className="mt-4 flex flex-wrap items-center gap-2 rounded-2xl sm:rounded-4xl bg-slate-50 p-3 sm:p-4 border border-slate-100">
+            <button onClick={selectAll} className="flex-1 sm:flex-none rounded-full border border-slate-100 bg-white px-4 py-2.5 sm:py-3 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">{selected.length === sortedUsers.length ? 'Desmarcar tudo' : 'Selecionar tudo'}</button>
+            <button onClick={() => handleBulkAction('approve')} className="flex-1 sm:flex-none rounded-full bg-primary px-4 py-2.5 sm:py-3 text-[10px] font-black uppercase tracking-[0.2em] text-white">Aprovar selecionados</button>
+            <button onClick={() => handleBulkAction('delete')} className="flex-1 sm:flex-none rounded-full bg-rose-600 px-4 py-2.5 sm:py-3 text-[10px] font-black uppercase tracking-[0.2em] text-white">Excluir selecionados</button>
           </div>
 
           {isLoading ? <div className="py-10 text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em]">Carregando...</div> : sortedUsers.length === 0 ? <div className="py-10 text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em]">Nenhum cliente</div> : (
             <div className="mt-4 space-y-4">
               {sortedUsers.map((u) => (
-                <div key={u.id} className="clients-card flex flex-col gap-4 rounded-[2.5rem] border border-slate-50 bg-white p-5 shadow-sm hover:shadow-2xl hover:shadow-slate-200/50 transition-all duration-700 md:flex-row md:items-center md:justify-between group">
+                <div key={u.id} className="clients-card flex flex-col gap-4 rounded-2xl sm:rounded-[2.5rem] border border-slate-50 bg-white p-4 sm:p-5 shadow-sm hover:shadow-2xl hover:shadow-slate-200/50 transition-all duration-700 md:flex-row md:items-center md:justify-between group">
                   <div className="flex items-start gap-3">
                     <input type="checkbox" checked={selected.includes(u.id)} onChange={() => toggleSelect(u.id)} className="mt-1 h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary" />
                     <div>
                       <div className="text-body-strong font-display font-bold text-slate-950 uppercase tracking-tight leading-tight">{u.name}</div>
-                      <div className="text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em] mt-1">{u.email}</div>
+                      <div className="text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em] mt-1 break-all">{u.email}</div>
                       <div className="mt-2 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">
                         {u.restaurant
                           ? `Loja vinculada: ${u.restaurant.name} (${u.restaurant.slug})`
@@ -811,11 +813,11 @@ export default function ClientsPage() {
                     </div>
                   </div>
                   <div className="flex flex-wrap items-center gap-2 md:justify-end">
-                    <button disabled={u.isApproved} onClick={() => handleApprove(u.id)} className="rounded-full bg-slate-950 px-4 py-3 text-[10px] font-black uppercase tracking-[0.2em] text-white disabled:cursor-not-allowed disabled:opacity-60">{u.isApproved ? 'Liberado' : 'Liberar'}</button>
+                    <button disabled={u.isApproved} onClick={() => handleApprove(u.id)} className="flex-1 sm:flex-none rounded-full bg-slate-950 px-4 py-2.5 sm:py-3 text-[10px] font-black uppercase tracking-[0.2em] text-white disabled:cursor-not-allowed disabled:opacity-60">{u.isApproved ? 'Liberado' : 'Liberar'}</button>
                     {u.isActive ? (
-                      <button onClick={() => handlePauseUser(u.id)} className="rounded-full bg-amber-500 px-4 py-3 text-[10px] font-black uppercase tracking-[0.2em] text-white">Pausar acesso</button>
+                      <button onClick={() => handlePauseUser(u.id)} className="flex-1 sm:flex-none rounded-full bg-amber-500 px-4 py-2.5 sm:py-3 text-[10px] font-black uppercase tracking-[0.2em] text-white">Pausar acesso</button>
                     ) : (
-                      <button onClick={() => handleActivateUser(u.id)} className="rounded-full bg-slate-900 px-4 py-3 text-[10px] font-black uppercase tracking-[0.2em] text-white">Ativar acesso</button>
+                      <button onClick={() => handleActivateUser(u.id)} className="flex-1 sm:flex-none rounded-full bg-slate-900 px-4 py-2.5 sm:py-3 text-[10px] font-black uppercase tracking-[0.2em] text-white">Ativar acesso</button>
                     )}
                     <AdminResetPassword
                       userId={u.id}
@@ -823,16 +825,16 @@ export default function ClientsPage() {
                       userName={u.name}
                       onSuccess={() => loadUsers()}
                     />
-                    <button onClick={() => handleEditUser(u)} className="rounded-full border border-slate-100 bg-slate-50 px-4 py-3 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Editar</button>
-                    <button onClick={() => handleDeleteUser(u.id)} className="rounded-full bg-rose-600 px-4 py-3 text-[10px] font-black uppercase tracking-[0.2em] text-white">Excluir</button>
+                    <button onClick={() => handleEditUser(u)} className="flex-1 sm:flex-none rounded-full border border-slate-100 bg-slate-50 px-4 py-2.5 sm:py-3 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Editar</button>
+                    <button onClick={() => handleDeleteUser(u.id)} className="flex-1 sm:flex-none rounded-full bg-rose-600 px-4 py-2.5 sm:py-3 text-[10px] font-black uppercase tracking-[0.2em] text-white">Excluir</button>
                   </div>
                 </div>
               ))}
             </div>
           )}
-          <div className="flex items-center justify-between mt-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mt-4">
             <div className="text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em]">{total} resultado(s)</div>
-            <div className="flex items-center gap-2">
+            <div className="flex w-full sm:w-auto items-center justify-between sm:justify-start gap-2">
               <button disabled={page <= 1} onClick={() => loadUsers(page - 1, perPage)} className="rounded-2xl border border-slate-100 bg-white px-4 py-2 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 disabled:opacity-50">Anterior</button>
               <div className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-2 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Página {page}</div>
               <button disabled={page * perPage >= total} onClick={() => loadUsers(page + 1, perPage)} className="rounded-2xl border border-slate-100 bg-white px-4 py-2 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 disabled:opacity-50">Próxima</button>
@@ -844,16 +846,16 @@ export default function ClientsPage() {
 
       {viewMode === 'stores' && (
       <div>
-        <div className="clients-panel rounded-[3rem] border border-slate-50 bg-white p-8 shadow-sm">
-          <div className="flex items-center justify-between gap-3">
+        <div className="clients-panel rounded-2xl sm:rounded-[3rem] border border-slate-50 bg-white p-4 sm:p-6 md:p-8 shadow-sm">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
-              <p className="text-label font-body font-bold text-primary uppercase tracking-[0.2em]">Lojas cadastradas</p>
-              <h2 className="text-heading-2 font-display font-bold text-slate-950 uppercase tracking-tight">Operação por status</h2>
+              <p className="text-[10px] sm:text-label font-body font-bold text-primary uppercase tracking-[0.2em]">Lojas cadastradas</p>
+              <h2 className="text-xl sm:text-heading-2 font-display font-bold text-slate-950 uppercase tracking-tight">Operação por status</h2>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              <div className="flex items-center gap-2 rounded-3xl border border-slate-100 bg-slate-50 px-4 py-3">
+              <div className="flex items-center gap-2 rounded-2xl sm:rounded-3xl border border-slate-100 bg-slate-50 px-3 sm:px-4 py-2 sm:py-3">
                 <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Filtrar</label>
-                <select value={restaurantFilter} onChange={(e) => { setRestaurantFilter(e.target.value as any); loadRestaurants(e.target.value); }} className="bg-transparent text-label font-body font-medium text-slate-600 uppercase tracking-[0.04em] outline-none">
+                <select value={restaurantFilter} onChange={(e) => { setRestaurantFilter(e.target.value as any); loadRestaurants(e.target.value); }} className="bg-transparent text-[12px] sm:text-label font-body font-medium text-slate-600 uppercase tracking-[0.04em] outline-none">
                   <option value="all">Todos</option>
                   <option value="active">Ativas</option>
                   <option value="inactive">Inativas</option>
@@ -864,9 +866,9 @@ export default function ClientsPage() {
                   <option value="PENDING">PENDING</option>
                 </select>
               </div>
-              <div className="flex items-center gap-2 rounded-3xl border border-slate-100 bg-slate-50 px-4 py-3">
+              <div className="flex items-center gap-2 rounded-2xl sm:rounded-3xl border border-slate-100 bg-slate-50 px-3 sm:px-4 py-2 sm:py-3">
                 <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Ordenar</label>
-                <select value={restaurantSort} onChange={(e) => setRestaurantSort(e.target.value as 'created_desc' | 'retry_desc')} className="bg-transparent text-label font-body font-medium text-slate-600 uppercase tracking-[0.04em] outline-none">
+                <select value={restaurantSort} onChange={(e) => setRestaurantSort(e.target.value as 'created_desc' | 'retry_desc')} className="bg-transparent text-[12px] sm:text-label font-body font-medium text-slate-600 uppercase tracking-[0.04em] outline-none">
                   <option value="created_desc">Mais novas</option>
                   <option value="retry_desc">Último retry</option>
                 </select>
@@ -902,10 +904,10 @@ export default function ClientsPage() {
                   ? linkedUsers.map((user: any) => user.email || user.name).join(', ')
                   : 'Sem cliente vinculado';
                 return (
-                  <div key={r.id} className="clients-card flex flex-col gap-4 rounded-[2.5rem] border border-slate-50 bg-white p-5 shadow-sm hover:shadow-2xl hover:shadow-slate-200/50 transition-all duration-700 md:flex-row md:items-center md:justify-between group">
+                  <div key={r.id} className="clients-card flex flex-col gap-4 rounded-2xl sm:rounded-[2.5rem] border border-slate-50 bg-white p-4 sm:p-5 shadow-sm hover:shadow-2xl hover:shadow-slate-200/50 transition-all duration-700 md:flex-row md:items-center md:justify-between group">
                     <div>
                       <div className="text-body-strong font-display font-bold text-slate-950 uppercase tracking-tight leading-tight">{r.name}</div>
-                      <div className="mt-2 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">Cliente(s): {linkedUsersLabel}</div>
+                      <div className="mt-2 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500 break-words">Cliente(s): {linkedUsersLabel}</div>
                       <div className="flex flex-wrap items-center gap-2 text-sm mt-3">
                         <span className="text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em]">{r.slug}</span>
                         <span title={r.isActive ? 'Loja ativa e operante' : 'Loja inativa'} aria-label={r.isActive ? 'Ativa' : 'Inativa'} className={`rounded-2xl px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.2em] ${r.isActive ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-500'}`}>{r.isActive ? 'Ativa' : 'Inativa'}</span>
@@ -938,9 +940,9 @@ export default function ClientsPage() {
                           const q = new URLSearchParams();
                           q.set("status", (r.provisioningStatus || "all").toString());
                           q.set("restaurant", r.slug || r.name || "");
-                          window.location.href = `/admin/provisioning?${q.toString()}`;
+                          router.push(`/admin/provisioning?${q.toString()}`);
                         }}
-                        className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-[10px] font-black uppercase tracking-[0.2em] text-slate-600"
+                        className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-2.5 sm:py-3 text-[10px] font-black uppercase tracking-[0.2em] text-slate-600"
                       >
                         <Workflow size={14} /> Provisioning
                       </button>
@@ -949,9 +951,9 @@ export default function ClientsPage() {
                           const q = new URLSearchParams();
                           q.set("hasRetry", "1");
                           q.set("restaurant", r.slug || r.name || "");
-                          window.location.href = `/admin/provisioning?${q.toString()}`;
+                          router.push(`/admin/provisioning?${q.toString()}`);
                         }}
-                        className="inline-flex items-center gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-[10px] font-black uppercase tracking-[0.2em] text-amber-700"
+                        className="inline-flex items-center gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-2.5 sm:py-3 text-[10px] font-black uppercase tracking-[0.2em] text-amber-700"
                       >
                         <RefreshCcw size={14} /> Com retry
                       </button>
@@ -960,18 +962,18 @@ export default function ClientsPage() {
                           const q = new URLSearchParams();
                           q.set("subjectType", "restaurant");
                           q.set("search", r.slug || r.name || "");
-                          window.location.href = `/admin/audit?${q.toString()}`;
+                          router.push(`/admin/audit?${q.toString()}`);
                         }}
-                        className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-[10px] font-black uppercase tracking-[0.2em] text-slate-600"
+                        className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-2.5 sm:py-3 text-[10px] font-black uppercase tracking-[0.2em] text-slate-600"
                       >
                         <FileSearch size={14} /> Auditoria
                       </button>
                       {r.isActive ? (
-                        <button aria-label="Pausar loja" onClick={() => handlePauseRestaurant(r.id)} className="rounded-2xl bg-amber-500 px-4 py-3 text-[10px] font-black uppercase tracking-[0.2em] text-white">Pausar</button>
+                        <button aria-label="Pausar loja" onClick={() => handlePauseRestaurant(r.id)} className="rounded-2xl bg-amber-500 px-4 py-2.5 sm:py-3 text-[10px] font-black uppercase tracking-[0.2em] text-white">Pausar</button>
                       ) : (
-                        <button aria-label="Ativar loja" onClick={() => handleApproveRestaurant(r.id)} className="rounded-2xl bg-slate-950 px-4 py-3 text-[10px] font-black uppercase tracking-[0.2em] text-white">Ativar</button>
+                        <button aria-label="Ativar loja" onClick={() => handleApproveRestaurant(r.id)} className="rounded-2xl bg-slate-950 px-4 py-2.5 sm:py-3 text-[10px] font-black uppercase tracking-[0.2em] text-white">Ativar</button>
                       )}
-                      <button onClick={() => handleDeleteRestaurant(r.id)} className="inline-flex items-center gap-2 rounded-2xl bg-rose-600 px-4 py-3 text-[10px] font-black uppercase tracking-[0.2em] text-white"><Trash size={14} />Excluir</button>
+                      <button onClick={() => handleDeleteRestaurant(r.id)} className="inline-flex items-center gap-2 rounded-2xl bg-rose-600 px-4 py-2.5 sm:py-3 text-[10px] font-black uppercase tracking-[0.2em] text-white"><Trash size={14} />Excluir</button>
                     </div>
                   </div>
                 );
@@ -983,12 +985,12 @@ export default function ClientsPage() {
       )}
 
       {viewMode === 'inconsistencies' && (
-      <div className="grid gap-6 xl:grid-cols-2">
-        <div className="clients-panel rounded-[3rem] border border-rose-100 bg-white p-8 shadow-sm">
+      <div className="grid gap-4 sm:gap-6 xl:grid-cols-2">
+        <div className="clients-panel rounded-2xl sm:rounded-[3rem] border border-rose-100 bg-white p-4 sm:p-6 md:p-8 shadow-sm">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <p className="text-label font-body font-bold text-rose-500 uppercase tracking-[0.2em]">Usuários</p>
-              <h2 className="text-heading-2 font-display font-bold text-slate-950 uppercase tracking-tight">Sem vínculo correto</h2>
+              <p className="text-[10px] sm:text-label font-body font-bold text-rose-500 uppercase tracking-[0.2em]">Usuários</p>
+              <h2 className="text-xl sm:text-heading-2 font-display font-bold text-slate-950 uppercase tracking-tight">Sem vínculo correto</h2>
             </div>
             <div className="flex items-center gap-2">
               <button
@@ -1033,11 +1035,11 @@ export default function ClientsPage() {
           <button onClick={() => setViewMode('users')} className="mt-4 rounded-full bg-slate-950 px-5 py-2 text-[10px] font-black uppercase tracking-[0.2em] text-white">Ir para usuários</button>
         </div>
 
-        <div className="clients-panel rounded-[3rem] border border-sky-100 bg-white p-8 shadow-sm">
+        <div className="clients-panel rounded-2xl sm:rounded-[3rem] border border-sky-100 bg-white p-4 sm:p-6 md:p-8 shadow-sm">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-label font-body font-bold text-sky-500 uppercase tracking-[0.2em]">Lojas</p>
-              <h2 className="text-heading-2 font-display font-bold text-slate-950 uppercase tracking-tight">Sem cliente responsável</h2>
+              <p className="text-[10px] sm:text-label font-body font-bold text-sky-500 uppercase tracking-[0.2em]">Lojas</p>
+              <h2 className="text-xl sm:text-heading-2 font-display font-bold text-slate-950 uppercase tracking-tight">Sem cliente responsável</h2>
             </div>
             <span className="rounded-full bg-sky-50 px-4 py-2 text-[10px] font-black uppercase tracking-[0.2em] text-sky-700">{inconsistentStores.length}</span>
           </div>
@@ -1059,7 +1061,7 @@ export default function ClientsPage() {
                         const q = new URLSearchParams();
                         q.set('status', (store.provisioningStatus || 'all').toString());
                         q.set('restaurant', store.slug || store.name || '');
-                        window.location.href = `/admin/provisioning?${q.toString()}`;
+                        router.push(`/admin/provisioning?${q.toString()}`);
                       }}
                       className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.2em] text-slate-600"
                     >

@@ -63,9 +63,35 @@ if (!JWT_SECRET) {
 
 const PORT = process.env.PORT || 8000;
 const DEFAULT_CASH_DIFFERENCE_NOTE_THRESHOLD = 5;
+const AUDIT_DEFAULT_DAYS = Math.min(90, Math.max(1, Number(process.env.AUDIT_DEFAULT_DAYS || 7)));
+const AUDIT_EXPORT_MAX_ROWS = Math.min(20000, Math.max(500, Number(process.env.AUDIT_EXPORT_MAX_ROWS || 5000)));
+const AUDIT_ASYNC_EXPORT_MAX_ROWS = Math.min(100000, Math.max(1000, Number(process.env.AUDIT_ASYNC_EXPORT_MAX_ROWS || 20000)));
+const AUDIT_ASYNC_EXPORT_BATCH_SIZE = Math.min(5000, Math.max(200, Number(process.env.AUDIT_ASYNC_EXPORT_BATCH_SIZE || 1000)));
+const AUDIT_EXPORT_JOB_TTL_MINUTES = Math.min(180, Math.max(5, Number(process.env.AUDIT_EXPORT_JOB_TTL_MINUTES || 30)));
+const AUDIT_EXPORT_MAX_CONCURRENT_JOBS = Math.min(5, Math.max(1, Number(process.env.AUDIT_EXPORT_MAX_CONCURRENT_JOBS || 1)));
+const AUDIT_RETENTION_ENABLED = process.env.AUDIT_RETENTION_ENABLED !== 'false';
+const AUDIT_RETENTION_DAYS = Math.min(3650, Math.max(7, Number(process.env.AUDIT_RETENTION_DAYS || 180)));
+const AUDIT_RETENTION_INTERVAL_HOURS = Math.min(168, Math.max(1, Number(process.env.AUDIT_RETENTION_INTERVAL_HOURS || 24)));
 const CASH_COUNTED_ORDER_STATUSES: OrderStatus[] = ['DELIVERED', 'PAID'];
 const CASHIER_OPERATION_ROLES = new Set(['SUPER_ADMIN', 'OWNER', 'MANAGER', 'EMPLOYEE']);
 const CASHIER_OPEN_CLOSE_ROLES = new Set(['SUPER_ADMIN', 'OWNER', 'MANAGER']);
+
+type AuditExportJobStatus = 'queued' | 'processing' | 'completed' | 'failed' | 'cancelled';
+
+type AuditExportJob = {
+  id: string;
+  status: AuditExportJobStatus;
+  createdAt: Date;
+  expiresAt: Date;
+  processedRows: number;
+  totalRows: number;
+  csvContent?: string;
+  error?: string;
+  cancelRequested?: boolean;
+  where: any;
+};
+
+const auditExportJobs = new Map<string, AuditExportJob>();
 
 function ensureCashierPermission(
   req: AuthRequest,
@@ -79,6 +105,173 @@ function ensureCashierPermission(
   }
 
   return true;
+}
+
+function parseAuditDateInput(value: string, endOfDay = false): Date | null {
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return null;
+  }
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    if (endOfDay) {
+      parsed.setHours(23, 59, 59, 999);
+    } else {
+      parsed.setHours(0, 0, 0, 0);
+    }
+  }
+
+  return parsed;
+}
+
+function buildAuditDateRange(query: any): { from: Date; to: Date } | null {
+  const now = new Date();
+  const fallbackTo = new Date(now);
+  fallbackTo.setHours(23, 59, 59, 999);
+
+  const fallbackFrom = new Date(fallbackTo);
+  fallbackFrom.setDate(fallbackFrom.getDate() - (AUDIT_DEFAULT_DAYS - 1));
+  fallbackFrom.setHours(0, 0, 0, 0);
+
+  const dateFromRaw = query.dateFrom?.toString().trim() || '';
+  const dateToRaw = query.dateTo?.toString().trim() || '';
+
+  const from = dateFromRaw ? parseAuditDateInput(dateFromRaw, false) : fallbackFrom;
+  const to = dateToRaw ? parseAuditDateInput(dateToRaw, true) : fallbackTo;
+
+  if (!from || !to || from > to) {
+    return null;
+  }
+
+  return { from, to };
+}
+
+function buildAuditWhere(search: string, subjectType: string | undefined, dateRange: { from: Date; to: Date }) {
+  const where: any = {};
+  where.createdAt = { gte: dateRange.from, lte: dateRange.to };
+
+  if (search) {
+    where.OR = [
+      { action: { contains: search, mode: 'insensitive' } },
+      { actorEmail: { contains: search, mode: 'insensitive' } }
+    ];
+  }
+
+  if (subjectType) {
+    where.subjectType = subjectType;
+  }
+
+  return where;
+}
+
+function cleanupExpiredAuditExportJobs() {
+  const now = new Date();
+  for (const [id, job] of auditExportJobs.entries()) {
+    if (job.expiresAt.getTime() <= now.getTime()) {
+      auditExportJobs.delete(id);
+    }
+  }
+}
+
+async function processAuditExportJob(jobId: string) {
+  const job = auditExportJobs.get(jobId);
+  if (!job) {
+    return;
+  }
+
+  if (job.cancelRequested || job.status === 'cancelled') {
+    job.status = 'cancelled';
+    job.error = 'Exportação cancelada pelo usuário.';
+    return;
+  }
+
+  job.status = 'processing';
+  job.processedRows = 0;
+
+  try {
+    const total = await prisma.auditLog.count({ where: job.where });
+    job.totalRows = total;
+
+    if (total > AUDIT_ASYNC_EXPORT_MAX_ROWS) {
+      job.status = 'failed';
+      job.error = `Exportação excede o limite assíncrono de ${AUDIT_ASYNC_EXPORT_MAX_ROWS} registros. Refine os filtros.`;
+      return;
+    }
+
+    const header = 'id,actorId,actorEmail,action,subjectType,subjectId,details,createdAt\n';
+    const rows: string[] = [];
+
+    for (let skip = 0; skip < total; skip += AUDIT_ASYNC_EXPORT_BATCH_SIZE) {
+      const currentJob = auditExportJobs.get(jobId);
+      if (!currentJob || currentJob.cancelRequested || currentJob.status === 'cancelled') {
+        if (currentJob) {
+          currentJob.status = 'cancelled';
+          currentJob.error = 'Exportação cancelada pelo usuário.';
+          currentJob.csvContent = undefined;
+        }
+        return;
+      }
+
+      const batch = await prisma.auditLog.findMany({
+        where: job.where,
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: AUDIT_ASYNC_EXPORT_BATCH_SIZE,
+      });
+
+      rows.push(
+        ...batch.map((l) => `${l.id},${l.actorId ?? ''},"${(l.actorEmail || '').replace(/"/g, '""')}","${l.action}","${l.subjectType}",${l.subjectId ?? ''},"${JSON.stringify(l.details || {}).replace(/"/g, '""')}",${l.createdAt.toISOString()}`)
+      );
+
+      job.processedRows += batch.length;
+    }
+
+    job.csvContent = header + rows.join('\n');
+    job.status = 'completed';
+  } catch (error: any) {
+    job.status = 'failed';
+    job.error = error?.message || 'Falha ao processar exportação de auditoria.';
+  }
+}
+
+function getAuditRetentionCutoff(): Date {
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - AUDIT_RETENTION_DAYS);
+  return cutoff;
+}
+
+async function runAuditRetentionCleanup(trigger: 'startup' | 'scheduled') {
+  if (!AUDIT_RETENTION_ENABLED) {
+    return;
+  }
+
+  try {
+    const cutoff = getAuditRetentionCutoff();
+    const result = await prisma.auditLog.deleteMany({
+      where: {
+        createdAt: { lt: cutoff },
+      },
+    });
+
+    if (result.count > 0) {
+      console.log(`[AUDIT_RETENTION] ${result.count} log(s) removido(s) no gatilho ${trigger}.`);
+    }
+  } catch (error) {
+    console.error('[AUDIT_RETENTION] Falha ao executar limpeza de auditoria:', error);
+  }
+}
+
+function scheduleAuditRetentionCleanup() {
+  if (!AUDIT_RETENTION_ENABLED) {
+    console.log('[AUDIT_RETENTION] Limpeza automática desativada por configuração.');
+    return;
+  }
+
+  const intervalMs = AUDIT_RETENTION_INTERVAL_HOURS * 60 * 60 * 1000;
+  runAuditRetentionCleanup('startup');
+  setInterval(() => {
+    runAuditRetentionCleanup('scheduled');
+  }, intervalMs);
 }
 
 // ✅ SEGURO: CORS configurado explicitamente
@@ -518,15 +711,13 @@ app.get('/api/admin/audit-logs', authMiddleware, async (req: AuthRequest, res) =
   const perPage = Math.min(200, Math.max(5, Number(req.query.perPage || 20)));
   const search = (req.query.search || '').toString();
   const subjectType = req.query.subjectType?.toString();
+  const dateRange = buildAuditDateRange(req.query);
 
-  const where: any = {};
-  if (search) {
-    where.OR = [
-      { action: { contains: search, mode: 'insensitive' } },
-      { actorEmail: { contains: search, mode: 'insensitive' } }
-    ];
+  if (!dateRange) {
+    return res.status(400).json({ error: 'Intervalo de datas inválido para auditoria.' });
   }
-  if (subjectType) where.subjectType = subjectType;
+
+  const where = buildAuditWhere(search, subjectType, dateRange);
 
   const total = await prisma.auditLog.count({ where });
   const logs = await prisma.auditLog.findMany({
@@ -536,7 +727,14 @@ app.get('/api/admin/audit-logs', authMiddleware, async (req: AuthRequest, res) =
     take: perPage
   });
 
-  res.json({ data: logs, total, page, perPage });
+  res.json({
+    data: logs,
+    total,
+    page,
+    perPage,
+    dateFrom: dateRange.from.toISOString(),
+    dateTo: dateRange.to.toISOString(),
+  });
 });
 
 // Export audit logs as CSV (filtered)
@@ -547,17 +745,25 @@ app.get('/api/admin/audit-logs/export', authMiddleware, async (req: AuthRequest,
 
   const search = (req.query.search || '').toString();
   const subjectType = req.query.subjectType?.toString();
+  const dateRange = buildAuditDateRange(req.query);
 
-  const where: any = {};
-  if (search) {
-    where.OR = [
-      { action: { contains: search, mode: 'insensitive' } },
-      { actorEmail: { contains: search, mode: 'insensitive' } }
-    ];
+  if (!dateRange) {
+    return res.status(400).json({ error: 'Intervalo de datas inválido para auditoria.' });
   }
-  if (subjectType) where.subjectType = subjectType;
 
-  const logs = await prisma.auditLog.findMany({ where, orderBy: { createdAt: 'desc' } });
+  const where = buildAuditWhere(search, subjectType, dateRange);
+
+  const logs = await prisma.auditLog.findMany({
+    where,
+    orderBy: { createdAt: 'desc' },
+    take: AUDIT_EXPORT_MAX_ROWS + 1,
+  });
+
+  if (logs.length > AUDIT_EXPORT_MAX_ROWS) {
+    return res.status(400).json({
+      error: `Exportação excede o limite de ${AUDIT_EXPORT_MAX_ROWS} registros. Refine os filtros de busca e período.`,
+    });
+  }
 
   const header = 'id,actorId,actorEmail,action,subjectType,subjectId,details,createdAt\n';
   const rows = logs.map(l => `${l.id},${l.actorId ?? ''},"${(l.actorEmail || '').replace(/"/g, '""')}","${l.action}","${l.subjectType}",${l.subjectId ?? ''},"${JSON.stringify(l.details || {}).replace(/"/g, '""')}",${l.createdAt.toISOString()}`).join('\n');
@@ -566,6 +772,138 @@ app.get('/api/admin/audit-logs/export', authMiddleware, async (req: AuthRequest,
   res.setHeader('Content-Type', 'text/csv');
   res.setHeader('Content-Disposition', 'attachment; filename="audit_logs_export.csv"');
   res.send(csv);
+});
+
+// Export audit logs as async job (filtered)
+app.post('/api/admin/audit-logs/export-jobs', authMiddleware, async (req: AuthRequest, res) => {
+  if (req.userRole !== 'SUPER_ADMIN') {
+    return res.status(403).json({ error: 'Acesso restrito ao super admin' });
+  }
+
+  cleanupExpiredAuditExportJobs();
+
+  const activeJobs = Array.from(auditExportJobs.values()).filter(
+    (job) => job.status === 'queued' || job.status === 'processing'
+  );
+
+  if (activeJobs.length >= AUDIT_EXPORT_MAX_CONCURRENT_JOBS) {
+    return res.status(409).json({
+      error: `Já existe exportação em andamento. Limite atual: ${AUDIT_EXPORT_MAX_CONCURRENT_JOBS} job ativo por vez.`,
+    });
+  }
+
+  const search = (req.body?.search || '').toString();
+  const subjectType = req.body?.subjectType?.toString();
+  const dateRange = buildAuditDateRange(req.body || {});
+
+  if (!dateRange) {
+    return res.status(400).json({ error: 'Intervalo de datas inválido para auditoria.' });
+  }
+
+  const where = buildAuditWhere(search, subjectType, dateRange);
+  const now = new Date();
+  const expiresAt = new Date(now.getTime() + AUDIT_EXPORT_JOB_TTL_MINUTES * 60 * 1000);
+  const jobId = crypto.randomUUID();
+
+  auditExportJobs.set(jobId, {
+    id: jobId,
+    status: 'queued',
+    createdAt: now,
+    expiresAt,
+    processedRows: 0,
+    totalRows: 0,
+    where,
+  });
+
+  setImmediate(() => {
+    processAuditExportJob(jobId);
+  });
+
+  res.status(202).json({
+    jobId,
+    status: 'queued',
+    expiresAt: expiresAt.toISOString(),
+    maxRows: AUDIT_ASYNC_EXPORT_MAX_ROWS,
+  });
+});
+
+app.get('/api/admin/audit-logs/export-jobs/:jobId', authMiddleware, async (req: AuthRequest, res) => {
+  if (req.userRole !== 'SUPER_ADMIN') {
+    return res.status(403).json({ error: 'Acesso restrito ao super admin' });
+  }
+
+  cleanupExpiredAuditExportJobs();
+
+  const job = auditExportJobs.get(req.params.jobId);
+  if (!job) {
+    return res.status(404).json({ error: 'Job de exportação não encontrado ou expirado.' });
+  }
+
+  res.json({
+    jobId: job.id,
+    status: job.status,
+    processedRows: job.processedRows,
+    totalRows: job.totalRows,
+    error: job.error,
+    expiresAt: job.expiresAt.toISOString(),
+  });
+});
+
+app.get('/api/admin/audit-logs/export-jobs/:jobId/download', authMiddleware, async (req: AuthRequest, res) => {
+  if (req.userRole !== 'SUPER_ADMIN') {
+    return res.status(403).json({ error: 'Acesso restrito ao super admin' });
+  }
+
+  cleanupExpiredAuditExportJobs();
+
+  const job = auditExportJobs.get(req.params.jobId);
+  if (!job) {
+    return res.status(404).json({ error: 'Job de exportação não encontrado ou expirado.' });
+  }
+
+  if (job.status === 'failed') {
+    return res.status(400).json({ error: job.error || 'Falha no job de exportação.' });
+  }
+
+  if (job.status === 'cancelled') {
+    return res.status(409).json({ error: job.error || 'Exportação cancelada.' });
+  }
+
+  if (job.status !== 'completed' || !job.csvContent) {
+    return res.status(409).json({ error: 'Exportação ainda em processamento.' });
+  }
+
+  const csvContent = job.csvContent;
+  // Remove o job concluído após disponibilizar o arquivo, evitando crescimento em memória.
+  auditExportJobs.delete(job.id);
+
+  res.setHeader('Content-Type', 'text/csv');
+  res.setHeader('Content-Disposition', `attachment; filename="audit_logs_export_${job.id}.csv"`);
+  res.send(csvContent);
+});
+
+app.delete('/api/admin/audit-logs/export-jobs/:jobId', authMiddleware, async (req: AuthRequest, res) => {
+  if (req.userRole !== 'SUPER_ADMIN') {
+    return res.status(403).json({ error: 'Acesso restrito ao super admin' });
+  }
+
+  cleanupExpiredAuditExportJobs();
+
+  const job = auditExportJobs.get(req.params.jobId);
+  if (!job) {
+    return res.status(404).json({ error: 'Job de exportação não encontrado ou expirado.' });
+  }
+
+  if (job.status === 'completed' || job.status === 'failed' || job.status === 'cancelled') {
+    return res.status(409).json({ error: 'Este job já foi finalizado e não pode ser cancelado.' });
+  }
+
+  job.cancelRequested = true;
+  job.status = 'cancelled';
+  job.error = 'Exportação cancelada pelo usuário.';
+  job.csvContent = undefined;
+
+  res.status(200).json({ jobId: job.id, status: job.status });
 });
 
 app.post('/api/admin/users', authMiddleware, async (req: AuthRequest, res) => {
@@ -2978,6 +3316,7 @@ app.get('/api/stats', authMiddleware, async (req: AuthRequest, res) => {
 
 httpServer.listen(PORT, () => {
   console.log(`🚀 API com PostgreSQL rodando em http://localhost:${PORT}`);
+  scheduleAuditRetentionCleanup();
 });
 
 // ─── PIX ROUTES ──────────────────────────────────────────────────────────────

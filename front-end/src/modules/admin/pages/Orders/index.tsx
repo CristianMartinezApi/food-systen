@@ -553,11 +553,11 @@ export default function OrdersPage() {
     }, [isLoading, orders.length, statusFilter]);
 
     return (
-        <div ref={rootRef} className="min-h-screen bg-slate-50/50 p-8">
-            <div className="orders-hero flex flex-col md:flex-row md:items-end justify-between gap-8 mb-12">
+        <div ref={rootRef} className="min-h-screen bg-slate-50/50 p-4 sm:p-6 md:p-8">
+            <div className="orders-hero flex flex-col md:flex-row md:items-end justify-between gap-4 sm:gap-6 md:gap-8 mb-8 sm:mb-12">
                 <div>
-                    <h1 className="text-heading-1 font-display font-bold text-slate-950 uppercase tracking-tight">Expedicao</h1>
-                    <p className="text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em] mt-2">Gestao logistica e acompanhamento de fluxo em tempo real.</p>
+                        <h1 className="text-2xl sm:text-3xl md:text-heading-1 font-display font-bold text-slate-950 uppercase tracking-tight">Expedicao</h1>
+                    <p className="text-[12px] sm:text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em] mt-2">Gestao logistica e acompanhamento de fluxo em tempo real.</p>
                     <div className="mt-3 flex flex-wrap items-center gap-2">
                         <span className="inline-flex items-center rounded-full px-3 py-1 text-[10px] font-body font-bold uppercase tracking-[0.08em] border border-slate-200 bg-slate-100 text-slate-600">
                             Formato padrao: {printModeLabel}
@@ -576,7 +576,7 @@ export default function OrdersPage() {
                             Impressao direta em preparo: {directPrintAcceptedOrders ? "ativa" : "inativa"}
                         </button>
                     </div>
-                    <div className="mt-3 flex items-center gap-2">
+                    <div className="mt-3 flex flex-wrap items-center gap-2">
                         <span
                             className={cn(
                                 "inline-flex items-center rounded-full px-3 py-1 text-[10px] font-body font-bold uppercase tracking-[0.08em] border",
@@ -592,20 +592,20 @@ export default function OrdersPage() {
                         {!isAudioEnabled && !isMuted && (
                             <button
                                 onClick={handleEnableAlerts}
-                                className="h-7 px-3 rounded-full bg-slate-950 text-white text-[10px] font-bold uppercase tracking-[0.08em]"
+                                className="h-9 sm:h-10 px-3 sm:px-4 rounded-full bg-slate-950 text-white text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.08em]"
                             >
                                 Ativar Alertas
                             </button>
                         )}
                         {activeAlertCount > 0 && (
-                            <div className="h-7 px-3 rounded-full bg-amber-50 border border-amber-200 text-amber-700 text-[10px] font-bold uppercase tracking-[0.08em] flex items-center">
+                            <div className="h-9 sm:h-10 px-3 sm:px-4 rounded-full bg-amber-50 border border-amber-200 text-amber-700 text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.08em] flex items-center">
                                 {activeAlertCount} aguardando aceite
                             </div>
                         )}
                     </div>
                 </div>
 
-                <div className="orders-filters flex bg-white p-2 rounded-3xl border border-slate-100 shadow-sm items-center">
+                <div className="orders-filters flex flex-wrap bg-white p-2 rounded-2xl sm:rounded-3xl border border-slate-100 shadow-sm items-center gap-2">
                     <button
                         onClick={() => {
                             const nextMuted = !isMuted;
@@ -627,7 +627,7 @@ export default function OrdersPage() {
                             }
                         }}
                         className={cn(
-                            "w-12 h-12 flex items-center justify-center rounded-2xl transition-all mr-2",
+                            "w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center rounded-xl sm:rounded-2xl transition-all",
                             isMuted ? "bg-rose-50 text-rose-500" : "bg-slate-50 text-slate-400 hover:text-slate-600"
                         )}
                         title={isMuted ? "Ativar som" : "Mutar som"}
@@ -639,7 +639,7 @@ export default function OrdersPage() {
                         onClick={handleTestAlert}
                         disabled={isMuted || isTestingAlert}
                         className={cn(
-                            "h-12 px-5 rounded-2xl text-label font-body font-bold uppercase tracking-[0.06em] transition-all mr-2",
+                            "h-10 sm:h-12 px-4 sm:px-5 rounded-xl sm:rounded-2xl text-[11px] sm:text-label font-body font-bold uppercase tracking-[0.06em] transition-all",
                             isMuted ? "bg-slate-100 text-slate-300 cursor-not-allowed" : "bg-slate-950 text-white hover:bg-primary"
                         )}
                     >
@@ -656,7 +656,7 @@ export default function OrdersPage() {
                             key={f.id}
                             onClick={() => setStatusFilter(f.id)}
                             className={cn(
-                                "px-8 h-12 rounded-2xl text-label font-body font-bold uppercase tracking-[0.06em] transition-all",
+                                "px-4 sm:px-6 md:px-8 h-10 sm:h-12 rounded-xl sm:rounded-2xl text-[11px] sm:text-label font-body font-bold uppercase tracking-[0.06em] transition-all shrink-0",
                                 statusFilter === f.id
                                     ? "bg-slate-950 text-white shadow-xl shadow-slate-950/20"
                                     : "text-slate-400 hover:text-slate-600 hover:bg-slate-50"
@@ -674,7 +674,7 @@ export default function OrdersPage() {
                     <p className="text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em]">Sincronizando fluxo...</p>
                 </div>
             ) : (
-                <div className="space-y-6">
+                <div className="space-y-4 sm:space-y-6">
                     <AnimatePresence mode="popLayout" initial={false}>
                         {filteredOrders.length === 0 ? (
                             <motion.div
@@ -844,7 +844,7 @@ export default function OrdersPage() {
                                                                             <span className="inline-flex min-w-7 items-center justify-center rounded-md bg-slate-950 px-1.5 py-0.5 text-[9px] font-bold text-white">{item.quantity}x</span>
                                                                             <p className="text-xs font-bold text-slate-900 uppercase tracking-tight truncate">{item.name || item.product?.name}</p>
                                                                         </div>
-                                                                        {detailsLine && <p className="mt-1 text-[10px] text-slate-500 wrap-break-word">{detailsLine}</p>}
+                                                                        {detailsLine && <p className="mt-1 text-[10px] text-slate-500 break-words">{detailsLine}</p>}
                                                                     </div>
                                                                     <div className="shrink-0 text-right">
                                                                         <p className="text-[9px] font-bold uppercase tracking-[0.08em] text-slate-400">Total</p>
@@ -869,18 +869,18 @@ export default function OrdersPage() {
                                             </div>
                                         )}
 
-                                        <div className="mt-3 flex gap-2">
+                                        <div className="mt-3 flex flex-wrap gap-2">
                                             {order.status === "PENDING" && (
                                                 <>
                                                     <button
                                                         onClick={() => updateStatus(order.id, "PREPARING")}
-                                                        className="h-10 px-5 bg-slate-950 text-white rounded-lg font-body font-bold text-[10px] uppercase tracking-widest shadow-md shadow-slate-950/20 hover:bg-primary transition-all active:scale-95"
+                                                        className="h-10 px-5 bg-slate-950 text-white rounded-lg font-body font-bold text-[10px] uppercase tracking-widest shadow-md shadow-slate-950/20 hover:bg-primary transition-all active:scale-95 flex-1 sm:flex-none"
                                                     >
                                                         Confirmar
                                                     </button>
                                                     <button
                                                         onClick={() => handleCancelOrder(order)}
-                                                        className="h-10 px-4 bg-rose-50 text-rose-700 border border-rose-200 rounded-lg font-body font-bold text-[10px] uppercase tracking-widest hover:bg-rose-100 transition-all active:scale-95"
+                                                        className="h-10 px-4 bg-rose-50 text-rose-700 border border-rose-200 rounded-lg font-body font-bold text-[10px] uppercase tracking-widest hover:bg-rose-100 transition-all active:scale-95 flex-1 sm:flex-none"
                                                     >
                                                         Recusar
                                                     </button>
@@ -889,7 +889,7 @@ export default function OrdersPage() {
                                             {order.status === "PREPARING" && (
                                                 <button
                                                     onClick={() => updateStatus(order.id, "DELIVERED")}
-                                                    className="h-10 px-5 bg-emerald-500 text-white rounded-lg font-body font-bold text-[10px] uppercase tracking-widest shadow-md shadow-emerald-500/20 hover:bg-emerald-600 transition-all active:scale-95"
+                                                    className="h-10 px-5 bg-emerald-500 text-white rounded-lg font-body font-bold text-[10px] uppercase tracking-widest shadow-md shadow-emerald-500/20 hover:bg-emerald-600 transition-all active:scale-95 flex-1 sm:flex-none"
                                                 >
                                                     Despachar
                                                 </button>

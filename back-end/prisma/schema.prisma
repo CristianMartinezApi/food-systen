@@ -330,6 +330,9 @@ model AuditLog {
   actor User? @relation(fields: [actorId], references: [id], onDelete: Cascade)
 
   @@index([actorId])
+  @@index([createdAt])
+  @@index([subjectType, createdAt])
+  @@index([action, createdAt])
   @@map("audit_logs")
 }
 
