@@ -79,6 +79,8 @@ const FAQ = [
         question: "Como a empresa se posiciona se ainda está entrando no mercado?",
         answer: "Com seriedade, transparência e suporte próximo. É melhor prometer o que conseguimos entregar do que inflar números sem base real.",
     },
+];
+
 const SAAS_CONTACT_PHONE = "48998354402";
 
 export default function LandingPage() {
