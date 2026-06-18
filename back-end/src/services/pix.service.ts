@@ -109,7 +109,7 @@ export async function createPixCharge(
         const txid = `fs${Date.now()}${Math.random().toString(36).substr(2, 9)}`.slice(0, 35);
 
         // Criar cobrança PIX
-        await axios.put(
+        const cobResp = await axios.put(
             `${baseUrl}/v2/cob/${txid}`,
             {
                 calendario: {
@@ -136,9 +136,15 @@ export async function createPixCharge(
             }
         );
 
+        if (!cobResp.data?.loc?.id) {
+          throw new Error('Falha ao obter ID da locação do PIX');
+        }
+
+        const locId = cobResp.data.loc.id;
+
         // Gerar QR Code
         const qrResp = await axios.get(
-            `${baseUrl}/v2/loc/${txid}/qrcode`,
+            `${baseUrl}/v2/loc/${locId}/qrcode`,
             {
                 httpsAgent: agent,
                 headers: {
