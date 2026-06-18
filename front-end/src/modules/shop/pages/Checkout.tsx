@@ -766,19 +766,28 @@ export default function Checkout() {
                       title="PIX"
                       description="Aprovação instantânea"
                     />
-                    <SelectOption
-                      active={formData.paymentMethod === 'CARD'}
-                      onClick={() => setFormData({ ...formData, paymentMethod: 'CARD' })}
-                      icon={<CreditCard size={24} />}
-                      title="Cartão na Entrega"
-                      description="Maquininha disponível (Crédito/Débito)"
-                    />
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                      <SelectOption
+                        active={formData.paymentMethod === 'CREDIT'}
+                        onClick={() => setFormData({ ...formData, paymentMethod: 'CREDIT' })}
+                        icon={<CreditCard size={24} />}
+                        title="Crédito"
+                        description="Maquininha na entrega"
+                      />
+                      <SelectOption
+                        active={formData.paymentMethod === 'DEBIT'}
+                        onClick={() => setFormData({ ...formData, paymentMethod: 'DEBIT' })}
+                        icon={<CreditCard size={24} />}
+                        title="Débito"
+                        description="Maquininha na entrega"
+                      />
+                    </div>
                     <SelectOption
                       active={formData.paymentMethod === 'CASH'}
                       onClick={() => setFormData({ ...formData, paymentMethod: 'CASH' })}
                       icon={<ShoppingBag size={24} />}
                       title="Dinheiro"
-                      description="Pagamento em espécie na entrega"
+                      description="Pagamento na entrega"
                     />
 
                     {formData.paymentMethod === 'CASH' && (

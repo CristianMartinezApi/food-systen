@@ -801,7 +801,15 @@ export default function OrdersPage() {
                                                     <CreditCard size={15} className="text-slate-300 mt-0.5" />
                                                     <div className="min-w-0 w-full">
                                                         <p className="text-[9px] font-bold uppercase tracking-[0.12em] text-slate-400">Pagamento</p>
-                                                        <p className="font-bold text-slate-900 text-xs mt-1">{order.paymentMethod}</p>
+                                                        <p className="font-bold text-slate-900 text-xs mt-1">
+                                                            {{
+                                                                'CASH': 'Dinheiro',
+                                                                'PIX': 'PIX',
+                                                                'CARD': 'Cartão',
+                                                                'DEBIT': 'Débito',
+                                                                'CREDIT': 'Crédito'
+                                                            }[order.paymentMethod] || order.paymentMethod}
+                                                        </p>
                                                         <p className="text-[11px] text-slate-500 mt-0.5">Troco: {order.changeFor ? formatCurrency(Number(order.changeFor)) : "Nao informado"}</p>
                                                     </div>
                                                 </div>

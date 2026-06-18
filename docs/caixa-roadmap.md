@@ -30,12 +30,13 @@ Transformar o painel administrativo em um caixa completo para operação diária
 - Registro de movimentos: sangria e suprimento.
 - Impressao de comanda/comprovante (web print inicial).
 
-### Fase 2 - Caixa Financeiro
+### Fase 2 - Caixa Financeiro (Concluído ✅)
 
-- Fechamento por turno com resumo por meio de pagamento.
-- Pagamento multiplo no mesmo pedido (split).
+- Fechamento por turno com resumo por meio de pagamento (Dinheiro, PIX, Débito, Crédito).
+- Pagamento múltiplo no mesmo pedido (split).
 - Regras de estorno/cancelamento por perfil.
-- Divergencia entre valor esperado x informado no fechamento.
+- Divergência entre valor esperado x informado no fechamento.
+- Conciliação assistida com conferência independente de Cartão e PIX.
 
 ### Fase 3 - Caixa Escalavel
 

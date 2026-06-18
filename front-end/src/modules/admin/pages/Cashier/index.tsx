@@ -56,7 +56,7 @@ type DirectSaleItem = {
     quantity: number;
 };
 
-type DirectSalePaymentMethod = "CASH" | "PIX" | "CARD";
+type DirectSalePaymentMethod = "CASH" | "PIX" | "CARD" | "DEBIT" | "CREDIT";
 type CashierOperationTab = "CASH_OPERATION" | "DIRECT_SALES";
 
 const HOMOLOGATION_STEPS = [
@@ -101,6 +101,8 @@ export default function CashierPage() {
 
     const [openingAmount, setOpeningAmount] = useState("");
     const [closingAmount, setClosingAmount] = useState("");
+    const [informedCardAmount, setInformedCardAmount] = useState("");
+    const [informedPixAmount, setInformedPixAmount] = useState("");
     const [closingNotes, setClosingNotes] = useState("");
     const [movementType, setMovementType] = useState<"SUPPLY" | "WITHDRAWAL" | "ADJUSTMENT">("SUPPLY");
     const [movementAmount, setMovementAmount] = useState("");
@@ -391,6 +393,9 @@ export default function CashierPage() {
 
     const handleCloseSession = async () => {
         const parsed = parseMoneyInput(closingAmount);
+        const cardParsed = parseMoneyInput(informedCardAmount || 0);
+        const pixParsed = parseMoneyInput(informedPixAmount || 0);
+
         if (Number.isNaN(parsed) || parsed < 0) {
             toast.error("Valor de fechamento invalido");
             return;
@@ -400,12 +405,17 @@ export default function CashierPage() {
             setSubmitting(true);
             await api.post("/cashier/session/close", {
                 closingAmount: parsed,
+                informedCardAmount: cardParsed,
+                informedPixAmount: pixParsed,
                 notes: closingNotes || null,
             });
             toast.success("Caixa fechado com sucesso");
             markHomologationSteps(["close"]);
             setClosingAmount("");
+            setInformedCardAmount("");
+            setInformedPixAmount("");
             setClosingNotes("");
+            setCloseSessionConfirmOpen(false);
             await loadCashier(1);
         } catch (error: any) {
             toast.error(error.message || "Erro ao fechar caixa");
@@ -441,9 +451,21 @@ export default function CashierPage() {
                 PIX: "PIX",
                 CASH: "Dinheiro",
                 CARD: "Cartao",
+                DEBIT: "Debito",
+                CREDIT: "Credito",
             };
             const paymentRows = (reportTotals.salesByPayment || [])
-                .map((entry: any) => `<div class="line"><span>${paymentLabels[entry.method] || entry.method}</span><span>${formatCurrency(entry.total || 0)}</span></div>`)
+                .map((entry: any) => `
+                    <div class="line">
+                        <span>${paymentLabels[entry.method] || entry.method} (Esperado)</span>
+                        <span>${formatCurrency(entry.total || 0)}</span>
+                    </div>
+                    <div class="line muted" style="margin-bottom: 4px;">
+                        <span>${paymentLabels[entry.method] || entry.method} (Informado)</span>
+                        <span>${formatCurrency(entry.informed || 0)}</span>
+                    </div>
+                    ${entry.difference !== 0 ? `<div class="line" style="font-size: 9px; color: ${entry.difference < 0 ? 'red' : 'green'}"><span>Diferenca ${entry.method}</span><span>${formatCurrency(entry.difference)}</span></div>` : ''}
+                `)
                 .join("");
 
             const thermalHtml = `
@@ -827,8 +849,33 @@ export default function CashierPage() {
                                         </div>
                                     </div>
                                 </div>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <label className="block">
+                                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Total Cartão (Comprovantes)</span>
+                                        <input
+                                            value={informedCardAmount}
+                                            onChange={(e) => setInformedCardAmount(formatMoneyInputRealtime(e.target.value))}
+                                            type="text"
+                                            inputMode="decimal"
+                                            placeholder="0,00"
+                                            className="mt-2 h-12 w-full rounded-2xl border border-slate-200 px-4 outline-none"
+                                        />
+                                    </label>
+                                    <label className="block">
+                                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Total PIX (Conferência Bancária)</span>
+                                        <input
+                                            value={informedPixAmount}
+                                            onChange={(e) => setInformedPixAmount(formatMoneyInputRealtime(e.target.value))}
+                                            type="text"
+                                            inputMode="decimal"
+                                            placeholder="0,00"
+                                            className="mt-2 h-12 w-full rounded-2xl border border-slate-200 px-4 outline-none"
+                                        />
+                                    </label>
+                                </div>
+
                                 <label className="block">
-                                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Valor em caixa no fechamento</span>
+                                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Dinheiro em Espécie no Cofre</span>
                                     <input
                                         value={closingAmount}
                                         onChange={(e) => setClosingAmount(formatMoneyInputRealtime(e.target.value))}
@@ -839,29 +886,55 @@ export default function CashierPage() {
                                     />
                                 </label>
 
-                                <div className="rounded-2xl border border-slate-200 bg-white p-4 space-y-3">
-                                    <div className="flex items-center justify-between">
-                                        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Resumo de fechamento</p>
+                                <div className="rounded-2xl border border-slate-200 bg-white p-4 space-y-4">
+                                    <div className="flex items-center justify-between mb-1">
+                                        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Resumo de conferência (Sistema x Operador)</p>
                                         <span className={`text-[10px] font-black uppercase tracking-[0.12em] ${hasRelevantClosingDifference ? "text-rose-600" : hasAnyClosingDifference ? "text-amber-600" : "text-emerald-600"}`}>
                                             {closingRiskLabel}
                                         </span>
                                     </div>
                                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                                         <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
-                                            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Esperado</p>
-                                            <p className="text-xs font-black text-slate-900">{formatCurrency(totals.expectedAmount || 0)}</p>
+                                            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Dinheiro</p>
+                                            <div className="flex justify-between items-end mt-1">
+                                                <div>
+                                                    <p className="text-[8px] uppercase text-slate-400">Sis</p>
+                                                    <p className="text-[10px] font-black text-slate-900">{formatCurrency(totals.expectedAmount || 0)}</p>
+                                                </div>
+                                                <div className="text-right">
+                                                    <p className="text-[8px] uppercase text-slate-400">Inf</p>
+                                                    <p className="text-[10px] font-black text-slate-900">{formatCurrency(parseMoneyInput(closingAmount) || 0)}</p>
+                                                </div>
+                                            </div>
                                         </div>
                                         <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
-                                            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Informado</p>
-                                            <p className="text-xs font-black text-slate-900">{formatCurrency(parseMoneyInput(closingAmount || 0))}</p>
+                                            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Cartão</p>
+                                            <div className="flex justify-between items-end mt-1">
+                                                <div>
+                                                    <p className="text-[8px] uppercase text-slate-400">Sis</p>
+                                                    <p className="text-[10px] font-black text-slate-900">{formatCurrency((totals.cardSales || 0) + (totals.debitSales || 0) + (totals.creditSales || 0))}</p>
+                                                </div>
+                                                <div className="text-right">
+                                                    <p className="text-[8px] uppercase text-slate-400">Inf</p>
+                                                    <p className="text-[10px] font-black text-slate-900">{formatCurrency(parseMoneyInput(informedCardAmount) || 0)}</p>
+                                                </div>
+                                            </div>
                                         </div>
                                         <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
-                                            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Divergencia</p>
-                                            <p className={`text-xs font-black ${hasRelevantClosingDifference ? "text-rose-600" : hasAnyClosingDifference ? "text-amber-600" : "text-emerald-600"}`}>
-                                                {formatCurrency(closingDifference)}
-                                            </p>
+                                            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">PIX</p>
+                                            <div className="flex justify-between items-end mt-1">
+                                                <div>
+                                                    <p className="text-[8px] uppercase text-slate-400">Sis</p>
+                                                    <p className="text-[10px] font-black text-slate-900">{formatCurrency(totals.pixSales || 0)}</p>
+                                                </div>
+                                                <div className="text-right">
+                                                    <p className="text-[8px] uppercase text-slate-400">Inf</p>
+                                                    <p className="text-[10px] font-black text-slate-900">{formatCurrency(parseMoneyInput(informedPixAmount) || 0)}</p>
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
+
                                     <div className="space-y-1">
                                         <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100">
                                             <div
@@ -869,8 +942,8 @@ export default function CashierPage() {
                                                 style={{ width: `${Math.max(closingRiskRatio * 100, hasAnyClosingDifference ? 8 : 0)}%` }}
                                             />
                                         </div>
-                                        <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-slate-400">
-                                            Limiar para justificativa: {formatCurrency(differenceNoteThreshold)}
+                                        <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-slate-400 text-center">
+                                            Diferença Dinheiro: {formatCurrency(closingDifference)} (Limite: {formatCurrency(differenceNoteThreshold)})
                                         </p>
                                     </div>
                                 </div>
@@ -932,7 +1005,9 @@ export default function CashierPage() {
                                             >
                                                 <option value="CASH">Dinheiro</option>
                                                 <option value="PIX">PIX</option>
-                                                <option value="CARD">Cartao</option>
+                                                <option value="DEBIT">Cartão de Débito</option>
+                                                <option value="CREDIT">Cartão de Crédito</option>
+                                                <option value="CARD">Cartão (Outros)</option>
                                             </select>
                                         </div>
 
@@ -1289,11 +1364,27 @@ export default function CashierPage() {
                         <span className="text-slate-900">{formatCurrency(parseMoneyInput(closingAmount || 0))}</span>
                     </div>
                     <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-[0.12em]">
-                        <span className="text-slate-500">Divergencia</span>
+                        <span className="text-slate-500">Divergência (Dinheiro)</span>
                         <span className={hasRelevantClosingDifference ? "text-rose-600" : hasAnyClosingDifference ? "text-amber-600" : "text-emerald-600"}>
                             {formatCurrency(closingDifference)}
                         </span>
                     </div>
+
+                    <div className="border-t border-slate-200 pt-2 space-y-2">
+                        <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500">
+                            <span>Divergência (Cartão)</span>
+                            <span className={Math.abs(parseMoneyInput(informedCardAmount || 0) - (totals.sales - totals.cashSales - (totals.salesByPayment?.find((p: any) => p.method === 'PIX')?.total || 0))) > 0 ? "text-amber-600" : "text-emerald-600"}>
+                                {formatCurrency(parseMoneyInput(informedCardAmount || 0) - (totals.sales - totals.cashSales - (totals.salesByPayment?.find((p: any) => p.method === 'PIX')?.total || 0)))}
+                            </span>
+                        </div>
+                        <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500">
+                            <span>Divergência (PIX)</span>
+                            <span className={Math.abs(parseMoneyInput(informedPixAmount || 0) - (totals.salesByPayment?.find((p: any) => p.method === 'PIX')?.total || 0)) > 0 ? "text-amber-600" : "text-emerald-600"}>
+                                {formatCurrency(parseMoneyInput(informedPixAmount || 0) - (totals.salesByPayment?.find((p: any) => p.method === 'PIX')?.total || 0))}
+                            </span>
+                        </div>
+                    </div>
+
                     <div className="pt-1">
                         <div className="h-2 w-full overflow-hidden rounded-full bg-white border border-slate-200">
                             <div
