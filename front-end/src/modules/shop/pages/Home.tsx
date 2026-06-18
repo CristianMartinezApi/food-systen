@@ -219,7 +219,7 @@ export default function Home() {
       <AnimatePresence>{showSplash && splashScreen}</AnimatePresence>
 
       {!showSplash && (
-        <div className="opacity-100 transition-opacity duration-500">
+        <div className="opacity-100 transition-opacity duration-500 overflow-x-hidden">
           <div className="home-header">
             <Header settings={settings} onOpenMenu={() => setIsNavOpen(true)} />
           </div>
@@ -232,13 +232,13 @@ export default function Home() {
             onCategorySelect={setActiveCategory}
           />
 
-          <main className="flex-1 container mx-auto px-4 md:px-6 pt-0 pb-6 md:pb-12 space-y-8 md:space-y-24">
+          <main className="flex-1 container mx-auto px-4 md:px-6 pt-24 sm:pt-28 pb-6 md:pb-12 space-y-8 md:space-y-24">
             {/* Hero Section Premium com GSAP */}
             <section className="relative mt-0">
-              <div className="relative left-1/2 w-dvw max-w-none -translate-x-1/2">
+              <div className="relative w-full max-w-full">
                 <div
                   ref={heroRef}
-                  className="home-hero-art relative overflow-hidden shadow-[0_30px_80px_rgba(0,0,0,0.24)] aspect-[4/5] sm:aspect-[16/10] md:aspect-[21/9] min-h-[540px] sm:min-h-80 md:min-h-[600px] flex items-end"
+                  className="home-hero-art relative overflow-hidden shadow-[0_30px_80px_rgba(0,0,0,0.24)] aspect-[4/5] sm:aspect-[16/10] md:aspect-[21/9] min-h-[540px] sm:min-h-80 md:min-h-[600px] flex items-end rounded-[2rem] sm:rounded-[2.5rem]"
                   style={{ backgroundColor: "#0f172a" }}
                 >
                   {/* Background Art (full-bleed) */}
