@@ -79,11 +79,11 @@ const FAQ = [
         question: "Como a empresa se posiciona se ainda está entrando no mercado?",
         answer: "Com seriedade, transparência e suporte próximo. É melhor prometer o que conseguimos entregar do que inflar números sem base real.",
     },
-];
+const SAAS_CONTACT_PHONE = "48998354402";
 
 export default function LandingPage() {
     const { settings } = useSettings();
-    const contactPhone = settings?.phone || settings?.contact?.phones?.[0] || settings?.contact?.social?.whatsapp || "";
+    const contactPhone = SAAS_CONTACT_PHONE;
 
     const bannerBadge = settings?.bannerBadge ?? "Sistema comercial e operacional para restaurantes";
     const bannerTitle = settings?.bannerTitleLine1 || settings?.bannerTitleLine2
@@ -94,11 +94,9 @@ export default function LandingPage() {
     const bannerImage = settings?.bannerImage ?? "/hero-illustration.png";
 
     const openLeadWhatsApp = () => {
-        if (!contactPhone) return;
-
         sendToWhatsApp(
-            contactPhone,
-            "Olá! Quero entender como o FoodSystem pode ajudar minha loja a operar melhor e vender direto."
+            SAAS_CONTACT_PHONE,
+            "Olá! Vi o sistema FoodSystem e gostaria de saber mais sobre como posso utilizá-lo no meu restaurante."
         );
     };
 
