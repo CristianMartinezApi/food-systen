@@ -3,7 +3,6 @@
 import { ShoppingBag, Menu, Search, MapPin, ChevronRight, Utensils } from "lucide-react";
 import { useCartStore } from "../../../../core/stores/useCartStore";
 import { useLocationStore } from "../../../../core/stores/useLocationStore";
-import { useSettings } from "../../../../core/hooks/useSettings";
 import { useHasHydrated } from "../../../../core/hooks/useHasHydrated";
 import { getTenantSlug } from "../../../../shared/utils/tenant";
 import { useState, useEffect } from "react";
@@ -17,14 +16,14 @@ import { getNextOpeningLabel } from "../../../../shared/utils/schedule";
 
 interface HeaderProps {
   onOpenMenu?: () => void;
+  settings?: any;
 }
 
-export function Header({ onOpenMenu }: HeaderProps) {
+export function Header({ onOpenMenu, settings }: HeaderProps) {
   const hasHydrated = useHasHydrated();
   const { getTotalItems, syncTenantCart } = useCartStore() as any;
   const { address } = useLocationStore();
   const totalItems = hasHydrated ? getTotalItems() : 0;
-  const { settings } = useSettings();
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
   const [slug, setSlug] = useState<string>("");

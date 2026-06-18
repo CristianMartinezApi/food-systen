@@ -13,6 +13,14 @@ interface Plan {
   price: number;
   maxProducts: number;
   maxOrders: number;
+  restaurantsCount?: number;
+  restaurants?: Array<{
+    id: number;
+    name: string;
+    slug: string;
+    ownerName?: string | null;
+    ownerEmail?: string | null;
+  }>;
 }
 
 export default function PlansPage() {
@@ -24,11 +32,11 @@ export default function PlansPage() {
   const [isCreating, setIsCreating] = useState(false);
 
   const [formData, setFormData] = useState({
-    name: "",
-    tier: "FREE",
-    price: "0,00",
-    maxProducts: 10,
-    maxOrders: 100
+    name: "Start",
+    tier: "BASIC",
+    price: "89,00",
+    maxProducts: 120,
+    maxOrders: 900
   });
 
   const loadPlans = async () => {
@@ -57,7 +65,7 @@ export default function PlansPage() {
       });
       toast.success("Plano criado com sucesso");
       setIsCreating(false);
-      setFormData({ name: "", tier: "FREE", price: "0,00", maxProducts: 10, maxOrders: 100 });
+      setFormData({ name: "Start", tier: "BASIC", price: "89,00", maxProducts: 120, maxOrders: 900 });
       loadPlans();
     } catch (error: any) {
       toast.error(error.message || "Erro ao criar plano");
@@ -81,6 +89,26 @@ export default function PlansPage() {
       loadPlans();
     } catch (error: any) {
       toast.error(error.message || "Erro ao atualizar plano");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleDeletePlan = async (plan: Plan) => {
+    const confirmed = window.confirm(`Excluir o plano ${plan.name}? Esta ação não pode ser desfeita.`);
+    if (!confirmed) return;
+
+    try {
+      setIsSaving(true);
+      await api.delete(`/admin/plans/${plan.id}`);
+      toast.success("Plano excluído com sucesso");
+      if (editingPlan?.id === plan.id) {
+        setEditingPlan(null);
+        setEditingPriceInput("");
+      }
+      await loadPlans();
+    } catch (error: any) {
+      toast.error(error.message || "Erro ao excluir plano");
     } finally {
       setIsSaving(false);
     }
@@ -271,15 +299,26 @@ export default function PlansPage() {
                     <span className="bg-slate-50 text-slate-950 px-3 py-1 rounded-full text-[10px] font-bold tracking-widest uppercase">
                       {plan.tier}
                     </span>
-                    <button
-                      onClick={() => {
-                        setEditingPlan(plan);
-                        setEditingPriceInput(String(plan.price).replace(".", ","));
-                      }}
-                      className="text-slate-200 hover:text-slate-950 transition-colors"
-                    >
-                      <Edit size={18} />
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => {
+                          setEditingPlan(plan);
+                          setEditingPriceInput(String(plan.price).replace(".", ","));
+                        }}
+                        className="text-slate-200 hover:text-slate-950 transition-colors"
+                        title="Editar plano"
+                      >
+                        <Edit size={18} />
+                      </button>
+                      <button
+                        onClick={() => handleDeletePlan(plan)}
+                        disabled={isSaving}
+                        className="text-rose-300 hover:text-rose-600 transition-colors disabled:opacity-50"
+                        title="Excluir plano"
+                      >
+                        <Trash size={18} />
+                      </button>
+                    </div>
                   </div>
                   <h3 className="text-xl font-bold font-display uppercase tracking-tight">{plan.name}</h3>
                   <div className="mt-4 space-y-3">
@@ -296,6 +335,29 @@ export default function PlansPage() {
                     <div className="flex items-center justify-between">
                       <span className="text-slate-400 text-xs font-bold uppercase tracking-wider">Pedidos</span>
                       <span className="text-slate-950 font-bold">{plan.maxOrders}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-400 text-xs font-bold uppercase tracking-wider">Lojas</span>
+                      <span className="text-slate-950 font-bold">{plan.restaurantsCount ?? plan.restaurants?.length ?? 0}</span>
+                    </div>
+                  </div>
+
+                  <div className="mt-5 pt-4 border-t border-slate-100">
+                    <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">Quem está nesse plano</p>
+                    <div className="mt-2 space-y-2 max-h-40 overflow-auto pr-1">
+                      {(plan.restaurants && plan.restaurants.length > 0) ? (
+                        plan.restaurants.map((restaurant) => (
+                          <div key={restaurant.id} className="rounded-xl border border-slate-100 bg-slate-50/70 px-3 py-2">
+                            <p className="text-xs font-bold text-slate-900 truncate">{restaurant.name}</p>
+                            <p className="text-[11px] text-slate-500 truncate">
+                              {restaurant.ownerName || "Responsável não definido"}
+                              {restaurant.ownerEmail ? ` (${restaurant.ownerEmail})` : ""}
+                            </p>
+                          </div>
+                        ))
+                      ) : (
+                        <p className="text-xs text-slate-500">Nenhuma loja vinculada a este plano.</p>
+                      )}
                     </div>
                   </div>
                 </>

@@ -321,21 +321,44 @@ async function createAudit(req: AuthRequest | any, action: string, subjectType: 
 
 // --- SEEDER INICIAL ---
 const seedSettings = async () => {
-  const restaurantCount = await prisma.restaurant.count();
-  if (restaurantCount === 0) {
-    // Criar um plano inicial
-    const plan = await prisma.plan.upsert({
-      where: { name: 'Free Plan' },
-      update: {},
-      create: {
-        name: 'Free Plan',
-        tier: 'FREE',
-        price: 0,
-        maxProducts: 10,
-        maxOrders: 100
+  // Planos comerciais padrão para início de operação.
+  const desiredPlans = [
+    { name: 'Start', tier: 'BASIC' as const, price: 89, maxProducts: 120, maxOrders: 900 },
+    { name: 'Pro', tier: 'PRO' as const, price: 179, maxProducts: 350, maxOrders: 2500 },
+    { name: 'Scale', tier: 'ENTERPRISE' as const, price: 349, maxProducts: 1000, maxOrders: 6000 }
+  ];
+
+  const startPlanByName = await prisma.plan.findUnique({ where: { name: 'Start' } });
+  const legacyFreePlan = await prisma.plan.findUnique({ where: { name: 'Free Plan' } });
+
+  if (!startPlanByName && legacyFreePlan) {
+    await prisma.plan.update({
+      where: { id: legacyFreePlan.id },
+      data: {
+        name: 'Start',
+        tier: 'BASIC',
+        price: 89,
+        maxProducts: 120,
+        maxOrders: 900
       }
     });
+  }
 
+  for (const planData of desiredPlans) {
+    await prisma.plan.upsert({
+      where: { name: planData.name },
+      update: {},
+      create: planData
+    });
+  }
+
+  const startPlan = await prisma.plan.findUnique({ where: { name: 'Start' } });
+  if (!startPlan) {
+    throw new Error('Falha ao inicializar plano Start');
+  }
+
+  const restaurantCount = await prisma.restaurant.count();
+  if (restaurantCount === 0) {
     // ✅ SEGURO: Admin password gerado de forma segura
     const adminPassword = process.env.INITIAL_ADMIN_PASSWORD || crypto.randomBytes(16).toString('hex');
     const hashedPassword = await bcrypt.hash(adminPassword, 10);
@@ -350,7 +373,7 @@ const seedSettings = async () => {
         slug: 'foodsystem-burger',
         provisioningStatus: 'READY',
         databaseName: 'foodsystem-burger',
-        planId: plan.id,
+        planId: startPlan.id,
         users: {
           create: {
             name: 'Admin',
@@ -1292,6 +1315,8 @@ app.get('/api/admin/restaurants', authMiddleware, async (req: AuthRequest, res) 
     });
 
     const restaurantIds = restaurants.map((restaurant) => restaurant.id);
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
     let retryLogs: Array<{ restaurantId: number; message: string; createdAt: Date }> = [];
     if (restaurantIds.length > 0) {
@@ -1304,6 +1329,46 @@ app.get('/api/admin/restaurants', authMiddleware, async (req: AuthRequest, res) 
         orderBy: { createdAt: 'desc' }
       });
     }
+
+    const [productsByRestaurant, monthlyOrdersByRestaurant] = await Promise.all([
+      restaurantIds.length > 0
+        ? prisma.product.groupBy({
+          by: ['restaurantId'],
+          where: { restaurantId: { in: restaurantIds } },
+          _count: { _all: true }
+        })
+        : Promise.resolve([]),
+      restaurantIds.length > 0
+        ? prisma.order.groupBy({
+          by: ['restaurantId'],
+          where: {
+            restaurantId: { in: restaurantIds },
+            createdAt: { gte: startOfMonth },
+            OR: [
+              { notes: null },
+              { notes: { not: { startsWith: '[VENDA_DIRETA]' } } }
+            ]
+          },
+          _count: { _all: true }
+        })
+        : Promise.resolve([])
+    ]);
+
+    const productsUsedMap = new Map<number, number>(
+      productsByRestaurant.map((item: any) => [Number(item.restaurantId), Number(item._count?._all || 0)])
+    );
+
+    const monthlyOrdersMap = new Map<number, number>(
+      monthlyOrdersByRestaurant.map((item: any) => [Number(item.restaurantId), Number(item._count?._all || 0)])
+    );
+
+    const resolveUsageStatus = (productPercent: number, orderPercent: number) => {
+      const highest = Math.max(productPercent, orderPercent);
+      if (highest >= 100) return 'limit_reached';
+      if (highest >= 95) return 'critical';
+      if (highest >= 80) return 'warning';
+      return 'ok';
+    };
 
     const latestRetryByRestaurant = new Map<number, { reason: string | null; createdAt: Date }>();
 
@@ -1322,10 +1387,31 @@ app.get('/api/admin/restaurants', authMiddleware, async (req: AuthRequest, res) 
 
     const enrichedRestaurants = restaurants.map((restaurant) => {
       const latestRetry = latestRetryByRestaurant.get(restaurant.id);
+      const productsUsed = productsUsedMap.get(restaurant.id) || 0;
+      const monthlyOrdersUsed = monthlyOrdersMap.get(restaurant.id) || 0;
+      const maxProducts = Number(restaurant.plan?.maxProducts || 0);
+      const maxOrders = Number(restaurant.plan?.maxOrders || 0);
+
+      const productUsagePercent = maxProducts > 0
+        ? Number(((productsUsed / maxProducts) * 100).toFixed(1))
+        : 0;
+      const orderUsagePercent = maxOrders > 0
+        ? Number(((monthlyOrdersUsed / maxOrders) * 100).toFixed(1))
+        : 0;
+
       return {
         ...restaurant,
         lastRetryReason: latestRetry?.reason || null,
-        lastRetryAt: latestRetry?.createdAt || null
+        lastRetryAt: latestRetry?.createdAt || null,
+        planUsage: {
+          productsUsed,
+          monthlyOrdersUsed,
+          maxProducts,
+          maxOrders,
+          productUsagePercent,
+          orderUsagePercent,
+          status: resolveUsageStatus(productUsagePercent, orderUsagePercent)
+        }
       };
     });
 
@@ -1344,9 +1430,47 @@ app.get('/api/admin/plans', authMiddleware, async (req: AuthRequest, res) => {
 
   try {
     const plans = await prisma.plan.findMany({
-      orderBy: { price: 'asc' }
+      orderBy: { price: 'asc' },
+      include: {
+        _count: {
+          select: { restaurants: true }
+        },
+        restaurants: {
+          orderBy: { name: 'asc' },
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            users: {
+              where: { role: 'OWNER' },
+              select: { name: true, email: true },
+              take: 1
+            }
+          }
+        }
+      }
     });
-    res.json(plans);
+
+    const enrichedPlans = plans.map((plan) => ({
+      id: plan.id,
+      name: plan.name,
+      tier: plan.tier,
+      price: plan.price,
+      maxProducts: plan.maxProducts,
+      maxOrders: plan.maxOrders,
+      createdAt: plan.createdAt,
+      updatedAt: plan.updatedAt,
+      restaurantsCount: plan._count.restaurants,
+      restaurants: plan.restaurants.map((restaurant) => ({
+        id: restaurant.id,
+        name: restaurant.name,
+        slug: restaurant.slug,
+        ownerName: restaurant.users[0]?.name || null,
+        ownerEmail: restaurant.users[0]?.email || null
+      }))
+    }));
+
+    res.json(enrichedPlans);
   } catch (error) {
     console.error('Error fetching plans:', error);
     res.status(500).json({ error: 'Erro ao buscar planos' });
@@ -1402,6 +1526,39 @@ app.patch('/api/admin/plans/:id', authMiddleware, async (req: AuthRequest, res) 
   } catch (error) {
     console.error('Error updating plan:', error);
     res.status(400).json({ error: 'Erro ao atualizar plano' });
+  }
+});
+
+app.delete('/api/admin/plans/:id', authMiddleware, async (req: AuthRequest, res) => {
+  if (req.userRole !== 'SUPER_ADMIN') {
+    return res.status(403).json({ error: 'Acesso restrito ao super admin' });
+  }
+
+  const planId = Number(req.params.id);
+
+  try {
+    const plan = await prisma.plan.findUnique({
+      where: { id: planId },
+      select: { id: true, name: true }
+    });
+
+    if (!plan) {
+      return res.status(404).json({ error: 'Plano não encontrado' });
+    }
+
+    const linkedRestaurants = await prisma.restaurant.count({ where: { planId } });
+    if (linkedRestaurants > 0) {
+      return res.status(409).json({
+        error: `Não é possível excluir este plano porque ele está vinculado a ${linkedRestaurants} loja(s).`
+      });
+    }
+
+    await prisma.plan.delete({ where: { id: planId } });
+    await createAudit(req, 'delete_plan', 'plan', planId, { name: plan.name });
+    res.status(204).send();
+  } catch (error) {
+    console.error('Error deleting plan:', error);
+    res.status(400).json({ error: 'Erro ao excluir plano' });
   }
 });
 
@@ -2170,7 +2327,11 @@ app.post('/api/orders', async (req: TenantRequest, res) => {
     const orderCount = await prisma.order.count({
       where: {
         restaurantId: req.restaurantId!,
-        createdAt: { gte: startOfMonth }
+        createdAt: { gte: startOfMonth },
+        OR: [
+          { notes: null },
+          { notes: { not: { startsWith: '[VENDA_DIRETA]' } } }
+        ]
       }
     });
 

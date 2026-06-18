@@ -22,8 +22,8 @@ export default function Home() {
   const { settings, isLoading: settingsLoading } = useSettings();
   const [activeCategory, setActiveCategory] = useState<number | 'all'>('all');
   const [isNavOpen, setIsNavOpen] = useState(false);
-  const [heroLoaded, setHeroLoaded] = useState(false);
   const [splashReady, setSplashReady] = useState(false);
+  const [forceShowContent, setForceShowContent] = useState(false);
   const splashStartRef = useRef<number>(Date.now());
 
   const rootRef = useRef<HTMLDivElement>(null);
@@ -118,33 +118,30 @@ export default function Home() {
   const heroImage = settings?.bannerImage || "https://images.unsplash.com/photo-1550547660-d9450f859349?q=80&w=2000";
 
   useEffect(() => {
-    setHeroLoaded(false);
     setSplashReady(false);
     splashStartRef.current = Date.now();
-
-    const image = new Image();
-    image.src = heroImage;
-    image.onload = () => setHeroLoaded(true);
-    image.onerror = () => setHeroLoaded(true);
-
-    return () => {
-      image.onload = null;
-      image.onerror = null;
-    };
   }, [heroImage]);
 
   useEffect(() => {
-    if (settingsLoading || productsLoading || !heroLoaded) return;
+    const maxWaitTimer = window.setTimeout(() => {
+      setForceShowContent(true);
+    }, 3500);
 
-    const minSplashMs = 1800;
+    return () => window.clearTimeout(maxWaitTimer);
+  }, []);
+
+  useEffect(() => {
+    if (settingsLoading || productsLoading) return;
+
+    const minSplashMs = 700;
     const elapsed = Date.now() - splashStartRef.current;
     const remaining = Math.max(minSplashMs - elapsed, 0);
 
     const timer = window.setTimeout(() => setSplashReady(true), remaining);
     return () => window.clearTimeout(timer);
-  }, [settingsLoading, productsLoading, heroLoaded]);
+  }, [settingsLoading, productsLoading]);
 
-  const showSplash = !(splashReady && !settingsLoading && !productsLoading && heroLoaded);
+  const showSplash = !forceShowContent && !(splashReady && !settingsLoading && !productsLoading);
 
   const splashScreen = (
     <motion.div
@@ -214,7 +211,7 @@ export default function Home() {
       {!showSplash && (
         <div className="opacity-100 transition-opacity duration-500">
           <div className="home-header">
-            <Header onOpenMenu={() => setIsNavOpen(true)} />
+            <Header settings={settings} onOpenMenu={() => setIsNavOpen(true)} />
           </div>
 
           <NavSidebar
@@ -236,8 +233,6 @@ export default function Home() {
                       src={heroImage}
                       className="w-full h-full object-cover object-center"
                       alt={settings?.storeName || "Fundo Gourmet"}
-                      onLoad={() => setHeroLoaded(true)}
-                      onError={() => setHeroLoaded(true)}
                     />
                     <div className="absolute inset-0 bg-linear-to-b from-black/50 via-black/30 to-black/60 md:bg-none md:[background:linear-gradient(to_right,rgba(15,23,42,0.6),rgba(15,23,42,0.3),transparent)]" />
                   </div>

@@ -62,6 +62,36 @@ const OPERATIONAL_PROMISES = [
     "Foco em operação real, não em promessa vaga",
 ];
 
+const PRICING_PLANS = [
+    {
+        name: "Start",
+        subtitle: "Para operação em crescimento",
+        price: 89,
+        maxProducts: 120,
+        maxOrders: 900,
+        avgDailyOrders: 30,
+        highlight: false,
+    },
+    {
+        name: "Pro",
+        subtitle: "Para loja com volume forte",
+        price: 179,
+        maxProducts: 350,
+        maxOrders: 2500,
+        avgDailyOrders: 83,
+        highlight: true,
+    },
+    {
+        name: "Scale",
+        subtitle: "Para operação em escala",
+        price: 349,
+        maxProducts: 1000,
+        maxOrders: 6000,
+        avgDailyOrders: 200,
+        highlight: false,
+    },
+];
+
 const FAQ = [
     {
         question: "Isso é para restaurante que está começando?",
@@ -120,6 +150,7 @@ export default function LandingPage() {
                         <a href="#solucao" className="transition-colors hover:text-primary">Solução</a>
                         <a href="#para-quem" className="transition-colors hover:text-primary">Para quem</a>
                         <a href="#processo" className="transition-colors hover:text-primary">Como funciona</a>
+                        <a href="#planos" className="transition-colors hover:text-primary">Planos</a>
                         <a href="#acesso" className="transition-colors hover:text-primary">Acesso</a>
                         <a href="#faq" className="transition-colors hover:text-primary">FAQ</a>
                     </nav>
@@ -275,6 +306,76 @@ export default function LandingPage() {
                     </div>
                 </section>
 
+                <section id="planos" className="border-b border-slate-100 bg-slate-50 py-20 md:py-28">
+                    <div className="mx-auto max-w-7xl px-4">
+                        <div className="max-w-3xl">
+                            <p className="text-sm font-black uppercase tracking-[0.28em] text-orange-600">Planos</p>
+                            <h2 className="mt-4 text-3xl font-black tracking-tighter text-slate-950 md:text-5xl">
+                                Planos claros por volume da operação: preço, produtos e pedidos por mês.
+                            </h2>
+                            <p className="mt-5 text-base leading-relaxed text-slate-600">
+                                Comece com o plano que faz sentido para o seu momento e ajuste conforme a loja cresce.
+                            </p>
+                        </div>
+
+                        <div className="mt-12 grid gap-6 lg:grid-cols-3">
+                            {PRICING_PLANS.map((plan) => (
+                                <article
+                                    key={plan.name}
+                                    className={`rounded-4xl border p-7 shadow-sm ${plan.highlight
+                                        ? "border-slate-950 bg-slate-950 text-white"
+                                        : "border-slate-200 bg-white text-slate-900"
+                                        }`}
+                                >
+                                    <div className="flex items-center justify-between gap-2">
+                                        <p className={`text-[10px] font-black uppercase tracking-[0.22em] ${plan.highlight ? "text-orange-500" : "text-slate-400"}`}>
+                                            {plan.name}
+                                        </p>
+                                        {plan.highlight && (
+                                            <span className="rounded-full border border-white/20 bg-white/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-white">
+                                                Mais escolhido
+                                            </span>
+                                        )}
+                                    </div>
+
+                                    <p className={`mt-3 text-sm ${plan.highlight ? "text-slate-300" : "text-slate-600"}`}>{plan.subtitle}</p>
+
+                                    <div className="mt-5 flex items-end gap-2">
+                                        <span className="text-4xl font-black tracking-tight">R$ {plan.price}</span>
+                                        <span className={`pb-1 text-xs font-bold uppercase tracking-[0.14em] ${plan.highlight ? "text-slate-400" : "text-slate-500"}`}>/mês</span>
+                                    </div>
+
+                                    <div className={`mt-6 space-y-3 rounded-3xl border p-4 ${plan.highlight ? "border-white/15 bg-white/5" : "border-slate-100 bg-slate-50"}`}>
+                                        <div className="flex items-center justify-between gap-3">
+                                            <span className={`text-[11px] font-black uppercase tracking-[0.14em] ${plan.highlight ? "text-slate-300" : "text-slate-500"}`}>Produtos</span>
+                                            <span className="text-sm font-black tracking-tight">até {plan.maxProducts}</span>
+                                        </div>
+                                        <div className="flex items-center justify-between gap-3">
+                                            <span className={`text-[11px] font-black uppercase tracking-[0.14em] ${plan.highlight ? "text-slate-300" : "text-slate-500"}`}>Pedidos/mês</span>
+                                            <span className="text-sm font-black tracking-tight">até {plan.maxOrders}</span>
+                                        </div>
+                                        <div className="flex items-center justify-between gap-3">
+                                            <span className={`text-[11px] font-black uppercase tracking-[0.14em] ${plan.highlight ? "text-slate-300" : "text-slate-500"}`}>Média diária</span>
+                                            <span className="text-sm font-black tracking-tight">~ {plan.avgDailyOrders}/dia</span>
+                                        </div>
+                                    </div>
+
+                                    <button
+                                        type="button"
+                                        onClick={openLeadWhatsApp}
+                                        className={`mt-6 inline-flex h-12 w-full items-center justify-center gap-2 rounded-2xl px-5 text-[11px] font-black uppercase tracking-[0.14em] transition-all ${plan.highlight
+                                            ? "bg-primary text-white hover:brightness-110"
+                                            : "bg-slate-950 text-white hover:bg-black"
+                                            }`}
+                                    >
+                                        Solicitar este plano <ArrowRight size={14} />
+                                    </button>
+                                </article>
+                            ))}
+                        </div>
+                    </div>
+                </section>
+
                 <section id="acesso" className="border-b border-slate-100 bg-slate-950 py-20 text-white md:py-28">
                     <div className="mx-auto max-w-7xl px-4">
                         <div className="max-w-3xl">
@@ -375,6 +476,7 @@ export default function LandingPage() {
                     <div className="flex flex-wrap gap-5 text-[10px] font-black uppercase tracking-[0.22em] text-slate-400">
                         <a href="#solucao" className="transition-colors hover:text-primary">Solução</a>
                         <a href="#para-quem" className="transition-colors hover:text-primary">Para quem</a>
+                        <a href="#planos" className="transition-colors hover:text-primary">Planos</a>
                         <a href="#acesso" className="transition-colors hover:text-primary">Acesso</a>
                         <a href="#faq" className="transition-colors hover:text-primary">FAQ</a>
                     </div>
