@@ -2859,14 +2859,6 @@ app.get('/api/cashier/sessions/:id/report', authMiddleware, async (req: AuthRequ
         informedCardAmount,
         informedPixAmount,
         differenceAmount,
-        salesByPayment
-      }
-    });
-        sales,
-        cashSales,
-        expectedAmount,
-        closingAmount,
-        differenceAmount,
         salesByPayment,
       },
     });
