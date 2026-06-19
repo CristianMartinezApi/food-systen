@@ -1,6 +1,6 @@
 "use client";
 
-import { ShoppingBag, Menu, Search, MapPin, ChevronRight, Utensils } from "lucide-react";
+import { ShoppingCart, Menu, Search, MapPin, ChevronRight, Utensils } from "lucide-react";
 import { useCartStore } from "../../../../core/stores/useCartStore";
 import { useLocationStore } from "../../../../core/stores/useLocationStore";
 import { useHasHydrated } from "../../../../core/hooks/useHasHydrated";
@@ -66,16 +66,16 @@ export function Header({ onOpenMenu, settings }: HeaderProps) {
     <button
       onClick={() => setIsCartOpen(true)}
       aria-label="Abrir cesto"
-      className="fixed bottom-5 right-4 md:bottom-8 md:right-8 z-70 w-12 h-12 md:w-16 md:h-16 bg-slate-950 text-white rounded-full flex items-center justify-center hover:scale-105 active:scale-95 transition-all duration-300 shadow-2xl shadow-slate-950/35"
+      className="fixed bottom-5 right-4 md:bottom-8 md:right-8 z-70 w-12 h-12 md:w-16 md:h-16 bg-rose-600 text-white rounded-full flex items-center justify-center hover:bg-rose-700 hover:scale-105 active:scale-95 transition-all duration-300 shadow-2xl shadow-rose-900/35 ring-2 ring-white/70"
     >
       <div className="relative">
-        <ShoppingBag size={18} className="md:size-7" />
+        <ShoppingCart size={18} className="md:size-7" />
         {totalItems > 0 && (
           <AnimatePresence>
             <motion.span
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
-              className="absolute -top-2 -right-2 md:-top-3 md:-right-3 bg-primary text-white text-[9px] md:text-[11px] font-body font-bold min-w-5 h-5 px-1 md:min-w-6 md:h-6 rounded-full flex items-center justify-center border-2 border-slate-950"
+              className="absolute -top-2 -right-2 md:-top-3 md:-right-3 bg-white text-rose-700 text-[9px] md:text-[11px] font-body font-bold min-w-5 h-5 px-1 md:min-w-6 md:h-6 rounded-full flex items-center justify-center border-2 border-rose-700"
             >
               {totalItems > 99 ? "99+" : totalItems}
             </motion.span>

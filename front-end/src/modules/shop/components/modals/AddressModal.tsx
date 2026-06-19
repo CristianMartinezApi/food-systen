@@ -6,6 +6,7 @@ import { X, MapPin, Search, Loader2 } from "lucide-react";
 import { useLocationStore } from "../../../../core/stores/useLocationStore";
 import { cn } from "../../../../shared/utils";
 import toast from "react-hot-toast";
+import { shopErrorToastOptions, shopSuccessToastOptions } from "../../utils/toast";
 
 interface AddressModalProps {
   isOpen: boolean;
@@ -38,7 +39,7 @@ export function AddressModal({ isOpen, onClose }: AddressModalProps) {
       const data = await resp.json();
 
       if (data.erro) {
-        toast.error("CEP não encontrado");
+        toast.error("CEP não encontrado", shopErrorToastOptions);
         return;
       }
 
@@ -49,7 +50,7 @@ export function AddressModal({ isOpen, onClose }: AddressModalProps) {
         city: data.localidade,
       });
     } catch (error) {
-      toast.error("Erro ao buscar CEP");
+      toast.error("Erro ao buscar CEP", shopErrorToastOptions);
     } finally {
       setIsSearching(false);
     }
@@ -57,7 +58,7 @@ export function AddressModal({ isOpen, onClose }: AddressModalProps) {
 
   const handleSave = () => {
     if (!formData.street || !formData.number || !formData.neighborhood || !formData.city) {
-      toast.error("Preencha todos os campos obrigatórios");
+      toast.error("Preencha todos os campos obrigatórios", shopErrorToastOptions);
       return;
     }
 
@@ -65,8 +66,12 @@ export function AddressModal({ isOpen, onClose }: AddressModalProps) {
       zipCode: cep,
       ...formData
     });
-    toast.success("Endereço salvo!");
+    toast.success("Endereço salvo!", shopSuccessToastOptions);
     onClose();
+  };
+
+  const updateField = (field: keyof typeof formData) => (value: string) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
   return (
@@ -125,18 +130,18 @@ export function AddressModal({ isOpen, onClose }: AddressModalProps) {
 
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4 md:gap-6">
                 <div className="md:col-span-3">
-                  <InputLabel label="Rua / Avenida" value={formData.street} onChange={(v) => setFormData({ ...formData, street: v })} placeholder="Ex: Av. Paulista" />
+                  <InputLabel label="Rua / Avenida" value={formData.street} onChange={updateField("street")} placeholder="Ex: Av. Paulista" />
                 </div>
                 <div className="md:col-span-1">
-                  <InputLabel label="Nº" value={formData.number} onChange={(v) => setFormData({ ...formData, number: v })} placeholder="123" />
+                  <InputLabel label="Nº" value={formData.number} onChange={updateField("number")} placeholder="123" />
                 </div>
               </div>
 
-              <InputLabel label="Bairro" value={formData.neighborhood} onChange={(v) => setFormData({ ...formData, neighborhood: v })} placeholder="Ex: Centro" />
+              <InputLabel label="Bairro" value={formData.neighborhood} onChange={updateField("neighborhood")} placeholder="Ex: Centro" />
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <InputLabel label="Cidade" value={formData.city} onChange={(v) => setFormData({ ...formData, city: v })} placeholder="Ex: São Paulo" />
-                <InputLabel label="Complemento (Opcional)" value={formData.complement} onChange={(v) => setFormData({ ...formData, complement: v })} placeholder="Ex: Apto 123" />
+                <InputLabel label="Cidade" value={formData.city} onChange={updateField("city")} placeholder="Ex: São Paulo" />
+                <InputLabel label="Complemento (Opcional)" value={formData.complement} onChange={updateField("complement")} placeholder="Ex: Apto 123" />
               </div>
 
               <button

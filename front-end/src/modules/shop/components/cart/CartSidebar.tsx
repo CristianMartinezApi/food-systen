@@ -1,7 +1,7 @@
 "use client";
 
 import { useCartStore } from "../../../../core/stores/useCartStore";
-import { X, ShoppingBag, Trash2, Plus, Minus, ArrowRight, Package, Edit2 } from "lucide-react";
+import { X, ShoppingCart, Trash2, Plus, Minus, ArrowRight, Package, Edit2 } from "lucide-react";
 import { formatCurrency, cn } from "../../../../shared/utils";
 import { getTenantSlug } from "../../../../shared/utils/tenant";
 import Link from "next/link";
@@ -81,8 +81,8 @@ export function CartSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
             {/* Header del Carrello con Estetica Moderna */}
             <div className="px-4 py-3 md:p-8 border-b border-slate-200 flex items-center justify-between bg-slate-100/90 backdrop-blur-xl sticky top-0 z-10">
               <div className="flex items-center gap-3 md:gap-5 min-w-0">
-                <div className="w-11 h-11 md:w-14 md:h-14 bg-slate-950 rounded-2xl flex items-center justify-center text-primary shadow-xl shadow-slate-950/20 group cursor-default shrink-0">
-                  <ShoppingBag size={22} className="group-hover:rotate-12 transition-transform duration-500" />
+                <div className="w-11 h-11 md:w-14 md:h-14 bg-rose-600 rounded-2xl flex items-center justify-center text-white shadow-xl shadow-rose-900/20 group cursor-default shrink-0">
+                  <ShoppingCart size={22} className="group-hover:rotate-12 transition-transform duration-500" />
                 </div>
                 <div>
                   <h3 className="text-heading-3 md:text-heading-2 font-display font-bold text-slate-950 uppercase tracking-tighter leading-none mb-0.5">Carrinho</h3>
@@ -145,7 +145,7 @@ export function CartSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
                           <h4 className="font-body font-bold text-label md:text-body-strong text-slate-950 uppercase tracking-tight leading-none group-hover:text-primary transition-colors pr-2 wrap-break-word">{item.name}</h4>
                           <button
                             onClick={() => removeItem(index)}
-                            className="text-slate-200 hover:text-rose-500 transition-colors bg-slate-50 p-2 rounded-xl hover:bg-rose-50 shrink-0"
+                            className="text-rose-600 transition-colors bg-rose-50 p-2 rounded-xl hover:bg-rose-100 hover:text-rose-700 shrink-0"
                           >
                             <Trash2 size={15} />
                           </button>
@@ -208,7 +208,7 @@ export function CartSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
                 <Link
                   href={`/${slug}/checkout`}
                   onClick={onClose}
-                  className="h-13 md:h-16 w-full bg-slate-950 text-white rounded-3xl font-body font-bold uppercase tracking-[0.06em] text-[10px] md:text-label flex items-center justify-center gap-3 md:gap-4 shadow-xl shadow-slate-950/20 hover:bg-primary hover:scale-[1.02] active:scale-[0.98] transition-all duration-500 group overflow-hidden relative"
+                  className="h-13 md:h-16 w-full bg-rose-600 text-white rounded-3xl font-body font-bold uppercase tracking-[0.06em] text-[10px] md:text-label flex items-center justify-center gap-3 md:gap-4 shadow-xl shadow-rose-900/25 hover:bg-rose-700 hover:scale-[1.02] active:scale-[0.98] transition-all duration-500 group overflow-hidden relative"
                 >
                   <span className="relative z-10 font-body font-bold">Iniciar Finalização</span>
                   <ArrowRight size={18} className="relative z-10 group-hover:translate-x-3 transition-transform duration-500" />

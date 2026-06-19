@@ -7,6 +7,7 @@ import toast from "react-hot-toast";
 import { ProductModal } from "./ProductModal";
 import type { Product } from "../../../../core/types";
 import { clampDiscountPercent, getProductDiscountedPrice, hasProductDiscount } from "../../../../shared/utils/product";
+import { shopErrorToastOptions, shopSuccessToastOptions } from "../../utils/toast";
 
 interface ProductCardProps {
   product: Product;
@@ -24,15 +25,7 @@ export function ProductCard({ product }: ProductCardProps) {
     e.stopPropagation();
 
     if (isOutOfStock) {
-      toast.error("PRODUTO ESGOTADO NO MOMENTO", {
-        style: {
-          borderRadius: '24px',
-          background: '#020617',
-          color: '#fff',
-          fontSize: '10px',
-          fontWeight: '900',
-        }
-      });
+      toast.error("PRODUTO ESGOTADO NO MOMENTO", shopErrorToastOptions);
       return;
     }
 
@@ -49,19 +42,7 @@ export function ProductCard({ product }: ProductCardProps) {
       image: product.image
     });
 
-    toast.success(`${product.name.toUpperCase()} ADICIONADO!`, {
-      icon: '💎',
-      style: {
-        borderRadius: '24px',
-        background: '#020617',
-        color: '#fff',
-        fontSize: '10px',
-        fontWeight: '900',
-        letterSpacing: '0.2em',
-        padding: '20px 32px',
-        border: '1px solid rgba(255,255,255,0.1)'
-      }
-    });
+    toast.success(`${product.name.toUpperCase()} ADICIONADO AO CARRINHO`, shopSuccessToastOptions);
   };
 
   return (

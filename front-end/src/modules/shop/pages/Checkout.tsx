@@ -39,6 +39,7 @@ import toast from "react-hot-toast";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import PixPayment from "../components/payment/PixPayment";
+import { shopErrorToastOptions, shopSuccessToastOptions } from "../utils/toast";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -163,7 +164,8 @@ export default function Checkout() {
 
         if (distance > radius) {
           toast.error(`Infelizmente seu endereço está fora do nosso raio de entrega (${radius}km). Sua distância: ${distance.toFixed(1)}km`, {
-            duration: 5000
+            ...shopErrorToastOptions,
+            duration: 5000,
           });
           return;
         }
@@ -412,11 +414,11 @@ export default function Checkout() {
       } else {
         setStep("success");
         clearCart();
-        toast.success("Pedido enviado com sucesso!");
+        toast.success("Pedido enviado com sucesso!", shopSuccessToastOptions);
       }
     } catch (error: any) {
       console.error("Order error:", error);
-      toast.error(error.message || "Erro ao enviar pedido. Tente novamente.");
+      toast.error(error.message || "Erro ao enviar pedido. Tente novamente.", shopErrorToastOptions);
     } finally {
       setIsSubmitting(false);
     }
@@ -428,7 +430,7 @@ export default function Checkout() {
     // Remove o número padrão 5511... e usa uma string vazia como fallback para evitar números inválidos
     const storePhone = settings?.phone || "";
     if (!storePhone) {
-      toast.error("Telefone da loja não configurado.");
+      toast.error("Telefone da loja não configurado.", shopErrorToastOptions);
       return;
     }
     sendToWhatsApp(storePhone, msg);
@@ -975,7 +977,7 @@ export default function Checkout() {
                         restaurantId={createdOrder.restaurantId}
                         onConfirmed={() => {
                           clearCart();
-                          toast.success("Pagamento confirmado! Seu pedido está sendo preparado.");
+                          toast.success("Pagamento confirmado! Seu pedido está sendo preparado.", shopSuccessToastOptions);
                           setStep("success");
                         }}
                       />

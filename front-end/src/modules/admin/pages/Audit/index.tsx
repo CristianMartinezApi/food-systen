@@ -182,8 +182,8 @@ function AuditContent() {
               </select>
             </div>
 
-            <div className="grid gap-2 sm:grid-cols-3">
-              <button onClick={() => load(1)} className="h-10 sm:h-12 md:h-16 rounded-full bg-slate-950 px-4 sm:px-5 text-[10px] font-black uppercase tracking-[0.2em] text-white shadow-xl shadow-slate-950/20 transition hover:-translate-y-0.5">
+            <div className="grid gap-2 grid-cols-1 sm:grid-cols-3">
+              <button onClick={() => load(1)} className="h-10 sm:h-12 md:h-16 rounded-full bg-slate-950 px-4 sm:px-5 text-[10px] font-black uppercase tracking-[0.12em] sm:tracking-[0.2em] text-white shadow-xl shadow-slate-950/20 transition hover:-translate-y-0.5">
                 Buscar
               </button>
               <button
@@ -192,7 +192,7 @@ function AuditContent() {
                   setSubjectType("");
                   load(1);
                 }}
-                className="h-10 sm:h-12 md:h-16 rounded-full border border-slate-100 bg-white px-4 sm:px-5 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 shadow-sm transition hover:bg-slate-50 hover:-translate-y-0.5"
+                className="h-10 sm:h-12 md:h-16 rounded-full border border-slate-100 bg-white px-4 sm:px-5 text-[10px] font-black uppercase tracking-[0.12em] sm:tracking-[0.2em] text-slate-500 shadow-sm transition hover:bg-slate-50 hover:-translate-y-0.5"
               >
                 Limpar
               </button>
@@ -205,7 +205,7 @@ function AuditContent() {
                     toast.error(error.message || "Erro ao exportar CSV");
                   }
                 }}
-                className="inline-flex h-10 sm:h-12 md:h-16 items-center justify-center gap-2 rounded-full bg-slate-100 px-4 sm:px-5 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 shadow-sm transition hover:bg-slate-200 hover:-translate-y-0.5"
+                className="inline-flex h-10 sm:h-12 md:h-16 items-center justify-center gap-2 rounded-full bg-slate-100 px-4 sm:px-5 text-[10px] font-black uppercase tracking-[0.12em] sm:tracking-[0.2em] text-slate-500 shadow-sm transition hover:bg-slate-200 hover:-translate-y-0.5"
               >
                 <Download size={14} /> Exportar CSV
               </button>
@@ -251,17 +251,17 @@ function AuditContent() {
               <div className="space-y-3">
                 {logs.map((log) => (
                   <article key={log.id} className="rounded-2xl sm:rounded-[2.5rem] border border-slate-50 bg-white p-4 sm:p-5 transition-all duration-500 hover:shadow-2xl hover:shadow-slate-200/40">
-                    <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                    <div className="flex flex-col gap-2 sm:gap-3 md:flex-row md:items-start md:justify-between">
                       <div>
                         <div className="flex flex-wrap items-center gap-2">
-                          <h3 className="text-body-strong font-display font-bold text-slate-950 uppercase tracking-tight">{formatAuditAction(log.action)}</h3>
-                          <span className="rounded-full bg-white px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">{formatAuditSubjectType(log.subjectType)}</span>
+                          <h3 className="text-sm sm:text-body-strong font-display font-bold text-slate-950 uppercase tracking-tight wrap-break-word">{formatAuditAction(log.action)}</h3>
+                          <span className="rounded-full bg-white px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.12em] sm:tracking-[0.2em] text-slate-500">{formatAuditSubjectType(log.subjectType)}</span>
                         </div>
-                        <p className="mt-1 text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em]">
+                        <p className="mt-1 text-[11px] sm:text-label font-body font-medium text-slate-400 uppercase tracking-[0.04em] sm:tracking-[0.06em] break-all sm:break-normal">
                           {log.actorEmail || "Sistema"} • {formatAuditSubjectType(log.subjectType)}#{log.subjectId || ""}
                         </p>
                       </div>
-                      <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">{new Date(log.createdAt).toLocaleString()}</div>
+                      <div className="text-[10px] font-black uppercase tracking-[0.12em] sm:tracking-[0.2em] text-slate-400">{new Date(log.createdAt).toLocaleString()}</div>
                     </div>
 
                     {log.action === "print_document" ? (
@@ -271,7 +271,7 @@ function AuditContent() {
                         <div><strong>Impresso em:</strong> {log.details?.printedAt ? new Date(log.details.printedAt).toLocaleString() : new Date(log.createdAt).toLocaleString()}</div>
                       </div>
                     ) : log.details ? (
-                      <pre className="mt-4 overflow-auto rounded-3xl border border-slate-100 bg-white p-4 text-xs text-slate-600">{JSON.stringify(log.details, null, 2)}</pre>
+                      <pre className="mt-4 max-w-full overflow-auto rounded-3xl border border-slate-100 bg-white p-4 text-xs text-slate-600">{JSON.stringify(log.details, null, 2)}</pre>
                     ) : null}
                   </article>
                 ))}
@@ -281,12 +281,12 @@ function AuditContent() {
 
           <div className="mt-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em]">{total} resultado(s)</div>
-            <div className="flex w-full sm:w-auto items-center justify-between sm:justify-start gap-2">
-              <button disabled={page <= 1} onClick={() => load(page - 1)} className="rounded-full border border-slate-100 bg-white px-5 py-2.5 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 shadow-sm transition hover:bg-slate-50 disabled:opacity-50">
+            <div className="grid w-full grid-cols-1 gap-2 sm:flex sm:w-auto sm:items-center sm:justify-start">
+              <button disabled={page <= 1} onClick={() => load(page - 1)} className="w-full sm:w-auto rounded-full border border-slate-100 bg-white px-5 py-2.5 text-[10px] font-black uppercase tracking-[0.12em] sm:tracking-[0.2em] text-slate-500 shadow-sm transition hover:bg-slate-50 disabled:opacity-50">
                 Anterior
               </button>
-              <div className="rounded-full border border-slate-100 bg-slate-50 px-5 py-2.5 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Página {page}</div>
-              <button disabled={page * perPage >= total} onClick={() => load(page + 1)} className="rounded-full border border-slate-100 bg-white px-5 py-2.5 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 shadow-sm transition hover:bg-slate-50 disabled:opacity-50">
+              <div className="w-full sm:w-auto rounded-full border border-slate-100 bg-slate-50 px-5 py-2.5 text-center text-[10px] font-black uppercase tracking-[0.12em] sm:tracking-[0.2em] text-slate-500">Página {page}</div>
+              <button disabled={page * perPage >= total} onClick={() => load(page + 1)} className="w-full sm:w-auto rounded-full border border-slate-100 bg-white px-5 py-2.5 text-[10px] font-black uppercase tracking-[0.12em] sm:tracking-[0.2em] text-slate-500 shadow-sm transition hover:bg-slate-50 disabled:opacity-50">
                 Próxima
               </button>
             </div>
