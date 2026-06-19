@@ -24,7 +24,16 @@ export function getTenantSlug(): string {
 
   const slugFromPath = pathParts.find(part => part && !reservedSlugs.includes(part));
   if (slugFromPath && !isAdminRoute) {
+    try {
+      localStorage.setItem('tenant_slug', slugFromPath);
+    } catch {
+      // Ignore storage errors and continue with URL slug
+    }
     return slugFromPath;
+  }
+
+  if (!isAdminRoute) {
+    return 'foodsystem-main';
   }
 
   const stored = localStorage.getItem('tenant_slug');
