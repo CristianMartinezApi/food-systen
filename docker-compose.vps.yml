@@ -21,7 +21,7 @@ services:
     build:
       context: ./back-end
       dockerfile: Dockerfile
-    command: sh -c "npx prisma db push --accept-data-loss && npm start"
+    command: sh -c "npx prisma migrate deploy && npm start"
     restart: unless-stopped
     ports:
       - "127.0.0.1:8000:8000"
@@ -34,6 +34,11 @@ services:
       - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-https://vps67951.publiccloud.com.br}
       - INITIAL_ADMIN_PASSWORD=${INITIAL_ADMIN_PASSWORD}
       - INITIAL_SUPERADMIN_PASSWORD=${INITIAL_SUPERADMIN_PASSWORD}
+      - EFI_SANDBOX=${EFI_SANDBOX}
+      - EFI_CLIENT_ID=${EFI_CLIENT_ID}
+      - EFI_CLIENT_SECRET=${EFI_CLIENT_SECRET}
+      - EFI_CERT_BASE64=${EFI_CERT_BASE64}
+      - PIX_WEBHOOK_SECRET=${PIX_WEBHOOK_SECRET}
     depends_on:
       - db
     networks:

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { ArrowRight, CheckCircle2, Clock3, LayoutDashboard, MessageSquare, ReceiptText, ShieldCheck, Store, Users, Utensils, Zap } from "lucide-react";
 import { useSettings } from "../../../core/hooks/useSettings";
+import { SAAS_SUPPORT_PHONE } from "../../../core/config/support";
 import { sendToWhatsApp } from "../../../shared/utils/whatsapp";
 
 const PRODUCT_SURFACES = [
@@ -111,11 +112,9 @@ const FAQ = [
     },
 ];
 
-const SAAS_CONTACT_PHONE = "48998354402";
-
 export default function LandingPage() {
     const { settings } = useSettings();
-    const contactPhone = SAAS_CONTACT_PHONE;
+    const contactPhone = SAAS_SUPPORT_PHONE;
 
     const bannerBadge = settings?.bannerBadge ?? "Sistema comercial e operacional para restaurantes";
     const bannerTitle = settings?.bannerTitleLine1 || settings?.bannerTitleLine2
@@ -127,7 +126,7 @@ export default function LandingPage() {
 
     const openLeadWhatsApp = () => {
         sendToWhatsApp(
-            SAAS_CONTACT_PHONE,
+            SAAS_SUPPORT_PHONE,
             "Olá! Vi o sistema FoodSystem e gostaria de saber mais sobre como posso utilizá-lo no meu restaurante."
         );
     };

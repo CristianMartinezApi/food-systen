@@ -15,6 +15,7 @@ export default function PixSettings() {
     const [status, setStatus] = useState<PixStatus | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
+    const [isPixApiAvailable, setIsPixApiAvailable] = useState(true);
 
     const [form, setForm] = useState({
         pixKey: "",
@@ -30,12 +31,30 @@ export default function PixSettings() {
                     pixKey: res.pixKey || "",
                     pixEnabled: res.pixEnabled || false,
                 });
+                setIsPixApiAvailable(true);
             })
-            .catch(() => toast.error("Erro ao carregar status PIX"))
+            .catch((err: any) => {
+                const message = String(err?.message || "").toLowerCase();
+                const endpointMissing = message.includes("404") || message.includes("not found") || message.includes("não encontrado");
+
+                if (endpointMissing) {
+                    setIsPixApiAvailable(false);
+                    setStatus({ pixEnabled: false, pixKey: null });
+                    setForm({ pixKey: "", pixEnabled: false });
+                    return;
+                }
+
+                toast.error("Erro ao carregar status PIX");
+            })
             .finally(() => setIsLoading(false));
     }, []);
 
     const handleSave = async () => {
+        if (!isPixApiAvailable) {
+            toast.error("PIX ainda não está disponível neste ambiente");
+            return;
+        }
+
         if (form.pixEnabled && !form.pixKey.trim()) {
             toast.error("Informe sua chave PIX quando ativado");
             return;
@@ -112,8 +131,17 @@ export default function PixSettings() {
             <div className="mb-6 bg-blue-50 border border-blue-100 rounded-2xl p-4 flex gap-3">
                 <AlertCircle size={16} className="text-blue-400 shrink-0 mt-0.5" />
                 <p className="text-xs text-blue-700 leading-relaxed">
-                    <strong>Como funciona:</strong> Quando um cliente escolher PIX para pagar, um QR Code será gerado
-                    automaticamente com sua chave PIX. O cliente escaneia e paga direto para você, como no iFood.
+                    {isPixApiAvailable ? (
+                        <>
+                            <strong>Como funciona:</strong> Quando um cliente escolher PIX para pagar, um QR Code será gerado
+                            automaticamente com sua chave PIX. O cliente escaneia e paga direto para você, como no iFood.
+                        </>
+                    ) : (
+                        <>
+                            <strong>PIX ainda não disponível:</strong> O endpoint de PIX não está ativo neste ambiente.
+                            Você pode seguir operando normalmente com os demais meios de pagamento.
+                        </>
+                    )}
                 </p>
             </div>
 
@@ -165,7 +193,7 @@ export default function PixSettings() {
                 {/* Salvar */}
                 <button
                     onClick={handleSave}
-                    disabled={isSaving}
+                    disabled={isSaving || !isPixApiAvailable}
                     className="w-full h-12 bg-slate-950 text-white rounded-xl font-bold text-sm uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-black transition-all disabled:opacity-50"
                 >
                     {isSaving ? (

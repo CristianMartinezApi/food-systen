@@ -52,6 +52,28 @@ function validatePasswordStrength(password: string): { isValid: boolean; errors:
   };
 }
 
+function normalizeCnpj(value: unknown): string | null {
+  const digits = String(value || '').replace(/\D/g, '');
+  return digits.length ? digits : null;
+}
+
+function isValidCnpj(value: string): boolean {
+  if (!/^\d{14}$/.test(value)) return false;
+  if (/^(\d)\1{13}$/.test(value)) return false;
+
+  const calcDigit = (base: string, factors: number[]) => {
+    const sum = base
+      .split('')
+      .reduce((acc, digit, idx) => acc + Number(digit) * factors[idx], 0);
+    const rest = sum % 11;
+    return rest < 2 ? 0 : 11 - rest;
+  };
+
+  const d1 = calcDigit(value.slice(0, 12), [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]);
+  const d2 = calcDigit(value.slice(0, 12) + d1, [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]);
+  return value.endsWith(`${d1}${d2}`);
+}
+
 const app = express();
 const httpServer = createServer(app);
 
@@ -319,6 +341,280 @@ async function createAudit(req: AuthRequest | any, action: string, subjectType: 
   }
 }
 
+const PRINTABLE_SUBJECT_TYPES = new Set(['order', 'cash_session']);
+// const PRINTER_CONNECTION_TYPES = new Set(['NETWORK', 'USB']);
+// const PRINT_TEMPLATES = new Set(['ORDER_TICKET', 'CASH_CLOSING_REPORT', 'TEST_TICKET']);
+// const PRINT_MODES = new Set(['THERMAL', 'A4']);
+// const ACTIVE_PRINT_JOB_STATUSES = new Set(['PENDING', 'PROCESSING']);
+
+function normalizePrintTemplate(value: string): string | null {
+  const normalized = value.trim().toUpperCase();
+  if (normalized === 'ORDER_TICKET' || normalized === 'CASH_CLOSING_REPORT' || normalized === 'TEST_TICKET') {
+    return normalized;
+  }
+  return null;
+}
+
+function normalizePrintMode(value: string): string | null {
+  const normalized = value.trim().toUpperCase();
+  if (normalized === 'THERMAL' || normalized === 'A4') {
+    return normalized;
+  }
+  return null;
+}
+
+function normalizeConnectionType(value: string): string | null {
+  const normalized = value.trim().toUpperCase();
+  if (normalized === 'NETWORK' || normalized === 'USB') {
+    return normalized;
+  }
+  return null;
+}
+
+function generatePrinterAgentToken(): string {
+  return crypto.randomBytes(24).toString('hex');
+}
+
+async function getPrimaryPrintDevice(restaurantId: number) {
+  // TODO: Configurar impressoras - tabela printDevice não existe ainda
+  return null;
+}
+
+function formatCurrencyForPrint(value: number) {
+  return new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+  }).format(Number(value || 0));
+}
+
+function formatItemDetailsForPrint(value: unknown): string[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .map((entry: any) => {
+      const name = String(entry?.name || '').trim();
+      if (!name) return null;
+      const price = Number(entry?.price || 0);
+      return price > 0 ? `${name} (${formatCurrencyForPrint(price)})` : name;
+    })
+    .filter(Boolean) as string[];
+}
+
+function formatOrderAddressForPrint(address: any) {
+  if (!address) return 'Nao informado';
+  if (typeof address === 'string') return address;
+
+  if (address?.type === 'PICKUP') return 'Retirada no balcao';
+  if (address?.type === 'DINE_IN') return 'Consumo no local';
+
+  const details = address?.details || address;
+  return [details.street, details.number, details.neighborhood, details.city]
+    .filter(Boolean)
+    .join(', ') || 'Nao informado';
+}
+
+async function buildOrderTicketPayload(restaurantId: number, orderId: number) {
+  const order = await prisma.order.findFirst({
+    where: { id: orderId, restaurantId },
+    include: {
+      items: true,
+      customer: true,
+      restaurant: {
+        select: { id: true, name: true, corporateName: true, cnpj: true, phone: true },
+      },
+    },
+  });
+
+  if (!order) {
+    throw new Error('ORDER_PRINT_SOURCE_NOT_FOUND');
+  }
+
+  return {
+    type: 'order_ticket',
+    orderId: order.id,
+    restaurant: order.restaurant,
+    createdAt: order.createdAt.toISOString(),
+    customerName: order.customer?.name || order.customerName || 'Cliente',
+    phone: order.phone || null,
+    paymentMethod: order.paymentMethod,
+    status: order.status,
+    addressLabel: formatOrderAddressForPrint(order.address),
+    notes: order.notes || null,
+    cpf: order.cpf || null,
+    changeFor: order.changeFor || null,
+    items: (order.items || []).map((item: any) => ({
+      quantity: item.quantity,
+      name: item.name || `Produto #${item.productId}`,
+      variation: item.variation || null,
+      observations: item.observations || null,
+      addons: formatItemDetailsForPrint(item.addons),
+      removals: formatItemDetailsForPrint(item.removals),
+      unitPrice: Number(item.price || 0),
+      totalPrice: Number((Number(item.price || 0) * Number(item.quantity || 0)).toFixed(2)),
+    })),
+    totals: {
+      subtotal: Number(order.subtotal || 0),
+      deliveryFee: Number(order.deliveryFee || 0),
+      total: Number(order.total || 0),
+    },
+  };
+}
+
+async function buildCashClosingPayload(restaurantId: number, sessionId: number) {
+  const session = await prisma.cashSession.findFirst({
+    where: { id: sessionId, restaurantId },
+    include: {
+      openedBy: { select: { id: true, name: true, email: true } },
+      closedBy: { select: { id: true, name: true, email: true } },
+    },
+  });
+
+  if (!session) {
+    throw new Error('CASH_SESSION_PRINT_SOURCE_NOT_FOUND');
+  }
+
+  const movements = await prisma.cashMovement.findMany({
+    where: { cashSessionId: session.id },
+    orderBy: { createdAt: 'asc' },
+    include: {
+      createdBy: { select: { id: true, name: true, email: true } },
+    },
+  });
+
+  const [restaurant, suppliesAgg, withdrawalsAgg, adjustmentsAgg, salesAgg, cashSalesAgg, salesByPaymentRaw] = await Promise.all([
+    prisma.restaurant.findUnique({
+      where: { id: restaurantId },
+      select: { id: true, name: true, corporateName: true, cnpj: true, phone: true },
+    }),
+    prisma.cashMovement.aggregate({ where: { cashSessionId: session.id, type: 'SUPPLY' }, _sum: { amount: true } }),
+    prisma.cashMovement.aggregate({ where: { cashSessionId: session.id, type: 'WITHDRAWAL' }, _sum: { amount: true } }),
+    prisma.cashMovement.aggregate({ where: { cashSessionId: session.id, type: 'ADJUSTMENT' }, _sum: { amount: true } }),
+    prisma.order.aggregate({
+      where: {
+        restaurantId,
+        createdAt: { gte: session.openedAt, ...(session.closedAt ? { lte: session.closedAt } : {}) },
+        status: { in: CASH_COUNTED_ORDER_STATUSES },
+      },
+      _sum: { total: true },
+    }),
+    prisma.order.aggregate({
+      where: {
+        restaurantId,
+        createdAt: { gte: session.openedAt, ...(session.closedAt ? { lte: session.closedAt } : {}) },
+        status: { in: CASH_COUNTED_ORDER_STATUSES },
+        paymentMethod: 'CASH',
+      },
+      _sum: { total: true },
+    }),
+    prisma.order.groupBy({
+      by: ['paymentMethod'],
+      where: {
+        restaurantId,
+        createdAt: { gte: session.openedAt, ...(session.closedAt ? { lte: session.closedAt } : {}) },
+        status: { in: CASH_COUNTED_ORDER_STATUSES },
+      },
+      _sum: { total: true },
+    }),
+  ]);
+
+  const supplies = Number(suppliesAgg._sum.amount || 0);
+  const withdrawals = Number(withdrawalsAgg._sum.amount || 0);
+  const adjustments = Number(adjustmentsAgg._sum.amount || 0);
+  const sales = Number(salesAgg._sum.total || 0);
+  const cashSales = Number(cashSalesAgg._sum.total || 0);
+  const expectedAmount = Number((session.openingAmount + supplies - withdrawals + adjustments + cashSales).toFixed(2));
+  const closingAmount = Number(session.closingAmount || 0);
+  const informedCardAmount = Number(session.informedCardAmount || 0);
+  const informedPixAmount = Number(session.informedPixAmount || 0);
+  const differenceAmount = Number(((session.closingAmount ?? expectedAmount) - expectedAmount).toFixed(2));
+
+  const paymentMethods = ['PIX', 'CASH', 'CARD'];
+  const salesByPayment = paymentMethods.map((method) => {
+    const row = salesByPaymentRaw.find((entry) => entry.paymentMethod === method);
+    const total = Number(row?._sum.total || 0);
+    let difference = 0;
+    if (method === 'CARD' && session.status === 'CLOSED') difference = Number((informedCardAmount - total).toFixed(2));
+    if (method === 'PIX' && session.status === 'CLOSED') difference = Number((informedPixAmount - total).toFixed(2));
+
+    return {
+      method,
+      total,
+      informed: method === 'CASH' ? closingAmount : (method === 'CARD' ? informedCardAmount : informedPixAmount),
+      difference,
+    };
+  });
+
+  return {
+    type: 'cash_closing_report',
+    restaurant,
+    session: {
+      id: session.id,
+      status: session.status,
+      openingAmount: Number(session.openingAmount || 0),
+      closingAmount,
+      informedCardAmount,
+      informedPixAmount,
+      notes: session.notes || null,
+      openedAt: session.openedAt.toISOString(),
+      closedAt: session.closedAt?.toISOString() || null,
+      openedBy: session.openedBy,
+      closedBy: session.closedBy,
+    },
+    movements: movements.map((movement) => ({
+      id: movement.id,
+      type: movement.type,
+      amount: Number(movement.amount || 0),
+      reason: movement.reason || null,
+      notes: movement.notes || null,
+      createdAt: movement.createdAt.toISOString(),
+      createdBy: movement.createdBy,
+    })),
+    totals: {
+      supplies,
+      withdrawals,
+      adjustments,
+      sales,
+      cashSales,
+      expectedAmount,
+      differenceAmount,
+      salesByPayment,
+    },
+  };
+}
+
+async function buildPrintJobPayload(params: {
+  restaurantId: number;
+  subjectType: string;
+  subjectId?: number | null;
+  template: string | null;
+  fallbackPayload?: any;
+}) {
+  // TODO: Configurar impressoras - função suspensa
+  return params.fallbackPayload || {};
+}
+
+async function enqueuePrintJob(params: {
+  restaurantId: number;
+  printerId?: number | null;
+  requestedById?: number | null;
+  subjectType: string;
+  subjectId?: number | null;
+  template: string | null;
+  printMode: string | null;
+  payload: any;
+  copies?: number;
+}) {
+  // TODO: Configurar impressoras - tabela printJob não existe ainda
+  return { id: 0 };
+}
+
+async function getPrintDeviceFromAgentToken(req: express.Request) {
+  // TODO: Configurar impressoras - tabela printDevice não existe ainda
+  return null;
+}
+
 // --- SEEDER INICIAL ---
 const seedSettings = async () => {
   // Planos comerciais padrão para início de operação.
@@ -362,10 +658,8 @@ const seedSettings = async () => {
     // ✅ SEGURO: Admin password gerado de forma segura
     const adminPassword = process.env.INITIAL_ADMIN_PASSWORD || crypto.randomBytes(16).toString('hex');
     const hashedPassword = await bcrypt.hash(adminPassword, 10);
-    console.log('🔐 IMPORTANTE: Admin inicial criado. Primeira senha de admin (não será mostrada novamente):');
-    console.log(`   Email: admin@foodsystem.com`);
-    console.log(`   Senha: ${adminPassword}`);
-    console.log(`   ⚠️ Altere a senha ao primeiro login!\n`);
+    console.log('🔐 Admin inicial criado (email: admin@foodsystem.com).');
+    console.log('⚠️ Defina/rotacione a senha via fluxo seguro imediatamente após o primeiro login.');
 
     const restaurant = await prisma.restaurant.create({
       data: {
@@ -571,13 +865,8 @@ app.post('/api/auth/forgot-password', async (req, res) => {
     });
 
     // TODO: Integrar com serviço de email (SendGrid, AWS SES, etc)
-    // Por enquanto, apenas log
-    const resetLink = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/admin/reset-password?token=${token}`;
-    console.log(`📧 RESET PASSWORD EMAIL:
-      To: ${user.email}
-      Link: ${resetLink}
-      Valid for: 1 hour
-    `);
+    // Em produção, nunca registrar token/link de reset em log.
+    console.log(`📧 Solicitação de reset registrada para ${user.email}. Token válido por 1 hora.`);
 
     await createAudit(req, 'forgot_password_requested', 'user', user.id, { email: user.email });
 
@@ -1909,14 +2198,32 @@ app.post('/api/onboarding/create-store', authMiddleware, async (req: AuthRequest
     }
 
     const { restaurantName, slug, description, phone, logo } = req.body;
+    const corporateName = String(req.body?.corporateName || '').trim() || null;
+    const instagram = String(req.body?.instagram || '').trim() || null;
+    const facebook = String(req.body?.facebook || '').trim() || null;
 
     if (!restaurantName || !slug) {
       return res.status(400).json({ error: 'Nome da loja e slug são obrigatórios' });
     }
 
+    // Normalize CNPJ: remove non-digits and allow null/empty
+    const cnpjString = String(req.body?.cnpj || '').trim();
+    const cnpj = cnpjString ? normalizeCnpj(cnpjString) : null;
+
+        if (cnpj && !isValidCnpj(cnpj)) {
+      return res.status(400).json({ error: 'CNPJ inválido.' });
+    }
+
     const existingRestaurant = await prisma.restaurant.findUnique({ where: { slug } });
     if (existingRestaurant) {
       return res.status(400).json({ error: 'Slug já está em uso' });
+    }
+
+    if (cnpj) {
+      const existingRestaurantByCnpj = await prisma.restaurant.findUnique({ where: { cnpj } });
+      if (existingRestaurantByCnpj) {
+        return res.status(400).json({ error: 'CNPJ já está em uso por outra loja.' });
+      }
     }
 
     const plan = await prisma.plan.findFirst({ where: { tier: 'FREE' } });
@@ -1925,6 +2232,8 @@ app.post('/api/onboarding/create-store', authMiddleware, async (req: AuthRequest
       const createdRestaurant = await tx.restaurant.create({
         data: {
           name: restaurantName,
+          corporateName,
+          cnpj,
           slug,
           description,
           phone,
@@ -1942,6 +2251,8 @@ app.post('/api/onboarding/create-store', authMiddleware, async (req: AuthRequest
               bannerDescription: 'Abra sua loja, gerencie pedidos e personalize sua operação com o fluxo aprovado pela plataforma.',
               bannerCtaLabel: 'Publicar Loja',
               bannerImage: 'https://images.unsplash.com/photo-1556742205-9e9352e2f1f0?q=80&w=2000',
+              instagram,
+              facebook,
             }
           }
         },
@@ -1982,50 +2293,111 @@ app.post('/api/onboarding/create-store', authMiddleware, async (req: AuthRequest
 
 // Aplicar middleware de tenant para todas as rotas subseqüentes /api
 app.use('/api', tenantMiddleware);
+app.use('/api', apiRouter);
 
 // Settings
 app.get('/api/settings', async (req: TenantRequest, res) => {
   const settings = await prisma.settings.findUnique({
-    where: { restaurantId: req.restaurantId }
+    where: { restaurantId: req.restaurantId },
+    include: {
+      restaurant: {
+        select: {
+          corporateName: true,
+          cnpj: true,
+        },
+      },
+    },
   });
   if (!settings) {
     return res.status(404).json({ error: 'Configurações não encontradas' });
   }
 
+  const { restaurant, ...plainSettings } = settings;
+
   res.json({
-    ...settings,
-    operatingHours: normalizeOperatingHours(settings.operatingHours),
-    isOpen: isRestaurantOpenNow(settings.operatingHours),
-    nextOpeningLabel: getNextOpeningLabel(settings.operatingHours),
+    ...plainSettings,
+    corporateName: restaurant?.corporateName || null,
+    cnpj: restaurant?.cnpj || null,
+    operatingHours: normalizeOperatingHours(plainSettings.operatingHours),
+    isOpen: isRestaurantOpenNow(plainSettings.operatingHours),
+    nextOpeningLabel: getNextOpeningLabel(plainSettings.operatingHours),
   });
 });
 
 app.patch('/api/settings', authMiddleware, async (req: AuthRequest, res) => {
   try {
-    const { id, restaurantId, createdAt, updatedAt, nextOpeningLabel, isOpen, ...updateData } = req.body;
+    const { id, restaurantId, createdAt, updatedAt, nextOpeningLabel, isOpen, corporateName, cnpj, ...updateData } = req.body;
     const operatingHours = normalizeOperatingHours(updateData.operatingHours);
     const parsedDifferenceThreshold = Number(updateData.cashDifferenceNoteThreshold);
     const cashDifferenceNoteThreshold = Number.isFinite(parsedDifferenceThreshold) && parsedDifferenceThreshold >= 0
       ? parsedDifferenceThreshold
       : DEFAULT_CASH_DIFFERENCE_NOTE_THRESHOLD;
+    
+    // Normalize CNPJ: remove non-digits and allow null/empty
+    const cnpjString = String(cnpj || '').trim();
+    const normalizedCnpj = cnpjString ? normalizeCnpj(cnpjString) : null;
 
-    const settings = await prisma.settings.update({
-      where: { restaurantId: req.restaurantId },
-      data: {
-        ...updateData,
-        cashDifferenceNoteThreshold,
-        operatingHours,
-        isOpen: isRestaurantOpenNow(operatingHours),
-        deliveryEtaMinutes: updateData.deliveryEtaMinutes || 35,
+    if (normalizedCnpj && !isValidCnpj(normalizedCnpj)) {
+      return res.status(400).json({ error: 'CNPJ inválido.' });
+    }
+
+    if (normalizedCnpj) {
+      const existingRestaurantByCnpj = await prisma.restaurant.findFirst({
+        where: {
+          cnpj: normalizedCnpj,
+          id: { not: req.restaurantId },
+        },
+        select: { id: true },
+      });
+
+      if (existingRestaurantByCnpj) {
+        return res.status(400).json({ error: 'CNPJ já está em uso por outra loja.' });
       }
+    }
+
+    const settings = await prisma.$transaction(async (tx) => {
+      await tx.restaurant.update({
+        where: { id: req.restaurantId },
+        data: {
+          corporateName: String(corporateName || '').trim() || null,
+          cnpj: normalizedCnpj,
+        },
+      });
+
+      return tx.settings.update({
+        where: { restaurantId: req.restaurantId },
+        data: {
+          ...updateData,
+          cashDifferenceNoteThreshold,
+          operatingHours,
+          isOpen: isRestaurantOpenNow(operatingHours),
+          deliveryEtaMinutes: updateData.deliveryEtaMinutes || 35,
+        },
+        include: {
+          restaurant: {
+            select: {
+              corporateName: true,
+              cnpj: true,
+            },
+          },
+        },
+      });
     });
 
-    io.emit(`settings_updated_${req.restaurant?.slug}`, settings);
+    const { restaurant, ...plainSettings } = settings;
+
+    io.emit(`settings_updated_${req.restaurant?.slug}`, {
+      ...plainSettings,
+      corporateName: restaurant?.corporateName || null,
+      cnpj: restaurant?.cnpj || null,
+    });
     res.json({
-      ...settings,
-      operatingHours: normalizeOperatingHours(settings.operatingHours),
-      isOpen: isRestaurantOpenNow(settings.operatingHours),
-      nextOpeningLabel: getNextOpeningLabel(settings.operatingHours),
+      ...plainSettings,
+      corporateName: restaurant?.corporateName || null,
+      cnpj: restaurant?.cnpj || null,
+      operatingHours: normalizeOperatingHours(plainSettings.operatingHours),
+      isOpen: isRestaurantOpenNow(plainSettings.operatingHours),
+      nextOpeningLabel: getNextOpeningLabel(plainSettings.operatingHours),
     });
   } catch (error) {
     console.error('Error updating settings:', error);
@@ -2465,6 +2837,10 @@ app.post('/api/orders', async (req: TenantRequest, res) => {
       ...order,
       estimatedDeliveryMinutes: settings?.deliveryEtaMinutes || 35,
     };
+
+    // TODO: Auto-print de pedidos quando impressoras forem configuradas
+    // const activePrintDevice = await getPrimaryPrintDevice(req.restaurantId!);
+    // if (activePrintDevice?.autoPrintOrders) { ... }
 
     io.emit(`new_order_${req.restaurant?.slug}`, responseOrder);
     res.status(201).json(responseOrder);
@@ -3126,14 +3502,388 @@ app.get('/api/cashier/operators', authMiddleware, async (req: AuthRequest, res) 
   }
 });
 
-app.post('/api/print-events', authMiddleware, async (req: AuthRequest, res) => {
+// TODO: Configurar impressoras - rotas suspensas até que tabelas printDevice e printJob sejam criadas
+/*
+apiRouter.get('/print/settings', authMiddleware, tenantMiddleware, async (req: AuthRequest & TenantRequest, res) => {
+  try {
+    const restaurantId = req.restaurant!.id;
+    const [device, pendingJobs, recentJobs] = await Promise.all([
+      prisma.printDevice.findFirst({
+        where: { restaurantId },
+        orderBy: { createdAt: 'asc' },
+      }),
+      prisma.printJob.count({
+        where: {
+          restaurantId,
+          status: { in: Array.from(ACTIVE_PRINT_JOB_STATUSES) },
+        },
+      }),
+      prisma.printJob.findMany({
+        where: { restaurantId },
+        orderBy: { createdAt: 'desc' },
+        take: 10,
+        select: {
+          id: true,
+          subjectType: true,
+          subjectId: true,
+          template: true,
+          printMode: true,
+          status: true,
+          attempts: true,
+          errorMessage: true,
+          createdAt: true,
+          processedAt: true,
+        },
+      }),
+    ]);
+
+    res.json({
+      device: device ? {
+        id: device.id,
+        name: device.name,
+        agentToken: device.agentToken,
+        connectionType: device.connectionType,
+        ipAddress: device.ipAddress,
+        port: device.port,
+        usbVendorId: device.usbVendorId,
+        usbProductId: device.usbProductId,
+        paperWidthMm: device.paperWidthMm,
+        isActive: device.isActive,
+        autoPrintOrders: device.autoPrintOrders,
+      } : null,
+      pendingJobs,
+      recentJobs,
+    });
+  } catch (error) {
+    console.error('Error loading print settings:', error);
+    res.status(500).json({ error: 'Erro ao carregar configurações de impressão.' });
+  }
+});
+// TODO: Configurar impressoras - rotas suspensas até que tabelas printDevice e printJob sejam criadas
+// apiRouter.put('/print/settings', authMiddleware, tenantMiddleware, async (req: AuthRequest & TenantRequest, res) => {
+//   try {
+//     const restaurantId = req.restaurant!.id;
+//     const name = String(req.body?.name || '').trim();
+//     const connectionType = normalizeConnectionType(String(req.body?.connectionType || ''));
+//     const ipAddress = String(req.body?.ipAddress || '').trim() || null;
+//     const portValue = Number(req.body?.port || 9100);
+//     const paperWidthMm = Number(req.body?.paperWidthMm || 80);
+//     const usbVendorId = String(req.body?.usbVendorId || '').trim() || null;
+//     const usbProductId = String(req.body?.usbProductId || '').trim() || null;
+//     const isActive = Boolean(req.body?.isActive);
+//     const autoPrintOrders = req.body?.autoPrintOrders !== false;
+
+    if (!name) {
+      return res.status(400).json({ error: 'Nome da impressora é obrigatório.' });
+    }
+
+    if (!connectionType || !PRINTER_CONNECTION_TYPES.has(connectionType)) {
+      return res.status(400).json({ error: 'Tipo de conexão inválido.' });
+    }
+
+    if (connectionType === 'NETWORK' && !ipAddress) {
+      return res.status(400).json({ error: 'Informe o IP da impressora de rede.' });
+    }
+
+    if (connectionType === 'USB' && (!usbVendorId || !usbProductId)) {
+      return res.status(400).json({ error: 'Informe Vendor ID e Product ID para impressora USB.' });
+    }
+
+    if (!Number.isInteger(portValue) || portValue <= 0 || portValue > 65535) {
+      return res.status(400).json({ error: 'Porta da impressora inválida.' });
+    }
+
+    if (!Number.isInteger(paperWidthMm) || ![58, 80].includes(paperWidthMm)) {
+      return res.status(400).json({ error: 'A largura do papel deve ser 58mm ou 80mm.' });
+    }
+
+    const existingDevice = await prisma.printDevice.findFirst({
+      where: { restaurantId },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    const device = existingDevice
+      ? await prisma.printDevice.update({
+          where: { id: existingDevice.id },
+          data: {
+            name,
+            connectionType,
+            ipAddress: connectionType === 'NETWORK' ? ipAddress : null,
+            port: connectionType === 'NETWORK' ? portValue : null,
+            usbVendorId: connectionType === 'USB' ? usbVendorId : null,
+            usbProductId: connectionType === 'USB' ? usbProductId : null,
+            paperWidthMm,
+            isActive,
+            autoPrintOrders,
+          },
+        })
+      : await prisma.printDevice.create({
+          data: {
+            restaurantId,
+            name,
+            agentToken: generatePrinterAgentToken(),
+            connectionType,
+            ipAddress: connectionType === 'NETWORK' ? ipAddress : null,
+            port: connectionType === 'NETWORK' ? portValue : null,
+            usbVendorId: connectionType === 'USB' ? usbVendorId : null,
+            usbProductId: connectionType === 'USB' ? usbProductId : null,
+            paperWidthMm,
+            isActive,
+            autoPrintOrders,
+          },
+        });
+
+    await createAudit(req, 'update_print_settings', 'restaurant', restaurantId, {
+      printerId: device.id,
+      connectionType: device.connectionType,
+      paperWidthMm: device.paperWidthMm,
+      autoPrintOrders: device.autoPrintOrders,
+      isActive: device.isActive,
+    });
+
+    res.json({
+      id: device.id,
+      name: device.name,
+      agentToken: device.agentToken,
+      connectionType: device.connectionType,
+      ipAddress: device.ipAddress,
+      port: device.port,
+      usbVendorId: device.usbVendorId,
+      usbProductId: device.usbProductId,
+      paperWidthMm: device.paperWidthMm,
+      isActive: device.isActive,
+      autoPrintOrders: device.autoPrintOrders,
+    });
+  } catch (error) {
+    console.error('Error saving print settings:', error);
+    res.status(500).json({ error: 'Erro ao salvar configurações de impressão.' });
+  }
+});
+// });
+
+// apiRouter.post('/print/settings/test', authMiddleware, tenantMiddleware, async (req: AuthRequest & TenantRequest, res) => {
+//   try {
+//     const restaurantId = req.restaurant!.id;
+//     const device = await getPrimaryPrintDevice(restaurantId);
+
+//     if (!device) {
+//       return res.status(400).json({ error: 'Nenhuma impressora ativa configurada para a loja.' });
+//     }
+
+//     const printJob = await enqueuePrintJob({
+//       restaurantId,
+//       printerId: device.id,
+//       requestedById: req.userId,
+//       subjectType: 'restaurant',
+//       subjectId: restaurantId,
+//       template: 'TEST_TICKET',
+//       printMode: 'THERMAL',
+//       payload: await buildPrintJobPayload({
+//         restaurantId,
+//         subjectType: 'restaurant',
+//         subjectId: restaurantId,
+//         template: 'TEST_TICKET',
+//         fallbackPayload: {
+//           type: 'test_ticket',
+//           title: 'Teste de Impressao 80mm',
+//           storeName: req.restaurant?.name,
+//           printerName: device.name,
+//           generatedAt: new Date().toISOString(),
+//           message: 'Se este cupom saiu corretamente, a integracao local esta pronta.',
+//         },
+//       }),
+//     });
+
+//     await createAudit(req, 'queue_print_test', 'restaurant', restaurantId, {
+//       printerId: device.id,
+//       printJobId: printJob.id,
+//       template: printJob.template,
+//       printMode: printJob.printMode,
+//     });
+
+//     res.status(201).json({
+//       success: true,
+//       printJobId: printJob.id,
+//       printerId: device.id,
+//     });
+//   } catch (error) {
+//     console.error('Error queueing print test:', error);
+//     res.status(500).json({ error: 'Erro ao enfileirar teste de impressão.' });
+//   }
+// });
+
+// apiRouter.get('/print/jobs', authMiddleware, tenantMiddleware, async (req: AuthRequest & TenantRequest, res) => {
+//   try {
+//     const jobs = await prisma.printJob.findMany({
+//       where: { restaurantId: req.restaurant!.id },
+//       orderBy: { createdAt: 'desc' },
+//       take: 20,
+//       include: {
+//         printer: {
+//           select: { id: true, name: true, connectionType: true },
+//         },
+//       },
+//     });
+
+//     res.json(jobs);
+//   } catch (error) {
+//     console.error('Error listing print jobs:', error);
+//     res.status(500).json({ error: 'Erro ao listar fila de impressão.' });
+//   }
+// });
+
+// TODO: Rotas de agente de impressoras suspensas até que tabelas printDevice e printJob sejam criadas
+/*
+app.get('/api/print/agent/jobs/next', async (req, res) => {
+  try {
+    const device = await getPrintDeviceFromAgentToken(req);
+    if (!device) {
+      return res.status(401).json({ error: 'Token da impressora inválido.' });
+    }
+
+    if (!device.isActive || !device.restaurant?.isActive) {
+      return res.status(403).json({ error: 'Impressora ou restaurante inativo.' });
+    }
+
+    const job = await prisma.printJob.findFirst({
+      where: {
+        restaurantId: device.restaurantId,
+        status: 'PENDING',
+        OR: [
+          { printerId: device.id },
+          { printerId: null },
+        ],
+      },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    if (!job) {
+      return res.status(204).send();
+    }
+
+    const claimedJob = await prisma.printJob.update({
+      where: { id: job.id },
+      data: {
+        printerId: device.id,
+        status: 'PROCESSING',
+        attempts: { increment: 1 },
+      },
+    });
+
+    res.json({
+      printer: {
+        id: device.id,
+        name: device.name,
+        connectionType: device.connectionType,
+        ipAddress: device.ipAddress,
+        port: device.port,
+        usbVendorId: device.usbVendorId,
+        usbProductId: device.usbProductId,
+        paperWidthMm: device.paperWidthMm,
+      },
+      job: claimedJob,
+    });
+  } catch (error) {
+    console.error('Error fetching next print job:', error);
+    res.status(500).json({ error: 'Erro ao buscar próximo job de impressão.' });
+  }
+});
+
+app.post('/api/print/agent/jobs/:id/complete', async (req, res) => {
+  try {
+    const device = await getPrintDeviceFromAgentToken(req);
+    if (!device) {
+      return res.status(401).json({ error: 'Token da impressora inválido.' });
+    }
+
+    const jobId = Number(req.params.id);
+    const job = await prisma.printJob.findFirst({
+      where: {
+        id: jobId,
+        restaurantId: device.restaurantId,
+        printerId: device.id,
+      },
+    });
+
+    if (!job) {
+      return res.status(404).json({ error: 'Job de impressão não encontrado.' });
+    }
+
+    const completedJob = await prisma.printJob.update({
+      where: { id: job.id },
+      data: {
+        status: 'COMPLETED',
+        processedAt: new Date(),
+        errorMessage: null,
+      },
+    });
+
+    await createAudit(undefined, 'print_job_completed', completedJob.subjectType, completedJob.subjectId, {
+      printJobId: completedJob.id,
+      printerId: device.id,
+      printerName: device.name,
+      processedAt: completedJob.processedAt?.toISOString(),
+    });
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error completing print job:', error);
+    res.status(500).json({ error: 'Erro ao concluir job de impressão.' });
+  }
+});
+
+app.post('/api/print/agent/jobs/:id/fail', async (req, res) => {
+  try {
+    const device = await getPrintDeviceFromAgentToken(req);
+    if (!device) {
+      return res.status(401).json({ error: 'Token da impressora inválido.' });
+    }
+
+    const jobId = Number(req.params.id);
+    const errorMessage = String(req.body?.errorMessage || '').trim() || 'Falha desconhecida';
+    const job = await prisma.printJob.findFirst({
+      where: {
+        id: jobId,
+        restaurantId: device.restaurantId,
+        printerId: device.id,
+      },
+    });
+
+    if (!job) {
+      return res.status(404).json({ error: 'Job de impressão não encontrado.' });
+    }
+
+    const failedJob = await prisma.printJob.update({
+      where: { id: job.id },
+      data: {
+        status: 'FAILED',
+        processedAt: new Date(),
+        errorMessage,
+      },
+    });
+
+    await createAudit(undefined, 'print_job_failed', failedJob.subjectType, failedJob.subjectId, {
+      printJobId: failedJob.id,
+      printerId: device.id,
+      printerName: device.name,
+      errorMessage,
+    });
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error failing print job:', error);
+    res.status(500).json({ error: 'Erro ao registrar falha do job de impressão.' });
+  }
+});
+
+app.post('/api/print-events', authMiddleware, tenantMiddleware, async (req: AuthRequest & TenantRequest, res) => {
   try {
     const subjectType = String(req.body?.subjectType || '').trim();
     const subjectId = Number(req.body?.subjectId || 0);
-    const template = String(req.body?.template || '').trim();
-    const printMode = String(req.body?.printMode || '').trim();
+    const template = normalizePrintTemplate(String(req.body?.template || ''));
+    const printMode = normalizePrintMode(String(req.body?.printMode || ''));
 
-    if (!['order', 'cash_session'].includes(subjectType)) {
+    if (!PRINTABLE_SUBJECT_TYPES.has(subjectType)) {
       return res.status(400).json({ error: 'Tipo de documento inválido.' });
     }
 
@@ -3141,12 +3891,43 @@ app.post('/api/print-events', authMiddleware, async (req: AuthRequest, res) => {
       return res.status(400).json({ error: 'Documento inválido.' });
     }
 
-    if (!['order_ticket', 'cash_closing_report'].includes(template)) {
+    if (!template || !PRINT_TEMPLATES.has(template)) {
       return res.status(400).json({ error: 'Template de impressão inválido.' });
     }
 
-    if (!['THERMAL', 'A4'].includes(printMode)) {
+    if (!printMode || !PRINT_MODES.has(printMode)) {
       return res.status(400).json({ error: 'Formato de impressão inválido.' });
+    }
+
+    let queuedPrintJobId: number | null = null;
+    if (printMode === 'THERMAL' && req.restaurantId) {
+      const device = await getPrimaryPrintDevice(req.restaurantId);
+      if (device) {
+        const printJob = await enqueuePrintJob({
+          restaurantId: req.restaurantId,
+          printerId: device.id,
+          requestedById: req.userId,
+          subjectType,
+          subjectId,
+          template,
+          printMode,
+          payload: await buildPrintJobPayload({
+            restaurantId: req.restaurantId,
+            subjectType,
+            subjectId,
+            template,
+            fallbackPayload: {
+              subjectType,
+              subjectId,
+              template,
+              printMode,
+              requestedAt: new Date().toISOString(),
+              source: 'manual_print_event',
+            },
+          }),
+        });
+        queuedPrintJobId = printJob.id;
+      }
     }
 
     await createAudit(req, 'print_document', subjectType, subjectId, {
@@ -3154,16 +3935,20 @@ app.post('/api/print-events', authMiddleware, async (req: AuthRequest, res) => {
       printMode,
       restaurantId: req.restaurantId,
       printedAt: new Date().toISOString(),
+      queuedPrintJobId,
     });
 
-    res.json({ success: true });
+    res.json({ success: true, queuedPrintJobId });
   } catch (error) {
     console.error('Error creating print audit event:', error);
     res.status(500).json({ error: 'Erro ao registrar evento de impressão.' });
   }
 });
+*/
 
-app.get('/api/print-events/summary', authMiddleware, async (req: AuthRequest, res) => {
+// TODO: Configurar rotas de print-events
+/*
+app.get('/api/print-events/summary', authMiddleware, tenantMiddleware, async (req: AuthRequest & TenantRequest, res) => {
   try {
     const subjectType = String(req.query.subjectType || '').trim();
     const rawIds = String(req.query.ids || '').trim();
@@ -3223,6 +4008,7 @@ app.get('/api/print-events/summary', authMiddleware, async (req: AuthRequest, re
     res.status(500).json({ error: 'Erro ao buscar resumo de impressões.' });
   }
 });
+*/
 
 app.get('/api/cashier/sessions/:id/report', authMiddleware, async (req: AuthRequest, res) => {
   if (!ensureCashierPermission(req, res, CASHIER_OPERATION_ROLES, 'emitir relatório de caixa')) {

@@ -6,11 +6,10 @@ import usePlacesAutocomplete, {
 import {
     Save,
     Loader2,
-    Flame,
     Store,
     Clock,
-    Palette,
     CheckCircle2,
+    MessageCircle,
     MapPin,
     Globe,
     Share2,
@@ -28,6 +27,8 @@ import { cn, normalizeMoneyInput, parseMoneyInput, toMoneyInputValue, formatMone
 import toast from "react-hot-toast";
 import { gsap } from "gsap";
 import { createDefaultOperatingHours, getNextOpeningLabel, isRestaurantOpenNow, normalizeOperatingHours } from "../../../../shared/utils/schedule";
+import { sendToWhatsApp } from "../../../../shared/utils/whatsapp";
+import { SAAS_SUPPORT_PHONE } from "../../../../core/config/support";
 import ChangePassword from "../../components/ChangePassword";
 import PixSettings from "../../components/PixSettings";
 
@@ -49,6 +50,14 @@ export default function SettingsPage() {
     const bannerFileInputRef = useRef<HTMLInputElement>(null);
     const rootRef = useRef<HTMLDivElement>(null);
     const hasAnimatedRef = useRef(false);
+    const openSupportChat = () => {
+        sendToWhatsApp(
+            SAAS_SUPPORT_PHONE,
+            encodeURIComponent(
+                "Olá! Estou na tela de configurações do FoodSystem e preciso de ajuda com meu ambiente. Pode me orientar?"
+            )
+        );
+    };
 
     // Autocomplete Hook
     const {
@@ -56,13 +65,23 @@ export default function SettingsPage() {
         suggestions: { status, data },
         setValue,
         clearSuggestions,
+        init,
     } = usePlacesAutocomplete({
         requestOptions: {
             /* Define search scope here */
         },
         debounce: 300,
-        defaultValue: settings?.address || ""
+        defaultValue: settings?.address || "",
+        initOnMount: false,
     });
+
+    useEffect(() => {
+        if (typeof window === "undefined") return;
+        const hasPlaces = Boolean((window as Window & { google?: any }).google?.maps?.places);
+        if (hasPlaces) {
+            init();
+        }
+    }, [init]);
 
     useEffect(() => {
         if (settings && !formData) {
@@ -111,6 +130,23 @@ export default function SettingsPage() {
             val = val.replace(/^(\d{2}).*/, "($1");
         }
         setFormData({ ...formData, phone: val });
+    };
+
+    const handleCnpjChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        let val = e.target.value.replace(/\D/g, "");
+        if (val.length > 14) val = val.slice(0, 14);
+
+        // Mask XX.XXX.XXX/XXXX-XX
+        if (val.length > 12) {
+            val = val.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{0,2}).*/, "$1.$2.$3/$4-$5");
+        } else if (val.length > 8) {
+            val = val.replace(/^(\d{2})(\d{3})(\d{3})(\d{0,4}).*/, "$1.$2.$3/$4");
+        } else if (val.length > 5) {
+            val = val.replace(/^(\d{2})(\d{3})(\d{0,3}).*/, "$1.$2.$3");
+        } else if (val.length > 2) {
+            val = val.replace(/^(\d{2})(\d{0,3}).*/, "$1.$2");
+        }
+        setFormData({ ...formData, cnpj: val });
     };
 
     const handleSelect = async (address: string) => {
@@ -347,6 +383,26 @@ export default function SettingsPage() {
                                             className="w-full h-10 sm:h-12 md:h-16 pl-12 sm:pl-16 pr-4 sm:pr-6 bg-slate-50 border-transparent focus:bg-white focus:ring-2 focus:ring-slate-950/5 rounded-2xl transition-all font-body font-bold text-slate-950 text-[12px] sm:text-label uppercase tracking-widest outline-none"
                                         />
                                     </div>
+                                </div>
+
+                                <div className="space-y-3">
+                                    <label className="text-[12px] sm:text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em] ml-1">Razão Social</label>
+                                    <input
+                                        value={formData.corporateName || ""}
+                                        onChange={(e) => setFormData({ ...formData, corporateName: e.target.value })}
+                                        placeholder="Nome jurídico da empresa"
+                                        className="w-full h-10 sm:h-12 md:h-16 px-4 sm:px-6 bg-slate-50 border-transparent focus:bg-white focus:ring-2 focus:ring-slate-950/5 rounded-2xl transition-all font-body font-bold text-slate-950 text-[12px] sm:text-label uppercase tracking-widest outline-none"
+                                    />
+                                </div>
+
+                                <div className="space-y-3">
+                                    <label className="text-[12px] sm:text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em] ml-1">CNPJ</label>
+                                    <input
+                                        value={formData.cnpj || ""}
+                                        onChange={handleCnpjChange}
+                                        placeholder="XX.XXX.XXX/XXXX-XX"
+                                        className="w-full h-10 sm:h-12 md:h-16 px-4 sm:px-6 bg-slate-50 border-transparent focus:bg-white focus:ring-2 focus:ring-slate-950/5 rounded-2xl transition-all font-body font-bold text-slate-950 text-[12px] sm:text-label uppercase tracking-widest outline-none"
+                                    />
                                 </div>
 
                                 <div className="space-y-4 md:col-span-2 mt-4 pt-10 border-t border-slate-50">
@@ -783,41 +839,8 @@ export default function SettingsPage() {
                         </section>
                     </div>
 
-                    {/* Coluna Sidebar - Preview e Info */}
+                    {/* Coluna Sidebar */}
                     <div className="space-y-4 sm:space-y-8">
-                        <div className="bg-slate-900 rounded-2xl sm:rounded-[2.5rem] p-4 sm:p-6 md:p-8 text-white relative overflow-hidden shadow-xl shadow-slate-900/20">
-                            <div className="absolute top-0 right-0 p-4 opacity-10">
-                                <Palette size={120} />
-                            </div>
-                            <h3 className="font-black text-lg sm:text-xl uppercase tracking-tighter mb-4 relative z-10">Preview em Tempo Real</h3>
-                            <div className="relative rounded-2xl sm:rounded-4xl overflow-hidden border border-white/10 shadow-2xl shadow-black/20 min-h-72 sm:min-h-96 z-10">
-                                {formData.bannerImage ? (
-                                    <img src={formData.bannerImage} alt="Banner Preview" className="absolute inset-0 w-full h-full object-cover" />
-                                ) : (
-                                    <div className="absolute inset-0 bg-linear-to-br from-slate-800 to-slate-950" />
-                                )}
-                                <div className="absolute inset-0 bg-linear-to-r from-slate-950 via-slate-950/60 to-transparent" />
-                                <div className="relative p-4 sm:p-6 flex flex-col justify-end min-h-72 sm:min-h-96">
-                                    <div className="inline-flex items-center gap-2 self-start bg-primary/20 backdrop-blur px-3 py-1.5 rounded-full border border-primary/20 mb-4">
-                                        <Flame size={12} className="text-primary fill-primary" />
-                                        <span className="text-[10px] font-black text-primary uppercase tracking-[0.24em]">{formData.bannerBadge || "Sua marca"}</span>
-                                    </div>
-                                    <h4 className="font-display font-black text-2xl sm:text-4xl uppercase tracking-tighter leading-[0.92] sm:leading-[0.88] mb-3 sm:mb-4" style={{ color: formData.primaryColor || '#ef4444' }}>
-                                        {formData.bannerTitleLine1 || "Sabor que"}
-                                        <br />
-                                        <span className="text-white">{formData.bannerTitleLine2 || "Transforma"}</span>
-                                    </h4>
-                                    <p className="text-[12px] sm:text-sm text-white/75 font-medium leading-relaxed max-w-sm mb-4 sm:mb-6">
-                                        {formData.bannerDescription || "Conte a sua proposta de valor e personalize a primeira impressão do cliente."}
-                                    </p>
-                                    <button className="self-start h-10 sm:h-12 px-4 sm:px-5 bg-primary text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-black/20">
-                                        {formData.bannerCtaLabel || "Explorar Menu"}
-                                    </button>
-                                </div>
-                            </div>
-                            <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-6 text-center">As cores são aplicadas instantaneamente.</p>
-                        </div>
-
                         <div className="bg-white rounded-2xl sm:rounded-[2.5rem] border border-slate-100 p-4 sm:p-6 md:p-8 shadow-sm text-center">
                             <div className="w-20 h-20 bg-emerald-50 text-emerald-500 rounded-3xl flex items-center justify-center mx-auto mb-6">
                                 <CheckCircle2 size={40} />
@@ -825,11 +848,19 @@ export default function SettingsPage() {
                             <h4 className="font-black text-slate-900 uppercase tracking-tighter mb-2">Suporte Prioritário</h4>
                             <p className="text-xs text-slate-400 font-medium leading-relaxed">
                                 Você faz parte do nosso plano Premium.
-                                Precisa de ajuda com as configurações?
+                                Precisa de ajuda com as configurações? Fale com o time de suporte e abra um atendimento agora.
                             </p>
-                            <button className="mt-6 w-full h-12 rounded-xl border-2 border-slate-50 text-xs font-black text-slate-600 hover:bg-slate-50 transition-all uppercase tracking-widest">
+                            <button
+                                type="button"
+                                onClick={openSupportChat}
+                                className="mt-6 w-full h-12 rounded-xl bg-slate-950 text-white text-xs font-black hover:bg-primary transition-all uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg shadow-slate-950/15"
+                            >
+                                <MessageCircle size={16} />
                                 Falar com Suporte
                             </button>
+                            <p className="mt-3 text-[10px] uppercase tracking-[0.14em] text-slate-400">
+                                Abre uma conversa no WhatsApp com a equipe responsável.
+                            </p>
                         </div>
 
                         {/* Componente de Segurança - Mudança de Senha */}

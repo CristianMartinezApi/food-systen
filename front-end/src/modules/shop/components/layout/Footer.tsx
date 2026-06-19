@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import {
   Instagram,
   Facebook,
+  MessageCircle,
   MapPin,
   Phone,
   Clock,
@@ -18,10 +19,58 @@ import Link from "next/link";
 import { useState, useEffect } from "react";
 import { getNextOpeningLabel, getOperatingHoursSummary } from "../../../../shared/utils/schedule";
 
+type SocialLink = {
+  label: string;
+  href: string;
+  Icon: typeof Instagram;
+};
+
+function normalizeInstagram(value?: string | null) {
+  if (!value) return null;
+  const cleaned = value.trim().replace(/^@/, "");
+  if (!cleaned) return null;
+  if (/^https?:\/\//i.test(cleaned)) return cleaned;
+  return `https://instagram.com/${cleaned}`;
+}
+
+function normalizeFacebook(value?: string | null) {
+  if (!value) return null;
+  const cleaned = value.trim();
+  if (!cleaned) return null;
+  if (/^https?:\/\//i.test(cleaned)) return cleaned;
+  return `https://facebook.com/${cleaned.replace(/^\//, "")}`;
+}
+
+function normalizeWhatsApp(value?: string | null) {
+  if (!value) return null;
+  const digits = value.replace(/\D/g, "");
+  if (!digits) return null;
+  return `https://wa.me/${digits}`;
+}
+
 export function Footer() {
   const { settings } = useSettings();
   const currentYear = new Date().getFullYear();
   const [slug, setSlug] = useState<string>("");
+  const contactSocial = settings?.contact?.social;
+
+  const socialLinks: SocialLink[] = [
+    {
+      label: "Instagram",
+      href: normalizeInstagram(contactSocial?.instagram || settings?.instagram) || "",
+      Icon: Instagram,
+    },
+    {
+      label: "Facebook",
+      href: normalizeFacebook(contactSocial?.facebook || settings?.facebook) || "",
+      Icon: Facebook,
+    },
+    {
+      label: "WhatsApp",
+      href: normalizeWhatsApp(contactSocial?.whatsapp || settings?.whatsapp?.number || settings?.phone) || "",
+      Icon: MessageCircle,
+    },
+  ].filter((item) => item.href);
 
   useEffect(() => {
     setSlug(getTenantSlug());
@@ -53,13 +102,23 @@ export function Footer() {
             <p className="text-[10px] md:text-label font-body font-medium leading-relaxed text-slate-400 max-w-xs uppercase tracking-[0.08em] opacity-80 decoration-primary decoration-1">
               {settings?.description || "Experiência gastronômica premium no conforto da sua casa. Qualidade impecável em cada detalhe."}
             </p>
-            <div className="flex gap-2.5 md:gap-4 pt-2 md:pt-4">
-              {[Instagram, Facebook].map((Icon, i) => (
-                <button key={i} className="w-10 h-10 md:w-14 md:h-14 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-white hover:bg-primary hover:text-white hover:border-primary/20 transition-all duration-500 group">
-                  <Icon size={16} className="group-hover:scale-110 transition-transform" />
-                </button>
-              ))}
-            </div>
+            {socialLinks.length > 0 && (
+              <div className="flex flex-wrap gap-2.5 md:gap-4 pt-2 md:pt-4">
+                {socialLinks.map(({ label, href, Icon }) => (
+                  <a
+                    key={label}
+                    href={href}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                    aria-label={label}
+                    title={label}
+                    className="w-10 h-10 md:w-14 md:h-14 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-white hover:bg-primary hover:text-white hover:border-primary/20 transition-all duration-500 group"
+                  >
+                    <Icon size={16} className="group-hover:scale-110 transition-transform" />
+                  </a>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Quick Links */}

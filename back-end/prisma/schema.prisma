@@ -24,6 +24,8 @@ model Plan {
 model Restaurant {
   id                 Int        @id @default(autoincrement())
   name               String
+  corporateName      String?
+  cnpj               String?    @unique
   slug               String     @unique
   logo               String?
   description        String?
@@ -45,6 +47,8 @@ model Restaurant {
   settings           Settings?
   users              User[]
   provisioningLogs   ProvisioningLog[]
+  printDevices       PrintDevice[]
+  printJobs          PrintJob[]
 
   @@map("restaurants")
 }
@@ -77,6 +81,7 @@ model User {
   cashMovements CashMovement[] @relation("CashMovementCreatedBy")
   passwordChangeAttempts PasswordChangeAttempt[]
   passwordResetTokens PasswordResetToken[]
+  requestedPrintJobs PrintJob[] @relation("PrintJobRequestedBy")
 
   @@index([restaurantId])
   @@map("users")
@@ -317,6 +322,30 @@ enum CashMovementType {
   ADJUSTMENT
 }
 
+enum PrintConnectionType {
+  NETWORK
+  USB
+}
+
+enum PrintTemplate {
+  ORDER_TICKET
+  CASH_CLOSING_REPORT
+  TEST_TICKET
+}
+
+enum PrintMode {
+  THERMAL
+  A4
+}
+
+enum PrintJobStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
 model AuditLog {
   id          Int      @id @default(autoincrement())
   actorId     Int?
@@ -368,4 +397,53 @@ model PasswordResetToken {
   @@index([email])
   @@index([expiresAt])
   @@map("password_reset_tokens")
+}
+
+model PrintDevice {
+  id              Int                 @id @default(autoincrement())
+  restaurantId    Int
+  name            String
+  agentToken      String              @unique
+  connectionType  PrintConnectionType @default(NETWORK)
+  ipAddress       String?
+  port            Int?                @default(9100)
+  usbVendorId     String?
+  usbProductId    String?
+  paperWidthMm    Int                 @default(80)
+  isActive        Boolean             @default(true)
+  autoPrintOrders Boolean             @default(true)
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  restaurant      Restaurant          @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  jobs            PrintJob[]
+
+  @@index([restaurantId, isActive])
+  @@map("print_devices")
+}
+
+model PrintJob {
+  id            Int            @id @default(autoincrement())
+  restaurantId  Int
+  printerId     Int?
+  requestedById Int?
+  subjectType   String
+  subjectId     Int?
+  template      PrintTemplate
+  printMode     PrintMode      @default(THERMAL)
+  status        PrintJobStatus @default(PENDING)
+  copies        Int            @default(1)
+  payload       Json
+  errorMessage  String?
+  attempts      Int            @default(0)
+  processedAt   DateTime?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  restaurant    Restaurant     @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  printer       PrintDevice?   @relation(fields: [printerId], references: [id], onDelete: SetNull)
+  requestedBy   User?          @relation("PrintJobRequestedBy", fields: [requestedById], references: [id], onDelete: SetNull)
+
+  @@index([restaurantId, status, createdAt])
+  @@index([printerId, status, createdAt])
+  @@index([subjectType, subjectId, createdAt])
+  @@map("print_jobs")
 }

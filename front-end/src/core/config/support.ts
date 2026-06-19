@@ -1,0 +1,1 @@
+export const SAAS_SUPPORT_PHONE = "48998354402";

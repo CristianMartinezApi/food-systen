@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "../../../../core/config/api";
-import { ArrowRight, Loader2, Store, ShieldCheck } from "lucide-react";
+import { ArrowRight, Loader2, Store, ShieldCheck, Instagram, Facebook, MessageCircle } from "lucide-react";
 import toast from "react-hot-toast";
 
 export default function OnboardingPage() {
@@ -11,7 +11,16 @@ export default function OnboardingPage() {
   const [userRole, setUserRole] = useState("");
   const [tokenExists, setTokenExists] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [formData, setFormData] = useState({ restaurantName: "", slug: "", description: "", phone: "" });
+  const [formData, setFormData] = useState({
+    restaurantName: "",
+    corporateName: "",
+    cnpj: "",
+    slug: "",
+    description: "",
+    phone: "",
+    instagram: "",
+    facebook: "",
+  });
 
   useEffect(() => {
     const token = localStorage.getItem("@FoodSystem:token");
@@ -38,6 +47,15 @@ export default function OnboardingPage() {
       .replace(/^-|-$/g, "");
 
     setFormData((prev) => ({ ...prev, restaurantName: name, slug }));
+  };
+
+  const formatCnpjInput = (value: string) => {
+    const digits = value.replace(/\D/g, "").slice(0, 14);
+    return digits
+      .replace(/^(\d{2})(\d)/, "$1.$2")
+      .replace(/^(\d{2})\.(\d{3})(\d)/, "$1.$2.$3")
+      .replace(/\.(\d{3})(\d)/, ".$1/$2")
+      .replace(/(\d{4})(\d)/, "$1-$2");
   };
 
   const handleCreateStore = async (e: React.FormEvent) => {
@@ -109,11 +127,75 @@ export default function OnboardingPage() {
         <form onSubmit={handleCreateStore} className="space-y-5">
           <div className="grid md:grid-cols-2 gap-4">
             <input required value={formData.restaurantName} onChange={(e) => updateSlug(e.target.value)} placeholder="Nome da loja" className="h-14 rounded-2xl bg-slate-50 border border-transparent focus:border-primary/20 px-5 outline-none font-medium" />
+            <input value={formData.corporateName} onChange={(e) => setFormData({ ...formData, corporateName: e.target.value })} placeholder="Razão social (opcional)" className="h-14 rounded-2xl bg-slate-50 border border-transparent focus:border-primary/20 px-5 outline-none font-medium" />
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-4">
+            <input value={formData.cnpj} onChange={(e) => setFormData({ ...formData, cnpj: formatCnpjInput(e.target.value) })} placeholder="CNPJ (opcional)" className="h-14 rounded-2xl bg-slate-50 border border-transparent focus:border-primary/20 px-5 outline-none font-medium" />
             <input required value={formData.slug} onChange={(e) => setFormData({ ...formData, slug: e.target.value })} placeholder="slug-da-loja" className="h-14 rounded-2xl bg-slate-50 border border-transparent focus:border-primary/20 px-5 outline-none font-medium" />
           </div>
 
           <textarea value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} placeholder="Descrição da loja" rows={4} className="w-full rounded-2xl bg-slate-50 border border-transparent focus:border-primary/20 px-5 py-4 outline-none font-medium resize-none" />
           <input value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} placeholder="Telefone da loja" className="h-14 w-full rounded-2xl bg-slate-50 border border-transparent focus:border-primary/20 px-5 outline-none font-medium" />
+
+          <div className="rounded-[1.75rem] border border-slate-100 bg-white p-4 sm:p-5 space-y-4 shadow-sm">
+            <div className="flex items-start gap-3">
+              <div className="w-11 h-11 rounded-2xl bg-pink-500/10 text-pink-500 flex items-center justify-center shrink-0">
+                <Instagram size={20} />
+              </div>
+              <div>
+                <h2 className="text-sm font-black uppercase tracking-tight text-slate-950">Redes sociais da loja</h2>
+                <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                  Preencha apenas o que estiver ativo. No footer, o sistema mostra somente os links preenchidos e transforma o telefone em WhatsApp quando possível.
+                </p>
+              </div>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400 ml-1">Instagram</label>
+                <div className="relative">
+                  <Instagram className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
+                  <input
+                    value={formData.instagram}
+                    onChange={(e) => setFormData({ ...formData, instagram: e.target.value })}
+                    placeholder="@seunegocio"
+                    className="h-14 w-full rounded-2xl bg-slate-50 border border-transparent focus:border-primary/20 pl-11 pr-5 outline-none font-medium"
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400 ml-1">Facebook</label>
+                <div className="relative">
+                  <Facebook className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
+                  <input
+                    value={formData.facebook}
+                    onChange={(e) => setFormData({ ...formData, facebook: e.target.value })}
+                    placeholder="facebook.com/..."
+                    className="h-14 w-full rounded-2xl bg-slate-50 border border-transparent focus:border-primary/20 pl-11 pr-5 outline-none font-medium"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              {formData.instagram ? (
+                <span className="inline-flex items-center gap-2 px-3 py-2 rounded-full bg-slate-50 border border-slate-100 text-xs font-bold text-slate-700">
+                  <Instagram size={14} className="text-pink-500" /> Instagram vai para o footer
+                </span>
+              ) : null}
+              {formData.facebook ? (
+                <span className="inline-flex items-center gap-2 px-3 py-2 rounded-full bg-slate-50 border border-slate-100 text-xs font-bold text-slate-700">
+                  <Facebook size={14} className="text-blue-600" /> Facebook vai para o footer
+                </span>
+              ) : null}
+              {formData.phone ? (
+                <span className="inline-flex items-center gap-2 px-3 py-2 rounded-full bg-slate-50 border border-slate-100 text-xs font-bold text-slate-700">
+                  <MessageCircle size={14} className="text-emerald-500" /> Telefone pode virar WhatsApp
+                </span>
+              ) : null}
+            </div>
+          </div>
 
           <div className="rounded-3xl bg-slate-50 border border-slate-100 p-5 text-sm text-slate-500">
             Ao concluir, o sistema vincula sua conta à loja criada e gera o tenant inicial para a operação.

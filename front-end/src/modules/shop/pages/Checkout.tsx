@@ -45,6 +45,7 @@ gsap.registerPlugin(ScrollTrigger);
 
 type Step = "mode" | "customer" | "address" | "payment" | "review" | "pix" | "success";
 type DeliveryMode = "DELIVERY" | "PICKUP" | "DINE_IN";
+type CheckoutPaymentMethod = "PIX" | "CASH" | "CREDIT" | "DEBIT";
 
 export default function Checkout() {
   const [step, setStep] = useState<Step>("mode");
@@ -116,6 +117,7 @@ export default function Checkout() {
   const deliveryFee = deliveryMode === "DELIVERY" ? (settings?.deliveryFee || 0) : 0;
   const total = subtotal + deliveryFee;
   const minOrderValue = settings?.minOrderValue || 0;
+  const isPixAvailable = Boolean(settings?.pixEnabled);
   const isBelowMinimum = subtotal < minOrderValue;
   const isOpenNow = isRestaurantOpenNow(settings?.operatingHours);
   const estimatedDeliveryMinutes = settings?.deliveryEtaMinutes || 35;
@@ -131,11 +133,17 @@ export default function Checkout() {
     city: "",
     complement: "",
     reference: "",
-    paymentMethod: "PIX" as "PIX" | "CARD" | "CASH",
+    paymentMethod: "CASH" as CheckoutPaymentMethod,
     needsChange: false,
     changeFor: "",
     cpf: ""
   });
+
+  useEffect(() => {
+    if (!isPixAvailable && formData.paymentMethod === "PIX") {
+      setFormData((prev) => ({ ...prev, paymentMethod: "CASH" }));
+    }
+  }, [isPixAvailable, formData.paymentMethod]);
 
   const [isDistanceValidating, setIsDistanceValidating] = useState(false);
 
@@ -760,14 +768,27 @@ export default function Checkout() {
                     </div>
                   </div>
 
+                  {!isPixAvailable && (
+                    <div className="mb-5 md:mb-7 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 md:px-5 md:py-4">
+                      <p className="text-[10px] md:text-label font-body font-bold text-amber-700 uppercase tracking-[0.12em]">
+                        PIX em homologação neste momento
+                      </p>
+                      <p className="mt-1 text-[11px] md:text-body font-body font-medium text-amber-800">
+                        Use dinheiro, crédito ou débito. O PIX será habilitado assim que a integração real estiver concluída.
+                      </p>
+                    </div>
+                  )}
+
                   <div className="grid grid-cols-1 gap-5">
-                    <SelectOption
-                      active={formData.paymentMethod === 'PIX'}
-                      onClick={() => setFormData({ ...formData, paymentMethod: 'PIX' })}
-                      icon={<Zap size={24} className="text-primary fill-primary/20" />}
-                      title="PIX"
-                      description="Aprovação instantânea"
-                    />
+                    {isPixAvailable && (
+                      <SelectOption
+                        active={formData.paymentMethod === 'PIX'}
+                        onClick={() => setFormData({ ...formData, paymentMethod: 'PIX' })}
+                        icon={<Zap size={24} className="text-primary fill-primary/20" />}
+                        title="PIX"
+                        description="Aprovação instantânea"
+                      />
+                    )}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                       <SelectOption
                         active={formData.paymentMethod === 'CREDIT'}
