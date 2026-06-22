@@ -11,6 +11,7 @@ import { ConfirmActionModal } from "../../components/modals/ConfirmActionModal";
 const PRINT_MODE_STORAGE_KEY = "@FoodSystem:printMode";
 const DEFAULT_CASH_DIFFERENCE_NOTE_THRESHOLD = 5;
 const HOMOLOGATION_STORAGE_KEY = "@FoodSystem:cashierHomologationChecklist";
+const ENABLE_PRINT_EVENT_SUMMARY = process.env.NEXT_PUBLIC_ENABLE_PRINT_EVENT_SUMMARY === "true";
 
 type CashSession = {
     id: number;
@@ -200,13 +201,17 @@ export default function CashierPage() {
             );
             setDifferenceNoteThreshold(Number(settingsData?.cashDifferenceNoteThreshold ?? DEFAULT_CASH_DIFFERENCE_NOTE_THRESHOLD));
             const sessionIds = (sessionsHistory.data || []).map((item: any) => Number(item.id)).filter(Boolean);
-            if (sessionIds.length > 0) {
-                const summary = await api.get(`/print-events/summary?subjectType=cash_session&ids=${sessionIds.join(",")}`);
-                const nextSummary = (summary || []).reduce((acc: Record<number, any>, item: any) => {
-                    acc[Number(item.subjectId)] = item;
-                    return acc;
-                }, {});
-                setPrintSummaryBySessionId(nextSummary);
+            if (ENABLE_PRINT_EVENT_SUMMARY && sessionIds.length > 0) {
+                try {
+                    const summary = await api.get(`/print-events/summary?subjectType=cash_session&ids=${sessionIds.join(",")}`);
+                    const nextSummary = (summary || []).reduce((acc: Record<number, any>, item: any) => {
+                        acc[Number(item.subjectId)] = item;
+                        return acc;
+                    }, {});
+                    setPrintSummaryBySessionId(nextSummary);
+                } catch {
+                    setPrintSummaryBySessionId({});
+                }
             } else {
                 setPrintSummaryBySessionId({});
             }

@@ -60,6 +60,12 @@ export function AdminLayout({ children }: AdminLayoutProps) {
   const noticesRef = useRef<HTMLDivElement>(null);
   const storeLabel = settings?.storeName || "Master Admin";
   const appVersion = `v${packageJson.version}`;
+  const footerBadgeLabel = useMemo(() => {
+    const name = (settings?.storeName || "Food System").trim();
+    const tokens = name.split(/\s+/).filter(Boolean).slice(0, 2);
+    const initials = tokens.map((token: string) => token.charAt(0).toUpperCase()).join("");
+    return initials || "FS";
+  }, [settings?.storeName]);
 
   useEffect(() => {
     setSlug(getTenantSlug());
@@ -477,8 +483,9 @@ export function AdminLayout({ children }: AdminLayoutProps) {
         </header>
 
         <div className="flex-1 overflow-y-auto px-4 py-4 md:px-6 md:py-6 lg:px-8 lg:py-8 no-scrollbar">
-          <div className="max-w-[1720px] mx-auto w-full">
+          <div className="max-w-[1720px] mx-auto w-full min-h-full flex flex-col">
             <motion.div
+              className="flex-1"
               key={pathname}
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -487,13 +494,12 @@ export function AdminLayout({ children }: AdminLayoutProps) {
               {children}
             </motion.div>
 
-            <footer className="mt-12 lg:mt-16 pb-10 lg:pb-12 border-t border-slate-100 pt-6 lg:pt-7">
+            <footer className="mt-auto pb-10 lg:pb-12 border-t border-slate-100 pt-6 lg:pt-7">
               <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
                 <div className="min-w-0">
-                  <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-300">Rodapé do sistema</p>
                   <div className="mt-2 flex items-center gap-3 min-w-0">
-                    <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-100 bg-slate-950 text-[10px] font-black uppercase tracking-[0.18em] text-white shadow-sm">
-                      FS
+                    <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-gradient-to-br from-slate-900 to-slate-700 text-[11px] font-black uppercase tracking-[0.16em] text-white shadow-sm">
+                      {footerBadgeLabel}
                     </span>
                     <div className="min-w-0">
                       <p className="text-sm sm:text-base font-black text-slate-950 uppercase tracking-[0.16em] truncate">

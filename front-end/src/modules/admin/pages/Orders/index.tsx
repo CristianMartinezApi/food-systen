@@ -21,6 +21,7 @@ import { ConfirmActionModal } from "../../components/modals/ConfirmActionModal";
 
 const PRINT_MODE_STORAGE_KEY = "@FoodSystem:printMode";
 const DIRECT_PRINT_ACCEPTED_ORDERS_KEY = "@FoodSystem:directPrintAcceptedOrders";
+const ENABLE_PRINT_EVENT_SUMMARY = process.env.NEXT_PUBLIC_ENABLE_PRINT_EVENT_SUMMARY === "true";
 
 export default function OrdersPage() {
     gsap.config({ nullTargetWarn: false });
@@ -262,13 +263,17 @@ export default function OrdersPage() {
             const data = await api.get("/orders");
             setOrders(data);
             const orderIds = data.map((order: any) => Number(order.id)).filter(Boolean);
-            if (orderIds.length > 0) {
-                const summary = await api.get(`/print-events/summary?subjectType=order&ids=${orderIds.join(",")}`);
-                const nextSummary = (summary || []).reduce((acc: Record<number, any>, item: any) => {
-                    acc[Number(item.subjectId)] = item;
-                    return acc;
-                }, {});
-                setPrintSummaryByOrderId(nextSummary);
+            if (ENABLE_PRINT_EVENT_SUMMARY && orderIds.length > 0) {
+                try {
+                    const summary = await api.get(`/print-events/summary?subjectType=order&ids=${orderIds.join(",")}`);
+                    const nextSummary = (summary || []).reduce((acc: Record<number, any>, item: any) => {
+                        acc[Number(item.subjectId)] = item;
+                        return acc;
+                    }, {});
+                    setPrintSummaryByOrderId(nextSummary);
+                } catch {
+                    setPrintSummaryByOrderId({});
+                }
             } else {
                 setPrintSummaryByOrderId({});
             }
