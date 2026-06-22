@@ -90,14 +90,32 @@ export default function CashierPage() {
     const [filterStartDate, setFilterStartDate] = useState("");
     const [filterEndDate, setFilterEndDate] = useState("");
     const [filterPreset, setFilterPreset] = useState<"ALL" | "TODAY" | "LAST_7" | "LAST_30">("ALL");
-    const [totals, setTotals] = useState({
+    const [totals, setTotals] = useState<{
+        supplies: number;
+        withdrawals: number;
+        adjustments: number;
+        movementsCount: number;
+        sales: number;
+        cashSales: number;
+        cardSales: number;
+        debitSales: number;
+        creditSales: number;
+        pixSales: number;
+        expectedAmount: number;
+        salesByPayment: { method: string; total: number }[];
+    }>({
         supplies: 0,
         withdrawals: 0,
         adjustments: 0,
         movementsCount: 0,
         sales: 0,
         cashSales: 0,
+        cardSales: 0,
+        debitSales: 0,
+        creditSales: 0,
+        pixSales: 0,
         expectedAmount: 0,
+        salesByPayment: [],
     });
 
     const [openingAmount, setOpeningAmount] = useState("");
@@ -223,7 +241,12 @@ export default function CashierPage() {
                     movementsCount: 0,
                     sales: 0,
                     cashSales: 0,
+                    cardSales: 0,
+                    debitSales: 0,
+                    creditSales: 0,
+                    pixSales: 0,
                     expectedAmount: 0,
+                    salesByPayment: [],
                 }
             );
 

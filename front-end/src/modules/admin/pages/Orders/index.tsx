@@ -706,7 +706,7 @@ export default function OrdersPage() {
                                     <div className="p-4 sm:p-5 md:p-6 lg:p-6">
                                         <div className="flex flex-col gap-3 sm:gap-4 md:gap-4">
                                             <div className="flex items-center gap-3">
-                                                <div className="h-10 w-10 rounded-lg bg-slate-950 text-white flex flex-col items-center justify-center flex-shrink-0">
+                                                <div className="h-10 w-10 rounded-lg bg-slate-950 text-white flex flex-col items-center justify-center shrink-0">
                                                     <span className="text-[8px] font-black uppercase tracking-[0.2em] opacity-60">PED</span>
                                                     <span className="text-[11px] font-mono font-bold">#{order.id.toString().slice(-4)}</span>
                                                 </div>
@@ -758,7 +758,7 @@ export default function OrdersPage() {
                                             <div className="grid grid-cols-2 gap-3">
                                                 <div className="rounded-xl border border-slate-100 bg-white px-3 py-2.5">
                                                     <div className="flex items-start gap-2">
-                                                        <MapPin size={14} className="text-slate-300 mt-0.5 flex-shrink-0" />
+                                                        <MapPin size={14} className="text-slate-300 mt-0.5 shrink-0" />
                                                         <div className="min-w-0">
                                                             <p className="text-[9px] font-bold uppercase tracking-[0.12em] text-slate-400">Entrega</p>
                                                             {order.address?.type === "PICKUP" ? (
@@ -777,17 +777,17 @@ export default function OrdersPage() {
 
                                                 <div className="rounded-xl border border-slate-100 bg-white px-3 py-2.5">
                                                     <div className="flex items-start gap-2">
-                                                        <CreditCard size={14} className="text-slate-300 mt-0.5 flex-shrink-0" />
+                                                        <CreditCard size={14} className="text-slate-300 mt-0.5 shrink-0" />
                                                         <div className="min-w-0 w-full">
                                                             <p className="text-[9px] font-bold uppercase tracking-[0.12em] text-slate-400">Pagamento</p>
                                                             <p className="font-bold text-slate-900 text-xs mt-1">
-                                                                {{
+                                                                {({
                                                                     'CASH': 'Dinheiro',
                                                                     'PIX': 'PIX',
                                                                     'CARD': 'Cartão',
                                                                     'DEBIT': 'Débito',
                                                                     'CREDIT': 'Crédito'
-                                                                }[order.paymentMethod] || order.paymentMethod}
+                                                                } as Record<string, string>)[order.paymentMethod] || order.paymentMethod}
                                                             </p>
                                                         </div>
                                                     </div>
@@ -814,7 +814,7 @@ export default function OrdersPage() {
                                                                     <div className="flex items-start justify-between gap-2">
                                                                         <div className="min-w-0 flex-1">
                                                                             <div className="flex items-center gap-2">
-                                                                                <span className="inline-flex min-w-6 items-center justify-center rounded-md bg-slate-950 px-1 py-0.5 text-[9px] font-bold text-white flex-shrink-0">{item.quantity}x</span>
+                                                                                <span className="inline-flex min-w-6 items-center justify-center rounded-md bg-slate-950 px-1 py-0.5 text-[9px] font-bold text-white shrink-0">{item.quantity}x</span>
                                                                                 <p className="text-xs font-bold text-slate-900 uppercase tracking-tight truncate">{item.name || item.product?.name}</p>
                                                                             </div>
                                                                             {detailsLine && <p className="mt-0.5 text-[9px] text-slate-500 truncate">{detailsLine}</p>}
@@ -869,7 +869,7 @@ export default function OrdersPage() {
                                                 <button
                                                     onClick={() => requestPrintOrder(order)}
                                                     className={cn(
-                                                        "w-9 h-9 border rounded-lg flex items-center justify-center transition-all flex-shrink-0",
+                                                        "w-9 h-9 border rounded-lg flex items-center justify-center transition-all shrink-0",
                                                         printSummaryByOrderId[order.id]
                                                             ? "bg-emerald-50 border-emerald-100 text-emerald-600 hover:bg-emerald-100"
                                                             : "bg-slate-50 border-slate-100 text-slate-400 hover:bg-slate-100"
