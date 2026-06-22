@@ -362,16 +362,18 @@ export default function Dashboard() {
         {/* Coluna Lateral - Ações Rápidas */}
         <div className="space-y-8">
           {/* Ações Rápidas */}
-          <div className="dashboard-panel bg-slate-900 rounded-4xl p-8 text-white shadow-xl shadow-slate-900/20">
+          <div className="dashboard-panel space-y-3">
             <div className="mb-6">
-              <h3 className="font-black text-xl uppercase tracking-tighter">Gerenciamento Rápido</h3>
-              <p className="mt-1 text-[11px] font-medium text-slate-400 uppercase tracking-[0.06em]">Acesso direto às funções principais</p>
+              <h3 className="text-heading-3 font-display font-bold text-slate-950 uppercase tracking-tight">Gerenciamento Rápido</h3>
+              <p className="mt-1 text-[12px] font-body font-medium text-slate-400 uppercase tracking-[0.06em]">Acesso aos principais recursos operacionais</p>
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <QuickAction icon={Plus} label="Novo Produto" path="/admin/products" color="bg-white/10" />
-              <QuickAction icon={Settings} label="Configurar" path="/admin/settings" color="bg-white/10" />
-              <QuickAction icon={ExternalLink} label="Ver Loja" path={`/${slug}`} color="bg-primary" />
-              <QuickAction icon={Users} label="Clientes" path="/admin/clients" color="bg-white/10" />
+            <div className="grid grid-cols-1 gap-3">
+              <QuickActionCard icon={Plus} label="Novo Produto" description="Adicionar item ao catálogo" path="/admin/products" color="bg-gradient-to-br from-emerald-50 to-emerald-100" iconColor="text-emerald-600" />
+              <QuickActionCard icon={ShoppingBag} label="Gerenciar Pedidos" description="Ver e processar pedidos" path="/admin/orders" color="bg-gradient-to-br from-blue-50 to-blue-100" iconColor="text-blue-600" />
+              <QuickActionCard icon={Clock} label="Operação de Caixa" description="Abrir/fechar e movimentar" path="/admin/caixa" color="bg-gradient-to-br from-amber-50 to-amber-100" iconColor="text-amber-600" />
+              <QuickActionCard icon={Settings} label="Configurações" description="Ajustar informações da loja" path="/admin/settings" color="bg-gradient-to-br from-slate-50 to-slate-100" iconColor="text-slate-600" />
+              <QuickActionCard icon={Users} label="Clientes" description="Gerenciar base de usuários" path="/admin/clients" color="bg-gradient-to-br from-violet-50 to-violet-100" iconColor="text-violet-600" />
+              <QuickActionCard icon={ExternalLink} label="Ver Loja Pública" description="Acessar como cliente" path={`/${slug}`} color="bg-gradient-to-br from-primary/10 to-primary/20" iconColor="text-primary" />
             </div>
           </div>
         </div>
@@ -380,16 +382,25 @@ export default function Dashboard() {
   );
 }
 
-function QuickAction({ icon: Icon, label, path, color }: any) {
+function QuickActionCard({ icon: Icon, label, description, path, color, iconColor }: any) {
   return (
     <Link href={path} className={cn(
-      "p-5 rounded-full flex flex-col items-center justify-center gap-3 transition-all hover:scale-105 active:scale-95 group",
+      "group relative overflow-hidden rounded-2xl p-4 transition-all duration-300 hover:shadow-lg active:scale-95 border border-slate-100",
       color
     )}>
-      <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center text-white group-hover:bg-white group-hover:text-slate-900 transition-colors">
-        <Icon size={20} />
+      <div className="flex items-start gap-4">
+        <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 bg-white/60 group-hover:bg-white transition-all duration-300", iconColor)}>
+          <Icon size={24} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-black text-slate-950 uppercase tracking-tight leading-tight">{label}</p>
+          <p className="text-[11px] font-medium text-slate-500 uppercase tracking-[0.05em] mt-0.5">{description}</p>
+        </div>
+        <div className="text-slate-300 group-hover:text-slate-950 group-hover:translate-x-1 transition-all duration-300 flex-shrink-0">
+          <ArrowUpRight size={18} />
+        </div>
       </div>
-      <span className="text-[10px] font-black uppercase tracking-widest text-center">{label}</span>
+      <div className="absolute inset-0 bg-white opacity-0 group-hover:opacity-5 transition-opacity duration-300 rounded-2xl pointer-events-none" />
     </Link>
   );
 }
