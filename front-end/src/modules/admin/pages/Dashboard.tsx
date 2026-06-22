@@ -30,10 +30,19 @@ export default function Dashboard() {
   const [stats, setStats] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [slug, setSlug] = useState<string>("");
+  const [dailySalesTarget, setDailySalesTarget] = useState<number>(5000);
+  const [isEditingTarget, setIsEditingTarget] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setSlug(getTenantSlug());
+    // Carregar meta de vendas do localStorage
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('dailySalesTarget');
+      if (saved) {
+        setDailySalesTarget(parseFloat(saved));
+      }
+    }
   }, []);
 
   const storeUrl = typeof window !== 'undefined' ? `${window.location.origin}/${slug}` : '';
@@ -89,8 +98,9 @@ export default function Dashboard() {
   return (
     <div ref={rootRef}>
       <div className="dashboard-hero system-hero-band mb-8 sm:mb-12 p-4 sm:p-6 md:p-10">
-        <h1 className="text-2xl sm:text-3xl md:text-heading-1 font-display font-bold text-slate-950 uppercase tracking-tight leading-none">Visão de Topo</h1>
-        <p className="text-[12px] sm:text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em] mt-2">Gestão Estratégica & Performance Operacional</p>
+        <p className="text-[10px] sm:text-label font-body font-bold text-primary uppercase tracking-[0.2em]">Hub Administrativo</p>
+        <h1 className="mt-1 text-2xl sm:text-3xl md:text-heading-1 font-display font-bold text-slate-950 uppercase tracking-tight leading-none">Painel operacional</h1>
+        <p className="text-[12px] sm:text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em] mt-2">Resumo de vendas, pedidos em aberto e atalhos para operação diária</p>
       </div>
 
       {/* Card de Link da Loja - Super Visível */}
@@ -106,8 +116,8 @@ export default function Dashboard() {
               <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
               <span className="text-[12px] sm:text-label font-body font-medium uppercase tracking-[0.06em] text-emerald-500">Operação Digital Ativa</span>
             </div>
-            <h2 className="text-xl sm:text-heading-2 font-display font-bold uppercase tracking-tight mb-2">Seu Portal Gourmet</h2>
-            <p className="text-[12px] sm:text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em]">Compartilhe o acesso exclusivo para seus clientes.</p>
+            <h2 className="text-xl sm:text-heading-2 font-display font-bold uppercase tracking-tight mb-2">Acesso à vitrine da loja</h2>
+            <p className="text-[12px] sm:text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em]">Copie e compartilhe o link público com seus clientes.</p>
           </div>
 
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4">
@@ -124,7 +134,7 @@ export default function Dashboard() {
               }}
               className="h-10 sm:h-12 md:h-16 px-4 sm:px-6 md:px-10 bg-white text-slate-950 rounded-full font-body font-bold text-[11px] sm:text-label uppercase tracking-[0.06em] hover:bg-primary hover:text-white transition-all shadow-xl active:scale-95 flex items-center justify-center gap-2 sm:gap-3 w-full sm:w-auto"
             >
-              Copiando Link
+              Copiar link
             </button>
           </div>
         </div>
@@ -134,28 +144,28 @@ export default function Dashboard() {
         <StatCard
           title="Faturamento Bruto"
           value={formatCurrency(stats?.totalSales || 0)}
-          trend="+R$ 0,00"
+          trend="+12%"
           icon={DollarSign}
           color="bg-emerald-500"
         />
         <StatCard
           title="Fluxo de Pedidos"
           value={stats?.totalOrders || 0}
-          trend="Total"
+          trend="+8 hoje"
           icon={ShoppingBag}
           color="bg-primary"
         />
         <StatCard
           title="Pedidos em Espera"
           value={stats?.pendingOrders || 0}
-          trend="Abertas"
+          trend="ação"
           icon={Clock}
           color="bg-orange-500"
         />
         <StatCard
-          title="Membros VIP"
+          title="Clientes Cadastrados"
           value={stats?.totalCustomers || 0}
-          trend="Base"
+          trend="base"
           icon={Users}
           color="bg-blue-500"
         />
@@ -166,18 +176,18 @@ export default function Dashboard() {
         <div className="dashboard-panel lg:col-span-2 bg-white rounded-2xl sm:rounded-[3rem] border border-slate-50 p-4 sm:p-6 md:p-10 shadow-sm">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6 sm:mb-10">
             <div>
-              <h3 className="text-xl sm:text-heading-3 font-display font-bold text-slate-950 uppercase tracking-tight">Fluxo Recente</h3>
-              <p className="text-[12px] sm:text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em] mt-1">Últimas interações em tempo real</p>
+              <h3 className="text-xl sm:text-heading-3 font-display font-bold text-slate-950 uppercase tracking-tight">Pedidos recentes</h3>
+              <p className="text-[12px] sm:text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em] mt-1">Últimas movimentações em tempo real</p>
             </div>
             <Link href="/admin/orders" className="text-[11px] sm:text-label font-body font-bold text-primary hover:bg-primary/5 px-4 sm:px-6 h-10 sm:h-auto sm:py-3 rounded-xl transition-all uppercase tracking-[0.06em] border-2 border-primary/10 inline-flex items-center justify-center w-full sm:w-auto">
-              Relatório Completo
+              Abrir pedidos
             </Link>
           </div>
 
           <div className="space-y-6">
             {stats?.recentOrders?.length === 0 ? (
               <div className="py-12 sm:py-24 text-center border-2 border-dashed border-slate-100 rounded-2xl sm:rounded-[2.5rem]">
-                <p className="text-[12px] sm:text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em]">Nenhuma atividade registrada hoje.</p>
+                <p className="text-[12px] sm:text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em]">Nenhum pedido recente registrado.</p>
               </div>
             ) : (
               stats?.recentOrders?.map((order: any, idx: number) => (
@@ -222,39 +232,89 @@ export default function Dashboard() {
         {/* Coluna da Direita (Metas e Popularidade) */}
         <div className="space-y-10">
           <div className="dashboard-panel bg-slate-950 rounded-[3rem] p-10 text-white shadow-2xl shadow-slate-950/20 relative overflow-hidden group">
-            <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:scale-110 transition-transform duration-1000">
+            <div className="pointer-events-none absolute top-0 right-0 p-4 opacity-5 group-hover:scale-110 transition-transform duration-1000">
               <Target size={160} />
             </div>
-            <h3 className="text-heading-3 font-display font-bold uppercase tracking-tight mb-2">Meta Performance</h3>
-            <p className="text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em] mb-10">Faturamento Alvo: {formatCurrency(5000)}</p>
+            <div className="relative z-10 flex items-center justify-between mb-8">
+              <div>
+                <h3 className="text-heading-3 font-display font-bold uppercase tracking-tight mb-1">Meta de vendas</h3>
+                <p className="text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em]">Use o botão editar para ajustar a meta diária</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsEditingTarget((prev) => !prev)}
+                className="relative z-20 h-10 px-4 rounded-full border border-white/20 bg-white/5 text-[10px] font-black uppercase tracking-[0.2em] text-white hover:bg-white hover:text-slate-950 transition-all cursor-pointer active:scale-95"
+              >
+                {isEditingTarget ? "Pronto" : "Editar"}
+              </button>
+            </div>
 
             <div className="space-y-8 relative z-10">
               <div>
                 <div className="flex justify-between items-end mb-4">
                   <span className="text-4xl font-mono font-medium tracking-tighter">
-                    {Math.min(Math.round(((stats?.totalSales || 0) / 5000) * 100), 100)}%
+                    {Math.min(Math.round(((stats?.totalSales || 0) / dailySalesTarget) * 100), 100)}%
                   </span>
                   <span className="text-label font-mono font-medium text-slate-500 uppercase">{formatCurrency(stats?.totalSales || 0)}</span>
                 </div>
                 <div className="h-2.5 w-full bg-white/10 rounded-full overflow-hidden">
                   <motion.div
                     initial={{ width: 0 }}
-                    animate={{ width: `${Math.min(((stats?.totalSales || 0) / 5000) * 100, 100)}%` }}
+                    animate={{ width: `${Math.min(((stats?.totalSales || 0) / dailySalesTarget) * 100, 100)}%` }}
                     transition={{ duration: 1, delay: 0.5 }}
                     className="h-full bg-primary"
                   />
                 </div>
               </div>
-              <p className="text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em] leading-relaxed">
-                Desempenho <span className="text-white font-bold">{((stats?.totalSales || 0) / 5000) >= 1 ? 'Excepcional' : 'Promissor'}</span>. Faltam {formatCurrency(Math.max(5000 - (stats?.totalSales || 0), 0))} para a meta.
-              </p>
+              
+              {isEditingTarget ? (
+                <div className="space-y-3">
+                  <label className="text-label font-body font-medium text-slate-300 uppercase tracking-[0.06em] block">
+                    Meta diária (R$):
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      value={dailySalesTarget}
+                      onChange={(e) => setDailySalesTarget(Math.max(100, parseFloat(e.target.value) || 0))}
+                      className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-3 text-white placeholder-slate-400 font-mono font-bold text-lg focus:outline-none focus:border-primary/50 transition-all"
+                      placeholder="5000"
+                      min="100"
+                      step="100"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        localStorage.setItem('dailySalesTarget', dailySalesTarget.toString());
+                        setIsEditingTarget(false);
+                        toast.success("Meta salva com sucesso!");
+                      }}
+                      className="mt-3 w-full bg-primary text-white py-2 rounded-lg font-bold uppercase tracking-[0.06em] text-sm hover:bg-primary/80 transition-all"
+                    >
+                      Salvar Meta
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em] leading-relaxed">
+                  {((stats?.totalSales || 0) / dailySalesTarget) >= 1 ? (
+                    <>Objetivo <span className="text-emerald-400 font-bold">ALCANÇADO</span>. Continue crescendo!</>
+                  ) : (
+                    <>Você está em <span className="text-white font-bold">{Math.round(((stats?.totalSales || 0) / dailySalesTarget) * 100)}%</span> da meta. Faltam {formatCurrency(Math.max(dailySalesTarget - (stats?.totalSales || 0), 0))}</>
+                  )}
+                </p>
+              )}
             </div>
           </div>
 
           <div className="dashboard-panel bg-white rounded-[3rem] border border-slate-50 p-10 shadow-sm overflow-hidden relative group">
-            <h3 className="text-heading-3 font-display font-bold text-slate-950 uppercase tracking-tight mb-10 flex items-center justify-between">
-              Elite Mix <TrendingUp size={24} className="text-primary" />
-            </h3>
+            <div className="mb-10 flex items-center justify-between">
+              <div>
+                <h3 className="text-heading-3 font-display font-bold text-slate-950 uppercase tracking-tight">Produtos Top Vendas</h3>
+                <p className="mt-1 text-[12px] font-body font-medium text-slate-400 uppercase tracking-[0.06em]">Seus best-sellers do período</p>
+              </div>
+              <TrendingUp size={24} className="text-primary" />
+            </div>
             <div className="space-y-8">
               {stats?.topProducts?.length === 0 ? (
                 <p className="text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em]">Aguardando dados de vendas...</p>
@@ -280,12 +340,15 @@ export default function Dashboard() {
         <div className="space-y-8">
           {/* Ações Rápidas */}
           <div className="dashboard-panel bg-slate-900 rounded-4xl p-8 text-white shadow-xl shadow-slate-900/20">
-            <h3 className="font-black text-xl uppercase tracking-tighter mb-6">Atalhos Rápidos</h3>
+            <div className="mb-6">
+              <h3 className="font-black text-xl uppercase tracking-tighter">Gerenciamento Rápido</h3>
+              <p className="mt-1 text-[11px] font-medium text-slate-400 uppercase tracking-[0.06em]">Acesso direto às funções principais</p>
+            </div>
             <div className="grid grid-cols-2 gap-4">
               <QuickAction icon={Plus} label="Novo Produto" path="/admin/products" color="bg-white/10" />
-              <QuickAction icon={Settings} label="Ajustes" path="/admin/settings" color="bg-white/10" />
-              <QuickAction icon={ExternalLink} label="Ver Site" path={`/${slug}`} color="bg-primary" />
-              <QuickAction icon={Users} label="Suporte" path="#" color="bg-white/10" />
+              <QuickAction icon={Settings} label="Configurar" path="/admin/settings" color="bg-white/10" />
+              <QuickAction icon={ExternalLink} label="Ver Loja" path={`/${slug}`} color="bg-primary" />
+              <QuickAction icon={Users} label="Clientes" path="/admin/clients" color="bg-white/10" />
             </div>
           </div>
         </div>

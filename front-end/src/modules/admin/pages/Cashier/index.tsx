@@ -1333,6 +1333,41 @@ export default function CashierPage() {
                 </div>
             </section>
 
+            <footer className="rounded-[1.75rem] border border-slate-100 bg-white px-5 py-5 shadow-[0_18px_60px_rgba(15,23,42,0.04)]">
+                <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+                    <div className="min-w-0">
+                        <p className="text-[10px] font-black uppercase tracking-[0.24em] text-slate-300">Operação do caixa</p>
+                        <p className="mt-2 text-sm sm:text-base font-bold text-slate-950 uppercase tracking-tight truncate">
+                            {session ? `Sessão #${session.id} em andamento` : "Nenhuma sessão aberta no momento"}
+                        </p>
+                        <p className="mt-1 text-[11px] sm:text-label font-medium text-slate-400 uppercase tracking-[0.08em]">
+                            Gestão de abertura, fechamento, vendas e conferência financeira em tempo real.
+                        </p>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-3">
+                        <div className="inline-flex items-center gap-2 rounded-full border border-slate-100 bg-slate-50 px-4 py-2">
+                            <span className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Modo</span>
+                            <span className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-950">{printModeLabel}</span>
+                        </div>
+                        <div className="inline-flex items-center gap-2 rounded-full border border-emerald-100 bg-emerald-50 px-4 py-2">
+                            <span className="h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_0_4px_rgba(16,185,129,0.12)]" />
+                            <span className="text-[10px] font-black uppercase tracking-[0.18em] text-emerald-700">
+                                {session ? "Caixa ativo" : "Pronto para abrir"}
+                            </span>
+                        </div>
+                        <div className="inline-flex items-center gap-2 rounded-full border border-slate-100 bg-white px-4 py-2 shadow-sm">
+                            <span className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Movimentos</span>
+                            <span className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-950">{movements.length}</span>
+                        </div>
+                        <div className="inline-flex items-center gap-2 rounded-full border border-slate-100 bg-white px-4 py-2 shadow-sm">
+                            <span className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Sessões</span>
+                            <span className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-950">{historyTotal}</span>
+                        </div>
+                    </div>
+                </div>
+            </footer>
+
             <PrintModeModal
                 isOpen={Boolean(printSessionId)}
                 targetLabel={printSessionId ? `o fechamento da sessao #${printSessionId}` : "o fechamento"}

@@ -23,6 +23,7 @@ import { useSettings } from "../../../../core/hooks/useSettings";
 import { api } from "../../../../core/config/api";
 import { socket } from "../../../../core/config/socket";
 import { useState, useEffect, useMemo, useRef } from "react";
+import packageJson from "../../../../../package.json";
 
 type PendingUserNotice = {
   id: number;
@@ -58,6 +59,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
   const [noticesLoading, setNoticesLoading] = useState(false);
   const noticesRef = useRef<HTMLDivElement>(null);
   const storeLabel = settings?.storeName || "Master Admin";
+  const appVersion = `v${packageJson.version}`;
 
   useEffect(() => {
     setSlug(getTenantSlug());
@@ -474,8 +476,8 @@ export function AdminLayout({ children }: AdminLayoutProps) {
           </div>
         </header>
 
-        <div className="flex-1 overflow-y-auto p-6 md:p-12 no-scrollbar">
-          <div className="max-w-7xl mx-auto w-full">
+        <div className="flex-1 overflow-y-auto px-4 py-4 md:px-6 md:py-6 lg:px-8 lg:py-8 no-scrollbar">
+          <div className="max-w-[1720px] mx-auto w-full">
             <motion.div
               key={pathname}
               initial={{ opacity: 0, y: 10 }}
@@ -485,13 +487,35 @@ export function AdminLayout({ children }: AdminLayoutProps) {
               {children}
             </motion.div>
 
-            <footer className="mt-20 pt-12 border-t border-slate-100 flex flex-col md:flex-row justify-between items-center gap-8 pb-12">
-              <p className="text-label font-body font-medium text-slate-400 uppercase tracking-[0.08em]">
-                &copy; {new Date().getFullYear()} {settings?.storeName?.toUpperCase() || 'FOOD SYSTEM'}. EXPERIÊNCIA ADMINISTRATIVA PREMIUM.
-              </p>
-              <div className="flex items-center gap-2 text-label font-mono font-medium text-slate-300 uppercase tracking-tighter">
-                <span>Engined by</span>
-                <span className="text-slate-950 font-bold ml-1">FOODSYSTEM.CORE</span>
+            <footer className="mt-12 lg:mt-16 pb-10 lg:pb-12 border-t border-slate-100 pt-6 lg:pt-7">
+              <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+                <div className="min-w-0">
+                  <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-300">Rodapé do sistema</p>
+                  <div className="mt-2 flex items-center gap-3 min-w-0">
+                    <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-100 bg-slate-950 text-[10px] font-black uppercase tracking-[0.18em] text-white shadow-sm">
+                      FS
+                    </span>
+                    <div className="min-w-0">
+                      <p className="text-sm sm:text-base font-black text-slate-950 uppercase tracking-[0.16em] truncate">
+                        {settings?.storeName?.toUpperCase() || 'FOOD SYSTEM'}
+                      </p>
+                      <p className="mt-1 text-[11px] sm:text-label font-medium text-slate-400 uppercase tracking-[0.08em] truncate">
+                        Painel administrativo oficial • operação, controle e performance
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2 lg:gap-3">
+                  <div className="inline-flex items-center gap-2 rounded-full border border-emerald-100 bg-emerald-50 px-3 py-2">
+                    <span className="h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_0_4px_rgba(16,185,129,0.12)]" />
+                    <span className="text-[10px] font-black uppercase tracking-[0.18em] text-emerald-700">Sistema online</span>
+                  </div>
+                  <div className="inline-flex items-center gap-2 rounded-full border border-slate-100 bg-slate-50 px-3 py-2">
+                    <span className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Versão</span>
+                    <span className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-950">{appVersion}</span>
+                  </div>
+                </div>
               </div>
             </footer>
           </div>
