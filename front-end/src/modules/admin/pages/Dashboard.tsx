@@ -162,13 +162,6 @@ export default function Dashboard() {
           icon={Clock}
           color="bg-orange-500"
         />
-        <StatCard
-          title="Clientes Cadastrados"
-          value={stats?.totalCustomers || 0}
-          trend="base"
-          icon={Users}
-          color="bg-blue-500"
-        />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 md:gap-10">
@@ -372,7 +365,6 @@ export default function Dashboard() {
               <QuickActionCard icon={ShoppingBag} label="Gerenciar Pedidos" description="Ver e processar pedidos" path="/admin/orders" color="bg-gradient-to-br from-blue-50 to-blue-100" iconColor="text-blue-600" />
               <QuickActionCard icon={Clock} label="Operação de Caixa" description="Abrir/fechar e movimentar" path="/admin/caixa" color="bg-gradient-to-br from-amber-50 to-amber-100" iconColor="text-amber-600" />
               <QuickActionCard icon={Settings} label="Configurações" description="Ajustar informações da loja" path="/admin/settings" color="bg-gradient-to-br from-slate-50 to-slate-100" iconColor="text-slate-600" />
-              <QuickActionCard icon={Users} label="Clientes" description="Gerenciar base de usuários" path="/admin/clients" color="bg-gradient-to-br from-violet-50 to-violet-100" iconColor="text-violet-600" />
               <QuickActionCard icon={ExternalLink} label="Ver Loja Pública" description="Acessar como cliente" path={`/${slug}`} color="bg-gradient-to-br from-primary/10 to-primary/20" iconColor="text-primary" />
             </div>
           </div>

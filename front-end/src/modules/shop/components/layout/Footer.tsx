@@ -79,12 +79,12 @@ export function Footer() {
   return (
     <footer className="bg-slate-950 text-slate-300 pt-10 md:pt-32 pb-4 md:pb-12 overflow-hidden relative">
       {/* Visual Decoration */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-px bg-linear-to-r from-transparent via-white/10 to-transparent" />
-      <div className="absolute top-0 left-1/4 w-px h-64 bg-linear-to-b from-white/5 to-transparent hidden md:block" />
-      <div className="absolute top-0 right-1/4 w-px h-64 bg-linear-to-b from-white/5 to-transparent hidden md:block" />
+        <div className="absolute top-0 left-0 right-0 h-px bg-linear-to-r from-transparent via-white/10 to-transparent" />
+        <div className="absolute top-0 left-[15%] w-px h-64 bg-linear-to-b from-white/5 to-transparent hidden md:block" />
+        <div className="absolute top-0 right-[15%] w-px h-64 bg-linear-to-b from-white/5 to-transparent hidden md:block" />
 
-      <div className="container px-4 mx-auto max-w-7xl relative z-10">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8 mb-8 md:mb-24">
+        <div className="w-full px-4 md:px-8 lg:px-12 xl:px-16 mx-auto relative z-10">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 md:gap-12 lg:gap-14 xl:gap-16 mb-8 md:mb-24">
 
           {/* Brand & Manifesto */}
           <div className="space-y-4 md:space-y-8">
