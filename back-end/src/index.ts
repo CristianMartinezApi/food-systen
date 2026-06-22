@@ -1886,10 +1886,6 @@ app.get('/api/admin/kpis', authMiddleware, async (req: AuthRequest, res) => {
     const activeRestaurants = await prisma.restaurant.count({ where: { isActive: true } });
     const pendingRestaurants = await prisma.restaurant.count({ where: { isActive: false } });
 
-    // revenue
-    const revenueAgg = await prisma.order.aggregate({ _sum: { total: true } });
-    const totalRevenue = revenueAgg._sum.total ?? 0;
-
     const provisioningCounts = await prisma.restaurant.groupBy({
       by: ['provisioningStatus'],
       _count: { provisioningStatus: true }
@@ -1906,8 +1902,7 @@ app.get('/api/admin/kpis', authMiddleware, async (req: AuthRequest, res) => {
       totalRestaurants,
       activeRestaurants,
       pendingRestaurants,
-      provisioning,
-      totalRevenue
+      provisioning
     });
   } catch (error) {
     console.error('Error fetching KPIs:', error);
@@ -1940,15 +1935,7 @@ app.get('/api/admin/kpis/trends', authMiddleware, async (req: AuthRequest, res) 
        ORDER BY day ASC`
     );
 
-    const revenue = await prisma.$queryRawUnsafe(
-      `SELECT to_char(date_trunc('day', "createdAt"), 'YYYY-MM-DD') as day, coalesce(sum("total")::numeric,0) as total
-       FROM "orders"
-       WHERE "createdAt" >= now() - interval '${days} days'
-       GROUP BY day
-       ORDER BY day ASC`
-    );
-
-    res.json({ users, restaurants, revenue });
+    res.json({ users, restaurants });
   } catch (error) {
     console.error('Error fetching trends:', error);
     res.status(500).json({ error: 'Erro ao buscar trends' });

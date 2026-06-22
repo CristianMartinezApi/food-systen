@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { api } from "@/core/config/api";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
-import { AlertTriangle, Building2, Clock3, ShieldCheck, Users, TrendingUp, TriangleAlert, AlertOctagon, DollarSign, ArrowUpRight, ArrowDownRight, Minus } from "lucide-react";
+import { AlertTriangle, Building2, Clock3, ShieldCheck, Users, TrendingUp, TriangleAlert, AlertOctagon, ArrowUpRight, ArrowDownRight, Minus } from "lucide-react";
 
 const Line = dynamic(() => import("react-chartjs-2").then((m) => m.Line), { ssr: false });
 import {
@@ -60,8 +60,6 @@ export default function Dashboard() {
 
     loadTrends(days);
   }, [days, kpis?.totalUsers]);
-
-  const formatMoney = (value: number) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value || 0);
 
   const approvalRate = kpis?.totalUsers > 0 ? Math.round(((kpis.totalUsers - kpis.pendingUsers) / kpis.totalUsers) * 100) : 0;
   const pendingUsers = Number(kpis?.pendingUsers || 0);
@@ -123,9 +121,8 @@ export default function Dashboard() {
 
     const users = buildTrend((kpis?.trends?.users || []).map((item: any) => Number(item.count || 0)));
     const restaurantsTrend = buildTrend((kpis?.trends?.restaurants || []).map((item: any) => Number(item.count || 0)));
-    const revenue = buildTrend((kpis?.trends?.revenue || []).map((item: any) => Number(item.total || 0)));
 
-    return { users, restaurants: restaurantsTrend, revenue };
+    return { users, restaurants: restaurantsTrend };
   }, [kpis?.trends]);
 
   const recommendedActions = useMemo(() => {
@@ -289,11 +286,13 @@ export default function Dashboard() {
 
         <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
           <div className="flex items-center justify-between gap-2">
-            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Receita (tendência)</p>
-            {renderTrendBadge(trendSummary.revenue)}
+            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Lojas pendentes</p>
+            <span className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-amber-700">
+              <Clock3 size={12} /> atenção
+            </span>
           </div>
-          <p className="mt-2 text-2xl font-black text-slate-950">{formatMoney(trendSummary.revenue.current)}</p>
-          <p className="text-[11px] font-medium uppercase tracking-[0.1em] text-slate-400">vs {formatMoney(trendSummary.revenue.previous)} no período anterior</p>
+          <p className="mt-2 text-2xl font-black text-slate-950">{pendingRestaurants}</p>
+          <p className="text-[11px] font-medium uppercase tracking-[0.1em] text-slate-400">lojas aguardando ação operacional</p>
         </div>
       </div>
 
@@ -307,13 +306,13 @@ export default function Dashboard() {
           <p className="mt-1 text-[11px] font-medium text-slate-400 uppercase tracking-[0.1em]">{pendingUsers} pendentes</p>
         </div>
 
-        <div className="rounded-2xl sm:rounded-3xl border border-emerald-100 bg-emerald-50 p-4 sm:p-5 shadow-sm">
+        <div className="rounded-2xl sm:rounded-3xl border border-amber-100 bg-amber-50 p-4 sm:p-5 shadow-sm">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-500">Receita total</span>
-            <DollarSign size={16} className="text-emerald-600" />
+            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-600">Lojas pendentes</span>
+            <Clock3 size={16} className="text-amber-700" />
           </div>
-          <div className="mt-3 text-2xl sm:text-3xl font-black text-emerald-700">{formatMoney(Number(kpis.totalRevenue || 0))}</div>
-          <p className="mt-1 text-[11px] font-medium text-emerald-700/80 uppercase tracking-[0.1em]">faturamento agregado</p>
+          <div className="mt-3 text-2xl sm:text-3xl font-black text-amber-800">{pendingRestaurants}</div>
+          <p className="mt-1 text-[11px] font-medium text-amber-700/80 uppercase tracking-[0.1em]">aguardando liberação</p>
         </div>
 
         <div className="rounded-2xl sm:rounded-3xl border border-sky-100 bg-sky-50 p-4 sm:p-5 shadow-sm">
@@ -457,8 +456,8 @@ export default function Dashboard() {
 
           <div className="mt-6 grid gap-3">
             <div className="rounded-2xl bg-slate-50 p-4">
-              <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Receita total</div>
-              <div className="mt-1 text-2xl font-black text-slate-950">{formatMoney(Number(kpis.totalRevenue || 0))}</div>
+              <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Lojas pendentes</div>
+              <div className="mt-1 text-2xl font-black text-slate-950">{pendingRestaurants}</div>
             </div>
             <div className="rounded-2xl bg-slate-50 p-4">
               <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Total de lojas</div>
