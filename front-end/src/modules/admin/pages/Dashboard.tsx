@@ -272,16 +272,39 @@ export default function Dashboard() {
                   <label className="text-label font-body font-medium text-slate-300 uppercase tracking-[0.06em] block">
                     Meta diária (R$):
                   </label>
-                  <div className="relative">
+                  <div className="space-y-3">
                     <input
-                      type="number"
-                      value={dailySalesTarget}
-                      onChange={(e) => setDailySalesTarget(Math.max(100, parseFloat(e.target.value) || 0))}
+                      type="text"
+                      inputMode="decimal"
+                      value={dailySalesTarget.toFixed(0)}
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/[^\d]/g, '');
+                        if (val === '') {
+                          setDailySalesTarget(100);
+                        } else {
+                          const num = Math.max(100, parseInt(val, 10));
+                          setDailySalesTarget(num);
+                        }
+                      }}
                       className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-3 text-white placeholder-slate-400 font-mono font-bold text-lg focus:outline-none focus:border-primary/50 transition-all"
                       placeholder="5000"
-                      min="100"
-                      step="100"
                     />
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setDailySalesTarget(Math.max(100, dailySalesTarget - 100))}
+                        className="flex-1 bg-white/5 border border-white/20 text-white py-2 rounded-lg font-bold text-sm hover:bg-white/10 transition-all active:scale-95"
+                      >
+                        −100
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setDailySalesTarget(dailySalesTarget + 100)}
+                        className="flex-1 bg-white/5 border border-white/20 text-white py-2 rounded-lg font-bold text-sm hover:bg-white/10 transition-all active:scale-95"
+                      >
+                        +100
+                      </button>
+                    </div>
                     <button
                       type="button"
                       onClick={() => {
@@ -289,7 +312,7 @@ export default function Dashboard() {
                         setIsEditingTarget(false);
                         toast.success("Meta salva com sucesso!");
                       }}
-                      className="mt-3 w-full bg-primary text-white py-2 rounded-lg font-bold uppercase tracking-[0.06em] text-sm hover:bg-primary/80 transition-all"
+                      className="w-full bg-primary text-white py-2 rounded-lg font-bold uppercase tracking-[0.06em] text-sm hover:bg-primary/80 transition-all"
                     >
                       Salvar Meta
                     </button>
