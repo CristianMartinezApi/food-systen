@@ -136,6 +136,41 @@ export const useCartStore = create<CartState>()(
       onRehydrateStorage: () => (state) => {
         state?.syncTenantCart?.();
       },
+      storage: {
+        getItem: (name) => {
+          const str = localStorage.getItem(name);
+          if (!str) return null;
+          return JSON.parse(str);
+        },
+        setItem: (name, value) => {
+          try {
+            localStorage.setItem(name, JSON.stringify(value));
+          } catch (e) {
+            // Se o espaço acabar (QuotaExceededError), limpamos carrinhos de outras lojas
+            if (e instanceof DOMException && (e.name === 'QuotaExceededError' || e.name === 'NS_ERROR_DOM_QUOTA_REACHED')) {
+              const state = JSON.parse(JSON.stringify(value));
+              if (state.state && state.state.itemsByTenant) {
+                const currentTenant = getTenantSlug();
+                const currentKey = `tenant:${currentTenant}`;
+                
+                // Mantém apenas o carrinho da loja atual para liberar espaço
+                const newItemsByTenant = {
+                  [currentKey]: state.state.itemsByTenant[currentKey] || []
+                };
+                
+                state.state.itemsByTenant = newItemsByTenant;
+                try {
+                  localStorage.setItem(name, JSON.stringify(state));
+                } catch (retryError) {
+                  // Se mesmo assim falhar, limpa o carrinho totalmente
+                  localStorage.removeItem(name);
+                }
+              }
+            }
+          }
+        },
+        removeItem: (name) => localStorage.removeItem(name),
+      }
     }
   )
 );
