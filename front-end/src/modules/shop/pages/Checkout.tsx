@@ -27,7 +27,8 @@ import {
   User,
   ClipboardCheck,
   Search,
-  MessageCircle
+  MessageCircle,
+  Plus
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { api } from "../../../core/config/api";
@@ -1094,6 +1095,14 @@ export default function Checkout() {
                 <h3 className="font-display font-bold text-heading-3 text-slate-950 uppercase tracking-tight mb-8 flex items-center justify-between">
                   Sua Cesta <span className="text-label font-body font-bold bg-slate-100 px-3 py-1.5 rounded-xl text-slate-500 uppercase tracking-widest text-[10px]">{items.length} ITENS</span>
                 </h3>
+
+                <Link 
+                  href={`/${slug}`}
+                  className="w-full h-12 mb-8 flex items-center justify-center gap-2 rounded-2xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition-all font-body font-bold text-[10px] uppercase tracking-widest shadow-sm group"
+                >
+                  <Plus size={14} className="text-primary group-hover:scale-110 transition-transform" />
+                  ADICIONAR MAIS ITENS
+                </Link>
 
                 <div className="space-y-6 mb-10 max-h-64 overflow-y-auto no-scrollbar pr-2">
                   {items.map((item: any, idx) => (
