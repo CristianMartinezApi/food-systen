@@ -305,18 +305,17 @@ export default function Checkout() {
       }
 
       // Salva para "cadastrar" o cliente localmente
-      localStorage.setItem("@FoodSystem:customer", JSON.stringify({
+      const customerToSave = {
         name: formData.customerName,
         phone: formData.phone,
         email: formData.email
-      }));
+      };
+      
+      localStorage.setItem("@FoodSystem:customer", JSON.stringify(customerToSave));
       localStorage.setItem("@FoodSystem:customerPhone", formData.phone);
+      
       const currentTenantSlug = slug || getTenantSlug();
-      localStorage.setItem(`@FoodSystem:customer:${currentTenantSlug}`, JSON.stringify({
-        name: formData.customerName,
-        phone: formData.phone,
-        email: formData.email
-      }));
+      localStorage.setItem(`@FoodSystem:customer:${currentTenantSlug}`, JSON.stringify(customerToSave));
 
       if (deliveryMode === "DELIVERY") setStep("address");
       else if (deliveryMode === "DINE_IN") setStep("review");
@@ -852,7 +851,10 @@ export default function Checkout() {
                                 inputMode="decimal"
                                 placeholder="0,00"
                                 value={formData.changeFor}
-                                onChange={(e) => setFormData({ ...formData, changeFor: formatMoneyInputRealtime(e.target.value) })}
+                                onChange={(e) => {
+                                  const val = formatMoneyInputRealtime(e.target.value);
+                                  setFormData({ ...formData, changeFor: val });
+                                }}
                                 className={cn(
                                   "w-full h-16 pl-16 pr-6 bg-slate-50 rounded-[1.25rem] border border-slate-200 focus:ring-4 focus:ring-slate-950/10 focus:border-slate-950/20 font-mono text-numeric text-xl text-slate-950 outline-none transition-all",
                                   formData.needsChange && parseMoneyInput(formData.changeFor) > 0 && parseMoneyInput(formData.changeFor) <= total && "border-rose-500 ring-4 ring-rose-500/5 text-rose-500"
@@ -861,7 +863,7 @@ export default function Checkout() {
                             </div>
                             {formData.changeFor && parseMoneyInput(formData.changeFor) <= total && (
                               <p className="text-label font-body font-medium text-rose-500 mt-3 uppercase tracking-tight flex items-center gap-2">
-                                <div className="w-1.5 h-1.5 rounded-full bg-rose-500" />
+                                <AlertCircle size={14} />
                                 O valor deve superar {formatCurrency(total)}
                               </p>
                             )}
