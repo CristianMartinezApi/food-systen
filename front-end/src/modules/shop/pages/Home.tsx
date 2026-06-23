@@ -22,87 +22,6 @@ export default function Home() {
   const { settings, isLoading: settingsLoading } = useSettings();
   const [activeCategory, setActiveCategory] = useState<number | 'all'>('all');
   const [isNavOpen, setIsNavOpen] = useState(false);
-  const [splashReady, setSplashReady] = useState(false);
-  const [forceShowContent, setForceShowContent] = useState(false);
-  const splashStartRef = useRef<number>(Date.now());
-
-  const rootRef = useRef<HTMLDivElement>(null);
-  const heroRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (productsLoading || !rootRef.current) return;
-
-    // Aguarda um pequeno delay para garantir que o layout final do Next.js terminou de assentar
-    const timer = setTimeout(() => {
-      const ctx = gsap.context(() => {
-        const tl = gsap.timeline({ defaults: { ease: "power3.out" } });
-
-        tl.to(".home-header", {
-          y: 0,
-          opacity: 1,
-          duration: 0.7,
-          stagger: 0.06,
-        })
-          .from(".home-hero-badge", {
-            y: 18,
-            opacity: 0,
-            duration: 0.55,
-          }, "-=0.2")
-          .from(".home-hero-title", {
-            y: 34,
-            opacity: 0,
-            duration: 0.85,
-          }, "-=0.16")
-          .from(".home-hero-copy", {
-            y: 22,
-            opacity: 0,
-            duration: 0.7,
-          }, "-=0.45")
-          .from(".home-hero-actions", {
-            y: 18,
-            opacity: 0,
-            duration: 0.6,
-          }, "-=0.4")
-          .from(".home-hero-art", {
-            scale: 0.96,
-            opacity: 0,
-            duration: 0.9,
-          }, "-=0.65");
-
-        gsap.from(".home-section-heading", {
-          scrollTrigger: {
-            trigger: "#menu-section",
-            start: "top 80%",
-            invalidateOnRefresh: true,
-          },
-          y: 24,
-          opacity: 0,
-          duration: 0.6,
-          stagger: 0.1,
-          ease: "power3.out",
-        });
-
-        gsap.from(".home-category-chip", {
-          scrollTrigger: {
-            trigger: "#menu-section",
-            start: "top 75%",
-            invalidateOnRefresh: true,
-          },
-          y: 14,
-          opacity: 0,
-          duration: 0.45,
-          stagger: 0.06,
-          ease: "power3.out",
-        });
-
-      }, rootRef);
-    }, 100);
-
-    return () => {
-      clearTimeout(timer);
-      ScrollTrigger.getAll().forEach(t => t.kill());
-    };
-  }, [productsLoading]);
 
   const filteredProducts = useMemo(() => {
     if (!products) return [];
@@ -110,106 +29,34 @@ export default function Home() {
     return products.filter((p: any) => p.categoryId === activeCategory);
   }, [products, activeCategory]);
 
-  const heroBadge = settings?.bannerBadge || "O mais desejado de 2024";
+  const heroBadge = settings?.bannerBadge || "Destaque da semana";
   const heroTitleLine1 = settings?.bannerTitleLine1 || "Sabor que";
   const heroTitleLine2 = settings?.bannerTitleLine2 || "Transforma";
   const heroDescription = settings?.bannerDescription || settings?.bio || "Experiência gastronômica executiva com ingredientes selecionados e preparo artesanal.";
   const heroCtaLabel = settings?.bannerCtaLabel || "Explorar Menu";
   const heroImage = settings?.bannerImage || "https://images.unsplash.com/photo-1550547660-d9450f859349?q=80&w=2000";
 
-  // Só permite que o splash apareça se ele ainda não estiver "pronto"
-  // E removemos a dependência do heroImage para evitar loops
-  useEffect(() => {
-    const maxWaitTimer = window.setTimeout(() => {
-      setForceShowContent(true);
-    }, 3500);
+  const isLoading = settingsLoading || productsLoading;
 
-    return () => window.clearTimeout(maxWaitTimer);
-  }, []);
-
-  useEffect(() => {
-    if (settingsLoading || productsLoading) return;
-
-    const minSplashMs = 700;
-    const elapsed = Date.now() - splashStartRef.current;
-    const remaining = Math.max(minSplashMs - elapsed, 0);
-
-    const timer = window.setTimeout(() => setSplashReady(true), remaining);
-    return () => window.clearTimeout(timer);
-  }, [settingsLoading, productsLoading]);
-
-  const showSplash = !forceShowContent && !(splashReady && !settingsLoading && !productsLoading);
-
-  const splashScreen = (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 z-200 bg-slate-950 flex items-center justify-center px-6"
-    >
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(239,68,68,0.18),transparent_35%),linear-gradient(180deg,rgba(15,23,42,0.985),rgba(2,6,23,0.99))]" />
-
-      <motion.div
-        initial={{ opacity: 0, y: 18, scale: 0.97 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        transition={{ type: "spring", stiffness: 120, damping: 16, delay: 0.05 }}
-        className="relative z-10 flex flex-col items-center text-center max-w-lg"
-      >
-        <motion.div
-          initial={{ opacity: 0, scale: 0.9, y: 6 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          transition={{ type: "spring", stiffness: 180, damping: 14, delay: 0.12 }}
-          className="w-24 h-24 md:w-28 md:h-28 rounded-4xl bg-white/10 border border-white/10 backdrop-blur-xl flex items-center justify-center shadow-2xl shadow-black/30 mb-7"
-        >
-          <Utensils size={42} className="text-primary" />
-        </motion.div>
-
-        <motion.h1
-          initial={{ opacity: 0, y: 14 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.45, delay: 0.18 }}
-          className="mt-3 text-5xl md:text-7xl font-display font-black text-white tracking-[0.02em] leading-[0.9] drop-shadow-2xl"
-        >
-          FoodSystem
-        </motion.h1>
-
-        <motion.p
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.45, delay: 0.28 }}
-          className="mt-4 text-[11px] md:text-sm font-medium uppercase tracking-[0.26em] text-slate-300 max-w-sm"
-        >
-          A maneira inteligente de pedir comida.
-        </motion.p>
-
-        <motion.div
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.35, delay: 0.4 }}
-          className="mt-10 flex items-center justify-center w-full max-w-xs"
-        >
-          <div className="relative h-1.5 w-full overflow-hidden rounded-full bg-white/10 border border-white/10">
-            <motion.div
-              initial={{ x: "-60%" }}
-              animate={{ x: "120%" }}
-              transition={{ duration: 1.4, repeat: Infinity, ease: "easeInOut" }}
-              className="absolute inset-y-0 left-0 w-1/2 rounded-full bg-linear-to-r from-transparent via-primary to-transparent opacity-90"
-            />
-          </div>
-        </motion.div>
-      </motion.div>
-    </motion.div>
-  );
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center px-6">
+        <div className="flex flex-col items-center">
+          <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin border-opacity-30 border-t-opacity-100" />
+          <p className="mt-4 text-slate-400 font-medium uppercase tracking-widest text-xs animate-pulse">
+            Carregando Cardápio...
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div ref={rootRef} className="min-h-screen bg-slate-50 flex flex-col selection:bg-primary selection:text-white">
-      <AnimatePresence>{showSplash && splashScreen}</AnimatePresence>
-
-      {!showSplash && (
-        <div className="opacity-100 transition-opacity duration-500">
-          <div className="home-header">
-            <Header settings={settings} onOpenMenu={() => setIsNavOpen(true)} />
-          </div>
+    <div className="min-h-screen bg-slate-50 flex flex-col selection:bg-primary selection:text-white">
+      <div className="opacity-100">
+        <div className="home-header">
+          <Header settings={settings} onOpenMenu={() => setIsNavOpen(true)} />
+        </div>
 
           <NavSidebar
             isOpen={isNavOpen}
