@@ -53,10 +53,3 @@ export function useProducts() {
     isLoading,
   };
 }
-
-  return {
-    products,
-    categories,
-    isLoading,
-  };
-}
