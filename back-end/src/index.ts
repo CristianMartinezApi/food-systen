@@ -2609,16 +2609,8 @@ app.get('/api/customer/orders/:phone', async (req: TenantRequest, res) => {
       where: {
         phone,
         restaurantId: req.restaurantId,
-        ...(customerName
-          ? {
-            customerName: {
-              equals: customerName,
-              mode: 'insensitive',
-            },
-          }
-          : {}),
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
       include: {
         items: {
           include: {
