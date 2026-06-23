@@ -23,10 +23,10 @@ PORT=8000
 NODE_ENV=production
 DATABASE_URL=postgresql://USER:SENHA@HOST:5432/food_db
 JWT_SECRET=gerar_com_openssl_rand_-base64_32
-FRONTEND_URL=https://seu-dominio.com
-ALLOWED_ORIGINS=https://seu-dominio.com
-NEXT_PUBLIC_API_URL=https://seu-dominio.com/api
-NEXT_PUBLIC_SOCKET_URL=https://seu-dominio.com
+FRONTEND_URL=https://foodsystem.app.br
+ALLOWED_ORIGINS=https://foodsystem.app.br
+NEXT_PUBLIC_API_URL=https://foodsystem.app.br/api
+NEXT_PUBLIC_SOCKET_URL=https://foodsystem.app.br
 INITIAL_SUPERADMIN_PASSWORD=senha_inicial_forte
 INITIAL_ADMIN_PASSWORD=senha_inicial_forte
 ```
@@ -50,7 +50,7 @@ sudo apt update && sudo apt upgrade -y
 Se preferir automatizar quase tudo, rode o bootstrap com o domínio real:
 
 ```bash
-sudo bash deploy/bootstrap-vps.sh seu-dominio.com
+sudo bash deploy/bootstrap-vps.sh foodsystem.app.br www.foodsystem.app.br
 ```
 
 5. Suba a aplicação:
