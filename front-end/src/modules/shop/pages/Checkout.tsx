@@ -140,6 +140,25 @@ export default function Checkout() {
     cpf: ""
   });
 
+  // Solução para erro de Hidratação (Hydration Error #418) e preenchimento inicial
+  useEffect(() => {
+    const savedCustomer = localStorage.getItem("@FoodSystem:customer");
+    const savedPhone = localStorage.getItem("@FoodSystem:customerPhone");
+    if (savedCustomer || savedPhone) {
+      try {
+        const customer = savedCustomer ? JSON.parse(savedCustomer) : {};
+        setFormData(prev => ({
+          ...prev,
+          customerName: customer.name || prev.customerName,
+          phone: savedPhone || customer.phone || prev.phone,
+          email: customer.email || prev.email,
+        }));
+      } catch (e) {
+        console.error("Erro ao carregar dados salvos", e);
+      }
+    }
+  }, []);
+
   useEffect(() => {
     if (!isPixAvailable && formData.paymentMethod === "PIX") {
       setFormData((prev) => ({ ...prev, paymentMethod: "CASH" }));
@@ -396,7 +415,9 @@ export default function Checkout() {
           } : (deliveryMode === "PICKUP" ? "Retirada no Balcão" : "Consumo no Local")
         },
         paymentMethod: deliveryMode === "DINE_IN" ? "CASH" : formData.paymentMethod,
-        changeFor: formData.paymentMethod === 'CASH' && formData.needsChange ? parseMoneyInput(formData.changeFor) : null,
+        changeFor: (formData.paymentMethod === 'CASH' && formData.needsChange && formData.changeFor) 
+          ? String(parseMoneyInput(formData.changeFor)) 
+          : null,
         cpf: formData.cpf || null,
         items: items.map((i: any) => ({
           productId: i.productId,
