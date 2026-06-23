@@ -377,7 +377,7 @@ export default function OrdersPage() {
 
                             <div><strong>Cliente:</strong> ${customerLabel}</div>
                             <div><strong>Fone:</strong> ${order.phone || "Nao informado"}</div>
-                            <div><strong>Pagamento:</strong> ${order.paymentMethod || "Nao informado"}</div>
+                            <div><strong>Pagamento:</strong> ${order.paymentMethod === 'CASH' && order.changeFor ? `Dinheiro (Troco p/ ${formatCurrency(order.changeFor)})` : (order.paymentMethod || "Nao informado")}</div>
                             <div><strong>Entrega:</strong> ${addressText}</div>
                             ${order.notes ? `<div><strong>Obs:</strong> ${order.notes}</div>` : ""}
 
@@ -431,7 +431,7 @@ export default function OrdersPage() {
                             <div class="box">
                                 <div><strong>Cliente:</strong> ${customerLabel}</div>
                                 <div><strong>Telefone:</strong> ${order.phone || "Nao informado"}</div>
-                                <div><strong>Pagamento:</strong> ${order.paymentMethod || "Nao informado"}</div>
+                                <div><strong>Pagamento:</strong> ${order.paymentMethod === 'CASH' && order.changeFor ? `Dinheiro (Troco p/ ${formatCurrency(order.changeFor)})` : (order.paymentMethod || "Nao informado")}</div>
                                 <div><strong>Entrega:</strong> ${addressText}</div>
                                 ${order.notes ? `<div><strong>Obs:</strong> ${order.notes}</div>` : ""}
                             </div>
@@ -788,6 +788,11 @@ export default function OrdersPage() {
                                                                     'DEBIT': 'Débito',
                                                                     'CREDIT': 'Crédito'
                                                                 } as Record<string, string>)[order.paymentMethod] || order.paymentMethod}
+                                                                {order.paymentMethod === 'CASH' && order.changeFor && (
+                                                                    <span className="block text-primary text-[10px] lowercase font-medium mt-0.5">
+                                                                        (Troco p/ {formatCurrency(order.changeFor)})
+                                                                    </span>
+                                                                )}
                                                             </p>
                                                         </div>
                                                     </div>

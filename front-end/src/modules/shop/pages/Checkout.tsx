@@ -484,7 +484,11 @@ export default function Checkout() {
     : deliveryMode === "PICKUP"
       ? "Retirada"
       : "No local";
-  const successPaymentLabel = deliveryMode === "DINE_IN" ? "A combinar no local" : formData.paymentMethod;
+  const successPaymentLabel = deliveryMode === "DINE_IN"
+    ? "A combinar no local"
+    : formData.paymentMethod === "CASH" && formData.needsChange && formData.changeFor
+      ? `Dinheiro (Troco p/ ${formData.changeFor})`
+      : formData.paymentMethod;
   const successEtaLabel = deliveryMode === "DINE_IN"
     ? "Atendimento imediato"
     : `${estimatedDeliveryMinutes} min`;
@@ -917,6 +921,11 @@ export default function Checkout() {
                               {deliveryMode === 'DINE_IN' ? 'NA MESA' : formData.paymentMethod}
                             </div>
                           </div>
+                          {formData.paymentMethod === 'CASH' && formData.needsChange && formData.changeFor && (
+                            <p className="text-label font-body font-bold text-primary uppercase tracking-[0.06em] mt-1 italic">
+                              Troco para {formData.changeFor}
+                            </p>
+                          )}
                           {deliveryMode === 'DINE_IN' && (
                             <p className="text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em] leading-relaxed italic border-l-2 border-primary/20 pl-4">
                               O pagamento será feito diretamente com o atendente na mesa.

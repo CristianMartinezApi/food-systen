@@ -298,7 +298,14 @@ export default function CustomerOrdersPage() {
                                 <CreditCard size={14} className="text-slate-500 mt-0.5 shrink-0" />
                                 <div>
                                   <p className="text-[9px] md:text-[10px] font-body font-bold text-slate-400 uppercase tracking-[0.08em] mb-1">Pagamento</p>
-                                  <p className="text-xs md:text-sm font-body font-semibold text-slate-700 uppercase tracking-tight">{getPaymentLabel(order.paymentMethod)}</p>
+                                  <p className="text-xs md:text-sm font-body font-semibold text-slate-700 uppercase tracking-tight">
+                                    {getPaymentLabel(order.paymentMethod)}
+                                    {order.paymentMethod === "CASH" && order.changeFor && (
+                                      <span className="block text-primary text-[10px] lowercase font-medium mt-0.5">
+                                        (Troco p/ {formatCurrency(order.changeFor)})
+                                      </span>
+                                    )}
+                                  </p>
                                 </div>
                               </div>
                             </div>

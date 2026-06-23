@@ -10,6 +10,8 @@ interface OrderData {
   subtotal: number;
   deliveryFee: number;
   total: number;
+  changeFor?: string | number | null;
+  cpf?: string | null;
 }
 
 export const formatWhatsAppMessage = (order: OrderData, storeName: string) => {
@@ -56,8 +58,8 @@ ${d.reference ? `Ref: ${d.reference}` : ''}
     addressInfo = `📍 *Método:* ${order.address.details}`;
   }
 
-  const changeInfo = (order as any).changeFor 
-    ? `\n💵 *Troco para:* ${formatCurrency(Number((order as any).changeFor))}`
+  const changeInfo = order.changeFor 
+    ? `\n💵 *Troco para:* ${formatCurrency(Number(order.changeFor))}`
     : '';
 
   const paymentMethodLabel = order.address.type === 'DINE_IN' ? 'A Combinar (No Local)' : order.paymentMethod;
