@@ -1157,6 +1157,21 @@ export default function Checkout() {
                     </span>
                   </div>
 
+                  {formData.paymentMethod === 'CASH' && formData.needsChange && formData.changeFor && (
+                    <div className="flex justify-between items-center bg-primary/5 p-3 rounded-2xl border border-primary/10">
+                      <div className="flex items-center gap-2">
+                        <span className="w-1.5 h-1.5 rounded-full bg-primary" />
+                        <span className="font-body font-bold text-slate-900 uppercase text-[9px] tracking-widest">Troco solicitado</span>
+                      </div>
+                      <div className="flex flex-col items-end">
+                        <span className="font-mono font-bold text-primary text-label">{formatCurrency(parseMoneyInput(formData.changeFor))}</span>
+                        <span className="text-[8px] font-body font-medium text-slate-400 uppercase tracking-tighter mt-0.5">
+                          Volta {formatCurrency(parseMoneyInput(formData.changeFor) - total)}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
                   <div className="h-px bg-slate-50 my-4" />
 
                   <div className="flex justify-between items-end">
