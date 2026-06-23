@@ -198,7 +198,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
     localStorage.removeItem("@FoodSystem:token");
     localStorage.removeItem("@FoodSystem:user");
     localStorage.removeItem("@FoodSystem:restaurant");
-    router.push("/admin/login");
+    router.push("/login");
   };
 
   let menuItems = [

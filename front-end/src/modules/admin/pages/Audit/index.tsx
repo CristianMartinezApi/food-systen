@@ -305,7 +305,7 @@ export default function AuditPage() {
     const userData = localStorage.getItem("@FoodSystem:user");
 
     if (!userData) {
-      router.push("/admin/login");
+      router.push("/login");
       return;
     }
 
@@ -320,7 +320,7 @@ export default function AuditPage() {
 
       setStatus("authorized");
     } catch {
-      router.push("/admin/login");
+      router.push("/login");
     }
   }, [router]);
 

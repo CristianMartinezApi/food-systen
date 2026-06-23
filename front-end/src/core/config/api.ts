@@ -28,7 +28,7 @@ const handleUnauthorized = () => {
   localStorage.removeItem('@FoodSystem:user');
   localStorage.removeItem('@FoodSystem:restaurant');
   if (typeof window !== 'undefined' && !window.location.pathname.includes('/login')) {
-    window.location.href = '/admin/login';
+    window.location.href = '/login';
   }
 };
 

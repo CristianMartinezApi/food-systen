@@ -1,7 +1,5 @@
-"use client";
-
-import Login from "../../../src/modules/admin/pages/Login";
+import { redirect } from "next/navigation";
 
 export default function Page() {
-  return <Login />;
+  redirect("/login");
 }

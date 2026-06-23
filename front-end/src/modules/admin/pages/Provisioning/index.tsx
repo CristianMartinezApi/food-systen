@@ -42,7 +42,7 @@ export default function ProvisioningPanel() {
     const userData = localStorage.getItem("@FoodSystem:user");
 
     if (!userData) {
-      router.push("/admin/login");
+      router.push("/login");
       return;
     }
 
@@ -63,7 +63,7 @@ export default function ProvisioningPanel() {
       if (hasRetryFromQuery === '1') setOnlyWithRetry(true);
       load();
     } catch {
-      router.push("/admin/login");
+      router.push("/login");
     }
   }, [router, searchParams]);
 

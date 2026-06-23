@@ -86,7 +86,7 @@ export default function OnboardingPage() {
           </div>
           <h1 className="text-3xl font-black uppercase tracking-tighter text-slate-950">Acesso necessário</h1>
           <p className="text-slate-500 mt-4">Seu login ainda não foi realizado. Entre no painel para criar a sua loja depois que o super admin liberar sua conta.</p>
-          <button onClick={() => router.push("/admin/login")} className="mt-8 h-14 px-8 rounded-2xl bg-primary text-white font-black uppercase tracking-tight inline-flex items-center gap-3">
+          <button onClick={() => router.push("/login")} className="mt-8 h-14 px-8 rounded-2xl bg-primary text-white font-black uppercase tracking-tight inline-flex items-center gap-3">
             Ir para o login <ArrowRight size={16} />
           </button>
         </div>

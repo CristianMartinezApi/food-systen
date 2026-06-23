@@ -83,7 +83,7 @@ export default function ResetPassword() {
       
       // Após 2 segundos, volta para login
       setTimeout(() => {
-        router.push("/admin/login");
+        router.push("/login");
       }, 2000);
     } catch (error: any) {
       toast.error(error.message || "Erro ao solicitar reset de senha");
@@ -122,13 +122,13 @@ export default function ResetPassword() {
       setStep("success");
 
       setTimeout(() => {
-        router.push("/admin/login");
+        router.push("/login");
       }, 3000);
     } catch (error: any) {
       if (error.status === 404 || error.status === 400) {
         toast.error(error.message || "Link inválido ou expirado. Solicite um novo reset.");
         setTimeout(() => {
-          router.push("/admin/login");
+          router.push("/login");
         }, 2000);
       } else {
         toast.error(error.message || "Erro ao resetar senha");
@@ -185,7 +185,7 @@ export default function ResetPassword() {
 
               <button
                 type="button"
-                onClick={() => router.push("/admin/login")}
+                onClick={() => router.push("/login")}
                 className="w-full h-12 bg-slate-100 text-slate-900 rounded-2xl font-black uppercase tracking-tight hover:bg-slate-200 transition-all"
               >
                 Voltar para Login
@@ -301,7 +301,7 @@ export default function ResetPassword() {
             </h1>
             <p className="text-slate-500 mb-6">Sua senha foi resetada com sucesso. Você será redirecionado para o login.</p>
             <button
-              onClick={() => router.push("/admin/login")}
+              onClick={() => router.push("/login")}
               className="w-full h-14 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-tight hover:bg-black transition-all flex items-center justify-center gap-2"
             >
               <ArrowRight size={20} />

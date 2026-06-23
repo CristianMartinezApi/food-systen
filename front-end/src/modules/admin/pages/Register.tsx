@@ -31,7 +31,7 @@ export default function Register() {
             <p className="text-sm text-white/80 leading-relaxed mb-4">
               Se você é o responsável pela operação, acesse o painel administrativo para criar e aprovar clientes.
             </p>
-            <Link href="/admin/login" className="inline-flex items-center gap-3 h-12 px-5 rounded-2xl bg-primary text-white font-black uppercase tracking-tight">
+            <Link href="/login" className="inline-flex items-center gap-3 h-12 px-5 rounded-2xl bg-primary text-white font-black uppercase tracking-tight">
               Entrar no painel <ArrowRight size={16} />
             </Link>
           </div>

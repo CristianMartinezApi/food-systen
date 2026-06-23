@@ -104,7 +104,7 @@ export default function ChangePassword() {
         localStorage.removeItem("@FoodSystem:token");
         localStorage.removeItem("@FoodSystem:user");
         localStorage.removeItem("@FoodSystem:restaurant");
-        window.location.href = "/admin/login";
+        window.location.href = "/login";
       }, 1500);
     } catch (error: any) {
       // Trata erros específicos

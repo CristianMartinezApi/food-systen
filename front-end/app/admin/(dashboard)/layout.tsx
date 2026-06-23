@@ -12,7 +12,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const token = localStorage.getItem("@FoodSystem:token");
     if (!token) {
-      router.push("/admin/login");
+      router.push("/login");
     } else {
       setAuthorized(true);
     }
