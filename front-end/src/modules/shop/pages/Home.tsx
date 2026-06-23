@@ -117,11 +117,8 @@ export default function Home() {
   const heroCtaLabel = settings?.bannerCtaLabel || "Explorar Menu";
   const heroImage = settings?.bannerImage || "https://images.unsplash.com/photo-1550547660-d9450f859349?q=80&w=2000";
 
-  useEffect(() => {
-    setSplashReady(false);
-    splashStartRef.current = Date.now();
-  }, [heroImage]);
-
+  // Só permite que o splash apareça se ele ainda não estiver "pronto"
+  // E removemos a dependência do heroImage para evitar loops
   useEffect(() => {
     const maxWaitTimer = window.setTimeout(() => {
       setForceShowContent(true);
