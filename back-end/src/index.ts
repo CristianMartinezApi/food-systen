@@ -94,9 +94,39 @@ const AUDIT_EXPORT_MAX_CONCURRENT_JOBS = Math.min(5, Math.max(1, Number(process.
 const AUDIT_RETENTION_ENABLED = process.env.AUDIT_RETENTION_ENABLED !== 'false';
 const AUDIT_RETENTION_DAYS = Math.min(3650, Math.max(7, Number(process.env.AUDIT_RETENTION_DAYS || 180)));
 const AUDIT_RETENTION_INTERVAL_HOURS = Math.min(168, Math.max(1, Number(process.env.AUDIT_RETENTION_INTERVAL_HOURS || 24)));
-const CASH_COUNTED_ORDER_STATUSES: OrderStatus[] = ['DELIVERED', 'PAID'];
+const CASH_COUNTED_ORDER_STATUSES: OrderStatus[] = ['DELIVERED', 'PAID', 'RETIRED' as OrderStatus];
 const CASHIER_OPERATION_ROLES = new Set(['SUPER_ADMIN', 'OWNER', 'MANAGER', 'EMPLOYEE']);
 const CASHIER_OPEN_CLOSE_ROLES = new Set(['SUPER_ADMIN', 'OWNER', 'MANAGER']);
+
+type OrderMode = 'DELIVERY' | 'PICKUP' | 'DINE_IN';
+
+const ORDER_STATUS_FLOW_BY_MODE: Record<OrderMode, Record<string, string[]>> = {
+  DELIVERY: {
+    PENDING: ['CONFIRMED', 'CANCELLED'],
+    CONFIRMED: ['PREPARING', 'CANCELLED'],
+    PREPARING: ['OUT_FOR_DELIVERY', 'CANCELLED'],
+    OUT_FOR_DELIVERY: ['DELIVERED', 'CANCELLED'],
+  },
+  PICKUP: {
+    PENDING: ['CONFIRMED', 'CANCELLED'],
+    CONFIRMED: ['PREPARING', 'CANCELLED'],
+    PREPARING: ['READY', 'CANCELLED'],
+    READY: ['RETIRED', 'CANCELLED'],
+  },
+  DINE_IN: {
+    PENDING: ['CONFIRMED', 'CANCELLED'],
+    CONFIRMED: ['PREPARING', 'CANCELLED'],
+    PREPARING: ['DELIVERED', 'CANCELLED'],
+  },
+};
+
+function getOrderModeFromAddress(address: unknown): OrderMode {
+  if (!address || typeof address !== 'object') return 'DELIVERY';
+  const typeRaw = (address as any)?.type;
+  if (typeRaw === 'PICKUP') return 'PICKUP';
+  if (typeRaw === 'DINE_IN') return 'DINE_IN';
+  return 'DELIVERY';
+}
 
 type AuditExportJobStatus = 'queued' | 'processing' | 'completed' | 'failed' | 'cancelled';
 
@@ -494,7 +524,7 @@ async function buildCashClosingPayload(restaurantId: number, sessionId: number) 
     prisma.order.aggregate({
       where: {
         restaurantId,
-        createdAt: { gte: session.openedAt, ...(session.closedAt ? { lte: session.closedAt } : {}) },
+        createdAt: { gte: session.countFromDate ?? session.openedAt, ...(session.closedAt ? { lte: session.closedAt } : {}) },
         status: { in: CASH_COUNTED_ORDER_STATUSES },
       },
       _sum: { total: true },
@@ -502,7 +532,7 @@ async function buildCashClosingPayload(restaurantId: number, sessionId: number) 
     prisma.order.aggregate({
       where: {
         restaurantId,
-        createdAt: { gte: session.openedAt, ...(session.closedAt ? { lte: session.closedAt } : {}) },
+        createdAt: { gte: session.countFromDate ?? session.openedAt, ...(session.closedAt ? { lte: session.closedAt } : {}) },
         status: { in: CASH_COUNTED_ORDER_STATUSES },
         paymentMethod: 'CASH',
       },
@@ -512,7 +542,7 @@ async function buildCashClosingPayload(restaurantId: number, sessionId: number) 
       by: ['paymentMethod'],
       where: {
         restaurantId,
-        createdAt: { gte: session.openedAt, ...(session.closedAt ? { lte: session.closedAt } : {}) },
+        createdAt: { gte: session.countFromDate ?? session.openedAt, ...(session.closedAt ? { lte: session.closedAt } : {}) },
         status: { in: CASH_COUNTED_ORDER_STATUSES },
       },
       _sum: { total: true },
@@ -2842,15 +2872,60 @@ app.post('/api/orders', async (req: TenantRequest, res) => {
 });
 
 app.patch('/api/orders/:id', authMiddleware, async (req: AuthRequest, res) => {
-  const order = await prisma.order.update({
-    where: {
-      id: parseInt(req.params.id),
-      restaurantId: req.restaurantId
-    },
-    data: { status: req.body.status }
-  });
-  io.emit(`order_status_updated_${req.restaurant?.slug}`, order);
-  res.json(order);
+  try {
+    const orderId = Number.parseInt(req.params.id, 10);
+    if (!Number.isInteger(orderId)) {
+      return res.status(400).json({ error: 'ID do pedido inválido.' });
+    }
+
+    const nextStatus = String(req.body?.status || '').trim().toUpperCase();
+    if (!nextStatus) {
+      return res.status(400).json({ error: 'Status é obrigatório.' });
+    }
+
+    const order = await prisma.order.findFirst({
+      where: {
+        id: orderId,
+        restaurantId: req.restaurantId,
+      },
+      select: {
+        id: true,
+        status: true,
+        address: true,
+      },
+    });
+
+    if (!order) {
+      return res.status(404).json({ error: 'Pedido não encontrado.' });
+    }
+
+    const orderMode = getOrderModeFromAddress(order.address);
+    const allowedTransitions = ORDER_STATUS_FLOW_BY_MODE[orderMode][order.status] || [];
+
+    if (!allowedTransitions.includes(nextStatus)) {
+      return res.status(409).json({
+        error: `Transição inválida para ${orderMode}.`,
+        currentStatus: order.status,
+        attemptedStatus: nextStatus,
+        orderMode,
+        allowedTransitions,
+      });
+    }
+
+    const updatedOrder = await prisma.order.update({
+      where: {
+        id: orderId,
+        restaurantId: req.restaurantId,
+      },
+      data: { status: nextStatus as OrderStatus },
+    });
+
+    io.emit(`order_status_updated_${req.restaurant?.slug}`, updatedOrder);
+    res.json(updatedOrder);
+  } catch (error) {
+    console.error('Erro ao atualizar status do pedido:', error);
+    res.status(400).json({ error: 'Erro ao atualizar status do pedido.' });
+  }
 });
 
 // Cashier (Caixa)
@@ -2911,7 +2986,7 @@ app.get('/api/cashier/session', authMiddleware, async (req: AuthRequest, res) =>
       prisma.order.aggregate({
         where: {
           restaurantId: req.restaurantId,
-          createdAt: { gte: activeSession.openedAt },
+          createdAt: { gte: activeSession.countFromDate ?? activeSession.openedAt },
           status: { in: CASH_COUNTED_ORDER_STATUSES },
         },
         _sum: { total: true },
@@ -2919,7 +2994,7 @@ app.get('/api/cashier/session', authMiddleware, async (req: AuthRequest, res) =>
       prisma.order.aggregate({
         where: {
           restaurantId: req.restaurantId,
-          createdAt: { gte: activeSession.openedAt },
+          createdAt: { gte: activeSession.countFromDate ?? activeSession.openedAt },
           status: { in: CASH_COUNTED_ORDER_STATUSES },
           paymentMethod: 'CASH',
         },
@@ -2928,7 +3003,7 @@ app.get('/api/cashier/session', authMiddleware, async (req: AuthRequest, res) =>
       prisma.order.aggregate({
         where: {
           restaurantId: req.restaurantId,
-          createdAt: { gte: activeSession.openedAt },
+          createdAt: { gte: activeSession.countFromDate ?? activeSession.openedAt },
           status: { in: CASH_COUNTED_ORDER_STATUSES },
           paymentMethod: 'CARD',
         },
@@ -2937,7 +3012,7 @@ app.get('/api/cashier/session', authMiddleware, async (req: AuthRequest, res) =>
       prisma.order.aggregate({
         where: {
           restaurantId: req.restaurantId,
-          createdAt: { gte: activeSession.openedAt },
+          createdAt: { gte: activeSession.countFromDate ?? activeSession.openedAt },
           status: { in: CASH_COUNTED_ORDER_STATUSES },
           paymentMethod: 'DEBIT',
         },
@@ -2946,7 +3021,7 @@ app.get('/api/cashier/session', authMiddleware, async (req: AuthRequest, res) =>
       prisma.order.aggregate({
         where: {
           restaurantId: req.restaurantId,
-          createdAt: { gte: activeSession.openedAt },
+          createdAt: { gte: activeSession.countFromDate ?? activeSession.openedAt },
           status: { in: CASH_COUNTED_ORDER_STATUSES },
           paymentMethod: 'CREDIT',
         },
@@ -2955,7 +3030,7 @@ app.get('/api/cashier/session', authMiddleware, async (req: AuthRequest, res) =>
       prisma.order.aggregate({
         where: {
           restaurantId: req.restaurantId,
-          createdAt: { gte: activeSession.openedAt },
+          createdAt: { gte: activeSession.countFromDate ?? activeSession.openedAt },
           status: { in: CASH_COUNTED_ORDER_STATUSES },
           paymentMethod: 'PIX',
         },
@@ -2967,7 +3042,7 @@ app.get('/api/cashier/session', authMiddleware, async (req: AuthRequest, res) =>
       prisma.order.findMany({
         where: {
           restaurantId: req.restaurantId,
-          createdAt: { gte: activeSession.openedAt },
+          createdAt: { gte: activeSession.countFromDate ?? activeSession.openedAt },
           status: { in: CASH_COUNTED_ORDER_STATUSES },
         },
         orderBy: { createdAt: 'desc' },
@@ -3053,7 +3128,26 @@ app.post('/api/cashier/session/open', authMiddleware, async (req: AuthRequest, r
       notes,
     });
 
-    res.status(201).json(session);
+    // Verificar pedidos pendentes criados antes da abertura desta sessão
+    const preOpeningOrders = await prisma.order.findMany({
+      where: {
+        restaurantId: req.restaurantId!,
+        status: { in: ['PENDING', 'PREPARING'] },
+        createdAt: { lt: session.openedAt },
+      },
+      orderBy: { createdAt: 'asc' },
+      take: 20,
+      select: {
+        id: true,
+        customerName: true,
+        total: true,
+        createdAt: true,
+        paymentMethod: true,
+        status: true,
+      },
+    });
+
+    res.status(201).json({ ...session, preOpeningOrders });
   } catch (error) {
     if ((error as any)?.code === 'P2002') {
       return res.status(409).json({ error: 'Já existe uma sessão de caixa aberta.' });
@@ -3347,7 +3441,7 @@ app.post('/api/cashier/session/close', authMiddleware, async (req: AuthRequest, 
       prisma.order.aggregate({
         where: {
           restaurantId: req.restaurantId,
-          createdAt: { gte: activeSession.openedAt },
+          createdAt: { gte: activeSession.countFromDate ?? activeSession.openedAt },
           status: { in: CASH_COUNTED_ORDER_STATUSES },
         },
         _sum: { total: true },
@@ -3355,7 +3449,7 @@ app.post('/api/cashier/session/close', authMiddleware, async (req: AuthRequest, 
       prisma.order.aggregate({
         where: {
           restaurantId: req.restaurantId,
-          createdAt: { gte: activeSession.openedAt },
+          createdAt: { gte: activeSession.countFromDate ?? activeSession.openedAt },
           status: { in: CASH_COUNTED_ORDER_STATUSES },
           paymentMethod: 'CASH',
         },
@@ -3364,7 +3458,7 @@ app.post('/api/cashier/session/close', authMiddleware, async (req: AuthRequest, 
       prisma.order.aggregate({
         where: {
           restaurantId: req.restaurantId,
-          createdAt: { gte: activeSession.openedAt },
+          createdAt: { gte: activeSession.countFromDate ?? activeSession.openedAt },
           status: { in: CASH_COUNTED_ORDER_STATUSES },
           paymentMethod: 'DEBIT',
         },
@@ -3373,7 +3467,7 @@ app.post('/api/cashier/session/close', authMiddleware, async (req: AuthRequest, 
       prisma.order.aggregate({
         where: {
           restaurantId: req.restaurantId,
-          createdAt: { gte: activeSession.openedAt },
+          createdAt: { gte: activeSession.countFromDate ?? activeSession.openedAt },
           status: { in: CASH_COUNTED_ORDER_STATUSES },
           paymentMethod: 'CREDIT',
         },
@@ -3382,7 +3476,7 @@ app.post('/api/cashier/session/close', authMiddleware, async (req: AuthRequest, 
       prisma.order.aggregate({
         where: {
           restaurantId: req.restaurantId,
-          createdAt: { gte: activeSession.openedAt },
+          createdAt: { gte: activeSession.countFromDate ?? activeSession.openedAt },
           status: { in: CASH_COUNTED_ORDER_STATUSES },
           paymentMethod: 'CARD',
         },
@@ -3391,7 +3485,7 @@ app.post('/api/cashier/session/close', authMiddleware, async (req: AuthRequest, 
       prisma.order.aggregate({
         where: {
           restaurantId: req.restaurantId,
-          createdAt: { gte: activeSession.openedAt },
+          createdAt: { gte: activeSession.countFromDate ?? activeSession.openedAt },
           status: { in: CASH_COUNTED_ORDER_STATUSES },
           paymentMethod: 'PIX',
         },
@@ -3462,6 +3556,53 @@ app.post('/api/cashier/session/close', authMiddleware, async (req: AuthRequest, 
   } catch (error) {
     console.error('Error closing cashier session:', error);
     res.status(500).json({ error: 'Erro ao fechar sessão de caixa.' });
+  }
+});
+
+// Incluir pedidos pré-abertura na sessão definindo countFromDate
+app.patch('/api/cashier/sessions/:id/count-from', authMiddleware, async (req: AuthRequest, res) => {
+  if (!ensureCashierPermission(req, res, CASHIER_OPEN_CLOSE_ROLES, 'ajustar contagem do caixa')) {
+    return;
+  }
+
+  try {
+    const sessionId = Number(req.params.id);
+    const countFromDate = req.body?.countFromDate ? new Date(req.body.countFromDate) : null;
+
+    if (!sessionId || isNaN(sessionId)) {
+      return res.status(400).json({ error: 'Sessão inválida.' });
+    }
+
+    if (!countFromDate || isNaN(countFromDate.getTime())) {
+      return res.status(400).json({ error: 'Data de referência inválida.' });
+    }
+
+    const session = await prisma.cashSession.findFirst({
+      where: { id: sessionId, restaurantId: req.restaurantId, status: 'OPEN' },
+    });
+
+    if (!session) {
+      return res.status(404).json({ error: 'Sessão aberta não encontrada.' });
+    }
+
+    if (countFromDate >= session.openedAt) {
+      return res.status(400).json({ error: 'A data de referência deve ser anterior à abertura da sessão.' });
+    }
+
+    const updated = await prisma.cashSession.update({
+      where: { id: sessionId },
+      data: { countFromDate },
+      include: { openedBy: { select: { id: true, name: true, email: true } } },
+    });
+
+    await createAudit(req, 'set_count_from_date', 'cash_session', sessionId, {
+      countFromDate: countFromDate.toISOString(),
+    });
+
+    res.json(updated);
+  } catch (error) {
+    console.error('Error setting countFromDate:', error);
+    res.status(500).json({ error: 'Erro ao ajustar contagem da sessão de caixa.' });
   }
 });
 
@@ -4059,7 +4200,7 @@ app.get('/api/cashier/sessions/:id/report', authMiddleware, async (req: AuthRequ
         where: {
           restaurantId: req.restaurantId,
           createdAt: {
-            gte: session.openedAt,
+            gte: session.countFromDate ?? session.openedAt,
             ...(session.closedAt ? { lte: session.closedAt } : {}),
           },
           status: { in: CASH_COUNTED_ORDER_STATUSES },
@@ -4070,7 +4211,7 @@ app.get('/api/cashier/sessions/:id/report', authMiddleware, async (req: AuthRequ
         where: {
           restaurantId: req.restaurantId,
           createdAt: {
-            gte: session.openedAt,
+            gte: session.countFromDate ?? session.openedAt,
             ...(session.closedAt ? { lte: session.closedAt } : {}),
           },
           status: { in: CASH_COUNTED_ORDER_STATUSES },
@@ -4083,7 +4224,7 @@ app.get('/api/cashier/sessions/:id/report', authMiddleware, async (req: AuthRequ
         where: {
           restaurantId: req.restaurantId,
           createdAt: {
-            gte: session.openedAt,
+            gte: session.countFromDate ?? session.openedAt,
             ...(session.closedAt ? { lte: session.closedAt } : {}),
           },
           status: { in: CASH_COUNTED_ORDER_STATUSES },

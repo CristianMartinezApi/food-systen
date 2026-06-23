@@ -150,14 +150,14 @@ export const getNextOpeningLabel = (value: any, date = new Date()) => {
 
       if (offset === 0) {
         if (currentMinutes < open) {
-          return offset === 0 ? `Hoje às ${shift.open}` : `Em ${offset} dia(s) às ${shift.open}`;
+          return `hoje às ${shift.open}`;
         }
 
         if (open > close && currentMinutes < close) {
-          return `Agora até ${shift.close}`;
+          return `até ${shift.close}`;
         }
       } else {
-        return offset === 1 ? `Amanhã às ${shift.open}` : `Em ${offset} dias às ${shift.open}`;
+        return offset === 1 ? `amanhã às ${shift.open}` : `em ${offset} dias às ${shift.open}`;
       }
     }
   }

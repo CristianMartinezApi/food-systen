@@ -55,14 +55,14 @@ export function Header({ onOpenMenu, settings, searchTerm, onSearchChange }: Hea
     : "";
   const nextOpeningLabel = getNextOpeningLabel(settings?.operatingHours);
   const closedStatusLabel = nextOpeningLabel === "Sem próximos horários"
-    ? "FECHADA • SEM PRÓXIMO HORÁRIO"
-    : `FECHADA AGORA • ABRE ${nextOpeningLabel.toUpperCase()}`;
-  const desktopStatusLabel = settings?.isOpen ? "ABERTA • PRODUZINDO" : closedStatusLabel;
+    ? "Fechada · Sem próximo horário"
+    : `Fechada agora · Abre ${nextOpeningLabel}`;
+  const desktopStatusLabel = settings?.isOpen ? "Aberta · Aceitando pedidos" : closedStatusLabel;
   const mobileStatusLabel = settings?.isOpen
-    ? "ABERTA"
+    ? "Aberta"
     : nextOpeningLabel === "Sem próximos horários"
-      ? "FECHADA • SEM HORÁRIO"
-      : `ABRE ${nextOpeningLabel.toUpperCase()}`;
+      ? "Fechada"
+      : `Abre ${nextOpeningLabel}`;
 
   const cartButton = (
     <button
@@ -118,11 +118,11 @@ export function Header({ onOpenMenu, settings, searchTerm, onSearchChange }: Hea
                     <span className="text-white">{storeNameMain}</span>
                     {storeNameAccent ? <span className="text-primary ml-1">{storeNameAccent}</span> : null}
                   </h1>
-                  <p className="flex md:hidden text-[8px] font-body font-bold text-slate-400 uppercase tracking-tighter mt-1 items-center gap-1.5 whitespace-nowrap">
+                  <p className="flex md:hidden text-[8px] font-body font-bold text-slate-300 tracking-wide mt-1 items-center gap-1.5 max-w-[160px] truncate">
                     <span className={cn("w-1.5 h-1.5 rounded-full shadow-[0_0_8px_rgba(0,0,0,0.5)]", settings?.isOpen ? "bg-emerald-500 animate-pulse" : "bg-rose-500")} />
                     {mobileStatusLabel}
                   </p>
-                  <p className="hidden md:flex text-[10px] font-body font-medium text-slate-300 uppercase tracking-wider mt-1 items-center gap-1.5 whitespace-nowrap">
+                  <p className="hidden md:flex text-[10px] font-body font-medium text-slate-300 tracking-wide mt-1 items-center gap-1.5 whitespace-nowrap">
                     <span className={cn("w-2 h-2 rounded-full shadow-[0_0_10px_rgba(0,0,0,0.5)]", settings?.isOpen ? "bg-emerald-500 animate-pulse" : "bg-rose-500")} />
                     {desktopStatusLabel}
                   </p>

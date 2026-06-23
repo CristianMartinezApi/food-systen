@@ -159,6 +159,10 @@ export default function CashierPage() {
     const [printSummaryBySessionId, setPrintSummaryBySessionId] = useState<Record<number, any>>({});
     const [closeSessionConfirmOpen, setCloseSessionConfirmOpen] = useState(false);
     const [differenceNoteThreshold, setDifferenceNoteThreshold] = useState(DEFAULT_CASH_DIFFERENCE_NOTE_THRESHOLD);
+    const [preOpeningOrders, setPreOpeningOrders] = useState<{ id: number; customerName: string; total: number; createdAt: string; paymentMethod: string; status: string }[]>([]);
+    const [preOpeningModalOpen, setPreOpeningModalOpen] = useState(false);
+    const [openedSessionId, setOpenedSessionId] = useState<number | null>(null);
+    const [absorbingPreOrders, setAbsorbingPreOrders] = useState(false);
     const [homologationChecklist, setHomologationChecklist] = useState<Record<string, boolean>>(
         () => Object.fromEntries(HOMOLOGATION_STEPS.map((step) => [step.id, false])) as Record<string, boolean>
     );
@@ -297,15 +301,44 @@ export default function CashierPage() {
 
         try {
             setSubmitting(true);
-            await api.post("/cashier/session/open", { openingAmount: parsed });
-            toast.success("Caixa aberto com sucesso");
+            const result = await api.post("/cashier/session/open", { openingAmount: parsed });
+            const sessionId = result.id;
+            setOpenedSessionId(sessionId || null);
             setClosingAmount("");
+
+            // Se houver pedidos anteriores à abertura, incluir automaticamente na sessão
+            const pendingBefore = Array.isArray(result.preOpeningOrders) ? result.preOpeningOrders : [];
+            if (pendingBefore.length > 0 && sessionId) {
+                try {
+                    setAbsorbingPreOrders(true);
+                    const earliest = pendingBefore.reduce((prev: any, curr: any) =>
+                        new Date(curr.createdAt) < new Date(prev.createdAt) ? curr : prev
+                    );
+                    await api.patch(`/cashier/sessions/${sessionId}/count-from`, {
+                        countFromDate: earliest.createdAt,
+                    });
+                } catch {
+                    // falha silenciosa: caixa abre normalmente mesmo se count-from falhar
+                } finally {
+                    setAbsorbingPreOrders(false);
+                }
+                setPreOpeningOrders(pendingBefore);
+                setPreOpeningModalOpen(true);
+            } else {
+                toast.success("Caixa aberto com sucesso");
+            }
+
             await loadCashier(historyPage);
         } catch (error: any) {
             toast.error(error.message || "Erro ao abrir caixa");
         } finally {
             setSubmitting(false);
         }
+    };
+
+    const handleDismissPreOpeningModal = () => {
+        setPreOpeningModalOpen(false);
+        setPreOpeningOrders([]);
     };
 
     const handleCreateMovement = async () => {
@@ -1545,6 +1578,59 @@ export default function CashierPage() {
                     </div>
                 </div>
             </ConfirmActionModal>
+
+            {/* Modal informativo: pedidos anteriores incluídos automaticamente */}
+            {preOpeningModalOpen && (
+                <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-950/60 backdrop-blur-sm p-4">
+                    <div className="w-full max-w-md rounded-3xl bg-white shadow-2xl p-6 space-y-5">
+
+                        <div className="flex items-start gap-4">
+                            <div className="w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0">
+                                <ShoppingCart size={22} />
+                            </div>
+                            <div>
+                                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-600">Caixa aberto</p>
+                                <h3 className="mt-1 text-base font-black text-slate-950 uppercase tracking-tight">
+                                    {preOpeningOrders.length} pedido{preOpeningOrders.length > 1 ? "s" : ""} anterior{preOpeningOrders.length > 1 ? "es" : ""} incluído{preOpeningOrders.length > 1 ? "s" : ""}
+                                </h3>
+                                <p className="mt-1 text-sm text-slate-500">
+                                    Os pedidos abaixo chegaram antes da abertura e foram incluídos automaticamente nesta sessão.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="max-h-52 overflow-auto space-y-2 pr-1">
+                            {preOpeningOrders.map((order) => (
+                                <div key={order.id} className="rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 flex items-center justify-between gap-3">
+                                    <div>
+                                        <p className="text-[11px] font-black text-slate-950">#{order.id} — {order.customerName}</p>
+                                        <p className="text-[10px] font-bold text-slate-400 uppercase mt-0.5">
+                                            {new Date(order.createdAt).toLocaleTimeString()} · {paymentLabels[order.paymentMethod] || order.paymentMethod}
+                                        </p>
+                                    </div>
+                                    <span className="text-[11px] font-black text-emerald-700 shrink-0">{formatCurrency(order.total)}</span>
+                                </div>
+                            ))}
+                        </div>
+
+                        <div className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3 flex items-center justify-between">
+                            <span className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">Total incluído</span>
+                            <span className="text-sm font-black text-slate-950">
+                                {formatCurrency(preOpeningOrders.reduce((acc, o) => acc + o.total, 0))}
+                            </span>
+                        </div>
+
+                        <button
+                            type="button"
+                            onClick={handleDismissPreOpeningModal}
+                            className="w-full h-11 rounded-2xl bg-slate-950 text-white text-[10px] font-black uppercase tracking-[0.16em] hover:bg-black transition-colors"
+                        >
+                            Entendido
+                        </button>
+
+                    </div>
+                </div>
+            )}
         </div >
     );
 }

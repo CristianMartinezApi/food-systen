@@ -196,7 +196,11 @@ export function Footer() {
               <div className="pt-3 md:pt-6 border-t border-white/5 flex items-center gap-2 md:gap-3">
                 <div className={cn("w-2 h-2 rounded-full shadow-[0_0_10px] shrink-0", settings?.isOpen ? "bg-emerald-500 shadow-emerald-500 animate-pulse" : "bg-rose-500 shadow-rose-500")} />
                 <span className={cn("text-[9px] md:text-[10px] font-black uppercase tracking-[0.15em] md:tracking-[0.2em] truncate", settings?.isOpen ? "text-emerald-500" : "text-rose-500")}>
-                  {settings?.isOpen ? "Estamos Abertos" : `Fechados • ${getNextOpeningLabel(settings?.operatingHours)}`}
+                  {settings?.isOpen
+                    ? "Estamos abertos"
+                    : getNextOpeningLabel(settings?.operatingHours) === "Sem próximos horários"
+                      ? "Fechados · Sem horário disponível"
+                      : `Fechados · Abre ${getNextOpeningLabel(settings?.operatingHours)}`}
                 </span>
               </div>
             </div>

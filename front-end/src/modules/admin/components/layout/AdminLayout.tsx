@@ -14,7 +14,8 @@ import {
   ExternalLink,
   Users,
   CreditCard,
-  Wallet
+  Wallet,
+  ShieldCheck
 } from "lucide-react";
 import { cn } from "../../../../shared/utils";
 import { motion, AnimatePresence } from "framer-motion";
@@ -203,6 +204,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
 
   let menuItems = [
     { icon: LayoutDashboard, label: "Painel", path: "/admin" },
+    { icon: ShieldCheck, label: "Operação", path: "/admin/operacao" },
     { icon: Wallet, label: "Caixa", path: "/admin/caixa" },
     { icon: ShoppingBag, label: "Pedidos", path: "/admin/orders" },
     { icon: Package, label: "Produtos", path: "/admin/products" },

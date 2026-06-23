@@ -32,6 +32,8 @@ export default function CustomerOrdersPage() {
   const [slug, setSlug] = useState<string>("");
   const [expandedOrderId, setExpandedOrderId] = useState<number | null>(null);
 
+  const normalizePhone = (value?: string) => (value || "").replace(/\D/g, "");
+
   useEffect(() => {
     setSlug(getTenantSlug());
   }, []);
@@ -71,19 +73,31 @@ export default function CustomerOrdersPage() {
       setCustomerName(savedName);
       fetchOrders(savedPhone, savedName);
 
+      if (!socket.connected) {
+        socket.connect();
+      }
+
       const eventName = `order_status_updated_${currentSlug}`;
       const normalizedSavedName = savedName.trim().toLowerCase();
 
-      socket.on(eventName, (data: any) => {
-        const samePhone = data.phone === savedPhone;
+      const handleOrderStatusUpdated = (data: any) => {
+        const samePhone = normalizePhone(data.phone) === normalizePhone(savedPhone);
         const sameName = !normalizedSavedName || (data.customerName || "").trim().toLowerCase() === normalizedSavedName;
-        if (samePhone && sameName) {
-          setOrders(prev => prev.map(o => o.id === data.id ? { ...o, status: data.status } : o));
-        }
-      });
+
+        setOrders((prev) => {
+          const orderIsAlreadyInList = prev.some((o) => Number(o.id) === Number(data.id));
+          if (!(samePhone && sameName) && !orderIsAlreadyInList) {
+            return prev;
+          }
+
+          return prev.map((o) => (o.id === data.id ? { ...o, status: data.status } : o));
+        });
+      };
+
+      socket.on(eventName, handleOrderStatusUpdated);
 
       return () => {
-        socket.off(eventName);
+        socket.off(eventName, handleOrderStatusUpdated);
       };
     } else {
       setLoading(false);
@@ -98,9 +112,45 @@ export default function CustomerOrdersPage() {
       case 'READY': return { label: 'Pronto p/ Retirada', icon: <ShoppingBag size={16} />, color: 'text-orange-500', bg: 'bg-orange-50', progress: 80 };
       case 'OUT_FOR_DELIVERY': return { label: 'Em Rota de Entrega', icon: <Bike size={16} className="animate-bounce" />, color: 'text-indigo-500', bg: 'bg-indigo-50', progress: 90 };
       case 'DELIVERED': return { label: 'Entregue', icon: <CheckCircle2 size={16} />, color: 'text-emerald-500', bg: 'bg-emerald-50', progress: 100 };
+      case 'RETIRED': return { label: 'Entregue no Balcao', icon: <CheckCircle2 size={16} />, color: 'text-emerald-500', bg: 'bg-emerald-50', progress: 100 };
       case 'CANCELLED': return { label: 'Pedido Cancelado', icon: <XCircle size={16} />, color: 'text-rose-500', bg: 'bg-rose-50', progress: 0 };
       default: return { label: status, icon: <Clock size={16} />, color: 'text-slate-500', bg: 'bg-slate-50', progress: 0 };
     }
+  };
+
+  const getOrderType = (address: any): "DELIVERY" | "PICKUP" | "DINE_IN" => {
+    if (address?.type === "PICKUP") return "PICKUP";
+    if (address?.type === "DINE_IN") return "DINE_IN";
+    return "DELIVERY";
+  };
+
+  const getTimelineLabels = (address: any) => {
+    const orderType = getOrderType(address);
+
+    if (orderType === "PICKUP") {
+      return {
+        first: "SOLICITADO",
+        second: "PREPARO",
+        third: "BALCAO",
+        thirdThreshold: 80,
+      };
+    }
+
+    if (orderType === "DINE_IN") {
+      return {
+        first: "SOLICITADO",
+        second: "PREPARO",
+        third: "SERVICO",
+        thirdThreshold: 90,
+      };
+    }
+
+    return {
+      first: "SOLICITADO",
+      second: "PREPARO",
+      third: "ENTREGA",
+      thirdThreshold: 90,
+    };
   };
 
   const toggleDetails = (orderId: number) => {
@@ -110,6 +160,7 @@ export default function CustomerOrdersPage() {
   const getOrderTypeLabel = (type?: string) => {
     if (type === "DELIVERY") return "Entrega";
     if (type === "PICKUP") return "Retirada";
+    if (type === "DINE_IN") return "Consumo Local";
     return "Pedido";
   };
 
@@ -206,18 +257,19 @@ export default function CustomerOrdersPage() {
             <div className="grid grid-cols-1 gap-4 md:gap-6">
               {orders.map((order, idx) => {
                 const status = getStatusInfo(order.status);
+                const timeline = getTimelineLabels(order.address);
                 return (
                   <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: idx * 0.1 }}
                     key={order.id}
-                    className="bg-slate-50 border border-slate-200 rounded-4xl md:rounded-[2.5rem] p-4 md:p-8 shadow-md shadow-slate-300/25 hover:shadow-2xl hover:shadow-slate-300/40 transition-all duration-500 group"
+                    className="bg-slate-50 border border-slate-200 rounded-xl md:rounded-2xl p-4 md:p-8 shadow-md shadow-slate-300/25 hover:shadow-2xl hover:shadow-slate-300/40 transition-all duration-500 group"
                   >
                     <div className="flex flex-col md:flex-row justify-between gap-4 md:gap-8">
                       <div className="space-y-4 md:space-y-6 flex-1">
                         <div className="flex items-center gap-3 md:gap-4">
-                          <div className={cn("w-12 h-12 md:w-14 md:h-14 rounded-xl md:rounded-2xl flex items-center justify-center transition-colors duration-500", status.bg, status.color)}>
+                          <div className={cn("w-12 h-12 md:w-14 md:h-14 rounded-lg md:rounded-xl flex items-center justify-center transition-colors duration-500", status.bg, status.color)}>
                             {status.icon}
                           </div>
                           <div>
@@ -257,9 +309,9 @@ export default function CustomerOrdersPage() {
                               />
                             </div>
                             <div className="flex justify-between items-center text-[9px] md:text-label font-body font-medium text-slate-200 uppercase tracking-[0.06em]">
-                              <span className={status.progress >= 20 ? "text-slate-400" : ""}>SOLICITADO</span>
-                              <span className={status.progress >= 60 ? "text-slate-400" : ""}>PREPARO</span>
-                              <span className={status.progress >= 90 ? "text-slate-400" : ""}>ENTREGA</span>
+                              <span className={status.progress >= 20 ? "text-slate-400" : ""}>{timeline.first}</span>
+                              <span className={status.progress >= 60 ? "text-slate-400" : ""}>{timeline.second}</span>
+                              <span className={status.progress >= timeline.thirdThreshold ? "text-slate-400" : ""}>{timeline.third}</span>
                             </div>
                           </div>
                         )}
@@ -268,7 +320,7 @@ export default function CustomerOrdersPage() {
                       <div className="flex md:flex-col gap-2.5 md:gap-3 justify-center min-w-32 md:min-w-35">
                         <button
                           onClick={() => toggleDetails(order.id)}
-                          className="h-11 md:h-14 px-4 md:px-6 bg-slate-900 text-white rounded-xl md:rounded-2xl font-body font-medium text-[10px] md:text-label uppercase tracking-[0.06em] flex items-center justify-center gap-2 hover:bg-primary transition-all shadow-lg active:scale-95"
+                          className="h-11 md:h-14 px-4 md:px-6 bg-slate-900 text-white rounded-lg md:rounded-xl font-body font-medium text-[10px] md:text-label uppercase tracking-[0.06em] flex items-center justify-center gap-2 hover:bg-primary transition-all shadow-lg active:scale-95"
                         >
                           {expandedOrderId === order.id ? "FECHAR" : "DETALHES"}
                           <ChevronRight
@@ -288,11 +340,11 @@ export default function CustomerOrdersPage() {
                           transition={{ duration: 0.25, ease: "easeInOut" }}
                           className="overflow-hidden"
                         >
-                          <div className="rounded-2xl border border-slate-200 bg-white/70 p-3 md:p-5 space-y-3 md:space-y-4">
+                          <div className="rounded-xl border border-slate-200 bg-white/70 p-3 md:p-5 space-y-3 md:space-y-4">
                             <div className="grid grid-cols-2 gap-3 md:gap-4">
                               <div className="rounded-xl bg-slate-100 px-3 py-2">
                                 <p className="text-[9px] md:text-[10px] font-body font-bold text-slate-400 uppercase tracking-[0.08em] mb-1">Tipo</p>
-                                <p className="text-xs md:text-sm font-body font-semibold text-slate-700 uppercase tracking-tight">{getOrderTypeLabel(order.orderType)}</p>
+                                <p className="text-xs md:text-sm font-body font-semibold text-slate-700 uppercase tracking-tight">{getOrderTypeLabel(order.address?.type)}</p>
                               </div>
                               <div className="rounded-xl bg-slate-100 px-3 py-2 flex items-start gap-2">
                                 <CreditCard size={14} className="text-slate-500 mt-0.5 shrink-0" />

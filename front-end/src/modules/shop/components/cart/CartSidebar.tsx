@@ -82,7 +82,7 @@ export function CartSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
             <div className="px-4 py-3 md:p-8 border-b border-slate-200 flex items-center justify-between bg-slate-100/90 backdrop-blur-xl sticky top-0 z-10">
               <div className="flex items-center gap-3 md:gap-5 min-w-0">
                 <div className="w-11 h-11 md:w-14 md:h-14 bg-rose-600 rounded-2xl flex items-center justify-center text-white shadow-xl shadow-rose-900/20 group cursor-default shrink-0">
-                  <ShoppingCart size={22} className="group-hover:rotate-12 transition-transform duration-500" />
+                  <ShoppingCart size={22} className="md:group-hover:rotate-12 transition-transform duration-500" />
                 </div>
                 <div>
                   <h3 className="text-heading-3 md:text-heading-2 font-display font-bold text-slate-950 uppercase tracking-tighter leading-none mb-0.5">Carrinho</h3>
@@ -94,7 +94,7 @@ export function CartSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
               </div>
               <button
                 onClick={onClose}
-                className="w-10 h-10 md:w-12 md:h-12 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-300 hover:text-slate-950 hover:bg-slate-100 hover:shadow-lg transition-all duration-500 hover:rotate-90 shrink-0"
+                className="w-10 h-10 md:w-12 md:h-12 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-300 md:hover:text-slate-950 md:hover:bg-slate-100 md:hover:shadow-lg transition-all duration-500 md:hover:rotate-90 shrink-0"
               >
                 <X size={20} className="md:size-6" />
               </button>
@@ -116,7 +116,7 @@ export function CartSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
                   </div>
                   <button
                     onClick={onClose}
-                    className="px-7 py-3.5 md:px-9 md:py-4 bg-slate-950 text-white rounded-2xl text-[10px] md:text-label font-body font-medium uppercase tracking-[0.06em] hover:bg-primary hover:scale-105 active:scale-95 transition-all duration-500 shadow-lg shadow-slate-950/10"
+                    className="px-7 py-3.5 md:px-9 md:py-4 bg-slate-950 text-white rounded-2xl text-[10px] md:text-label font-body font-medium uppercase tracking-[0.06em] md:hover:bg-primary md:hover:scale-105 active:scale-95 transition-all duration-500 shadow-lg shadow-slate-950/10"
                   >
                     Ver Cardápio Premium
                   </button>
@@ -129,23 +129,23 @@ export function CartSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: index * 0.1 }}
                     key={index}
-                    className="p-4 md:p-6 bg-slate-50 border border-slate-200 rounded-4xl md:rounded-[2.5rem] group hover:border-primary/20 hover:shadow-[0_20px_50px_rgba(15,23,42,0.15)] transition-all duration-500 relative"
+                    className="p-4 md:p-6 bg-slate-50 border border-slate-200 rounded-lg md:rounded-xl group md:hover:border-primary/20 md:hover:shadow-[0_20px_50px_rgba(15,23,42,0.15)] transition-all duration-500 relative"
                   >
                     <div className="flex gap-4 md:gap-6">
-                      <div className="w-16 h-16 md:w-24 md:h-24 rounded-2xl md:rounded-3xl overflow-hidden bg-slate-100 shrink-0 shadow-lg group-hover:rotate-3 transition-transform duration-500">
+                      <div className="w-16 h-16 md:w-24 md:h-24 rounded-md md:rounded-lg overflow-hidden bg-slate-100 shrink-0 shadow-lg md:group-hover:rotate-3 transition-transform duration-500">
                         <img
                           src={item.image}
                           alt={item.name}
-                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000"
+                          className="w-full h-full object-cover md:group-hover:scale-110 transition-transform duration-1000"
                         />
                       </div>
 
                       <div className="flex-1 space-y-1 pt-0.5 md:pt-1 min-w-0">
                         <div className="flex justify-between items-start">
-                          <h4 className="font-body font-bold text-label md:text-body-strong text-slate-950 uppercase tracking-tight leading-none group-hover:text-primary transition-colors pr-2 wrap-break-word">{item.name}</h4>
+                          <h4 className="font-body font-bold text-label md:text-body-strong text-slate-950 uppercase tracking-tight leading-none md:group-hover:text-primary transition-colors pr-2 wrap-break-word">{item.name}</h4>
                           <button
                             onClick={() => removeItem(index)}
-                            className="text-rose-600 transition-colors bg-rose-50 p-2 rounded-xl hover:bg-rose-100 hover:text-rose-700 shrink-0"
+                            className="text-rose-600 transition-colors bg-rose-50 p-2 rounded-md md:hover:bg-rose-100 md:hover:text-rose-700 shrink-0"
                           >
                             <Trash2 size={15} />
                           </button>
@@ -153,17 +153,17 @@ export function CartSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
                         <span className="text-[10px] md:text-label font-body font-medium text-primary uppercase tracking-[0.06em]">{item.variation || 'Tamanho Padrão'}</span>
 
                         <div className="flex justify-between items-center pt-3 md:pt-5 gap-3">
-                          <div className="flex items-center bg-slate-950 rounded-2xl p-1.5 shadow-xl">
+                          <div className="flex items-center bg-slate-950 rounded-md p-1.5 shadow-xl">
                             <button
                               onClick={() => updateQuantity(index, Math.max(1, item.quantity - 1))}
-                              className="w-7 h-7 md:w-9 md:h-9 rounded-xl flex items-center justify-center text-white hover:bg-white/10 active:scale-90"
+                              className="w-7 h-7 md:w-9 md:h-9 rounded-md flex items-center justify-center text-white md:hover:bg-white/10 active:scale-90"
                             >
                               <Minus size={14} />
                             </button>
                             <span className="w-7 md:w-8 text-center text-body font-mono font-medium text-white">{item.quantity}</span>
                             <button
                               onClick={() => updateQuantity(index, item.quantity + 1)}
-                              className="w-7 h-7 md:w-9 md:h-9 rounded-xl flex items-center justify-center text-white hover:bg-white/10 active:scale-90"
+                              className="w-7 h-7 md:w-9 md:h-9 rounded-md flex items-center justify-center text-white md:hover:bg-white/10 active:scale-90"
                             >
                               <Plus size={14} />
                             </button>
@@ -172,7 +172,7 @@ export function CartSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
                           <div className="flex items-center gap-3 md:gap-4 shrink-0">
                             <button
                               onClick={() => handleEditClick(index, item)}
-                              className="w-10 h-10 md:w-12 md:h-12 flex items-center justify-center bg-slate-50 text-slate-400 rounded-2xl hover:bg-slate-950 hover:text-white transition-all shadow-sm active:scale-90"
+                              className="w-10 h-10 md:w-12 md:h-12 flex items-center justify-center bg-slate-50 text-slate-400 rounded-md md:hover:bg-slate-950 md:hover:text-white transition-all shadow-sm active:scale-90"
                             >
                               <Edit2 size={16} className="md:size-4.5" />
                             </button>
@@ -195,8 +195,8 @@ export function CartSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
                     <span className="font-mono font-medium text-slate-950 tracking-tighter">{formatCurrency(total)}</span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-[10px] md:text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em]">Logística de Entrega</span>
-                    <span className="text-[10px] md:text-label font-body font-medium text-emerald-500 uppercase tracking-[0.06em] bg-emerald-50 px-2.5 py-1 rounded-full">Cortesia Premium</span>
+                    <span className="text-[10px] md:text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em]">Entrega/Retirada</span>
+                    <span className="text-[10px] md:text-label font-body font-medium text-slate-500 uppercase tracking-[0.06em] bg-slate-50 px-2.5 py-1 rounded-full border border-slate-200">Definido no checkout</span>
                   </div>
                   <div className="h-px bg-slate-100 my-3 md:my-4" />
                   <div className="flex justify-between items-end">
@@ -206,13 +206,22 @@ export function CartSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
                 </div>
 
                 <Link
+                  href={`/${slug}`}
+                  onClick={onClose}
+                  className="mb-3 h-12 md:h-14 w-full bg-white border border-slate-200 text-slate-700 rounded-lg md:rounded-xl font-body font-bold uppercase tracking-widest text-[10px] md:text-label flex items-center justify-center gap-2 md:hover:bg-slate-50 md:hover:border-slate-300 transition-all shadow-sm group"
+                >
+                  <Plus size={14} className="text-primary md:group-hover:scale-110 transition-transform" />
+                  Adicionar mais itens
+                </Link>
+
+                <Link
                   href={`/${slug}/checkout`}
                   onClick={onClose}
-                  className="h-13 md:h-16 w-full bg-rose-600 text-white rounded-3xl font-body font-bold uppercase tracking-[0.06em] text-[10px] md:text-label flex items-center justify-center gap-3 md:gap-4 shadow-xl shadow-rose-900/25 hover:bg-rose-700 hover:scale-[1.02] active:scale-[0.98] transition-all duration-500 group overflow-hidden relative"
+                  className="h-12 md:h-14 w-full bg-rose-600 text-white rounded-lg md:rounded-xl font-body font-bold uppercase tracking-widest text-[10px] md:text-label flex items-center justify-center gap-3 shadow-xl shadow-rose-900/25 md:hover:bg-rose-700 active:scale-[0.98] transition-all duration-300 group overflow-hidden relative"
                 >
                   <span className="relative z-10 font-body font-bold">Iniciar Finalização</span>
-                  <ArrowRight size={18} className="relative z-10 group-hover:translate-x-3 transition-transform duration-500" />
-                  <div className="absolute inset-0 bg-linear-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
+                  <ArrowRight size={18} className="relative z-10 md:group-hover:translate-x-3 transition-transform duration-500" />
+                  <div className="absolute inset-0 bg-linear-to-r from-transparent via-white/10 to-transparent -translate-x-full md:group-hover:translate-x-full transition-transform duration-1000" />
                 </Link>
               </div>
             )}

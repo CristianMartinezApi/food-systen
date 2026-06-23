@@ -47,6 +47,22 @@ gsap.registerPlugin(ScrollTrigger);
 type Step = "mode" | "customer" | "address" | "payment" | "review" | "pix" | "success";
 type DeliveryMode = "DELIVERY" | "PICKUP" | "DINE_IN";
 type CheckoutPaymentMethod = "PIX" | "CASH" | "CREDIT" | "DEBIT";
+const BRAZIL_BANKNOTES = [2, 5, 10, 20, 50, 100, 200] as const;
+const CHANGE_MAX_EXTRA = 100;
+
+const canComposeAmountWithBanknotes = (amount: number) => {
+  const target = Math.round(amount);
+  if (target <= 0) return false;
+
+  const reachable = Array(target + 1).fill(false);
+  reachable[0] = true;
+
+  for (let value = 1; value <= target; value += 1) {
+    reachable[value] = BRAZIL_BANKNOTES.some((note) => value >= note && reachable[value - note]);
+  }
+
+  return reachable[target];
+};
 
 export default function Checkout() {
   const [step, setStep] = useState<Step>("mode");
@@ -122,6 +138,42 @@ export default function Checkout() {
   const isBelowMinimum = subtotal < minOrderValue;
   const isOpenNow = isRestaurantOpenNow(settings?.operatingHours);
   const estimatedDeliveryMinutes = settings?.deliveryEtaMinutes || 35;
+  const maxPlausibleChangeFor = Math.ceil(total) + CHANGE_MAX_EXTRA;
+  const nextValidChangeNote = (() => {
+    for (let value = Math.ceil(total + 1); value <= maxPlausibleChangeFor; value += 1) {
+      if (canComposeAmountWithBanknotes(value)) return value;
+    }
+    return null;
+  })();
+  const acceptedNotesLabel = BRAZIL_BANKNOTES.map((note) => formatCurrency(note)).join(", ");
+
+  const getChangeValidationError = (changeVal: number) => {
+    if (nextValidChangeNote === null) {
+      return "Não há valor de troco plausível para este pedido. Use valor exato ou outro pagamento.";
+    }
+
+    if (!changeVal || changeVal <= 0) {
+      return "Informe o valor para troco.";
+    }
+
+    if (Math.round(changeVal * 100) % 100 !== 0) {
+      return "Para troco em dinheiro, informe um valor sem centavos (ex.: 300,00).";
+    }
+
+    if (changeVal <= total) {
+      return `O valor para troco deve ser maior que o total (${formatCurrency(total)}).`;
+    }
+
+    if (changeVal > maxPlausibleChangeFor) {
+      return `Troco muito acima do total. Limite para este pedido: ${formatCurrency(maxPlausibleChangeFor)}.`;
+    }
+
+    if (!canComposeAmountWithBanknotes(changeVal)) {
+      return `Informe um valor possível com cédulas do Brasil (${acceptedNotesLabel}).`;
+    }
+
+    return null;
+  };
 
   const [formData, setFormData] = useState({
     customerName: "",
@@ -362,8 +414,9 @@ export default function Checkout() {
     if (step === "payment") {
       if (formData.paymentMethod === 'CASH' && formData.needsChange) {
         const changeVal = parseMoneyInput(formData.changeFor);
-        if (!changeVal || changeVal <= total) {
-          toast.error(`O valor para troco deve ser maior que o total (${formatCurrency(total)})`);
+        const changeError = getChangeValidationError(changeVal);
+        if (changeError) {
+          toast.error(changeError);
           return;
         }
       }
@@ -388,13 +441,28 @@ export default function Checkout() {
 
   const handleFinishOrder = async () => {
     if (!isOpenNow) {
-      toast.error(`Estamos fechados no momento. ${getNextOpeningLabel(settings?.operatingHours)}`);
+      toast.error(
+        `Loja fechada no momento. ${
+          getNextOpeningLabel(settings?.operatingHours) === "Sem próximos horários"
+            ? "Sem previsão de abertura."
+            : `Abre ${getNextOpeningLabel(settings?.operatingHours)}.`
+        }`
+      );
       return;
     }
 
     if (isBelowMinimum && deliveryMode === "DELIVERY") {
       toast.error(`O valor mínimo para entrega é ${formatCurrency(minOrderValue)}`);
       return;
+    }
+
+    if (formData.paymentMethod === 'CASH' && formData.needsChange) {
+      const changeVal = parseMoneyInput(formData.changeFor);
+      const changeError = getChangeValidationError(changeVal);
+      if (changeError) {
+        toast.error(changeError);
+        return;
+      }
     }
 
     setIsSubmitting(true);
@@ -501,16 +569,26 @@ export default function Checkout() {
   ];
   // pix e success ficam fora da barra de progresso
   const isPixStep = step === "pix";
-  const successDeliveryLabel = deliveryMode === "DELIVERY"
+  const shouldShowMobileCheckoutBar = step !== "success" && !isPixStep;
+  const deliveryModeLabel = deliveryMode === "DELIVERY"
     ? "Entrega"
     : deliveryMode === "PICKUP"
       ? "Retirada"
-      : "No local";
+      : "Consumo no local";
+  const paymentMethodLabels: Record<CheckoutPaymentMethod, string> = {
+    PIX: "Pix",
+    CASH: "Dinheiro",
+    CREDIT: "Cartão de crédito",
+    DEBIT: "Cartão de débito",
+  };
+  const selectedPaymentLabel = paymentMethodLabels[formData.paymentMethod];
+  const reviewPaymentLabel = deliveryMode === "DINE_IN" ? "Pagamento no local" : selectedPaymentLabel;
+  const successDeliveryLabel = deliveryModeLabel;
   const successPaymentLabel = deliveryMode === "DINE_IN"
-    ? "A combinar no local"
+    ? "Pagamento no local"
     : formData.paymentMethod === "CASH" && formData.needsChange && formData.changeFor
-      ? `Dinheiro (Troco p/ ${formData.changeFor})`
-      : formData.paymentMethod;
+      ? `${selectedPaymentLabel} (Troco p/ ${formData.changeFor})`
+      : selectedPaymentLabel;
   const successEtaLabel = deliveryMode === "DINE_IN"
     ? "Atendimento imediato"
     : `${estimatedDeliveryMinutes} min`;
@@ -549,12 +627,19 @@ export default function Checkout() {
         </div>
       </header>
 
-      <main className="container mx-auto px-4 md:px-6 pt-24 md:pt-32 pb-6 md:pb-16 max-w-5xl flex-1">
+      <main
+        className={cn(
+          "container mx-auto px-4 md:px-6 pt-24 md:pt-32 max-w-5xl flex-1",
+          shouldShowMobileCheckoutBar ? "pb-24 md:pb-16" : "pb-6 md:pb-16"
+        )}
+      >
         {!isOpenNow && (
-          <div className="checkout-summary mb-10 rounded-4xl border border-rose-100 bg-rose-50/70 p-5 text-rose-700">
-            <p className="text-label font-body font-bold uppercase tracking-[0.08em]">Fechado no momento</p>
-            <p className="text-[11px] font-body font-medium uppercase tracking-[0.08em] mt-1">
-              {getNextOpeningLabel(settings?.operatingHours)}
+          <div className="checkout-summary mb-10 rounded-xl md:rounded-2xl border border-rose-100 bg-rose-50/70 p-5 text-rose-700">
+            <p className="text-label font-body font-bold">Loja fechada no momento</p>
+            <p className="text-[11px] font-body font-medium mt-1">
+              {getNextOpeningLabel(settings?.operatingHours) === "Sem próximos horários"
+                ? "Sem horário de abertura disponível."
+                : `Abre ${getNextOpeningLabel(settings?.operatingHours)}`}
             </p>
           </div>
         )}
@@ -638,7 +723,7 @@ export default function Checkout() {
 
                   <button
                     onClick={handleNext}
-                    className="hidden lg:flex h-14 md:h-20 w-full bg-slate-950 text-white rounded-4xl font-body font-bold items-center justify-center gap-4 mt-8 md:mt-12 shadow-2xl shadow-slate-950/20 hover:bg-slate-900 transition-all text-label tracking-widest uppercase group"
+                    className="hidden lg:flex h-14 md:h-20 w-full bg-slate-950 text-white rounded-xl md:rounded-2xl font-body font-bold items-center justify-center gap-4 mt-8 md:mt-12 shadow-2xl shadow-slate-950/20 hover:bg-slate-900 transition-all text-label tracking-widest uppercase group"
                   >
                     AVANÇAR PARA IDENTIFICAÇÃO <ChevronRight size={20} className="group-hover:translate-x-1 transition-transform" />
                   </button>
@@ -658,7 +743,7 @@ export default function Checkout() {
                     </div>
                   </div>
 
-                  <div className="bg-slate-50 rounded-3xl md:rounded-[3rem] border border-slate-200 p-5 md:p-10 shadow-xl shadow-slate-300/40 space-y-5 md:space-y-8">
+                  <div className="bg-slate-50 rounded-xl md:rounded-2xl border border-slate-200 p-5 md:p-10 shadow-xl shadow-slate-300/40 space-y-5 md:space-y-8">
                     <p className="text-[10px] md:text-label font-body text-slate-400 uppercase tracking-[0.06em] leading-relaxed">
                       Seus dados são usados apenas para confirmação e entrega do pedido.
                     </p>
@@ -700,7 +785,7 @@ export default function Checkout() {
                   <button
                     onClick={handleNext}
                     disabled={isDistanceValidating}
-                    className="hidden lg:flex h-14 md:h-20 w-full bg-slate-950 text-white rounded-4xl font-body font-bold items-center justify-center gap-4 mt-8 md:mt-12 shadow-2xl shadow-slate-950/20 hover:bg-slate-900 transition-all disabled:opacity-50 text-label tracking-widest uppercase group"
+                    className="hidden lg:flex h-14 md:h-20 w-full bg-slate-950 text-white rounded-xl md:rounded-2xl font-body font-bold items-center justify-center gap-4 mt-8 md:mt-12 shadow-2xl shadow-slate-950/20 hover:bg-slate-900 transition-all disabled:opacity-50 text-label tracking-widest uppercase group"
                   >
                     {isDistanceValidating ? (
                       <>Validando Distância... <Loader2 className="animate-spin" /></>
@@ -726,7 +811,7 @@ export default function Checkout() {
                     </div>
                   </div>
 
-                  <div className="bg-slate-50 rounded-3xl md:rounded-[3rem] border border-slate-200 p-5 md:p-10 shadow-xl shadow-slate-300/40 space-y-5 md:space-y-8">
+                  <div className="bg-slate-50 rounded-xl md:rounded-2xl border border-slate-200 p-5 md:p-10 shadow-xl shadow-slate-300/40 space-y-5 md:space-y-8">
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
                       <div className="md:col-span-1">
                         <div className="space-y-1.5 md:space-y-3 group">
@@ -739,7 +824,7 @@ export default function Checkout() {
                               onChange={handleCepChange}
                               onBlur={handleCepBlur}
                               placeholder="00000-000"
-                              className="w-full h-12 md:h-16 bg-slate-50 border border-slate-200 rounded-2xl md:rounded-[1.25rem] focus:bg-slate-50 focus:ring-4 focus:ring-slate-950/10 focus:border-slate-950/20 transition-all font-mono text-sm md:text-numeric text-slate-700 outline-none px-5 md:px-6"
+                              className="w-full h-12 md:h-16 bg-slate-50 border border-slate-200 rounded-lg md:rounded-xl focus:bg-slate-50 focus:ring-4 focus:ring-slate-950/10 focus:border-slate-950/20 transition-all font-mono text-sm md:text-numeric text-slate-700 outline-none px-5 md:px-6"
                             />
                             {isCepLoading && (
                               <div className="absolute right-4 top-1/2 -translate-y-1/2">
@@ -773,7 +858,7 @@ export default function Checkout() {
 
                   <button
                     onClick={handleNext}
-                    className="hidden lg:flex h-14 md:h-20 w-full bg-slate-950 text-white rounded-4xl font-body font-bold items-center justify-center gap-4 mt-8 md:mt-12 shadow-2xl shadow-slate-950/20 hover:bg-slate-900 transition-all text-label tracking-widest uppercase group"
+                    className="hidden lg:flex h-14 md:h-20 w-full bg-slate-950 text-white rounded-xl md:rounded-2xl font-body font-bold items-center justify-center gap-4 mt-8 md:mt-12 shadow-2xl shadow-slate-950/20 hover:bg-slate-900 transition-all text-label tracking-widest uppercase group"
                   >
                     CONTINUAR PARA PAGAMENTO <ChevronRight size={20} className="group-hover:translate-x-1 transition-transform" />
                   </button>
@@ -842,25 +927,25 @@ export default function Checkout() {
                       <motion.div
                         initial={{ opacity: 0, height: 0 }}
                         animate={{ opacity: 1, height: 'auto' }}
-                        className="bg-slate-50 rounded-[2.5rem] p-8 border border-slate-100 mt-2 shadow-inner"
+                        className="bg-slate-50 rounded-xl md:rounded-2xl p-8 border border-slate-100 mt-2 shadow-inner"
                       >
                         <div className="flex items-center justify-between gap-6">
                           <div>
                             <p className="text-body-strong font-display font-bold text-slate-950 uppercase tracking-tight">Precisa de troco?</p>
                             <p className="text-label font-body font-medium text-slate-500 uppercase tracking-[0.06em] mt-1">Total: {formatCurrency(total)}</p>
                           </div>
-                          <div className="flex bg-slate-50 p-1.5 rounded-2xl border border-slate-200 shadow-sm">
+                          <div className="flex bg-slate-50 p-1.5 rounded-lg border border-slate-200 shadow-sm">
                             <button
                               onClick={() => setFormData({ ...formData, needsChange: false })}
                               className={cn(
-                                "px-6 py-3 rounded-xl text-label font-body font-bold transition-all",
+                                "px-6 py-3 rounded-lg text-label font-body font-bold transition-all",
                                 !formData.needsChange ? "bg-slate-950 text-white shadow-lg shadow-slate-950/20" : "text-slate-400 hover:text-slate-600"
                               )}
                             >NÃO</button>
                             <button
                               onClick={() => setFormData({ ...formData, needsChange: true })}
                               className={cn(
-                                "px-6 py-3 rounded-xl text-label font-body font-bold transition-all",
+                                "px-6 py-3 rounded-lg text-label font-body font-bold transition-all",
                                 formData.needsChange ? "bg-primary text-slate-950 shadow-lg shadow-primary/20" : "text-slate-400 hover:text-slate-600"
                               )}
                             >SIM</button>
@@ -882,8 +967,8 @@ export default function Checkout() {
                                   setFormData({ ...formData, changeFor: val });
                                 }}
                                 className={cn(
-                                  "w-full h-16 pl-16 pr-6 bg-slate-50 rounded-[1.25rem] border border-slate-200 focus:ring-4 focus:ring-slate-950/10 focus:border-slate-950/20 font-mono text-numeric text-xl text-slate-950 outline-none transition-all",
-                                  formData.needsChange && parseMoneyInput(formData.changeFor) > 0 && parseMoneyInput(formData.changeFor) <= total && "border-rose-500 ring-4 ring-rose-500/5 text-rose-500"
+                                  "w-full h-16 pl-16 pr-6 bg-slate-50 rounded-xl border border-slate-200 focus:ring-4 focus:ring-slate-950/10 focus:border-slate-950/20 font-mono text-numeric text-xl text-slate-950 outline-none transition-all",
+                                  formData.needsChange && !!getChangeValidationError(parseMoneyInput(formData.changeFor)) && "border-rose-500 ring-4 ring-rose-500/5 text-rose-500"
                                 )}
                               />
                             </div>
@@ -891,6 +976,18 @@ export default function Checkout() {
                               <p className="text-label font-body font-medium text-rose-500 mt-3 uppercase tracking-tight flex items-center gap-2">
                                 <AlertCircle size={14} />
                                 O valor deve superar {formatCurrency(total)}
+                              </p>
+                            )}
+                            {formData.changeFor && parseMoneyInput(formData.changeFor) > total && !canComposeAmountWithBanknotes(parseMoneyInput(formData.changeFor)) && (
+                              <p className="text-label font-body font-medium text-rose-500 mt-3 uppercase tracking-tight flex items-center gap-2">
+                                <AlertCircle size={14} />
+                                Informe valor possível com cédulas ({acceptedNotesLabel})
+                              </p>
+                            )}
+                            {formData.changeFor && nextValidChangeNote === null && (
+                              <p className="text-label font-body font-medium text-rose-500 mt-3 uppercase tracking-tight flex items-center gap-2">
+                                <AlertCircle size={14} />
+                                Não há valor plausível de troco para este pedido
                               </p>
                             )}
                           </div>
@@ -901,7 +998,7 @@ export default function Checkout() {
 
                   <button
                     onClick={handleNext}
-                    className="hidden lg:flex h-14 md:h-20 w-full bg-slate-950 text-white rounded-4xl font-body font-bold items-center justify-center gap-4 mt-8 md:mt-12 shadow-2xl shadow-slate-950/20 hover:bg-slate-900 transition-all text-label tracking-widest uppercase group"
+                    className="hidden lg:flex h-14 md:h-20 w-full bg-slate-950 text-white rounded-xl md:rounded-2xl font-body font-bold items-center justify-center gap-4 mt-8 md:mt-12 shadow-2xl shadow-slate-950/20 hover:bg-slate-900 transition-all text-label tracking-widest uppercase group"
                   >
                     REVISAR PEDIDO <ChevronRight size={20} className="group-hover:translate-x-1 transition-transform" />
                   </button>
@@ -921,26 +1018,26 @@ export default function Checkout() {
                     </div>
                   </div>
 
-                  <div className="bg-slate-50 rounded-[3rem] border border-slate-200 p-10 shadow-2xl shadow-slate-300/40 space-y-8">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                  <div className="bg-slate-50 rounded-xl md:rounded-2xl border border-slate-200 p-4 md:p-10 shadow-2xl shadow-slate-300/40 space-y-5 md:space-y-8">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-10">
                       <div>
-                        <h4 className="text-label font-body font-bold text-slate-300 uppercase tracking-[0.15em] mb-4">Cliente</h4>
-                        <p className="font-display font-bold text-slate-950 text-heading-3 uppercase tracking-tight leading-tight mb-2">{formData.customerName}</p>
+                        <h4 className="text-[10px] md:text-label font-body font-bold text-slate-300 uppercase tracking-[0.15em] mb-3 md:mb-4">Cliente</h4>
+                        <p className="font-display font-bold text-slate-950 text-xl md:text-heading-3 uppercase tracking-tight leading-tight mb-2">{formData.customerName}</p>
                         <div className="flex items-center gap-2 px-3 py-1 bg-slate-50 border border-slate-100 rounded-lg w-fit">
                           <Phone size={14} className="text-slate-400" />
                           <p className="text-slate-400 font-mono font-bold text-[11px] tracking-tight">{formData.phone}</p>
                         </div>
                       </div>
                       <div>
-                        <h4 className="text-label font-body font-bold text-slate-300 uppercase tracking-[0.15em] mb-4">Detalhes do Pedido</h4>
+                        <h4 className="text-[10px] md:text-label font-body font-bold text-slate-300 uppercase tracking-[0.15em] mb-3 md:mb-4">Detalhes do Pedido</h4>
                         <div className="flex flex-col gap-3">
-                          <div className="flex items-center gap-3">
-                            <div className="px-4 py-2 bg-slate-950 text-white rounded-xl text-label font-body font-bold uppercase tracking-widest">
-                              {deliveryMode === 'DELIVERY' ? 'DELIVERY' : (deliveryMode === 'PICKUP' ? 'RETIRADA' : 'NO LOCAL')}
+                          <div className="flex flex-wrap items-center gap-2 md:gap-3">
+                            <div className="px-3 md:px-4 py-2 bg-slate-950 text-white rounded-lg md:rounded-xl text-[11px] md:text-label font-body font-bold uppercase tracking-[0.08em] md:tracking-widest max-w-full wrap-break-word">
+                              {deliveryModeLabel}
                             </div>
-                            <span className="w-1.5 h-1.5 rounded-full bg-primary" />
-                            <div className="px-4 py-2 bg-primary/10 text-primary border border-primary/20 rounded-xl text-label font-body font-bold uppercase tracking-widest">
-                              {deliveryMode === 'DINE_IN' ? 'NA MESA' : formData.paymentMethod}
+                            <span className="hidden md:block w-1.5 h-1.5 rounded-full bg-primary" />
+                            <div className="px-3 md:px-4 py-2 bg-primary/10 text-primary border border-primary/20 rounded-lg md:rounded-xl text-[11px] md:text-label font-body font-bold uppercase tracking-[0.08em] md:tracking-widest max-w-full wrap-break-word">
+                              {reviewPaymentLabel}
                             </div>
                           </div>
                           {formData.paymentMethod === 'CASH' && formData.needsChange && formData.changeFor && (
@@ -953,9 +1050,9 @@ export default function Checkout() {
                               O pagamento será feito diretamente com o atendente na mesa.
                             </p>
                           )}
-                          <div className="mt-4 rounded-3xl bg-slate-50 border border-slate-100 px-4 py-3">
+                          <div className="mt-2 md:mt-4 rounded-xl bg-slate-50 border border-slate-100 px-4 py-3">
                             <p className="text-[10px] font-body font-black uppercase tracking-[0.2em] text-slate-400">Tempo estimado</p>
-                            <p className="text-heading-3 font-display font-bold text-slate-950 uppercase tracking-tight mt-1">
+                            <p className="text-xl md:text-heading-3 font-display font-bold text-slate-950 uppercase tracking-tight mt-1">
                               {estimatedDeliveryMinutes} min
                             </p>
                           </div>
@@ -966,7 +1063,7 @@ export default function Checkout() {
                     {deliveryMode === 'DELIVERY' && (
                       <div className="pt-8 border-t border-slate-100">
                         <h4 className="text-label font-body font-bold text-slate-300 uppercase tracking-[0.15em] mb-5">Endereço de Entrega</h4>
-                        <div className="bg-slate-50 p-8 rounded-4xl border border-slate-200 group hover:bg-slate-100 hover:shadow-xl hover:shadow-slate-300/25 transition-all duration-500">
+                        <div className="bg-slate-50 p-8 rounded-xl md:rounded-2xl border border-slate-200 group hover:bg-slate-100 hover:shadow-xl hover:shadow-slate-300/25 transition-all duration-500">
                           <div className="flex items-start gap-4">
                             <div className="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center border border-slate-200 text-slate-300 group-hover:text-slate-950 transition-colors">
                               <MapPin size={20} />
@@ -989,7 +1086,7 @@ export default function Checkout() {
                     onClick={handleFinishOrder}
                     disabled={isSubmitting || (isBelowMinimum && deliveryMode === 'DELIVERY')}
                     className={cn(
-                      "hidden lg:flex h-18 md:h-24 w-full rounded-[2.5rem] font-body font-bold flex-col items-center justify-center gap-1 mt-8 md:mt-12 shadow-2xl transition-all duration-300 disabled:opacity-50",
+                      "hidden lg:flex h-18 md:h-24 w-full rounded-xl md:rounded-2xl font-body font-bold flex-col items-center justify-center gap-1 mt-8 md:mt-12 shadow-2xl transition-all duration-300 disabled:opacity-50",
                       isBelowMinimum && deliveryMode === 'DELIVERY'
                         ? "bg-slate-100 text-slate-300 cursor-not-allowed shadow-none"
                         : "bg-slate-950 text-white shadow-slate-950/20 hover:bg-slate-900 active:scale-[0.98] group"
@@ -1023,7 +1120,7 @@ export default function Checkout() {
                       <p className="text-[10px] md:text-label font-body font-medium text-slate-400 uppercase tracking-wider mt-0.5 md:mt-1">Escaneie o QR Code para confirmar</p>
                     </div>
                   </div>
-                  <div className="bg-slate-50 rounded-3xl border border-slate-200 p-6 md:p-10 shadow-xl shadow-slate-300/30">
+                  <div className="bg-slate-50 rounded-xl md:rounded-2xl border border-slate-200 p-6 md:p-10 shadow-xl shadow-slate-300/30">
                     {createdOrder && (
                       <PixPayment
                         orderId={createdOrder.id}
@@ -1062,21 +1159,21 @@ export default function Checkout() {
                     Pedido <span className="text-slate-950 font-mono font-bold">#{orderCreatedId}</span> recebido com sucesso. Acompanhe os próximos passos abaixo.
                   </p>
 
-                  <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4 md:p-6 mb-6 md:mb-8">
+                  <div className="rounded-xl md:rounded-2xl border border-slate-200 bg-slate-50 p-4 md:p-6 mb-6 md:mb-8">
                     <div className="grid grid-cols-2 gap-3 md:gap-4">
-                      <div className="rounded-2xl border border-slate-200 bg-white p-3 md:p-4">
+                      <div className="rounded-lg md:rounded-xl border border-slate-200 bg-white p-3 md:p-4">
                         <p className="text-[10px] font-body font-bold uppercase tracking-[0.12em] text-slate-400">Tipo</p>
                         <p className="text-xs md:text-sm font-body font-bold text-slate-950 mt-1 uppercase">{successDeliveryLabel}</p>
                       </div>
-                      <div className="rounded-2xl border border-slate-200 bg-white p-3 md:p-4">
+                      <div className="rounded-lg md:rounded-xl border border-slate-200 bg-white p-3 md:p-4">
                         <p className="text-[10px] font-body font-bold uppercase tracking-[0.12em] text-slate-400">Pagamento</p>
                         <p className="text-xs md:text-sm font-body font-bold text-slate-950 mt-1 uppercase">{successPaymentLabel}</p>
                       </div>
-                      <div className="rounded-2xl border border-slate-200 bg-white p-3 md:p-4">
+                      <div className="rounded-lg md:rounded-xl border border-slate-200 bg-white p-3 md:p-4">
                         <p className="text-[10px] font-body font-bold uppercase tracking-[0.12em] text-slate-400">Previsao</p>
                         <p className="text-xs md:text-sm font-body font-bold text-slate-950 mt-1 uppercase">{successEtaLabel}</p>
                       </div>
-                      <div className="rounded-2xl border border-slate-200 bg-white p-3 md:p-4">
+                      <div className="rounded-lg md:rounded-xl border border-slate-200 bg-white p-3 md:p-4">
                         <p className="text-[10px] font-body font-bold uppercase tracking-[0.12em] text-slate-400">Destino</p>
                         <p className="text-xs md:text-sm font-body font-bold text-slate-950 mt-1 uppercase truncate">{successAddressLabel}</p>
                       </div>
@@ -1109,17 +1206,17 @@ export default function Checkout() {
             </AnimatePresence>
           </div>
 
-          {/* Resumo do Pedido - Curadoria Sticky lateral */}
-          {step !== "success" && (
+          {/* Resumo do Pedido - Curadoria Sticky lateral (somente na revisão) */}
+          {step === "review" && (
             <div className="lg:col-span-1 pb-28 lg:pb-0">
-              <div className="bg-slate-50 rounded-[3rem] border border-slate-200 p-10 shadow-[0_20px_50px_rgba(15,23,42,0.12)] sticky top-32">
+              <div className="bg-slate-50 rounded-xl md:rounded-2xl border border-slate-200 p-10 shadow-[0_20px_50px_rgba(15,23,42,0.12)] sticky top-32">
                 <h3 className="font-display font-bold text-heading-3 text-slate-950 uppercase tracking-tight mb-8 flex items-center justify-between">
                   Sua Cesta <span className="text-label font-body font-bold bg-slate-100 px-3 py-1.5 rounded-xl text-slate-500 uppercase tracking-widest text-[10px]">{items.length} ITENS</span>
                 </h3>
 
                 <Link 
                   href={`/${slug}`}
-                  className="w-full h-12 mb-8 flex items-center justify-center gap-2 rounded-2xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition-all font-body font-bold text-[10px] uppercase tracking-widest shadow-sm group"
+                  className="w-full h-12 mb-8 flex items-center justify-center gap-2 rounded-lg md:rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition-all font-body font-bold text-[10px] uppercase tracking-widest shadow-sm group"
                 >
                   <Plus size={14} className="text-primary group-hover:scale-110 transition-transform" />
                   ADICIONAR MAIS ITENS
@@ -1158,7 +1255,7 @@ export default function Checkout() {
                   </div>
 
                   {formData.paymentMethod === 'CASH' && formData.needsChange && formData.changeFor && (
-                    <div className="flex justify-between items-center bg-primary/5 p-3 rounded-2xl border border-primary/10">
+                    <div className="flex justify-between items-center bg-primary/5 p-3 rounded-lg md:rounded-xl border border-primary/10">
                       <div className="flex items-center gap-2">
                         <span className="w-1.5 h-1.5 rounded-full bg-primary" />
                         <span className="font-body font-bold text-slate-900 uppercase text-[9px] tracking-widest">Troco solicitado</span>
@@ -1183,7 +1280,7 @@ export default function Checkout() {
                 </div>
 
                 {isBelowMinimum && deliveryMode === 'DELIVERY' && (
-                  <div className="mt-8 p-6 bg-slate-950 rounded-4xl border border-slate-900 flex items-start gap-4">
+                  <div className="mt-8 p-6 bg-slate-950 rounded-xl md:rounded-2xl border border-slate-900 flex items-start gap-4">
                     <AlertCircle size={20} className="text-primary shrink-0 mt-0.5" />
                     <p className="text-label font-body font-medium text-slate-400 uppercase tracking-[0.08em] leading-relaxed text-[10px]">
                       <span className="text-white font-bold">Pedido mínimo:</span> {formatCurrency(minOrderValue)}. <br />
@@ -1198,22 +1295,21 @@ export default function Checkout() {
         </div>
       </main>
 
-      {step !== "success" && (
-        !isPixStep &&
-        <div className="lg:hidden fixed bottom-4 left-4 right-4 z-50">
-          <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3 shadow-xl shadow-slate-300/30 flex items-center justify-between" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
+      {shouldShowMobileCheckoutBar && (
+        <div className="lg:hidden fixed bottom-2 left-3 right-3 z-50">
+          <div className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 shadow-xl shadow-slate-300/30 flex items-center justify-between gap-2" style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 6px)" }}>
             <div>
-              <p className="text-[10px] text-slate-400 uppercase">Total</p>
-              <p className="text-lg font-bold text-primary">{formatCurrency(total)}</p>
-              <p className="text-[10px] text-slate-400 uppercase mt-1">
+              <p className="text-[9px] text-slate-400 uppercase">Total</p>
+              <p className="text-base font-bold text-primary leading-tight">{formatCurrency(total)}</p>
+              <p className="text-[9px] text-slate-400 uppercase mt-0.5">
                 {String(stepsList.findIndex(s => s.key === step) + 1).padStart(2, '0')}/{stepsList.length} • {stepsList.find(s => s.key === step)?.label}
               </p>
             </div>
             <div>
               {step === 'review' ? (
-                <button onClick={handleFinishOrder} className={cn("h-12 px-6 rounded-2xl font-body font-bold text-sm shadow-2xl transition-all", isBelowMinimum && deliveryMode === 'DELIVERY' ? "bg-slate-100 text-slate-300 cursor-not-allowed shadow-none" : "bg-slate-950 text-white")}>CONFIRMAR</button>
+                <button onClick={handleFinishOrder} className={cn("h-10 px-4 rounded-lg font-body font-bold text-xs shadow-2xl transition-all", isBelowMinimum && deliveryMode === 'DELIVERY' ? "bg-slate-100 text-slate-300 cursor-not-allowed shadow-none" : "bg-slate-950 text-white")}>CONFIRMAR</button>
               ) : (
-                <button onClick={handleNext} className="h-12 px-6 rounded-2xl font-body font-bold text-sm bg-slate-950 text-white shadow-2xl">
+                <button onClick={handleNext} className="h-10 px-4 rounded-lg font-body font-bold text-xs bg-slate-950 text-white shadow-2xl">
                   {(() => {
                     if (step === 'mode') return 'AVANÇAR';
                     if (step === 'customer') return deliveryMode === 'DELIVERY' ? 'CONTINUAR' : 'REVISAR';
@@ -1238,7 +1334,7 @@ function SelectOption({ active, onClick, title, description, icon }: any) {
     <button
       onClick={onClick}
       className={cn(
-        "px-4 py-4 md:p-8 rounded-3xl md:rounded-4xl border-2 text-left transition-all duration-500 flex items-center gap-4 md:gap-6 group relative overflow-hidden",
+        "px-4 py-4 md:p-8 rounded-xl md:rounded-2xl border-2 text-left transition-all duration-500 flex items-center gap-4 md:gap-6 group relative overflow-hidden",
         active
           ? "bg-slate-950 border-slate-950 shadow-2xl shadow-slate-950/20 ring-4 ring-slate-950/5"
           : "bg-slate-50 border-slate-200 hover:border-slate-300 hover:shadow-xl hover:shadow-slate-300/25"
@@ -1252,7 +1348,7 @@ function SelectOption({ active, onClick, title, description, icon }: any) {
       )}
 
       <div className={cn(
-        "w-12 h-12 md:w-16 md:h-16 rounded-2xl flex items-center justify-center transition-all duration-500 z-10 shrink-0",
+        "w-12 h-12 md:w-16 md:h-16 rounded-lg md:rounded-xl flex items-center justify-center transition-all duration-500 z-10 shrink-0",
         active ? "bg-primary text-slate-950 scale-105 shadow-lg shadow-primary/20" : "bg-slate-100 text-slate-400 group-hover:bg-slate-200 group-hover:text-slate-600"
       )}>
         {icon}
@@ -1297,7 +1393,7 @@ function InputGroup({ label, icon, value, onChange, placeholder }: any) {
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
           className={cn(
-            "w-full h-12 md:h-16 bg-slate-50 border border-slate-200 rounded-2xl md:rounded-[1.25rem] focus:bg-slate-50 focus:ring-4 md:focus:ring-8 focus:ring-slate-950/10 focus:border-slate-950/10 transition-all duration-300 font-body font-bold text-sm md:text-body-lg text-slate-950 outline-none placeholder:text-slate-300 placeholder:font-medium",
+            "w-full h-12 md:h-16 bg-slate-50 border border-slate-200 rounded-lg md:rounded-xl focus:bg-slate-50 focus:ring-4 md:focus:ring-8 focus:ring-slate-950/10 focus:border-slate-950/10 transition-all duration-300 font-body font-bold text-sm md:text-body-lg text-slate-950 outline-none placeholder:text-slate-300 placeholder:font-medium",
             icon ? "pl-11 md:pl-16" : "px-5 md:px-8"
           )}
         />

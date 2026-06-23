@@ -50,9 +50,98 @@ export default function OrdersPage() {
     const titleBlinkTimeoutRef = useRef<number | null>(null);
     const rootRef = useRef<HTMLDivElement>(null);
 
-    const filteredOrders = orders.filter((o) =>
-        statusFilter === "ALL" ? true : o.status === statusFilter
-    );
+    const getOrderMode = (order: any): "DELIVERY" | "PICKUP" | "DINE_IN" => {
+        const type = order?.address?.type;
+        if (type === "PICKUP") return "PICKUP";
+        if (type === "DINE_IN") return "DINE_IN";
+        return "DELIVERY";
+    };
+
+    const doesOrderMatchFilter = (order: any) => {
+        if (statusFilter === "ALL") return true;
+        if (statusFilter === "PENDING") return ["PENDING", "CONFIRMED"].includes(order.status);
+        if (statusFilter === "PREPARING") return ["PREPARING", "READY", "OUT_FOR_DELIVERY"].includes(order.status);
+        if (statusFilter === "DELIVERED") return ["DELIVERED", "RETIRED"].includes(order.status);
+        return order.status === statusFilter;
+    };
+
+    const filteredOrders = orders.filter((o) => doesOrderMatchFilter(o));
+
+    const getStatusBadge = (order: any) => {
+        if (order.status === "PENDING") return { label: "Novo", className: "bg-amber-50 text-amber-600 border-amber-100" };
+        if (order.status === "CONFIRMED") return { label: "Confirmado", className: "bg-sky-50 text-sky-700 border-sky-100" };
+        if (order.status === "PREPARING") return { label: "Em Preparo", className: "bg-blue-50 text-blue-600 border-blue-100" };
+        if (order.status === "OUT_FOR_DELIVERY") return { label: "Saiu p/ Entrega", className: "bg-indigo-50 text-indigo-600 border-indigo-100" };
+        if (order.status === "READY") return { label: "Pronto p/ Retirada", className: "bg-orange-50 text-orange-600 border-orange-100" };
+        if (order.status === "DELIVERED") return { label: "Entregue", className: "bg-emerald-50 text-emerald-600 border-emerald-100" };
+        if (order.status === "RETIRED") return { label: "Entregue no Balcao", className: "bg-emerald-50 text-emerald-600 border-emerald-100" };
+        if (order.status === "CANCELLED") return { label: "Cancelado", className: "bg-rose-50 text-rose-600 border-rose-100" };
+        return { label: order.status || "Status", className: "bg-slate-50 text-slate-600 border-slate-100" };
+    };
+
+    const canCancelOrder = (status: string) => ["PENDING", "CONFIRMED", "PREPARING", "READY", "OUT_FOR_DELIVERY"].includes(status);
+
+    const getPrimaryAction = (order: any): { label: string; nextStatus: string; className: string } | null => {
+        const mode = getOrderMode(order);
+
+        if (order.status === "PENDING") {
+            return {
+                label: "Confirmar",
+                nextStatus: "CONFIRMED",
+                className: "h-9 px-4 bg-slate-950 text-white rounded-lg font-body font-bold text-[10px] uppercase tracking-widest shadow-md shadow-slate-950/20 hover:bg-primary transition-all active:scale-95 flex-1"
+            };
+        }
+
+        if (order.status === "CONFIRMED") {
+            return {
+                label: "Iniciar Preparo",
+                nextStatus: "PREPARING",
+                className: "h-9 px-4 bg-blue-600 text-white rounded-lg font-body font-bold text-[10px] uppercase tracking-widest shadow-md shadow-blue-600/20 hover:bg-blue-700 transition-all active:scale-95 flex-1"
+            };
+        }
+
+        if (order.status === "PREPARING") {
+            if (mode === "PICKUP") {
+                return {
+                    label: "Pronto p/ Retirada",
+                    nextStatus: "READY",
+                    className: "h-9 px-4 bg-orange-500 text-white rounded-lg font-body font-bold text-[10px] uppercase tracking-widest shadow-md shadow-orange-500/20 hover:bg-orange-600 transition-all active:scale-95 flex-1"
+                };
+            }
+
+            if (mode === "DELIVERY") {
+                return {
+                    label: "Saiu p/ Entrega",
+                    nextStatus: "OUT_FOR_DELIVERY",
+                    className: "h-9 px-4 bg-indigo-500 text-white rounded-lg font-body font-bold text-[10px] uppercase tracking-widest shadow-md shadow-indigo-500/20 hover:bg-indigo-600 transition-all active:scale-95 flex-1"
+                };
+            }
+
+            return {
+                label: "Finalizar",
+                nextStatus: "DELIVERED",
+                className: "h-9 px-4 bg-emerald-500 text-white rounded-lg font-body font-bold text-[10px] uppercase tracking-widest shadow-md shadow-emerald-500/20 hover:bg-emerald-600 transition-all active:scale-95 flex-1"
+            };
+        }
+
+        if (order.status === "OUT_FOR_DELIVERY") {
+            return {
+                label: "Marcar Entregue",
+                nextStatus: "DELIVERED",
+                className: "h-9 px-4 bg-emerald-500 text-white rounded-lg font-body font-bold text-[10px] uppercase tracking-widest shadow-md shadow-emerald-500/20 hover:bg-emerald-600 transition-all active:scale-95 flex-1"
+            };
+        }
+
+        if (order.status === "READY") {
+            return {
+                label: "Marcar Entregue no Balcao",
+                nextStatus: "RETIRED",
+                className: "h-9 px-4 bg-emerald-500 text-white rounded-lg font-body font-bold text-[10px] uppercase tracking-widest shadow-md shadow-emerald-500/20 hover:bg-emerald-600 transition-all active:scale-95 flex-1"
+            };
+        }
+
+        return null;
+    };
 
     const formatItemDetails = (value: any) => {
         if (!value) return [];
@@ -654,7 +743,7 @@ export default function OrdersPage() {
                     {[
                         { id: "ALL", label: "Global" },
                         { id: "PENDING", label: "Novos" },
-                        { id: "PREPARING", label: "Cozinha" },
+                        { id: "PREPARING", label: "Operacao" },
                         { id: "DELIVERED", label: "Entregues" }
                     ].map((f) => (
                         <button
@@ -693,7 +782,12 @@ export default function OrdersPage() {
                                 <p className="text-label font-body font-bold text-slate-400 uppercase tracking-widest">Nenhum pedido no fluxo atual</p>
                             </motion.div>
                         ) : (
-                            filteredOrders.map((order, idx) => (
+                            filteredOrders.map((order, idx) => {
+                                const statusBadge = getStatusBadge(order);
+                                const primaryAction = getPrimaryAction(order);
+                                const showCancelButton = canCancelOrder(order.status);
+
+                                return (
                                 <motion.div
                                     layout
                                     initial={false}
@@ -718,25 +812,8 @@ export default function OrdersPage() {
                                                         <span className="text-[10px] font-body font-bold text-primary uppercase tracking-[0.08em]">
                                                             {formatDistanceToNow(new Date(order.createdAt), { addSuffix: true, locale: ptBR })}
                                                         </span>
-                                                        <span
-                                                            className={cn(
-                                                                "text-[10px] font-body font-bold uppercase tracking-[0.08em] px-2.5 py-1 rounded-full border",
-                                                                order.status === "PENDING"
-                                                                    ? "bg-amber-50 text-amber-600 border-amber-100"
-                                                                    : order.status === "CANCELLED"
-                                                                        ? "bg-rose-50 text-rose-600 border-rose-100"
-                                                                        : order.status === "DELIVERED"
-                                                                            ? "bg-emerald-50 text-emerald-600 border-emerald-100"
-                                                                            : "bg-blue-50 text-blue-600 border-blue-100"
-                                                            )}
-                                                        >
-                                                            {order.status === "PENDING"
-                                                                ? "Pendente"
-                                                                : order.status === "CANCELLED"
-                                                                    ? "Cancelado"
-                                                                    : order.status === "DELIVERED"
-                                                                        ? "Finalizado"
-                                                                        : "Producao"}
+                                                        <span className={cn("text-[10px] font-body font-bold uppercase tracking-[0.08em] px-2.5 py-1 rounded-full border", statusBadge.className)}>
+                                                            {statusBadge.label}
                                                         </span>
                                                     </div>
                                                 </div>
@@ -847,28 +924,20 @@ export default function OrdersPage() {
                                             )}
 
                                             <div className="flex flex-wrap gap-2 pt-2 border-t border-dashed border-slate-200">
-                                                {order.status === "PENDING" && (
-                                                    <>
-                                                        <button
-                                                            onClick={() => updateStatus(order.id, "PREPARING")}
-                                                            className="h-9 px-4 bg-slate-950 text-white rounded-lg font-body font-bold text-[10px] uppercase tracking-widest shadow-md shadow-slate-950/20 hover:bg-primary transition-all active:scale-95 flex-1"
-                                                        >
-                                                            Aceitar
-                                                        </button>
-                                                        <button
-                                                            onClick={() => handleCancelOrder(order)}
-                                                            className="h-9 px-3 bg-rose-50 text-rose-700 border border-rose-200 rounded-lg font-body font-bold text-[10px] uppercase tracking-widest hover:bg-rose-100 transition-all active:scale-95 flex-1"
-                                                        >
-                                                            Recusar
-                                                        </button>
-                                                    </>
-                                                )}
-                                                {order.status === "PREPARING" && (
+                                                {primaryAction && (
                                                     <button
-                                                        onClick={() => updateStatus(order.id, "DELIVERED")}
-                                                        className="h-9 px-4 bg-emerald-500 text-white rounded-lg font-body font-bold text-[10px] uppercase tracking-widest shadow-md shadow-emerald-500/20 hover:bg-emerald-600 transition-all active:scale-95 flex-1"
+                                                        onClick={() => updateStatus(order.id, primaryAction.nextStatus)}
+                                                        className={primaryAction.className}
                                                     >
-                                                        Despachar
+                                                        {primaryAction.label}
+                                                    </button>
+                                                )}
+                                                {showCancelButton && (
+                                                    <button
+                                                        onClick={() => handleCancelOrder(order)}
+                                                        className="h-9 px-3 bg-rose-50 text-rose-700 border border-rose-200 rounded-lg font-body font-bold text-[10px] uppercase tracking-widest hover:bg-rose-100 transition-all active:scale-95 flex-1"
+                                                    >
+                                                        Cancelar
                                                     </button>
                                                 )}
                                                 <button
@@ -887,7 +956,8 @@ export default function OrdersPage() {
                                         </div>
                                     </div>
                                 </motion.div>
-                            ))
+                            );
+                        })
                         )}
                     </AnimatePresence>
                 </div>

@@ -729,7 +729,11 @@ export default function SettingsPage() {
                                         "px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border whitespace-nowrap",
                                         isOpenNow ? "bg-emerald-50 text-emerald-600 border-emerald-100" : "bg-rose-50 text-rose-600 border-rose-100"
                                     )}>
-                                        {isOpenNow ? "Aberto agora" : `Fechado • ${getNextOpeningLabel(operatingHours)}`}
+                                                                                {isOpenNow
+                                                                                    ? "Aberto agora"
+                                                                                    : getNextOpeningLabel(operatingHours) === "Sem próximos horários"
+                                                                                        ? "Fechado · Sem horário disponível"
+                                                                                        : `Fechado · Abre ${getNextOpeningLabel(operatingHours)}`}
                                     </div>
                                 </div>
 
