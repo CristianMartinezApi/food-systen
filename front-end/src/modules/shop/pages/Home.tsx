@@ -18,6 +18,7 @@ export default function Home() {
   const [activeCategory, setActiveCategory] = useState<number | "all">("all");
   const [isNavOpen, setIsNavOpen] = useState(false);
   const [showSplash, setShowSplash] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
 
   // Efeito para controlar o Splash de forma estável (só sai, nunca volta)
   useEffect(() => {
@@ -31,9 +32,22 @@ export default function Home() {
 
   const filteredProducts = useMemo(() => {
     if (!products) return [];
-    if (activeCategory === "all") return products;
-    return products.filter((p: any) => p.categoryId === activeCategory);
-  }, [products, activeCategory]);
+    let filtered = products;
+
+    if (activeCategory !== "all") {
+      filtered = filtered.filter((p: any) => p.categoryId === activeCategory);
+    }
+
+    if (searchTerm.trim()) {
+      const term = searchTerm.toLowerCase().trim();
+      filtered = filtered.filter((p: any) =>
+        p.name.toLowerCase().includes(term) ||
+        (p.description && p.description.toLowerCase().includes(term))
+      );
+    }
+
+    return filtered;
+  }, [products, activeCategory, searchTerm]);
 
   const heroBadge = settings?.bannerBadge || "Destaque da semana";
   const heroTitleLine1 = settings?.bannerTitleLine1 || "Sabor que";
@@ -102,7 +116,12 @@ export default function Home() {
 
       <div className={cn("flex flex-col flex-1 transition-opacity duration-700", showSplash ? "opacity-0" : "opacity-100")}>
         <div className="home-header">
-          <Header settings={settings} onOpenMenu={() => setIsNavOpen(true)} />
+          <Header
+            settings={settings}
+            onOpenMenu={() => setIsNavOpen(true)}
+            searchTerm={searchTerm}
+            onSearchChange={setSearchTerm}
+          />
         </div>
 
         <NavSidebar
@@ -221,7 +240,18 @@ export default function Home() {
                   <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center mx-auto text-slate-300 border border-slate-200">
                     <Utensils size={40} />
                   </div>
-                  <p className="text-slate-500 font-medium text-sm md:text-lg uppercase tracking-[0.14em]">Nenhum item encontrado nesta categoria.</p>
+                  <p className="text-slate-500 font-medium text-sm md:text-lg uppercase tracking-[0.14em]">
+                    {searchTerm ? `Nenhum item encontrado para "${searchTerm}"` : "Nenhum item encontrado nesta categoria."}
+                  </p>
+                  {searchTerm && (
+                    <Button
+                      variant="outline"
+                      onClick={() => setSearchTerm("")}
+                      className="rounded-xl"
+                    >
+                      Limpar Busca
+                    </Button>
+                  )}
                 </div>
               )}
             </div>

@@ -2895,7 +2895,7 @@ app.get('/api/cashier/session', authMiddleware, async (req: AuthRequest, res) =>
       take: 20,
     });
 
-    const [suppliesAgg, withdrawalsAgg, adjustmentsAgg, salesAgg, cashSalesAgg, cardSalesAgg, debitSalesAgg, creditSalesAgg, pixSalesAgg, movementsCount] = await Promise.all([
+    const [suppliesAgg, withdrawalsAgg, adjustmentsAgg, salesAgg, cashSalesAgg, cardSalesAgg, debitSalesAgg, creditSalesAgg, pixSalesAgg, movementsCount, sessionOrders] = await Promise.all([
       prisma.cashMovement.aggregate({
         where: { cashSessionId: activeSession.id, type: 'SUPPLY' },
         _sum: { amount: true },
@@ -2964,6 +2964,16 @@ app.get('/api/cashier/session', authMiddleware, async (req: AuthRequest, res) =>
       prisma.cashMovement.count({
         where: { cashSessionId: activeSession.id },
       }),
+      prisma.order.findMany({
+        where: {
+          restaurantId: req.restaurantId,
+          createdAt: { gte: activeSession.openedAt },
+          status: { in: CASH_COUNTED_ORDER_STATUSES },
+        },
+        orderBy: { createdAt: 'desc' },
+        include: { items: true },
+        take: 50,
+      }),
     ]);
 
     const supplies = Number(suppliesAgg._sum.amount || 0);
@@ -2980,6 +2990,7 @@ app.get('/api/cashier/session', authMiddleware, async (req: AuthRequest, res) =>
     return res.json({
       session: activeSession,
       movements,
+      orders: sessionOrders,
       totals: {
         supplies,
         withdrawals,

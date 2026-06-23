@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Wallet, Receipt, ArrowDownCircle, ArrowUpCircle, ShieldCheck, Loader2, Archive, PlusCircle, MinusCircle, Scale, Printer } from "lucide-react";
+import { Wallet, Receipt, ArrowDownCircle, ArrowUpCircle, ShieldCheck, Loader2, Archive, PlusCircle, MinusCircle, Scale, Printer, ShoppingCart } from "lucide-react";
 import { api } from "../../../../core/config/api";
 import { formatCurrency, normalizeMoneyInput, parseMoneyInput, formatMoneyInputRealtime } from "../../../../shared/utils";
 import toast from "react-hot-toast";
@@ -12,6 +12,14 @@ const PRINT_MODE_STORAGE_KEY = "@FoodSystem:printMode";
 const DEFAULT_CASH_DIFFERENCE_NOTE_THRESHOLD = 5;
 const HOMOLOGATION_STORAGE_KEY = "@FoodSystem:cashierHomologationChecklist";
 const ENABLE_PRINT_EVENT_SUMMARY = process.env.NEXT_PUBLIC_ENABLE_PRINT_EVENT_SUMMARY === "true";
+
+const paymentLabels: Record<string, string> = {
+    PIX: "PIX",
+    CASH: "Dinheiro",
+    CARD: "Cartão",
+    DEBIT: "Débito",
+    CREDIT: "Crédito",
+};
 
 type CashSession = {
     id: number;
@@ -40,6 +48,16 @@ type CashMovement = {
     amount: number;
     reason?: string | null;
     createdAt: string;
+};
+
+type SessionOrder = {
+    id: number;
+    customerName: string;
+    total: number;
+    paymentMethod: string;
+    createdAt: string;
+    items: any[];
+    notes?: string | null;
 };
 
 type CashierProduct = {
@@ -80,6 +98,7 @@ export default function CashierPage() {
     const [submitting, setSubmitting] = useState(false);
     const [session, setSession] = useState<CashSession | null>(null);
     const [movements, setMovements] = useState<CashMovement[]>([]);
+    const [orders, setOrders] = useState<SessionOrder[]>([]);
     const [history, setHistory] = useState<CashSession[]>([]);
     const [operators, setOperators] = useState<CashOperator[]>([]);
     const [historyPage, setHistoryPage] = useState(1);
@@ -202,6 +221,7 @@ export default function CashierPage() {
 
             setSession(sessionData.session || null);
             setMovements(sessionData.movements || []);
+            setOrders(sessionData.orders || []);
             setHistory(sessionsHistory.data || []);
             setHistoryTotal(Number(sessionsHistory.total || 0));
             setHistoryPage(Number(sessionsHistory.page || page));
@@ -475,13 +495,7 @@ export default function CashierPage() {
             const reportSession = report.session as CashSession;
             const reportTotals = report.totals || {};
             const reportMovements = report.movements || [];
-            const paymentLabels: Record<string, string> = {
-                PIX: "PIX",
-                CASH: "Dinheiro",
-                CARD: "Cartao",
-                DEBIT: "Debito",
-                CREDIT: "Credito",
-            };
+
             const paymentRows = (reportTotals.salesByPayment || [])
                 .map((entry: any) => `
                     <div class="line">
@@ -1152,6 +1166,46 @@ export default function CashierPage() {
                                         >
                                             {isDirectSaleCash ? "Registrar Venda em Dinheiro" : "Registrar Venda Direta"}
                                         </button>
+
+                                        <div className="mt-6 space-y-3 pt-6 border-t border-emerald-50">
+                                            <div className="flex items-center justify-between">
+                                                <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-600 flex items-center gap-2">
+                                                    <ShoppingCart size={14} /> Vendas da Sessão
+                                                </h3>
+                                                <span className="text-[10px] font-bold text-slate-400">Total: {orders.length}</span>
+                                            </div>
+
+                                            {orders.length === 0 ? (
+                                                <div className="rounded-2xl border border-dashed border-emerald-100 bg-emerald-50/30 px-4 py-6 text-center">
+                                                    <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-emerald-600/60">Nenhuma venda registrada nesta sessão ainda.</p>
+                                                </div>
+                                            ) : (
+                                                <div className="grid grid-cols-1 gap-2 max-h-[400px] overflow-auto pr-2 custom-scrollbar">
+                                                    {orders.map((order) => (
+                                                        <div key={order.id} className="rounded-2xl border border-slate-100 bg-white p-3 hover:border-emerald-200 transition-colors shadow-sm">
+                                                            <div className="flex items-center justify-between gap-3">
+                                                                <div>
+                                                                    <div className="flex items-center gap-1.5">
+                                                                        <span className="text-[10px] font-black text-slate-900">#{order.id}</span>
+                                                                        <span className="text-[10px] font-bold text-slate-500 uppercase">{order.customerName}</span>
+                                                                    </div>
+                                                                    <p className="text-[8px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">
+                                                                        {new Date(order.createdAt).toLocaleTimeString()} • {paymentLabels[order.paymentMethod as any] || order.paymentMethod}
+                                                                        {order.notes?.includes("[VENDA_DIRETA]") && (
+                                                                            <span className="ml-2 text-emerald-600 font-black">[BALCÃO]</span>
+                                                                        )}
+                                                                    </p>
+                                                                </div>
+                                                                <div className="text-right">
+                                                                    <p className="text-[11px] font-black text-emerald-700">{formatCurrency(order.total)}</p>
+                                                                    <p className="text-[8px] font-bold text-slate-400 uppercase">{order.items.length} itens</p>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
                                 )}
 
@@ -1224,6 +1278,36 @@ export default function CashierPage() {
                                             </p>
                                         </div>
                                     ))}
+
+                                    {orders.length > 0 && (
+                                        <div className="mt-4 pt-4 border-t border-slate-100">
+                                            <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-3 flex items-center gap-2">
+                                                <ShoppingCart size={14} /> Vendas Recentes
+                                            </h3>
+                                            <div className="space-y-2">
+                                                {orders.slice(0, 10).map((order) => (
+                                                    <div key={order.id} className="rounded-2xl border border-slate-50 bg-white px-4 py-3 shadow-sm">
+                                                        <div className="flex items-center justify-between">
+                                                            <div className="flex flex-col">
+                                                                <span className="text-[10px] font-black text-slate-900">
+                                                                    {order.customerName}
+                                                                </span>
+                                                                <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">
+                                                                    {new Date(order.createdAt).toLocaleTimeString()} • {paymentLabels[order.paymentMethod as any] || order.paymentMethod}
+                                                                </span>
+                                                            </div>
+                                                            <span className="text-[11px] font-black text-emerald-700">{formatCurrency(order.total)}</span>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                                {orders.length > 10 && (
+                                                    <p className="text-[9px] text-center font-bold text-slate-400 uppercase tracking-widest pt-1">
+                                                        + {orders.length - 10} outras vendas
+                                                    </p>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             )}
                         </>

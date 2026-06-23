@@ -17,9 +17,11 @@ import { getNextOpeningLabel } from "../../../../shared/utils/schedule";
 interface HeaderProps {
   onOpenMenu?: () => void;
   settings?: any;
+  searchTerm?: string;
+  onSearchChange?: (value: string) => void;
 }
 
-export function Header({ onOpenMenu, settings }: HeaderProps) {
+export function Header({ onOpenMenu, settings, searchTerm, onSearchChange }: HeaderProps) {
   const hasHydrated = useHasHydrated();
   const { getTotalItems, syncTenantCart } = useCartStore() as any;
   const { address } = useLocationStore();
@@ -151,6 +153,8 @@ export function Header({ onOpenMenu, settings }: HeaderProps) {
               <div className="hidden xl:flex relative items-center group">
                 <Search className="absolute left-4 md:left-5 text-slate-300 group-focus-within:text-primary transition-colors duration-300" size={18} />
                 <input
+                  value={searchTerm || ""}
+                  onChange={(e) => onSearchChange?.(e.target.value)}
                   placeholder="BUSCAR SABOR..."
                   className="h-12 xl:h-14 w-40 md:w-56 lg:w-60 pl-11 md:pl-14 pr-4 md:pr-6 bg-slate-700/70 border border-slate-600 rounded-2xl focus:bg-slate-700 focus:ring-[5px] focus:ring-primary/20 focus:border-primary/50 transition-all duration-300 text-[10px] md:text-sm font-body font-medium uppercase tracking-wider text-slate-100 outline-none placeholder:text-slate-300"
                 />
