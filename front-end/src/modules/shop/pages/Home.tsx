@@ -37,9 +37,9 @@ export default function Home() {
       const ctx = gsap.context(() => {
         const tl = gsap.timeline({ defaults: { ease: "power3.out" } });
 
-        tl.from(".home-header", {
-          y: -18,
-          opacity: 0,
+        tl.to(".home-header", {
+          y: 0,
+          opacity: 1,
           duration: 0.7,
           stagger: 0.06,
         })
