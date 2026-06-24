@@ -154,11 +154,12 @@ model Order {
   phone         String?
   address       Json?
   status        OrderStatus   @default(PENDING)
-  paymentMethod PaymentMethod
+  paymentMethod PaymentMethod?
   subtotal      Float
   deliveryFee   Float         @default(0)
   total         Float
   notes         String?
+  tableNumber   Int?
   restaurantId  Int
   customerId    Int?
   createdAt     DateTime      @default(now())
@@ -168,9 +169,11 @@ model Order {
   items         OrderItem[]
   customer      Customer?     @relation(fields: [customerId], references: [id])
   restaurant    Restaurant    @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  cashSessionId Int?
 
   @@index([restaurantId])
   @@index([customerId])
+  @@index([cashSessionId])
   @@map("orders")
 }
 
@@ -211,6 +214,7 @@ model Settings {
   minOrderValue  Float      @default(20)
   cashDifferenceNoteThreshold Float @default(5)
   deliveryEtaMinutes Int    @default(35)
+  tableCount     Int        @default(0)
   isOpen         Boolean    @default(true)
   primaryColor   String     @default("#ef4444")
   logo           String?
@@ -289,11 +293,13 @@ enum UserRole {
   SUPER_ADMIN
   OWNER
   MANAGER
+  CASHIER
   EMPLOYEE
 }
 
 enum OrderStatus {
   PENDING
+  OPEN
   CONFIRMED
   PREPARING
   READY

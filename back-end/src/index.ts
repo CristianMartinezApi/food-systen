@@ -84,6 +84,21 @@ if (!JWT_SECRET) {
 }
 
 const PORT = process.env.PORT || 8000;
+
+// Inicialização e Correção do Banco de Dados
+async function bootstrap() {
+  try {
+    // Garante que o cargo CASHIER existe no Enum do Postgres (correção manual para evitar erros de migração Prisma 7)
+    await prisma.$executeRawUnsafe("ALTER TYPE \"UserRole\" ADD VALUE IF NOT EXISTS 'CASHIER'");
+    console.log('✅ Banco de Dados: Enum UserRole atualizado com CASHIER');
+  } catch (e) {
+    // Ignora se já existir ou se o provider não for Postgres
+    console.log('ℹ️ Banco de Dados: Verificação de Enum concluída');
+  }
+}
+
+bootstrap();
+
 const DEFAULT_CASH_DIFFERENCE_NOTE_THRESHOLD = 5;
 const AUDIT_DEFAULT_DAYS = Math.min(90, Math.max(1, Number(process.env.AUDIT_DEFAULT_DAYS || 7)));
 const AUDIT_EXPORT_MAX_ROWS = Math.min(20000, Math.max(500, Number(process.env.AUDIT_EXPORT_MAX_ROWS || 5000)));
@@ -94,29 +109,37 @@ const AUDIT_EXPORT_MAX_CONCURRENT_JOBS = Math.min(5, Math.max(1, Number(process.
 const AUDIT_RETENTION_ENABLED = process.env.AUDIT_RETENTION_ENABLED !== 'false';
 const AUDIT_RETENTION_DAYS = Math.min(3650, Math.max(7, Number(process.env.AUDIT_RETENTION_DAYS || 180)));
 const AUDIT_RETENTION_INTERVAL_HOURS = Math.min(168, Math.max(1, Number(process.env.AUDIT_RETENTION_INTERVAL_HOURS || 24)));
-const CASH_COUNTED_ORDER_STATUSES: OrderStatus[] = ['DELIVERED', 'PAID', 'RETIRED' as OrderStatus];
-const CASHIER_OPERATION_ROLES = new Set(['SUPER_ADMIN', 'OWNER', 'MANAGER', 'EMPLOYEE']);
-const CASHIER_OPEN_CLOSE_ROLES = new Set(['SUPER_ADMIN', 'OWNER', 'MANAGER']);
+const CASH_COUNTED_ORDER_STATUSES: OrderStatus[] = ['OPEN', 'CONFIRMED', 'PREPARING', 'READY', 'DELIVERED', 'PAID', 'RETIRED' as OrderStatus];
+const CASHIER_OPERATION_ROLES = new Set(['SUPER_ADMIN', 'OWNER', 'MANAGER', 'CASHIER', 'EMPLOYEE']);
+const CASHIER_OPEN_CLOSE_ROLES = new Set(['SUPER_ADMIN', 'OWNER', 'MANAGER', 'CASHIER']);
 
 type OrderMode = 'DELIVERY' | 'PICKUP' | 'DINE_IN';
 
 const ORDER_STATUS_FLOW_BY_MODE: Record<OrderMode, Record<string, string[]>> = {
   DELIVERY: {
     PENDING: ['CONFIRMED', 'CANCELLED'],
+    OPEN: ['CONFIRMED', 'CANCELLED'],
     CONFIRMED: ['PREPARING', 'CANCELLED'],
     PREPARING: ['OUT_FOR_DELIVERY', 'CANCELLED'],
     OUT_FOR_DELIVERY: ['DELIVERED', 'CANCELLED'],
   },
   PICKUP: {
-    PENDING: ['CONFIRMED', 'CANCELLED'],
-    CONFIRMED: ['PREPARING', 'CANCELLED'],
-    PREPARING: ['READY', 'CANCELLED'],
-    READY: ['RETIRED', 'CANCELLED'],
+    PENDING: ['CONFIRMED', 'CANCELLED', 'PAID'],
+    OPEN: ['CONFIRMED', 'CANCELLED', 'PAID'],
+    CONFIRMED: ['PREPARING', 'CANCELLED', 'PAID'],
+    PREPARING: ['READY', 'CANCELLED', 'PAID'],
+    READY: ['RETIRED', 'CANCELLED', 'PAID'],
+    PAID: ['RETIRED', 'DELIVERED'],
+    RETIRED: ['PAID'],
   },
   DINE_IN: {
-    PENDING: ['CONFIRMED', 'CANCELLED'],
-    CONFIRMED: ['PREPARING', 'CANCELLED'],
-    PREPARING: ['DELIVERED', 'CANCELLED'],
+    PENDING: ['OPEN', 'CONFIRMED', 'CANCELLED', 'PAID'],
+    OPEN: ['CONFIRMED', 'CANCELLED', 'PAID'],
+    CONFIRMED: ['PREPARING', 'CANCELLED', 'PAID'],
+    PREPARING: ['DELIVERED', 'CANCELLED', 'PAID', 'READY'],
+    READY: ['DELIVERED', 'PAID', 'CANCELLED'],
+    DELIVERED: ['PAID', 'CANCELLED'],
+    PAID: ['DELIVERED'],
   },
 };
 
@@ -151,7 +174,9 @@ function ensureCashierPermission(
   allowedRoles: Set<string>,
   actionLabel: string
 ): boolean {
+  console.log(`[PermissionCheck] User: ${req.userId}, Role: ${req.userRole}, Action: ${actionLabel}, Allowed: ${Array.from(allowedRoles).join(',')}`);
   if (!req.userRole || !allowedRoles.has(req.userRole)) {
+    console.error(`[PermissionCheck] Denied: ${req.userRole} lacks permission for ${actionLabel}`);
     res.status(403).json({ error: `Sem permissão para ${actionLabel}.` });
     return false;
   }
@@ -436,8 +461,8 @@ function formatOrderAddressForPrint(address: any) {
   if (!address) return 'Nao informado';
   if (typeof address === 'string') return address;
 
-  if (address?.type === 'PICKUP') return 'Retirada no balcao';
-  if (address?.type === 'DINE_IN') return 'Consumo no local';
+  if (address?.type === 'PICKUP') return 'RETIRADA / PARA VIAGEM';
+  if (address?.type === 'DINE_IN') return 'CONSUMO NO LOCAL';
 
   const details = address?.details || address;
   return [details.street, details.number, details.neighborhood, details.city]
@@ -1498,6 +1523,158 @@ app.patch('/api/admin/users/:id', authMiddleware, async (req: AuthRequest, res) 
   } catch (error) {
     console.error('Error updating user:', error);
     res.status(400).json({ error: 'Erro ao atualizar usuário' });
+  }
+});
+
+// --- GERENCIAMENTO DE EQUIPE (LOJA) ---
+
+// Listar equipe do restaurante
+app.get('/api/team', authMiddleware, async (req: AuthRequest, res) => {
+  if (!['OWNER', 'MANAGER'].includes(req.userRole!)) {
+    return res.status(403).json({ error: 'Acesso restrito a Gerentes ou Donos' });
+  }
+
+  try {
+    const team = await prisma.user.findMany({
+      where: { 
+        restaurantId: req.restaurantId,
+        role: { in: ['MANAGER', 'EMPLOYEE'] }
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        isActive: true,
+        createdAt: true
+      },
+      orderBy: { name: 'asc' }
+    });
+
+    res.json(team);
+  } catch (error) {
+    console.error('Error listing team:', error);
+    res.status(500).json({ error: 'Erro ao listar equipe' });
+  }
+});
+
+// Adicionar membro à equipe
+app.post('/api/team', authMiddleware, async (req: AuthRequest, res) => {
+  if (!['OWNER', 'MANAGER'].includes(req.userRole!)) {
+    return res.status(403).json({ error: 'Acesso restrito a Gerentes ou Donos' });
+  }
+
+  const { name, email, password, role } = req.body;
+
+  if (!name || !email || !password || !role) {
+    return res.status(400).json({ error: 'Todos os campos são obrigatórios' });
+  }
+
+  if (!['OWNER', 'MANAGER', 'CASHIER', 'EMPLOYEE'].includes(role)) {
+    return res.status(400).json({ error: 'Cargo inválido para membro da equipe' });
+  }
+
+  try {
+    const existingUser = await prisma.user.findUnique({ where: { email } });
+    if (existingUser) {
+      return res.status(400).json({ error: 'E-mail já cadastrado no sistema' });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const newUser = await prisma.user.create({
+      data: {
+        name,
+        email,
+        password: hashedPassword,
+        role: role as any,
+        restaurantId: req.restaurantId,
+        isApproved: true,
+        isActive: true
+      }
+    });
+
+    await createAudit(req, 'add_team_member', 'user', newUser.id, { name, role });
+
+    res.status(201).json({
+      id: newUser.id,
+      name: newUser.name,
+      email: newUser.email,
+      role: newUser.role
+    });
+  } catch (error) {
+    console.error('Error adding team member:', error);
+    res.status(400).json({ error: 'Erro ao adicionar membro à equipe' });
+  }
+});
+
+// Alterar cargo ou status de membro da equipe
+app.patch('/api/team/:id', authMiddleware, async (req: AuthRequest, res) => {
+  if (!['OWNER', 'MANAGER'].includes(req.userRole!)) {
+    return res.status(403).json({ error: 'Acesso restrito a Gerentes ou Donos' });
+  }
+
+  const memberId = Number(req.params.id);
+  const { role, isActive } = req.body;
+
+  try {
+    const member = await prisma.user.findFirst({
+      where: { id: memberId, restaurantId: req.restaurantId }
+    });
+
+    if (!member) {
+      return res.status(404).json({ error: 'Membro não encontrado na sua loja' });
+    }
+
+    if (member.role === 'OWNER') {
+      return res.status(403).json({ error: 'Não é possível alterar o status do proprietário' });
+    }
+
+    const updated = await prisma.user.update({
+      where: { id: memberId },
+      data: {
+        ...(role !== undefined ? { role } : {}),
+        ...(isActive !== undefined ? { isActive } : {})
+      }
+    });
+
+    await createAudit(req, 'update_team_member', 'user', memberId, { role, isActive });
+
+    res.json(updated);
+  } catch (error) {
+    console.error('Error updating team member:', error);
+    res.status(400).json({ error: 'Erro ao atualizar membro da equipe' });
+  }
+});
+
+// Remover membro da equipe (Apenas Owner)
+app.delete('/api/team/:id', authMiddleware, async (req: AuthRequest, res) => {
+  if (req.userRole !== 'OWNER') {
+    return res.status(403).json({ error: 'Acesso restrito ao proprietário' });
+  }
+
+  const memberId = Number(req.params.id);
+
+  try {
+    const member = await prisma.user.findFirst({
+      where: { id: memberId, restaurantId: req.restaurantId }
+    });
+
+    if (!member) {
+      return res.status(404).json({ error: 'Membro não encontrado na sua loja' });
+    }
+
+    if (member.role === 'OWNER') {
+      return res.status(403).json({ error: 'O proprietário não pode ser removido' });
+    }
+
+    await prisma.user.delete({ where: { id: memberId } });
+    await createAudit(req, 'delete_team_member', 'user', memberId, { name: member.name });
+
+    res.json({ message: 'Membro removido com sucesso' });
+  } catch (error) {
+    console.error('Error deleting team member:', error);
+    res.status(400).json({ error: 'Erro ao remover membro da equipe' });
   }
 });
 
@@ -2657,8 +2834,47 @@ app.get('/api/customer/orders/:phone', async (req: TenantRequest, res) => {
 });
 
 app.get('/api/orders', authMiddleware, async (req: AuthRequest, res) => {
+  const { filter } = req.query;
+  
+  const where: any = { restaurantId: req.restaurantId };
+  
+  // Se o filtro for 'today', mostramos apenas pedidos de hoje ou pedidos que não estão finalizados/cancelados
+  if (filter === 'today') {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // Pegamos a sessão aberta para filtrar os pedidos de hoje por ela
+    const activeSession = await prisma.cashSession.findFirst({
+      where: { restaurantId: req.restaurantId, status: 'OPEN' },
+      orderBy: { openedAt: 'desc' }
+    });
+    
+    where.AND = [
+      { restaurantId: req.restaurantId },
+      {
+        OR: [
+          // 1. Pedidos desta sessão que ainda NÃO foram totalmente finalizados (Entregues/Pagos)
+          ...(activeSession ? [{ 
+            AND: [
+              { cashSessionId: activeSession.id },
+              { status: { notIn: ['PAID', 'DELIVERED', 'RETIRED', 'CANCELLED'] } }
+            ]
+          }] : []),
+          
+          // 2. Pedidos "Sobreviventes": Criados hoje (ou antes), mas que ainda estão ativos/pendentes
+          { 
+            status: { in: ['PENDING', 'OPEN', 'CONFIRMED', 'PREPARING', 'READY', 'OUT_FOR_DELIVERY'] }
+          }
+        ]
+      }
+    ];
+
+    // Removemos o restaurantId do nível superior pois já está dentro do AND
+    delete where.restaurantId;
+  }
+
   const orders = await prisma.order.findMany({
-    where: { restaurantId: req.restaurantId },
+    where,
     orderBy: { createdAt: 'desc' },
     include: {
       items: {
@@ -2678,7 +2894,7 @@ app.get('/api/orders', authMiddleware, async (req: AuthRequest, res) => {
 
 app.post('/api/orders', async (req: TenantRequest, res) => {
   try {
-    const { customerName, phone, address, paymentMethod, items, subtotal, deliveryFee, total, notes, cpf, changeFor } = req.body;
+    const { customerName, phone, address, paymentMethod, items, subtotal, deliveryFee, total, notes, cpf, changeFor, tableNumber } = req.body;
 
     const normalizedItems = Array.isArray(items)
       ? items.map((item: any) => ({
@@ -2807,22 +3023,32 @@ app.post('/api/orders', async (req: TenantRequest, res) => {
         }
       }
 
-      return tx.order.create({
-        data: {
-          customerName,
-          phone,
-          address,
-          paymentMethod,
-          cpf,
-          changeFor,
-          subtotal: subtotal || (total - (deliveryFee || 0)),
-          deliveryFee: deliveryFee || 0,
-          total,
-          notes,
-          restaurantId: req.restaurantId!,
-          customerId,
-          status: 'PENDING',
-          items: {
+    const activeSession = await prisma.cashSession.findFirst({
+      where: {
+        restaurantId: req.restaurantId,
+        status: 'OPEN',
+      },
+      orderBy: { openedAt: 'desc' },
+    });
+
+    return tx.order.create({
+      data: {
+        customerName,
+        phone,
+        address,
+        paymentMethod,
+        cpf,
+        changeFor,
+        subtotal: subtotal || (total - (deliveryFee || 0)),
+        deliveryFee: deliveryFee || 0,
+        total,
+        notes,
+        tableNumber: tableNumber ? Number(tableNumber) : null,
+        restaurantId: req.restaurantId!,
+        customerId,
+        cashSessionId: activeSession ? activeSession.id : null,
+        status: 'PENDING',
+        items: {
             create: normalizedItems.map((item: any) => ({
               productId: item.productId,
               name: item.name,
@@ -2871,6 +3097,112 @@ app.post('/api/orders', async (req: TenantRequest, res) => {
   }
 });
 
+// Mesas
+app.get('/api/tables', authMiddleware, async (req: AuthRequest, res) => {
+  try {
+    const settings = await prisma.settings.findUnique({
+      where: { restaurantId: req.restaurantId },
+      select: { tableCount: true },
+    });
+
+    const activeOrders = await prisma.order.findMany({
+      where: {
+        restaurantId: req.restaurantId,
+        tableNumber: { not: null },
+        status: { notIn: ['PAID', 'CANCELLED', 'DELIVERED', 'RETIRED'] },
+      },
+      include: {
+        items: true,
+        customer: true,
+      },
+    });
+
+    const tableCount = settings?.tableCount || 0;
+    const tables = Array.from({ length: tableCount }, (_, i) => {
+      const tableNumber = i + 1;
+      const orders = activeOrders.filter((o) => o.tableNumber === tableNumber);
+      return {
+        tableNumber,
+        isOccupied: orders.length > 0,
+        orders,
+      };
+    });
+
+    res.json(tables);
+  } catch (error) {
+    console.error('Erro ao buscar mesas:', error);
+    res.status(500).json({ error: 'Erro ao buscar mesas.' });
+  }
+});
+
+// Adicionar itens a um pedido existente (Mesa em Aberto)
+app.post('/api/orders/:id/items', authMiddleware, async (req: AuthRequest, res) => {
+  try {
+    const orderId = Number.parseInt(req.params.id, 10);
+    const { items } = req.body;
+
+    if (!Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ error: 'Nenhum item informado.' });
+    }
+
+    const order = await prisma.order.findFirst({
+      where: { id: orderId, restaurantId: req.restaurantId },
+    });
+
+    if (!order) {
+      return res.status(404).json({ error: 'Pedido não encontrado.' });
+    }
+
+    const normalizedItems = items.map((item: any) => ({
+      orderId,
+      productId: Number(item.productId || item.id),
+      name: item.name,
+      variation: item.variation,
+      quantity: Number(item.quantity || 0),
+      price: Number(item.price || 0),
+      observations: item.observations,
+      addons: item.addons,
+      removals: item.removals,
+    }));
+
+    const result = await prisma.$transaction(async (tx) => {
+      // Registrar os novos itens
+      await tx.orderItem.createMany({
+        data: normalizedItems,
+      });
+
+      // Recalcular totais do pedido
+      const allItems = await tx.orderItem.findMany({ where: { orderId } });
+      const newSubtotal = allItems.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+      const newTotal = newSubtotal + (order.deliveryFee || 0);
+
+      const updatedOrder = await tx.order.update({
+        where: { id: orderId },
+        data: {
+          subtotal: newSubtotal,
+          total: newTotal,
+        },
+        include: {
+          items: true,
+          customer: true,
+        },
+      });
+
+      return updatedOrder;
+    });
+
+    if (order.status !== 'PAID') {
+      io.emit(`new_order_${req.restaurant?.slug}`, result);
+    }
+    
+    io.emit(`order_updated_${req.restaurant?.slug}`, result);
+    res.json(result);
+  } catch (error) {
+    console.error('Erro ao adicionar itens ao pedido:', error);
+    res.status(400).json({ error: 'Erro ao adicionar itens.' });
+  }
+});
+
 app.patch('/api/orders/:id', authMiddleware, async (req: AuthRequest, res) => {
   try {
     const orderId = Number.parseInt(req.params.id, 10);
@@ -2879,8 +3211,18 @@ app.patch('/api/orders/:id', authMiddleware, async (req: AuthRequest, res) => {
     }
 
     const nextStatus = String(req.body?.status || '').trim().toUpperCase();
+    const paymentMethod = req.body?.paymentMethod ? String(req.body.paymentMethod).toUpperCase() : null;
+
     if (!nextStatus) {
       return res.status(400).json({ error: 'Status é obrigatório.' });
+    }
+
+    if (nextStatus === 'PAID' && !paymentMethod) {
+      // Se estiver finalizando o pedido (PAID), a forma de pagamento passa a ser obrigatória
+      const existingPayment = await prisma.order.findUnique({ where: { id: orderId }, select: { paymentMethod: true } });
+      if (!existingPayment?.paymentMethod) {
+        return res.status(400).json({ error: 'Forma de pagamento é obrigatória para finalizar o pedido.' });
+      }
     }
 
     const order = await prisma.order.findFirst({
@@ -2903,13 +3245,19 @@ app.patch('/api/orders/:id', authMiddleware, async (req: AuthRequest, res) => {
     const allowedTransitions = ORDER_STATUS_FLOW_BY_MODE[orderMode][order.status] || [];
 
     if (!allowedTransitions.includes(nextStatus)) {
-      return res.status(409).json({
-        error: `Transição inválida para ${orderMode}.`,
-        currentStatus: order.status,
-        attemptedStatus: nextStatus,
-        orderMode,
-        allowedTransitions,
-      });
+      // Se for um pedido antigo (RETIRED ou DELIVERED) e estivermos tentando marcar como PAID,
+      // abrimos uma exceção para permitir a liquidação financeira.
+      const isForcePaid = nextStatus === 'PAID' && ['RETIRED', 'DELIVERED'].includes(order.status);
+      
+      if (!isForcePaid) {
+        return res.status(409).json({
+          error: `Transição inválida para ${orderMode}.`,
+          currentStatus: order.status,
+          attemptedStatus: nextStatus,
+          orderMode,
+          allowedTransitions,
+        });
+      }
     }
 
     const updatedOrder = await prisma.order.update({
@@ -2917,7 +3265,18 @@ app.patch('/api/orders/:id', authMiddleware, async (req: AuthRequest, res) => {
         id: orderId,
         restaurantId: req.restaurantId,
       },
-      data: { status: nextStatus as OrderStatus },
+      data: { 
+        status: nextStatus as OrderStatus,
+        paymentMethod: (paymentMethod ? (paymentMethod as PaymentMethod) : undefined) as any,
+        // Ao marcar como pago ou mudar status durante um turno, garante que o pedido se vincule ao caixa atual se ainda não tiver vínculo
+        ...(nextStatus === 'PAID' ? {
+          cashSessionId: await prisma.cashSession.findFirst({
+            where: { restaurantId: req.restaurantId, status: 'OPEN' },
+            orderBy: { openedAt: 'desc' },
+            select: { id: true }
+          }).then(s => s?.id || null)
+        } : {})
+      },
     });
 
     io.emit(`order_status_updated_${req.restaurant?.slug}`, updatedOrder);
@@ -2986,7 +3345,7 @@ app.get('/api/cashier/session', authMiddleware, async (req: AuthRequest, res) =>
       prisma.order.aggregate({
         where: {
           restaurantId: req.restaurantId,
-          createdAt: { gte: activeSession.countFromDate ?? activeSession.openedAt },
+          cashSessionId: activeSession.id,
           status: { in: CASH_COUNTED_ORDER_STATUSES },
         },
         _sum: { total: true },
@@ -2994,7 +3353,7 @@ app.get('/api/cashier/session', authMiddleware, async (req: AuthRequest, res) =>
       prisma.order.aggregate({
         where: {
           restaurantId: req.restaurantId,
-          createdAt: { gte: activeSession.countFromDate ?? activeSession.openedAt },
+          cashSessionId: activeSession.id,
           status: { in: CASH_COUNTED_ORDER_STATUSES },
           paymentMethod: 'CASH',
         },
@@ -3003,7 +3362,7 @@ app.get('/api/cashier/session', authMiddleware, async (req: AuthRequest, res) =>
       prisma.order.aggregate({
         where: {
           restaurantId: req.restaurantId,
-          createdAt: { gte: activeSession.countFromDate ?? activeSession.openedAt },
+          cashSessionId: activeSession.id,
           status: { in: CASH_COUNTED_ORDER_STATUSES },
           paymentMethod: 'CARD',
         },
@@ -3012,7 +3371,7 @@ app.get('/api/cashier/session', authMiddleware, async (req: AuthRequest, res) =>
       prisma.order.aggregate({
         where: {
           restaurantId: req.restaurantId,
-          createdAt: { gte: activeSession.countFromDate ?? activeSession.openedAt },
+          cashSessionId: activeSession.id,
           status: { in: CASH_COUNTED_ORDER_STATUSES },
           paymentMethod: 'DEBIT',
         },
@@ -3021,7 +3380,7 @@ app.get('/api/cashier/session', authMiddleware, async (req: AuthRequest, res) =>
       prisma.order.aggregate({
         where: {
           restaurantId: req.restaurantId,
-          createdAt: { gte: activeSession.countFromDate ?? activeSession.openedAt },
+          cashSessionId: activeSession.id,
           status: { in: CASH_COUNTED_ORDER_STATUSES },
           paymentMethod: 'CREDIT',
         },
@@ -3030,7 +3389,7 @@ app.get('/api/cashier/session', authMiddleware, async (req: AuthRequest, res) =>
       prisma.order.aggregate({
         where: {
           restaurantId: req.restaurantId,
-          createdAt: { gte: activeSession.countFromDate ?? activeSession.openedAt },
+          cashSessionId: activeSession.id,
           status: { in: CASH_COUNTED_ORDER_STATUSES },
           paymentMethod: 'PIX',
         },
@@ -3042,7 +3401,7 @@ app.get('/api/cashier/session', authMiddleware, async (req: AuthRequest, res) =>
       prisma.order.findMany({
         where: {
           restaurantId: req.restaurantId,
-          createdAt: { gte: activeSession.countFromDate ?? activeSession.openedAt },
+          cashSessionId: activeSession.id,
           status: { in: CASH_COUNTED_ORDER_STATUSES },
         },
         orderBy: { createdAt: 'desc' },
@@ -3233,6 +3592,9 @@ app.post('/api/cashier/direct-sales', authMiddleware, async (req: AuthRequest, r
       ? req.body.items.map((item: any) => ({
         productId: Number(item.productId || item.id),
         quantity: Number(item.quantity || 0),
+        observations: item.observations ? String(item.observations).trim() : null,
+        addons: Array.isArray(item.addons) ? item.addons : [],
+        removals: Array.isArray(item.removals) ? item.removals : [],
       }))
       : [];
     const cashReceivedAmount = req.body?.cashReceivedAmount !== undefined && req.body?.cashReceivedAmount !== null
@@ -3240,9 +3602,17 @@ app.post('/api/cashier/direct-sales', authMiddleware, async (req: AuthRequest, r
       : null;
     const customerName = req.body?.customerName ? String(req.body.customerName).trim() : 'Venda Balcao';
     const notes = req.body?.notes ? String(req.body.notes).trim() : null;
+    const tableNumber = req.body?.tableNumber ? Number(req.body.tableNumber) : null;
+    const sendToKitchen = Boolean(req.body?.sendToKitchen);
 
-    if (!['PIX', 'CASH', 'CARD', 'DEBIT', 'CREDIT'].includes(paymentMethod)) {
-      return res.status(400).json({ error: 'Forma de pagamento invalida.' });
+    console.log('[DEBUG] Direct Sale Body:', JSON.stringify(req.body, null, 2));
+
+    // Permitir pagamento nulo apenas se for uma mesa ou se solicitado explicitamente como 'OPEN' (Venda Balcão Pendente)
+    const isValidPayment = ['PIX', 'CASH', 'CARD', 'DEBIT', 'CREDIT'].includes(paymentMethod);
+    const isPendingPayment = paymentMethod === 'OPEN';
+
+    if (!isValidPayment && !isPendingPayment && !tableNumber) {
+      return res.status(400).json({ error: 'Forma de pagamento obrigatoria para vendas sem mesa.' });
     }
 
     if (items.length === 0 || items.some((item: any) => !item.productId || item.quantity <= 0)) {
@@ -3286,21 +3656,28 @@ app.post('/api/cashier/direct-sales', authMiddleware, async (req: AuthRequest, r
 
       const productMap = new Map(products.map((product: any) => [product.id, product]));
 
-      const normalizedItems = items.map((item: any) => {
-        const product = productMap.get(item.productId);
+      const normalizedItems = items.map((itemSnapshot: any) => {
+        const product = productMap.get(itemSnapshot.productId);
         if (!product) {
           throw new Error('PRODUCT_NOT_FOUND');
         }
 
         const unitPrice = Number((product.price * (1 - (Number(product.discountPercent || 0) / 100))).toFixed(2));
+        const addonsTotal = Array.isArray(itemSnapshot.addons)
+          ? itemSnapshot.addons.reduce((acc: number, a: any) => acc + (Number(a.price) || 0), 0)
+          : 0;
+        const finalUnitPrice = unitPrice + addonsTotal;
 
         return {
           productId: product.id,
           name: product.name,
-          quantity: item.quantity,
-          price: unitPrice,
-          total: Number((unitPrice * item.quantity).toFixed(2)),
+          quantity: itemSnapshot.quantity,
+          price: finalUnitPrice,
+          total: Number((finalUnitPrice * itemSnapshot.quantity).toFixed(2)),
           trackStock: Boolean(product.trackStock),
+          observations: itemSnapshot.observations,
+          addons: itemSnapshot.addons || [],
+          removals: itemSnapshot.removals || [],
         };
       });
 
@@ -3337,14 +3714,16 @@ app.post('/api/cashier/direct-sales', authMiddleware, async (req: AuthRequest, r
       return tx.order.create({
         data: {
           customerName,
-          paymentMethod: paymentMethod as PaymentMethod,
+          paymentMethod: (isValidPayment ? (paymentMethod as PaymentMethod) : null) as any,
           subtotal,
           deliveryFee: 0,
           total: subtotal,
           notes: notes ? `[VENDA_DIRETA] ${notes}` : '[VENDA_DIRETA]',
+          tableNumber,
           changeFor: paymentMethod === 'CASH' && cashReceivedAmount !== null ? String(cashReceivedAmount) : null,
+          cashSessionId: activeSession.id,
           address: {
-            type: 'DINE_IN',
+            type: tableNumber ? 'DINE_IN' : 'PICKUP',
             details: {
               source: 'DIRECT_CASHIER',
               cashSessionId: activeSession.id,
@@ -3353,13 +3732,16 @@ app.post('/api/cashier/direct-sales', authMiddleware, async (req: AuthRequest, r
             },
           },
           restaurantId: req.restaurantId!,
-          status: 'DELIVERED',
+          status: (tableNumber || isPendingPayment) ? 'OPEN' : 'PAID',
           items: {
             create: normalizedItems.map((item: any) => ({
               productId: item.productId,
               name: item.name,
               quantity: item.quantity,
               price: item.price,
+              observations: item.observations,
+              addons: item.addons,
+              removals: item.removals,
             })),
           },
         },
@@ -3374,7 +3756,12 @@ app.post('/api/cashier/direct-sales', authMiddleware, async (req: AuthRequest, r
       changeDue: paymentMethod === 'CASH' && cashReceivedAmount !== null ? Number((cashReceivedAmount - order.total).toFixed(2)) : 0,
       cashSessionId: activeSession.id,
       notes,
+      tableNumber,
     });
+
+    if (sendToKitchen) {
+      io.emit(`new_order_${req.restaurant?.slug}`, order);
+    }
 
     res.status(201).json(order);
   } catch (error) {
@@ -3423,6 +3810,20 @@ app.post('/api/cashier/session/close', authMiddleware, async (req: AuthRequest, 
 
     if (!activeSession) {
       return res.status(409).json({ error: 'Nenhuma sessão de caixa aberta.' });
+    }
+
+    // Bloquear fechamento se houver pedidos em aberto
+    const activeOrdersCount = await prisma.order.count({
+      where: {
+        restaurantId: req.restaurantId,
+        status: { in: ['PENDING', 'OPEN', 'CONFIRMED', 'PREPARING', 'READY', 'OUT_FOR_DELIVERY'] },
+      },
+    });
+
+    if (activeOrdersCount > 0) {
+      return res.status(400).json({
+        error: `Não é possível fechar o caixa. Existem ${activeOrdersCount} conta(s) em aberto (Mesa ou Balcão). Finalize todos os pagamentos antes de fechar o turno.`,
+      });
     }
 
     const [suppliesAgg, withdrawalsAgg, adjustmentsAgg, salesAgg, cashSalesAgg, debitSalesAgg, creditSalesAgg, cardSalesAgg, pixSalesAgg, settings] = await Promise.all([

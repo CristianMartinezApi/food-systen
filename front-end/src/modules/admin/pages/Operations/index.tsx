@@ -6,14 +6,11 @@ import {
   Wallet,
   AlertTriangle,
   RefreshCw,
-  DollarSign,
-  TrendingUp,
-  Clock,
 } from "lucide-react";
 import OrdersPage from "../Orders";
 import CashierPage from "../Cashier";
 import { api } from "../../../../core/config/api";
-import { formatCurrency } from "../../../../shared/utils";
+import { OperationHeader } from "../../components/operations/OperationHeader";
 
 type MobileTab = "ORDERS" | "CASHIER";
 
@@ -35,6 +32,8 @@ export default function OperationsPage() {
   const [sessionSummary, setSessionSummary] = useState<SessionSummary | null>(null);
   const [sessionLoading, setSessionLoading] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [isMuted, setIsMuted] = useState(false);
+  const [activeOrderCount, setActiveOrderCount] = useState(0);
 
   const loadSession = useCallback(async () => {
     try {
@@ -64,101 +63,99 @@ export default function OperationsPage() {
   const isOpen = sessionSummary?.status === "OPEN";
 
   return (
-    <div className="space-y-4">
-      {/* ── HEADER FIXO DE SESSÃO ── */}
-      <header className="sticky top-0 z-30 rounded-2xl border border-slate-100 bg-white shadow-sm px-4 py-3 lg:px-6">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${isOpen ? "bg-emerald-500 animate-pulse shadow-[0_0_6px_rgba(16,185,129,0.6)]" : "bg-slate-300"}`} />
-            <div className="min-w-0">
-              <p className="text-[9px] font-black uppercase tracking-[0.22em] text-slate-400">
-                Operação do Dia
-              </p>
-              <p className="text-sm font-black text-slate-950 uppercase tracking-tight truncate">
-                {sessionLoading
-                  ? "Carregando..."
-                  : isOpen
-                  ? `Sessão #${sessionSummary!.id} aberta · ${sessionSummary?.openedBy?.name || "Operador"}`
-                  : "Nenhuma sessão aberta"}
-              </p>
-            </div>
-          </div>
-
-          {isOpen && sessionSummary?.totals && (
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-100 bg-emerald-50 px-3 py-1.5">
-                <TrendingUp size={12} className="text-emerald-600" />
-                <span className="text-[10px] font-black text-emerald-700 uppercase tracking-[0.12em]">
-                  {formatCurrency(sessionSummary.totals.sales)}
-                </span>
-              </div>
-              <div className="hidden sm:inline-flex items-center gap-1.5 rounded-xl border border-violet-100 bg-violet-50 px-3 py-1.5">
-                <DollarSign size={12} className="text-violet-600" />
-                <span className="text-[10px] font-black text-violet-700 uppercase tracking-[0.12em]">
-                  Esp. {formatCurrency(sessionSummary.totals.expectedAmount)}
-                </span>
-              </div>
-              <div className="hidden md:inline-flex items-center gap-1.5 rounded-xl border border-slate-100 bg-slate-50 px-3 py-1.5">
-                <Clock size={12} className="text-slate-500" />
-                <span className="text-[10px] font-black text-slate-600 uppercase tracking-[0.12em]">
-                  {new Date(sessionSummary.openedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                </span>
-              </div>
-            </div>
-          )}
-
-          <button
-            type="button"
-            onClick={handleRefresh}
-            className="h-8 w-8 rounded-xl border border-slate-100 bg-slate-50 text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors flex items-center justify-center shrink-0"
-            title="Atualizar"
-          >
-            <RefreshCw size={14} />
-          </button>
-        </div>
-      </header>
+    <div className="min-h-screen bg-slate-50/30 p-4 sm:p-6 lg:p-8">
+      <div className="space-y-4 max-w-[1600px] mx-auto">
+        <OperationHeader
+        isOpen={isOpen}
+        sessionSummary={sessionSummary}
+        sessionLoading={sessionLoading}
+        onRefresh={handleRefresh}
+        isMuted={isMuted}
+        onToggleMute={() => setIsMuted(!isMuted)}
+        activeOrderCount={activeOrderCount}
+      />
 
       {/* ── BANNER: CAIXA FECHADO ── */}
       {!sessionLoading && !isOpen && (
-        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 flex items-start gap-3">
-          <AlertTriangle size={18} className="text-amber-600 shrink-0 mt-0.5" />
-          <div>
-            <p className="text-sm font-black text-amber-800 uppercase tracking-tight">
-              Caixa não iniciado
-            </p>
-            <p className="text-xs text-amber-700 mt-1">
-              Abra o caixa na aba <strong>Caixa e Balcão</strong> para habilitar o registro de vendas e movimentos.
-              Pedidos online continuam sendo recebidos e ficam na fila.
-            </p>
+        <div className="rounded-2xl border border-amber-200 bg-amber-50/50 px-5 py-4 flex items-center justify-between gap-4 backdrop-blur-sm">
+          <div className="flex items-start gap-3">
+            <AlertTriangle size={18} className="text-amber-600 shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-black text-amber-800 uppercase tracking-tight leading-tight">
+                Fluxo de caixa não interrompido
+              </p>
+              <p className="text-xs text-amber-700 mt-1 opacity-80">
+                O registro de vendas diretas está desabilitado. Pedidos online continuam chegando normalmente.
+              </p>
+            </div>
           </div>
+          <button
+            onClick={() => setMobileTab("CASHIER")}
+            className="hidden sm:block h-9 px-4 rounded-xl bg-amber-600 text-white text-[10px] font-black uppercase tracking-widest hover:bg-amber-700 transition-colors shrink-0"
+          >
+            Abrir Agora
+          </button>
         </div>
       )}
 
-      {/* ── LAYOUT DESKTOP: COLUNAS ── */}
-      <div className="hidden lg:grid lg:grid-cols-[65%_35%] gap-4">
-        <section className="rounded-2xl border border-slate-100 bg-white shadow-sm overflow-hidden">
-          <div className="flex items-center gap-2 px-6 pt-5 pb-3 border-b border-slate-50">
-            <ShoppingBag size={16} className="text-primary" />
-            <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-950">
-              Pedidos Online
-            </h2>
+      {/* ── LAYOUT DESKTOP: COMANDO CENTRAL ── */}
+      <div className="hidden lg:grid lg:grid-cols-[68%_32%] gap-6 items-start">
+        <main className="space-y-4">
+          <div className="flex items-center justify-between px-1">
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-slate-900 shadow-[0_0_0_4px_rgba(15,23,42,0.06)]" />
+              <h2 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-900">
+                Fluxo de Expedicao
+              </h2>
+            </div>
           </div>
-          <div className="p-2">
-            <OrdersPage key={`orders-${refreshKey}`} />
-          </div>
-        </section>
+          <section className="rounded-3xl border border-slate-100 bg-white shadow-xl shadow-slate-200/40 overflow-hidden">
+            <div className="p-4 min-h-[700px]">
+              <OrdersPage
+                key={`orders-${refreshKey}`}
+                isCompact={true}
+                onOrdersChange={(orders) => {
+                  const pending = orders.filter(o => ["PENDING", "CONFIRMED"].includes(o.status)).length;
+                  setActiveOrderCount(pending);
+                }}
+              />
+            </div>
+          </section>
+        </main>
 
-        <section className="rounded-2xl border border-slate-100 bg-white shadow-sm overflow-hidden">
-          <div className="flex items-center gap-2 px-6 pt-5 pb-3 border-b border-slate-50">
-            <Wallet size={16} className="text-primary" />
-            <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-950">
-              Caixa e Balcão
-            </h2>
+        <aside className="space-y-4 sticky top-6">
+          <div className="flex items-center justify-between px-1">
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-slate-900 shadow-[0_0_0_4px_rgba(15,23,42,0.06)]" />
+              <h2 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-900">
+                Painel Financeiro
+              </h2>
+            </div>
           </div>
-          <div className="p-2">
-            <CashierPage key={`cashier-${refreshKey}`} />
-          </div>
-        </section>
+          <section className="rounded-3xl border border-slate-100 bg-white shadow-xl shadow-slate-200/40 overflow-hidden">
+            <div className="p-3 max-h-[calc(100vh-140px)] overflow-y-auto custom-scrollbar">
+              <CashierPage
+                key={`cashier-${refreshKey}`}
+                isSidebar
+                onOrderCreated={handleRefresh}
+                onTotalsChange={(t) => {
+                  setSessionSummary((prev) => 
+                     ({
+                        ...(prev || { id: 0, status: 'CLOSED', openingAmount: 0, openedAt: new Date().toISOString() }),
+                        status: t.expectedAmount > 0 ? "OPEN" : (prev?.status || 'CLOSED'),
+                        totals: {
+                            expectedAmount: t.expectedAmount || 0,
+                            sales: t.sales || 0,
+                            cashSales: t.cashSales || 0,
+                            movementsCount: t.movementsCount || 0
+                        }
+                    })
+                  );
+                }}
+              />
+            </div>
+          </section>
+        </aside>
       </div>
 
       {/* ── LAYOUT MOBILE/TABLET: ABAS ── */}
@@ -198,6 +195,7 @@ export default function OperationsPage() {
             <CashierPage key={`cashier-mobile-${refreshKey}`} />
           </section>
         )}
+      </div>
       </div>
     </div>
   );

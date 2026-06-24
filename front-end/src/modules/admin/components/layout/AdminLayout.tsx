@@ -15,7 +15,9 @@ import {
   Users,
   CreditCard,
   Wallet,
-  ShieldCheck
+  ShieldCheck,
+  Grid3X3,
+  Utensils
 } from "lucide-react";
 import { cn } from "../../../../shared/utils";
 import { motion, AnimatePresence } from "framer-motion";
@@ -53,6 +55,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
   const [slug, setSlug] = useState<string>("");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [userRole, setUserRole] = useState<string>("");
+  const [userName, setUserName] = useState<string>("");
   const [pendingCount, setPendingCount] = useState<number | null>(null);
   const [isNoticesOpen, setIsNoticesOpen] = useState(false);
   const [pendingUsers, setPendingUsers] = useState<PendingUserNotice[]>([]);
@@ -76,8 +79,10 @@ export function AdminLayout({ children }: AdminLayoutProps) {
       try {
         const parsedUser = JSON.parse(userData);
         setUserRole(parsedUser.role || "");
+        setUserName(parsedUser.name || "");
       } catch {
         setUserRole("");
+        setUserName("");
       }
     }
   }, []);
@@ -204,13 +209,32 @@ export function AdminLayout({ children }: AdminLayoutProps) {
 
   let menuItems = [
     { icon: LayoutDashboard, label: "Painel", path: "/admin" },
+    { icon: Utensils, label: "Garçom", path: "/admin/garcom" },
     { icon: ShieldCheck, label: "Operação", path: "/admin/operacao" },
     { icon: Wallet, label: "Caixa", path: "/admin/caixa" },
+    { icon: Grid3X3, label: "Mesas", path: "/admin/tables" },
     { icon: ShoppingBag, label: "Pedidos", path: "/admin/orders" },
     { icon: Package, label: "Produtos", path: "/admin/products" },
     { icon: Tags, label: "Categorias", path: "/admin/categories" },
     { icon: Settings, label: "Configurações", path: "/admin/settings" },
   ];
+
+  // Restrict menu for EMPLOYEE (Waiters)
+  if (userRole === 'EMPLOYEE') {
+    menuItems = [
+      { icon: Utensils, label: "Garçom", path: "/admin/garcom" },
+    ];
+  }
+
+  // Restrict menu for CASHIER
+  if (userRole === 'CASHIER') {
+    menuItems = [
+      { icon: Wallet, label: "Caixa", path: "/admin/caixa" },
+      { icon: Utensils, label: "Garçom", path: "/admin/garcom" },
+      { icon: Grid3X3, label: "Mesas", path: "/admin/tables" },
+      { icon: ShoppingBag, label: "Pedidos", path: "/admin/orders" },
+    ];
+  }
 
   // Simplify menu for SUPER_ADMIN: only show core management views
   if (userRole === 'SUPER_ADMIN') {
@@ -222,6 +246,14 @@ export function AdminLayout({ children }: AdminLayoutProps) {
       { icon: Settings, label: "Provisionamento", path: "/admin/provisioning" },
     ];
   }
+
+  const roleLabels: Record<string, string> = {
+    "SUPER_ADMIN": "Master",
+    "OWNER": "Proprietário",
+    "MANAGER": "Gerente",
+    "CASHIER": "Operador de Caixa",
+    "EMPLOYEE": "Funcionário"
+  };
 
   const storeUrl = typeof window !== 'undefined' ? `${window.location.origin}/${slug}` : '';
 
@@ -313,13 +345,28 @@ export function AdminLayout({ children }: AdminLayoutProps) {
         )}
 
         <div className="p-8 border-t border-slate-50">
-          <div className="bg-slate-50 rounded-4xl p-5 flex items-center gap-4 mb-6 border border-slate-100">
-            <div className="w-12 h-12 rounded-xl bg-white border flex items-center justify-center shadow-sm">
-              <User size={20} className="text-slate-200" />
+          <div className="bg-slate-50 rounded-4xl p-5 flex items-center gap-4 mb-6 border border-slate-100 shadow-inner">
+            <div className="w-12 h-12 rounded-2xl bg-white border border-slate-200 flex items-center justify-center shadow-sm shrink-0">
+              <User size={22} className="text-slate-900" />
             </div>
-            <div className="truncate">
-              <p className="text-body-strong font-body font-bold text-slate-950 truncate uppercase tracking-tight">Diretoria</p>
-              <p className="text-label font-body font-medium text-slate-400 tracking-[0.06em] truncate uppercase">{settings?.storeName || 'Master Admin'}</p>
+            <div className="truncate flex-1">
+              <p className="text-body-strong font-display font-bold text-slate-950 truncate uppercase tracking-tight leading-none mb-1">
+                {userName || "Operador"}
+              </p>
+              <div className="flex items-center gap-1.5 min-w-0">
+                <span className={cn(
+                  "px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-widest leading-none",
+                  userRole === "SUPER_ADMIN" ? "bg-slate-950 text-white" :
+                  userRole === "OWNER" ? "bg-emerald-100 text-emerald-800" :
+                  userRole === "MANAGER" ? "bg-amber-100 text-amber-800" :
+                  "bg-slate-100 text-slate-600"
+                )}>
+                  {roleLabels[userRole] || userRole}
+                </span>
+                <p className="text-[10px] font-body font-medium text-slate-400 tracking-[0.06em] truncate uppercase">
+                  {settings?.storeName || 'Food System'}
+                </p>
+              </div>
             </div>
           </div>
           <button

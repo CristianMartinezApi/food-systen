@@ -31,6 +31,7 @@ import { sendToWhatsApp } from "../../../../shared/utils/whatsapp";
 import { SAAS_SUPPORT_PHONE } from "../../../../core/config/support";
 import ChangePassword from "../../components/ChangePassword";
 import PixSettings from "../../components/PixSettings";
+import TeamSettings from "../../components/TeamSettings";
 
 const DAY_OPTIONS = [
     { key: "seg", label: "Segunda" },
@@ -295,6 +296,11 @@ export default function SettingsPage() {
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 md:gap-10">
                     {/* Coluna Principal - Informações */}
                     <div className="lg:col-span-2 space-y-4 sm:space-y-6 md:space-y-10">
+                        {/* Gestão de Equipe */}
+                        <div className="settings-panel">
+                            <TeamSettings />
+                        </div>
+
                         <section className="settings-panel bg-white rounded-2xl sm:rounded-[3rem] border border-slate-50 p-4 sm:p-6 md:p-10 shadow-sm relative overflow-hidden">
                             <div className="flex items-center gap-3 sm:gap-4 mb-6 sm:mb-10">
                                 <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-400">
@@ -709,18 +715,35 @@ export default function SettingsPage() {
                                     </div>
                                     <p className="text-[10px] text-slate-400 font-bold uppercase mt-1 ml-1">No fechamento do caixa, divergências iguais ou acima desse valor exigem justificativa.</p>
                                 </div>
-                            </div>
-                        </section>
-
-                        <section className="bg-white rounded-2xl sm:rounded-[2.5rem] border border-slate-100 p-4 sm:p-6 md:p-10 shadow-sm">
-                            <div className="flex items-center gap-3 mb-8">
-                                <div className="w-10 h-10 bg-blue-500/10 rounded-xl flex items-center justify-center text-blue-500">
-                                    <Clock size={20} />
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Número de Mesas</label>
+                                        <div className="relative">
+                                            <div className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300">
+                                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v18"/><path d="m5 8 14 0"/><path d="m5 16 14 0"/></svg>
+                                            </div>
+                                            <input
+                                                type="number"
+                                                min={0}
+                                                max={100}
+                                                value={formData.tableCount || 0}
+                                                onChange={(e) => setFormData({ ...formData, tableCount: Number(e.target.value) })}
+                                                className="w-full h-10 sm:h-12 md:h-14 pl-11 sm:pl-14 pr-4 sm:pr-5 bg-slate-50 border-2 border-transparent focus:border-primary/20 focus:bg-white rounded-2xl transition-all font-bold text-slate-700 outline-none"
+                                            />
+                                        </div>
+                                        <p className="text-[10px] text-slate-400 font-bold uppercase mt-1 ml-1">Ative o controle de mesas no PDV informando quantas mesas possui.</p>
+                                    </div>
                                 </div>
-                                <h3 className="font-black text-xl text-slate-900 uppercase tracking-tighter">Funcionamento</h3>
-                            </div>
+                            </section>
 
-                            <div className="space-y-6">
+                            <section className="bg-white rounded-2xl sm:rounded-[2.5rem] border border-slate-100 p-4 sm:p-6 md:p-10 shadow-sm">
+                                <div className="flex items-center gap-3 mb-8">
+                                    <div className="w-10 h-10 bg-blue-500/10 rounded-xl flex items-center justify-center text-blue-500">
+                                        <Clock size={20} />
+                                    </div>
+                                    <h3 className="font-black text-xl text-slate-900 uppercase tracking-tighter">Funcionamento</h3>
+                                </div>
+
+                                <div className="space-y-6">
                                 <div className="flex items-center justify-between p-6 bg-slate-50 rounded-3xl border border-slate-100 gap-6">
                                     <div>
                                         <p className="font-black text-slate-900 uppercase tracking-tight">Status Automático</p>

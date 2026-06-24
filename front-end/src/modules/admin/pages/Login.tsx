@@ -44,6 +44,10 @@ export default function Login() {
       toast.success("Bem-vindo de volta!");
       if (response.user.role === 'SUPER_ADMIN') {
         router.push("/admin");
+      } else if (response.user.role === 'EMPLOYEE') {
+        router.push("/admin/garcom");
+      } else if (response.user.role === 'CASHIER') {
+        router.push("/admin/caixa");
       } else if (response.user.restaurantId) {
         router.push("/admin");
       } else {

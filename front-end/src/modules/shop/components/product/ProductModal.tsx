@@ -145,7 +145,7 @@ export function ProductModal({ product, isOpen, onClose, editIndex = null, initi
                         animate={{ y: 0, opacity: 1 }}
                         exit={{ y: "100%", opacity: 0 }}
                         transition={{ type: "spring", damping: 25, stiffness: 200 }}
-                        className="bg-slate-100 w-full max-w-none md:max-w-6xl h-[92dvh] md:h-[min(90vh,900px)] rounded-t-[2.5rem] md:rounded-[3rem] overflow-hidden shadow-[0_-15px_60px_rgba(15,23,42,0.15)] md:shadow-[0_35px_80px_rgba(15,23,42,0.28)] relative z-10 flex flex-col md:flex-row"
+                        className="bg-slate-100 w-full max-w-none md:max-w-6xl h-[92dvh] md:h-[min(90vh,900px)] rounded-t-2xl md:rounded-3xl overflow-hidden shadow-[0_-15px_60px_rgba(15,23,42,0.15)] md:shadow-[0_35px_80px_rgba(15,23,42,0.28)] relative z-10 flex flex-col md:flex-row"
                     >
                         <button
                             onClick={onClose}
@@ -171,8 +171,8 @@ export function ProductModal({ product, isOpen, onClose, editIndex = null, initi
 
                             <div className="absolute bottom-6 left-6 right-6 md:hidden">
                                 <div className="flex items-center gap-2 mb-2">
-                                    <span className="h-0.5 w-6 bg-primary" />
-                                    <span className="text-[8px] font-black text-primary uppercase tracking-[0.3em]">Exclusivo</span>
+                                    <span className="h-0.5 w-6 bg-rose-600" />
+                                    <span className="text-[8px] font-black text-rose-600 uppercase tracking-[0.3em]">Exclusivo</span>
                                 </div>
                                 <h2 className="text-3xl font-display font-bold text-white uppercase tracking-tighter drop-shadow-2xl">
                                     {product.name}
@@ -184,8 +184,8 @@ export function ProductModal({ product, isOpen, onClose, editIndex = null, initi
                             <div className="flex-1 overflow-y-auto no-scrollbar p-6 md:p-14 pb-32 md:pb-14">
                                 <div className="hidden md:block mb-12">
                                     <div className="flex items-center gap-3 mb-4">
-                                        <span className="h-0.5 w-10 bg-primary" />
-                                        <span className="text-label font-body font-bold text-primary uppercase tracking-[0.3em] text-[10px]">Criação Exclusiva</span>
+                                        <span className="h-0.5 w-10 bg-rose-600" />
+                                        <span className="text-label font-body font-bold text-rose-600 uppercase tracking-[0.3em] text-[10px]">Criação Exclusiva</span>
                                     </div>
                                     <h2 className="text-display font-display font-bold text-slate-950 uppercase tracking-tighter leading-[0.9] mb-6">
                                         {product.name}
@@ -197,44 +197,54 @@ export function ProductModal({ product, isOpen, onClose, editIndex = null, initi
 
                                 <div className="space-y-12">
                                     {hasProductDiscount(discountPercent) && (
-                                        <section className="rounded-4xl border border-rose-100 bg-rose-50 p-6 flex items-center justify-between gap-6">
+                                        <section className="rounded-xl border border-rose-100 bg-rose-50 p-6 flex items-center justify-between gap-6">
                                             <div>
-                                                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-rose-500">Promoção ativa</p>
+                                                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-rose-600">Promoção ativa</p>
                                                 <p className="text-body-strong font-display font-bold text-slate-950 uppercase tracking-tight mt-2">Desconto de {discountPercent}% aplicado automaticamente</p>
                                             </div>
                                             <div className="text-right">
-                                                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-rose-500 line-through">{formatCurrency(basePrice)}</p>
-                                                <p className="text-heading-2 font-mono font-bold text-rose-500 tracking-tighter">{formatCurrency(discountedBasePrice)}</p>
+                                                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-rose-600 line-through">{formatCurrency(basePrice)}</p>
+                                                <p className="text-heading-2 font-mono font-bold text-rose-600 tracking-tighter">{formatCurrency(discountedBasePrice)}</p>
                                             </div>
                                         </section>
                                     )}
 
                                     {product.sizes && product.sizes.length > 0 && (
                                         <section>
-                                            <h3 className="text-label font-body font-bold text-slate-300 uppercase tracking-[0.2em] mb-6 border-l-2 border-primary pl-4">Selecione o Corte</h3>
-                                            <div className="grid grid-cols-1 gap-4">
+                                            <div className="flex items-center gap-2 mb-4">
+                                                <span className="h-px w-4 bg-rose-600 opacity-50" />
+                                                <h3 className="text-[9px] font-black text-rose-600 uppercase tracking-[0.25em]">Escolha o Tamanho</h3>
+                                            </div>
+                                            <div className="grid grid-cols-1 gap-2.5">
                                                 {product.sizes.map((size: any) => (
                                                     <button
                                                         key={size.name}
                                                         onClick={() => setSelectedSize(size)}
                                                         className={cn(
-                                                            "p-6 rounded-2xl border-2 text-left transition-all duration-500 flex items-center justify-between group",
+                                                            "p-4 rounded-xl border transition-all duration-500 flex items-center justify-between group relative overflow-hidden",
                                                             selectedSize?.name === size.name
-                                                                ? "bg-slate-950 border-slate-950 shadow-xl shadow-slate-950/20 translate-x-2"
-                                                                : "bg-slate-50 border-slate-200 hover:border-slate-300"
+                                                                ? "bg-slate-950 border-slate-900 shadow-xl shadow-slate-950/10"
+                                                                : "bg-white border-slate-100 hover:border-slate-200"
                                                         )}
                                                     >
-                                                        <div className="flex flex-col">
+                                                        <div className="flex flex-col relative z-10 pl-2">
                                                             <span className={cn(
-                                                                "font-display font-bold text-heading-3 uppercase tracking-tight",
+                                                                "font-display font-bold text-[16px] uppercase tracking-tight leading-none transition-colors",
                                                                 selectedSize?.name === size.name ? "text-white" : "text-slate-950"
                                                             )}>{size.name}</span>
-                                                            <span className="text-label font-body font-medium text-slate-400 uppercase tracking-widest text-[10px] mt-1">Porção Individual</span>
+                                                            <span className={cn(
+                                                                "text-[8px] font-black uppercase tracking-widest mt-1.5 transition-opacity",
+                                                                selectedSize?.name === size.name ? "text-rose-500 opacity-100" : "text-slate-400 opacity-60"
+                                                            )}>Seleção Premium</span>
                                                         </div>
                                                         <span className={cn(
-                                                            "font-mono font-bold text-lg",
-                                                            selectedSize?.name === size.name ? "text-primary" : "text-slate-950"
+                                                            "font-mono font-bold text-[16px] relative z-10 px-4 py-1.5 rounded-2xl transition-all",
+                                                            selectedSize?.name === size.name ? "bg-white/10 text-rose-500" : "text-slate-950"
                                                         )}>{formatCurrency(size.price)}</span>
+                                                        
+                                                        {selectedSize?.name === size.name && (
+                                                            <div className="absolute left-0 top-0 bottom-0 w-1 bg-rose-600" />
+                                                        )}
                                                     </button>
                                                 ))}
                                             </div>
@@ -243,38 +253,65 @@ export function ProductModal({ product, isOpen, onClose, editIndex = null, initi
 
                                     {product.addons && product.addons.length > 0 && (
                                         <section>
-                                            <h3 className="text-label font-body font-bold text-slate-300 uppercase tracking-[0.2em] mb-6 border-l-2 border-primary pl-4">Personalização</h3>
-                                            <div className="grid grid-cols-1 gap-4">
+                                            <div className="flex items-center gap-2 mb-4">
+                                                <span className="h-px w-4 bg-rose-600 opacity-50" />
+                                                <h3 className="text-[9px] font-black text-rose-600 uppercase tracking-[0.25em]">Turbine seu Pedido</h3>
+                                            </div>
+                                            <div className="grid grid-cols-1 gap-2.5">
                                                 {product.addons.map((addon: any) => {
                                                     const current = selectedAddons.find(a => a.name === addon.name);
                                                     return (
                                                         <div
                                                             key={addon.name}
                                                             className={cn(
-                                                                "p-6 rounded-2xl border-2 transition-all duration-500 flex items-center justify-between",
-                                                                current ? "bg-slate-50 border-primary/20" : "bg-slate-100 border-slate-200"
+                                                                "p-3.5 pr-4 rounded-xl border transition-all duration-500 flex items-center justify-between group",
+                                                                current 
+                                                                    ? "bg-slate-950 border-slate-900 shadow-xl shadow-slate-950/10" 
+                                                                    : "bg-white border-slate-100 hover:border-slate-200"
                                                             )}
                                                         >
-                                                            <div className="flex flex-col">
-                                                                <span className="font-body font-bold text-slate-900 uppercase tracking-tight">{addon.name}</span>
-                                                                <span className="text-numeric font-mono text-primary font-bold text-sm mt-1">+{formatCurrency(addon.price)}</span>
+                                                            <div className="flex flex-col pl-2">
+                                                                <span className={cn(
+                                                                    "text-[13px] font-bold uppercase tracking-tight leading-tight transition-colors",
+                                                                    current ? "text-white" : "text-slate-900"
+                                                                )}>
+                                                                    {addon.name}
+                                                                </span>
+                                                                <span className={cn(
+                                                                    "font-mono font-bold text-[11px] mt-0.5 transition-colors",
+                                                                    current ? "text-rose-500" : "text-rose-600"
+                                                                )}>
+                                                                    +{formatCurrency(addon.price)}
+                                                                </span>
                                                             </div>
 
-                                                            <div className="flex items-center gap-4 bg-slate-50 p-1.5 rounded-xl shadow-sm border border-slate-200">
+                                                            <div className={cn(
+                                                                "flex items-center h-9 px-1 rounded-2xl transition-all duration-300",
+                                                                current ? "bg-white/10" : "bg-slate-50 shadow-inner"
+                                                            )}>
                                                                 <button
                                                                     onClick={() => updateAddonQuantity(addon, -1)}
-                                                                    className="w-10 h-10 rounded-lg flex items-center justify-center text-slate-400 hover:bg-slate-50 hover:text-rose-500 transition-all"
+                                                                    className={cn(
+                                                                        "w-7 h-7 flex items-center justify-center transition-colors",
+                                                                        current ? "text-white/60 hover:text-white" : "text-slate-400 hover:text-slate-900"
+                                                                    )}
                                                                 >
-                                                                    <Minus size={18} />
+                                                                    <Minus size={12} />
                                                                 </button>
-                                                                <span className="w-8 text-center font-mono font-bold text-slate-950 text-lg">
+                                                                <span className={cn(
+                                                                    "w-7 text-center font-mono font-bold text-[13px] transition-colors",
+                                                                    current ? "text-white" : "text-slate-900"
+                                                                )}>
                                                                     {current?.quantity || 0}
                                                                 </span>
                                                                 <button
                                                                     onClick={() => updateAddonQuantity(addon, 1)}
-                                                                    className="w-10 h-10 rounded-lg bg-slate-950 text-white flex items-center justify-center transition-all hover:bg-black active:scale-95"
+                                                                    className={cn(
+                                                                        "w-7 h-7 rounded-lg flex items-center justify-center transition-all active:scale-90 font-bold",
+                                                                        current ? "bg-rose-600 text-white" : "bg-slate-950 text-white"
+                                                                    )}
                                                                 >
-                                                                    <Plus size={18} />
+                                                                    <Plus size={12} />
                                                                 </button>
                                                             </div>
                                                         </div>
@@ -286,20 +323,34 @@ export function ProductModal({ product, isOpen, onClose, editIndex = null, initi
 
                                     {product.ingredients && product.ingredients.length > 0 && (
                                         <section>
-                                            <h3 className="text-label font-body font-bold text-slate-300 uppercase tracking-[0.2em] mb-6 border-l-2 border-primary pl-4">Retirada de Itens</h3>
-                                            <div className="flex flex-wrap gap-3">
+                                            <div className="flex items-center gap-2 mb-4">
+                                                <span className="h-px w-4 bg-rose-600 opacity-50" />
+                                                <h3 className="text-[9px] font-black text-rose-600 uppercase tracking-[0.25em]">Remover Itens</h3>
+                                            </div>
+                                            <div className="flex flex-wrap gap-2">
                                                 {product.ingredients.map((ing: string) => (
                                                     <button
                                                         key={ing}
                                                         onClick={() => toggleRemoval(ing)}
                                                         className={cn(
-                                                            "px-6 py-3 rounded-xl border-2 font-body font-bold text-[10px] uppercase tracking-[0.15em] transition-all duration-300",
+                                                            "group relative px-4 py-2 rounded-2xl border transition-all duration-300 flex items-center gap-2.5",
                                                             removals.includes(ing)
-                                                                ? "bg-rose-50 border-rose-200 text-rose-500 line-through scale-95"
-                                                                : "bg-slate-50 border-slate-200 text-slate-400 hover:border-slate-300"
+                                                                ? "bg-rose-50 border-rose-100 text-rose-600"
+                                                                : "bg-slate-50/50 border-slate-100 text-slate-500 hover:border-slate-200"
                                                         )}
                                                     >
-                                                        {ing}
+                                                        <div className={cn(
+                                                            "w-4 h-4 rounded-full flex items-center justify-center transition-colors",
+                                                            removals.includes(ing) ? "bg-rose-600 text-white" : "bg-slate-200 text-transparent"
+                                                        )}>
+                                                            <Check size={10} strokeWidth={4} />
+                                                        </div>
+                                                        <span className={cn(
+                                                            "text-[10px] font-bold uppercase tracking-tight",
+                                                            removals.includes(ing) && "line-through opacity-70"
+                                                        )}>
+                                                            {ing}
+                                                        </span>
                                                     </button>
                                                 ))}
                                             </div>
@@ -307,55 +358,70 @@ export function ProductModal({ product, isOpen, onClose, editIndex = null, initi
                                     )}
 
                                     <section>
-                                        <h3 className="text-label font-body font-bold text-slate-300 uppercase tracking-[0.2em] mb-6 border-l-2 border-primary pl-4">Concierge (Observações)</h3>
+                                        <div className="flex items-center gap-2 mb-4">
+                                            <span className="h-px w-4 bg-rose-600 opacity-50" />
+                                            <h3 className="text-[9px] font-black text-rose-600 uppercase tracking-[0.25em]">Observações</h3>
+                                        </div>
                                         <textarea
                                             value={observations}
                                             onChange={(e) => setObservations(e.target.value)}
-                                            placeholder="Ponto da carne, alergias ou solicitações especiais..."
-                                            className="w-full h-32 p-6 bg-slate-50 border border-slate-200 rounded-2xl focus:bg-slate-50 focus:ring-8 focus:ring-slate-950/10 focus:border-slate-950/10 transition-all font-body font-medium text-slate-950 outline-none placeholder:text-slate-400 resize-none"
+                                            placeholder="Ex: Sem cebola, carne bem passada..."
+                                            className="w-full h-24 p-5 bg-slate-50 border border-slate-50 rounded-2xl focus:bg-white focus:border-rose-500/20 transition-all font-bold text-slate-950 text-[12px] outline-none placeholder:text-slate-300 resize-none uppercase"
                                         />
                                     </section>
                                 </div>
                             </div>
 
-                            <div className="p-6 md:p-14 bg-white md:bg-slate-100 border-t border-slate-100 md:border-slate-200 shadow-[0_-15px_40px_rgba(15,23,42,0.06)] md:shadow-[0_-20px_40px_rgba(15,23,42,0.08)] flex flex-row items-center gap-4 md:gap-8 sticky bottom-0 z-30">
-                                <div className="flex items-center gap-3 md:gap-6 bg-slate-50 p-1 md:p-2 rounded-xl md:rounded-2xl border border-slate-200">
+                            <div className="p-4 bg-white border-t border-slate-50 flex items-center justify-center gap-3 sticky bottom-0 z-30 shadow-[0_-20px_40px_rgba(0,0,0,0.03)] pb-8 md:pb-6">
+                                {/* Seletor de Quantidade Estilo Imagem - Mais Fininho */}
+                                <div className="flex items-center h-12 bg-slate-50/80 rounded-xl px-1.5 shadow-sm border border-slate-100">
                                     <button
                                         onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                                        className="w-10 h-10 md:w-14 md:h-14 rounded-lg md:rounded-xl flex items-center justify-center text-slate-400 hover:text-slate-950 transition-colors"
+                                        className="w-9 h-9 flex items-center justify-center text-slate-400 hover:text-slate-900 transition-colors"
                                     >
-                                        <Minus size={18} className="md:size-6" />
+                                        <Minus size={16} />
                                     </button>
-                                    <span className="w-6 md:w-12 text-center text-lg md:text-heading-3 font-mono font-bold text-slate-950">{quantity}</span>
+                                    <span className="w-8 text-center text-base font-mono font-bold text-slate-950">{quantity}</span>
                                     <button
                                         onClick={() => setQuantity(quantity + 1)}
-                                        className="w-10 h-10 md:w-14 md:h-14 rounded-lg md:rounded-xl bg-slate-950 text-white flex items-center justify-center shadow-lg md:shadow-xl shadow-slate-950/20 active:scale-95 transition-all"
+                                        className="w-9 h-9 rounded-xl bg-slate-950 text-white flex items-center justify-center shadow-lg active:scale-95 transition-all text-base font-bold"
                                     >
-                                        <Plus size={18} className="md:size-6" />
+                                        <Plus size={16} />
                                     </button>
                                 </div>
 
+                                {/* Botão Principal Estilo Imagem - Mais Fininho e Vermelho Padrão */}
                                 <button
                                     onClick={handleAdd}
                                     disabled={added || isOutOfStock}
                                     className={cn(
-                                        "flex-1 h-14 md:h-20 rounded-2xl md:rounded-3xl flex items-center justify-between px-4 md:px-10 transition-all duration-500 active:scale-[0.98]",
-                                        added ? "bg-emerald-500 text-white" : (isOutOfStock ? "bg-slate-400 cursor-not-allowed" : "bg-primary text-white shadow-xl md:shadow-2xl shadow-primary/30 hover:scale-[1.02]")
+                                        "flex-1 h-12 rounded-xl flex items-center justify-between px-6 transition-all duration-500 active:scale-[0.96] relative overflow-hidden group",
+                                        added ? "bg-emerald-500 text-white" : (isOutOfStock ? "bg-slate-400 cursor-not-allowed" : "bg-rose-600 text-white shadow-2xl shadow-rose-900/10")
                                     )}
                                 >
-                                    <span className="text-[10px] md:text-label font-body font-bold uppercase tracking-widest\">
-                                        {added ? (
-                                            <span className="flex items-center gap-2 md:gap-3">
-                                                <Check size={16} className="md:size-5" strokeWidth={3} /> Adicionado
-                                            </span>
-                                        ) : (isOutOfStock ? "Esgotado" : (editIndex !== null ? "Atualizar" : "No Carrinho"))}
-                                    </span>
-                                    <div className="flex items-center gap-2 md:gap-4">
-                                        <div className="h-6 md:h-8 w-px bg-white/20" />
-                                        <span className="text-sm md:text-heading-3 font-mono font-medium tracking-tighter">
+                                    <div className="flex flex-col items-start leading-none relative z-10 text-left">
+                                        <span className="text-[8px] font-black uppercase tracking-widest opacity-80 mb-0.5">
+                                            {added ? "Item" : "Adicionar"}
+                                        </span>
+                                        <span className="text-[11px] font-black uppercase tracking-tighter">
+                                            {added ? "Adicionado" : (isOutOfStock ? "Esgotado" : (editIndex !== null ? "Atualizar" : "No Carrinho"))}
+                                        </span>
+                                    </div>
+                                    
+                                    <div className="flex items-center gap-3 relative z-10">
+                                        <div className="h-5 w-px bg-white/20" />
+                                        <span className="text-[16px] font-mono font-bold tracking-tighter">
                                             {formatCurrency(totalPrice)}
                                         </span>
                                     </div>
+
+                                    {/* Efeitos Visuais Premium */}
+                                    {!added && !isOutOfStock && (
+                                        <>
+                                            <div className="absolute inset-x-0 bottom-0 h-1 bg-black/10 z-0 opacity-20" />
+                                            <div className="absolute inset-0 bg-linear-to-r from-transparent via-white/5 to-transparent -translate-x-full group-hover:animate-[shimmer_2s_infinite]" />
+                                        </>
+                                    )}
                                 </button>
                             </div>
                         </div>

@@ -13,6 +13,7 @@ import { socket } from "../../../../core/config/socket";
 import { getTenantSlug } from "../../../../shared/utils/tenant";
 import { formatCurrency, cn } from "../../../../shared/utils";
 import { formatDistanceToNow } from "date-fns";
+import toast from "react-hot-toast";
 import { ptBR } from "date-fns/locale";
 import { motion, AnimatePresence } from "framer-motion";
 import { gsap } from "gsap";
@@ -23,7 +24,7 @@ const PRINT_MODE_STORAGE_KEY = "@FoodSystem:printMode";
 const DIRECT_PRINT_ACCEPTED_ORDERS_KEY = "@FoodSystem:directPrintAcceptedOrders";
 const ENABLE_PRINT_EVENT_SUMMARY = process.env.NEXT_PUBLIC_ENABLE_PRINT_EVENT_SUMMARY === "true";
 
-export default function OrdersPage() {
+export default function OrdersPage({ isCompact = false, onOrdersChange }: { isCompact?: boolean; onOrdersChange?: (orders: any[]) => void }) {
     gsap.config({ nullTargetWarn: false });
 
     const [orders, setOrders] = useState<any[]>([]);
@@ -59,23 +60,25 @@ export default function OrdersPage() {
 
     const doesOrderMatchFilter = (order: any) => {
         if (statusFilter === "ALL") return true;
-        if (statusFilter === "PENDING") return ["PENDING", "CONFIRMED"].includes(order.status);
+        if (statusFilter === "PENDING") return ["PENDING", "CONFIRMED", "OPEN"].includes(order.status);
         if (statusFilter === "PREPARING") return ["PREPARING", "READY", "OUT_FOR_DELIVERY"].includes(order.status);
-        if (statusFilter === "DELIVERED") return ["DELIVERED", "RETIRED"].includes(order.status);
+        if (statusFilter === "DELIVERED") return ["DELIVERED", "RETIRED", "PAID"].includes(order.status);
         return order.status === statusFilter;
     };
 
     const filteredOrders = orders.filter((o) => doesOrderMatchFilter(o));
 
     const getStatusBadge = (order: any) => {
-        if (order.status === "PENDING") return { label: "Novo", className: "bg-amber-50 text-amber-600 border-amber-100" };
+        if (order.status === "PENDING") return { label: "Novo", className: "bg-rose-50 text-rose-600 border-rose-100 shadow-[0_0_8px_rgba(225,29,72,0.15)] animate-pulse" };
+        if (order.status === "OPEN") return { label: "Mesa Aberta", className: "bg-amber-50 text-amber-600 border-amber-100 animate-pulse" };
         if (order.status === "CONFIRMED") return { label: "Confirmado", className: "bg-sky-50 text-sky-700 border-sky-100" };
-        if (order.status === "PREPARING") return { label: "Em Preparo", className: "bg-blue-50 text-blue-600 border-blue-100" };
-        if (order.status === "OUT_FOR_DELIVERY") return { label: "Saiu p/ Entrega", className: "bg-indigo-50 text-indigo-600 border-indigo-100" };
-        if (order.status === "READY") return { label: "Pronto p/ Retirada", className: "bg-orange-50 text-orange-600 border-orange-100" };
+        if (order.status === "PAID") return { label: "Pago/Cozinha", className: "bg-emerald-50 text-emerald-700 border-emerald-100 font-black shadow-[0_0_8px_rgba(16,185,129,0.1)]" };
+        if (order.status === "PREPARING") return { label: "Preparo", className: "bg-blue-50 text-blue-600 border-blue-100" };
+        if (order.status === "OUT_FOR_DELIVERY") return { label: "Em Rota", className: "bg-indigo-50 text-indigo-600 border-indigo-100" };
+        if (order.status === "READY") return { label: "Pronto", className: "bg-orange-50 text-orange-600 border-orange-100" };
         if (order.status === "DELIVERED") return { label: "Entregue", className: "bg-emerald-50 text-emerald-600 border-emerald-100" };
-        if (order.status === "RETIRED") return { label: "Entregue no Balcao", className: "bg-emerald-50 text-emerald-600 border-emerald-100" };
-        if (order.status === "CANCELLED") return { label: "Cancelado", className: "bg-rose-50 text-rose-600 border-rose-100" };
+        if (order.status === "RETIRED") return { label: "Retirado", className: "bg-emerald-50 text-emerald-600 border-emerald-100" };
+        if (order.status === "CANCELLED") return { label: "Cancelado", className: "bg-slate-50 text-slate-400 border-slate-100" };
         return { label: order.status || "Status", className: "bg-slate-50 text-slate-600 border-slate-100" };
     };
 
@@ -84,7 +87,7 @@ export default function OrdersPage() {
     const getPrimaryAction = (order: any): { label: string; nextStatus: string; className: string } | null => {
         const mode = getOrderMode(order);
 
-        if (order.status === "PENDING") {
+        if (order.status === "PENDING" || order.status === "OPEN") {
             return {
                 label: "Confirmar",
                 nextStatus: "CONFIRMED",
@@ -97,6 +100,14 @@ export default function OrdersPage() {
                 label: "Iniciar Preparo",
                 nextStatus: "PREPARING",
                 className: "h-9 px-4 bg-blue-600 text-white rounded-lg font-body font-bold text-[10px] uppercase tracking-widest shadow-md shadow-blue-600/20 hover:bg-blue-700 transition-all active:scale-95 flex-1"
+            };
+        }
+
+        if (order.status === "PAID") {
+            return {
+                label: "Finalizar",
+                nextStatus: "DELIVERED",
+                className: "h-9 px-4 bg-emerald-600 text-white rounded-lg font-body font-bold text-[10px] uppercase tracking-widest shadow-md shadow-emerald-500/20 hover:bg-emerald-700 transition-all active:scale-95 flex-1"
             };
         }
 
@@ -349,8 +360,9 @@ export default function OrdersPage() {
 
     const fetchOrders = async (shouldPlaySound = false) => {
         try {
-            const data = await api.get("/orders");
+            const data = await api.get("/orders?filter=today");
             setOrders(data);
+            if (onOrdersChange) onOrdersChange(data);
             const orderIds = data.map((order: any) => Number(order.id)).filter(Boolean);
             if (ENABLE_PRINT_EVENT_SUMMARY && orderIds.length > 0) {
                 try {
@@ -381,8 +393,11 @@ export default function OrdersPage() {
         try {
             await api.patch(`/orders/${orderId}`, { status });
             fetchOrders();
+            return true;
         } catch (error) {
             console.error("Erro ao atualizar status:", error);
+            toast.error("Erro ao atualizar status do pedido");
+            return false;
         }
     };
 
@@ -428,8 +443,18 @@ export default function OrdersPage() {
 
             return `
                             <tr>
-                                <td>${item.quantity || 0}x ${item.name || item.product?.name || "Item"}${detailsLine ? `<br/><span style="color:#64748b;font-size:11px">${detailsLine}</span>` : ""}</td>
-                                <td style="text-align:right">${formatCurrency((item.price || 0) * (item.quantity || 0))}</td>
+                                <td style="padding: 4px 0; border-bottom: 1px dotted #000;">
+                                    <div style="display: flex; gap: 8px;">
+                                        <span style="font-size: 14px; font-weight: bold; min-width: 25px;">${item.quantity || 0}x</span>
+                                        <div style="flex: 1;">
+                                            <div style="font-size: 13px; font-weight: bold; text-transform: uppercase;">${item.name || item.product?.name || "Item"}</div>
+                                            ${detailsLine ? `<div style="font-size: 11px; margin-top: 2px;">${detailsLine}</div>` : ""}
+                                        </div>
+                                    </div>
+                                </td>
+                                <td style="text-align:right; vertical-align: top; padding: 4px 0; border-bottom: 1px dotted #000; font-size: 12px;">
+                                    ${formatCurrency((item.price || 0) * (item.quantity || 0))}
+                                </td>
                             </tr>
                         `;
         }).join("");
@@ -439,53 +464,94 @@ export default function OrdersPage() {
                         <head>
                             <title>Pedido #${order.id}</title>
                             <style>
-                                @page { size: 80mm auto; margin: 4mm; }
-                                html, body { width: 72mm; margin: 0 auto; padding: 0; color: #000; font-family: "Courier New", monospace; font-size: 11px; line-height: 1.25; }
+                                @page { size: 80mm 297mm; margin: 0; }
+                                html, body { 
+                                    width: 72mm; 
+                                    margin: 0; 
+                                    padding: 4mm 4mm 10mm 4mm;
+                                    color: #000; 
+                                    font-family: "Courier New", monospace; 
+                                    font-size: 12px; 
+                                    line-height: 1.2; 
+                                }
                                 .center { text-align: center; }
                                 .right { text-align: right; }
-                                .muted { color: #444; font-size: 10px; }
-                                .sep { border-top: 1px dashed #000; margin: 6px 0; }
-                                h1 { margin: 0; font-size: 13px; text-transform: uppercase; }
-                                .meta { margin: 2px 0; }
+                                .bold { font-weight: bold; }
+                                .sep { border-top: 1px dashed #000; margin: 8px 0; }
+                                .sep-double { border-top: 3px double #000; margin: 8px 0; }
+                                h1 { margin: 0; font-size: 16px; text-transform: uppercase; }
+                                .subtitle { font-size: 10px; margin-bottom: 4px; }
+                                .order-id { font-size: 14px; font-weight: bold; margin: 4px 0; }
                                 table { width: 100%; border-collapse: collapse; }
-                                td { vertical-align: top; padding: 3px 0; }
-                                .item-name { width: 76%; }
-                                .item-total { width: 24%; text-align: right; white-space: nowrap; }
-                                .summary-row { display: flex; justify-content: space-between; margin: 2px 0; }
-                                .total { font-size: 13px; font-weight: 700; }
+                                td { vertical-align: top; }
+                                .summary-row { display: flex; justify-content: space-between; margin: 4px 0; }
+                                .total { font-size: 16px; font-weight: 900; border-top: 1px solid #000; padding-top: 4px; margin-top: 4px; }
+                                .badge { background: #000; color: #fff; padding: 2px 8px; font-weight: bold; font-size: 16px; display: inline-block; }
                             </style>
                         </head>
                         <body>
                             <div class="center">
                                 <h1>${restaurant?.name || "Loja"}</h1>
-                                <div class="muted">${restaurant?.phone || ""}</div>
-                                <div class="meta">Comanda #${order.id}</div>
-                                <div class="muted">${createdAt}</div>
+                                ${restaurant?.phone ? `<div class="subtitle">Fone: ${restaurant.phone}</div>` : ""}
+                                <div class="order-id">PEDIDO #${order.id}</div>
+                                <div class="subtitle">${createdAt}</div>
                             </div>
-                            <div class="sep"></div>
 
-                            <div><strong>Cliente:</strong> ${customerLabel}</div>
-                            <div><strong>Fone:</strong> ${order.phone || "Nao informado"}</div>
-                            <div><strong>Pagamento:</strong> ${order.paymentMethod === 'CASH' && order.changeFor ? `Dinheiro (Troco p/ ${formatCurrency(order.changeFor)})` : (order.paymentMethod || "Nao informado")}</div>
-                            <div><strong>Entrega:</strong> ${addressText}</div>
-                            ${order.notes ? `<div><strong>Obs:</strong> ${order.notes}</div>` : ""}
+                            <div class="sep-double"></div>
+
+                            ${order.tableNumber ? `
+                                <div class="center" style="margin-bottom: 8px;">
+                                    <div class="badge">MESA: ${String(order.tableNumber).padStart(2, '0')}</div>
+                                </div>
+                            ` : ""}
+
+                            <div style="margin-bottom: 4px;"><strong>CLIENTE:</strong> ${customerLabel.toUpperCase()}</div>
+                            ${order.phone ? `<div><strong>FONE:</strong> ${order.phone}</div>` : ""}
+                            <div><strong>PAGTO:</strong> ${
+                                order.paymentMethod === 'CASH' && order.changeFor 
+                                    ? `DINHEIRO (TROCO P/ ${formatCurrency(order.changeFor)})` 
+                                    : (order.paymentMethod || "NÃO INFORMADO").toUpperCase()
+                            }</div>
+                            
+                            <div style="margin-top: 4px;">
+                                <strong>ENTREGA:</strong><br/>
+                                ${addressText.toUpperCase()}
+                            </div>
+
+                            ${order.notes ? `
+                                <div style="margin-top: 8px; border: 1px solid #000; padding: 4px;">
+                                    <strong>OBSERVAÇÕES:</strong><br/>
+                                    ${order.notes.toUpperCase()}
+                                </div>
+                            ` : ""}
 
                             <div class="sep"></div>
 
                             <table>
+                                <thead>
+                                    <tr>
+                                        <th align="left" style="font-size: 10px; padding-bottom: 4px;">ITEM</th>
+                                        <th align="right" style="font-size: 10px; padding-bottom: 4px;">TOTAL</th>
+                                    </tr>
+                                </thead>
                                 <tbody>
-                                    ${itemsRows || '<tr><td class="item-name">Sem itens</td><td class="item-total">-</td></tr>'}
+                                    ${itemsRows || '<tr><td colspan="2" class="center">SEM ITENS</td></tr>'}
                                 </tbody>
                             </table>
 
                             <div class="sep"></div>
 
-                            <div class="summary-row"><span>Subtotal</span><span>${formatCurrency(order.subtotal || 0)}</span></div>
-                            <div class="summary-row"><span>Taxa</span><span>${formatCurrency(order.deliveryFee || 0)}</span></div>
-                            <div class="summary-row total"><span>Total</span><span>${formatCurrency(order.total || 0)}</span></div>
+                            <div class="summary-row"><span>SUBTOTAL</span><span>${formatCurrency(order.subtotal || 0)}</span></div>
+                            <div class="summary-row"><span>TAXA</span><span>${formatCurrency(order.deliveryFee || 0)}</span></div>
+                            <div class="summary-row total"><span>TOTAL</span><span>${formatCurrency(order.total || 0)}</span></div>
 
-                            <div class="sep"></div>
-                            <div class="center muted">Impresso em ${new Date().toLocaleString()}</div>
+                            <div class="sep-double"></div>
+                            <div class="center bold" style="font-size: 10px;">
+                                OBRIGADO PELA PREFERÊNCIA!
+                            </div>
+                            <div class="center" style="font-size: 9px; margin-top: 4px;">
+                                Impresso em ${new Date().toLocaleString()}
+                            </div>
                         </body>
                     </html>
                 `;
@@ -522,6 +588,7 @@ export default function OrdersPage() {
                                 <div><strong>Telefone:</strong> ${order.phone || "Nao informado"}</div>
                                 <div><strong>Pagamento:</strong> ${order.paymentMethod === 'CASH' && order.changeFor ? `Dinheiro (Troco p/ ${formatCurrency(order.changeFor)})` : (order.paymentMethod || "Nao informado")}</div>
                                 <div><strong>Entrega:</strong> ${addressText}</div>
+                                ${order.tableNumber ? `<div style="margin-top: 4px;"><span style="background: #000; color: #fff; padding: 2px 8px; font-weight: bold; border-radius: 4px;">MESA: ${String(order.tableNumber).padStart(2, '0')}</span></div>` : ""}
                                 ${order.notes ? `<div><strong>Obs:</strong> ${order.notes}</div>` : ""}
                             </div>
                             <table>
@@ -647,128 +714,92 @@ export default function OrdersPage() {
     }, [isLoading, orders.length, statusFilter]);
 
     return (
-        <div ref={rootRef} className="min-h-screen bg-slate-50/50 p-4 sm:p-6 md:p-8 lg:p-10 xl:p-12 max-w-full">
-            <div className="orders-hero flex flex-col lg:flex-row lg:items-end justify-between gap-4 sm:gap-6 md:gap-8 lg:gap-10 mb-8 sm:mb-10 md:mb-12 lg:mb-14">
-                <div>
+        <div ref={rootRef} className={cn("space-y-4", !isCompact && "min-h-screen bg-slate-50/50 p-4 sm:p-6 md:p-8 lg:p-10 xl:p-12 max-w-full")}>
+            <div className={cn("flex flex-col gap-4 mb-4", !isCompact && "orders-hero lg:flex-row lg:items-end justify-between sm:mb-10 md:mb-12 lg:mb-14")}>
+                {!isCompact && (
+                    <div>
                         <h1 className="text-2xl sm:text-3xl md:text-heading-1 font-display font-bold text-slate-950 uppercase tracking-tight">Expedicao</h1>
-                    <p className="text-[12px] sm:text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em] mt-2">Gestao logistica e acompanhamento de fluxo em tempo real.</p>
-                    <div className="mt-3 flex flex-wrap items-center gap-2">
-                        <span className="inline-flex items-center rounded-full px-3 py-1 text-[10px] font-body font-bold uppercase tracking-[0.08em] border border-slate-200 bg-slate-100 text-slate-600">
-                            Formato padrao: {printModeLabel}
-                        </span>
-                        <button
-                            type="button"
-                            onClick={() => handleToggleDirectPrintAcceptedOrders(!directPrintAcceptedOrders)}
-                            className={cn(
-                                "inline-flex items-center rounded-full px-3 py-1 text-[10px] font-body font-bold uppercase tracking-[0.08em] border transition-colors",
-                                directPrintAcceptedOrders
-                                    ? "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
-                                    : "border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200"
-                            )}
-                            title="Clique para alternar impressao direta em preparo"
-                        >
-                            Impressao direta em preparo: {directPrintAcceptedOrders ? "ativa" : "inativa"}
-                        </button>
+                        <p className="text-[12px] sm:text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em] mt-2">Gestao logistica e acompanhamento de fluxo em tempo real.</p>
                     </div>
-                    <div className="mt-3 flex flex-wrap items-center gap-2">
-                        <span
-                            className={cn(
-                                "inline-flex items-center rounded-full px-3 py-1 text-[10px] font-body font-bold uppercase tracking-[0.08em] border",
-                                isMuted
-                                    ? "bg-rose-50 text-rose-600 border-rose-200"
-                                    : isAudioEnabled
-                                        ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                                        : "bg-amber-50 text-amber-700 border-amber-200"
-                            )}
-                        >
-                            {isMuted ? "Alerta mutado" : isAudioEnabled ? "Alerta sonoro ativo" : "Clique para ativar audio"}
-                        </span>
-                        {!isAudioEnabled && !isMuted && (
+                )}
+
+                <div className={cn("flex flex-wrap items-center gap-2", !isCompact && "orders-filters bg-white p-2 rounded-2xl sm:rounded-3xl border border-slate-100 shadow-sm")}>
+                    <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1">
+                        {[
+                            { id: "ALL", label: "Tudo" },
+                            { id: "PENDING", label: "Novos" },
+                            { id: "PREPARING", label: "Cozinha" },
+                            { id: "DELIVERED", label: "Finalizados" }
+                        ].map((f) => (
                             <button
-                                onClick={handleEnableAlerts}
-                                className="h-9 sm:h-10 px-3 sm:px-4 rounded-full bg-slate-950 text-white text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.08em]"
+                                key={f.id}
+                                onClick={() => setStatusFilter(f.id)}
+                                className={cn(
+                                    "h-9 px-4 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shrink-0 border",
+                                    statusFilter === f.id
+                                        ? "bg-slate-950 text-white border-slate-900 shadow-lg shadow-slate-950/20"
+                                        : "bg-white text-slate-400 border-slate-100 hover:text-slate-600 hover:bg-slate-50"
+                                )}
                             >
-                                Ativar Alertas
+                                {f.label}
+                                {orders.filter(o => {
+                                    if (f.id === "ALL") return true;
+                                    if (f.id === "PENDING") return ["PENDING", "CONFIRMED", "OPEN"].includes(o.status);
+                                    if (f.id === "PREPARING") return ["PREPARING", "READY", "OUT_FOR_DELIVERY"].includes(o.status);
+                                    if (f.id === "DELIVERED") return ["DELIVERED", "RETIRED", "PAID"].includes(o.status);
+                                    return false;
+                                }).length > 0 && (
+                                    <span className="ml-1.5 opacity-60">
+                                        ({orders.filter(o => {
+                                            if (f.id === "ALL") return true;
+                                            if (f.id === "PENDING") return ["PENDING", "CONFIRMED", "OPEN"].includes(o.status);
+                                            if (f.id === "PREPARING") return ["PREPARING", "READY", "OUT_FOR_DELIVERY"].includes(o.status);
+                                            if (f.id === "DELIVERED") return ["DELIVERED", "RETIRED", "PAID"].includes(o.status);
+                                            return false;
+                                        }).length})
+                                    </span>
+                                )}
+                            </button>
+                        ))}
+                    </div>
+
+                    <div className="flex items-center gap-2 ml-auto">
+                        <button
+                            onClick={() => setIsMuted(!isMuted)}
+                            className={cn(
+                                "w-9 h-9 flex items-center justify-center rounded-xl border transition-all",
+                                isMuted ? "bg-rose-50 border-rose-100 text-rose-500" : "bg-slate-50 border-slate-100 text-slate-400 hover:text-slate-600"
+                            )}
+                            title={isMuted ? "Ativar som" : "Mutar som"}
+                        >
+                            {isMuted ? <VolumeX size={16} /> : <Volume2 size={16} />}
+                        </button>
+                        {!isCompact && (
+                            <button
+                                onClick={handleTestAlert}
+                                disabled={isMuted || isTestingAlert}
+                                className={cn(
+                                    "h-9 px-4 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border",
+                                    isMuted ? "bg-slate-100 border-slate-200 text-slate-300 cursor-not-allowed" : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+                                )}
+                            >
+                                {isTestingAlert ? "..." : "Testar Alerta"}
                             </button>
                         )}
-                        {activeAlertCount > 0 && (
-                            <div className="h-9 sm:h-10 px-3 sm:px-4 rounded-full bg-amber-50 border border-amber-200 text-amber-700 text-[10px] sm:text-[11px] font-bold uppercase tracking-[0.08em] flex items-center">
-                                {activeAlertCount} aguardando aceite
-                            </div>
-                        )}
                     </div>
-                </div>
-
-                <div className="orders-filters flex flex-wrap bg-white p-2 rounded-2xl sm:rounded-3xl border border-slate-100 shadow-sm items-center gap-2">
-                    <button
-                        onClick={() => {
-                            const nextMuted = !isMuted;
-                            setIsMuted(nextMuted);
-
-                            if (nextMuted) {
-                                stopRepeatAlerts();
-                                stopTitleBlink();
-                                if (audioRef.current) {
-                                    audioRef.current.pause();
-                                    audioRef.current.currentTime = 0;
-                                }
-                            } else {
-                                ensureAudioUnlocked();
-                                if (alertingOrderIdsRef.current.size > 0) {
-                                    playNotificationSound();
-                                    startRepeatAlerts();
-                                }
-                            }
-                        }}
-                        className={cn(
-                            "w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center rounded-xl sm:rounded-2xl transition-all",
-                            isMuted ? "bg-rose-50 text-rose-500" : "bg-slate-50 text-slate-400 hover:text-slate-600"
-                        )}
-                        title={isMuted ? "Ativar som" : "Mutar som"}
-                    >
-                        {isMuted ? <VolumeX size={20} /> : <Volume2 size={20} />}
-                    </button>
-
-                    <button
-                        onClick={handleTestAlert}
-                        disabled={isMuted || isTestingAlert}
-                        className={cn(
-                            "h-10 sm:h-12 px-4 sm:px-5 rounded-xl sm:rounded-2xl text-[11px] sm:text-label font-body font-bold uppercase tracking-[0.06em] transition-all",
-                            isMuted ? "bg-slate-100 text-slate-300 cursor-not-allowed" : "bg-slate-950 text-white hover:bg-primary"
-                        )}
-                    >
-                        {isTestingAlert ? "Testando..." : "Testar Alerta"}
-                    </button>
-
-                    {[
-                        { id: "ALL", label: "Global" },
-                        { id: "PENDING", label: "Novos" },
-                        { id: "PREPARING", label: "Operacao" },
-                        { id: "DELIVERED", label: "Entregues" }
-                    ].map((f) => (
-                        <button
-                            key={f.id}
-                            onClick={() => setStatusFilter(f.id)}
-                            className={cn(
-                                "px-4 sm:px-6 md:px-8 h-10 sm:h-12 rounded-xl sm:rounded-2xl text-[11px] sm:text-label font-body font-bold uppercase tracking-[0.06em] transition-all shrink-0",
-                                statusFilter === f.id
-                                    ? "bg-slate-950 text-white shadow-xl shadow-slate-950/20"
-                                    : "text-slate-400 hover:text-slate-600 hover:bg-slate-50"
-                            )}
-                        >
-                            {f.label}
-                        </button>
-                    ))}
                 </div>
             </div>
 
             {isLoading ? (
-                <div className="py-32 flex flex-col items-center gap-6">
-                    <Loader2 className="animate-spin text-primary" size={40} />
-                    <p className="text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em]">Sincronizando fluxo...</p>
+                <div className="py-20 flex flex-col items-center gap-4">
+                    <Loader2 className="animate-spin text-slate-200" size={32} />
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Sincronizando fluxo...</p>
                 </div>
             ) : (
-                <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-2 gap-4 sm:gap-5 md:gap-6 lg:gap-6 xl:gap-8">
+                <div className={cn(
+                    "grid gap-4",
+                    isCompact ? "grid-cols-1 xl:grid-cols-2" : "grid-cols-1 md:grid-cols-2 xl:grid-cols-2"
+                )}>
                     <AnimatePresence mode="popLayout" initial={false}>
                         {filteredOrders.length === 0 ? (
                             <motion.div
@@ -776,182 +807,153 @@ export default function OrdersPage() {
                                 initial={{ opacity: 0 }}
                                 animate={{ opacity: 1 }}
                                 exit={{ opacity: 0 }}
-                                className="py-32 flex flex-col items-center justify-center border-2 border-dashed border-slate-100 rounded-[3rem] text-center bg-white"
+                                className="col-span-full py-20 flex flex-col items-center justify-center border border-dashed border-slate-200 rounded-3xl text-center bg-slate-50/30"
                             >
-                                <PackageCheck size={64} className="text-slate-200 mb-6" />
-                                <p className="text-label font-body font-bold text-slate-400 uppercase tracking-widest">Nenhum pedido no fluxo atual</p>
+                                <PackageCheck size={48} className="text-slate-200 mb-4" />
+                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Nenhum pedido no fluxo atual</p>
                             </motion.div>
                         ) : (
                             filteredOrders.map((order, idx) => {
                                 const statusBadge = getStatusBadge(order);
                                 const primaryAction = getPrimaryAction(order);
                                 const showCancelButton = canCancelOrder(order.status);
+                                const createdAt = new Date(order.createdAt);
+                                const minutesAgo = Math.floor((Date.now() - createdAt.getTime()) / 60000);
+                                const isCritical = minutesAgo > 15 && ["PENDING", "CONFIRMED"].includes(order.status);
 
                                 return (
                                 <motion.div
                                     layout
-                                    initial={false}
-                                    animate={{ opacity: 1, y: 0 }}
+                                    initial={{ opacity: 0, scale: 0.98 }}
+                                    animate={{ opacity: 1, scale: 1 }}
                                     exit={{ opacity: 0, scale: 0.95 }}
-                                    transition={{ delay: idx * 0.04 }}
+                                    transition={{ delay: idx * 0.02 }}
                                     key={order.id}
-                                    className="order-card bg-white rounded-2xl lg:rounded-3xl border border-slate-100 shadow-sm hover:shadow-xl hover:shadow-slate-200/60 transition-all duration-300 overflow-hidden"
+                                    className={cn(
+                                        "group bg-white rounded-2xl border transition-all duration-300 overflow-hidden flex flex-col",
+                                        order.status === "PENDING" ? "border-rose-100 shadow-sm shadow-rose-500/5 ring-1 ring-rose-50" : "border-slate-100 hover:border-slate-300",
+                                        isCritical && "bg-rose-50/30",
+                                        isCompact ? "aspect-auto" : "min-h-[320px]"
+                                    )}
                                 >
-                                    <div className="p-4 sm:p-5 md:p-6 lg:p-6">
-                                        <div className="flex flex-col gap-3 sm:gap-4 md:gap-4">
+                                    <div className={cn("flex flex-col h-full", isCompact ? "p-3 space-y-2" : "p-4 space-y-3")}>
+                                        <div className="flex items-start justify-between gap-3">
                                             <div className="flex items-center gap-3">
-                                                <div className="h-10 w-10 rounded-lg bg-slate-950 text-white flex flex-col items-center justify-center shrink-0">
-                                                    <span className="text-[8px] font-black uppercase tracking-[0.2em] opacity-60">PED</span>
-                                                    <span className="text-[11px] font-mono font-bold">#{order.id.toString().slice(-4)}</span>
+                                                <div className={cn(
+                                                    "rounded-xl flex flex-col items-center justify-center shrink-0 border",
+                                                    isCompact ? "h-8 w-8" : "h-10 w-10",
+                                                    order.status === "PENDING" ? "bg-rose-600 border-rose-500 text-white" : "bg-slate-50 border-slate-100 text-slate-900"
+                                                )}>
+                                                    <span className="text-[7px] font-black uppercase tracking-widest opacity-60">ID</span>
+                                                    <span className={cn("font-mono font-black border-slate-100 text-slate-900", isCompact ? "text-[9px]" : "text-[11px]", order.status === "PENDING" && "text-white")}>#{order.id.toString().slice(-4)}</span>
                                                 </div>
-                                                <div className="min-w-0 flex-1">
-                                                    <h2 className="text-sm lg:text-base font-display font-bold text-slate-950 uppercase tracking-tight truncate">
+                                                <div className="min-w-0">
+                                                    <h2 className={cn("font-black text-slate-950 uppercase tracking-tight truncate", isCompact ? "text-xs" : "text-sm")}>
                                                         {order.customer?.name || order.customerName || "Cliente Ocasional"}
                                                     </h2>
-                                                    <div className="flex flex-wrap items-center gap-2 mt-1.5">
-                                                        <span className="text-[10px] font-body font-bold text-primary uppercase tracking-[0.08em]">
-                                                            {formatDistanceToNow(new Date(order.createdAt), { addSuffix: true, locale: ptBR })}
+                                                    <div className="flex items-center gap-2 mt-0.5">
+                                                        <span className={cn(
+                                                            "font-black uppercase tracking-widest",
+                                                            isCompact ? "text-[8px]" : "text-[9px]",
+                                                            isCritical ? "text-rose-600 animate-pulse" : "text-slate-400"
+                                                        )}>
+                                                            {formatDistanceToNow(createdAt, { addSuffix: true, locale: ptBR })}
                                                         </span>
-                                                        <span className={cn("text-[10px] font-body font-bold uppercase tracking-[0.08em] px-2.5 py-1 rounded-full border", statusBadge.className)}>
+                                                        <div className="w-1 h-1 rounded-full bg-slate-200" />
+                                                        <span className={cn("font-black uppercase px-2 py-0.5 rounded-full border", isCompact ? "text-[7px]" : "text-[8px]", statusBadge.className)}>
                                                             {statusBadge.label}
                                                         </span>
                                                     </div>
                                                 </div>
                                             </div>
-
-                                            <div className="rounded-xl border border-slate-100 bg-slate-50 p-3">
-                                                <p className="text-[9px] uppercase tracking-[0.12em] text-slate-400 font-bold">Resumo • {order.items?.length || 0} itens</p>
-                                                <div className="mt-2 space-y-1.5 text-[11px] font-bold text-slate-600">
-                                                    <div className="flex items-center justify-between"><span>Subtotal</span><span>{formatCurrency(order.subtotal || 0)}</span></div>
-                                                    <div className="flex items-center justify-between"><span>Taxa</span><span>{formatCurrency(order.deliveryFee || 0)}</span></div>
-                                                    <div className="flex items-center justify-between"><span>Troco</span><span>{order.changeFor ? formatCurrency(Number(order.changeFor)) : "-"}</span></div>
-                                                </div>
-                                                <div className="mt-3 rounded-lg bg-slate-950 text-white px-2.5 py-2">
-                                                    <p className="text-[8px] uppercase tracking-[0.14em] text-white/60 font-bold">Total a Pagar</p>
-                                                    <p className="font-mono text-lg font-bold leading-none mt-1">{formatCurrency(order.total)}</p>
-                                                </div>
-                                            </div>
-
-                                            <div className="grid grid-cols-2 gap-3">
-                                                <div className="rounded-xl border border-slate-100 bg-white px-3 py-2.5">
-                                                    <div className="flex items-start gap-2">
-                                                        <MapPin size={14} className="text-slate-300 mt-0.5 shrink-0" />
-                                                        <div className="min-w-0">
-                                                            <p className="text-[9px] font-bold uppercase tracking-[0.12em] text-slate-400">Entrega</p>
-                                                            {order.address?.type === "PICKUP" ? (
-                                                                <p className="font-bold text-primary text-xs mt-1">Retirada</p>
-                                                            ) : order.address?.type === "DINE_IN" ? (
-                                                                <p className="font-bold text-blue-600 text-xs mt-1">Consumo Local</p>
-                                                            ) : (
-                                                                <>
-                                                                    <p className="font-bold text-slate-900 text-xs mt-1 truncate">{order.address?.details?.street || "Rua"}</p>
-                                                                    <p className="text-[10px] text-slate-500 truncate">{order.address?.details?.neighborhood || "Bairro"}</p>
-                                                                </>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                </div>
-
-                                                <div className="rounded-xl border border-slate-100 bg-white px-3 py-2.5">
-                                                    <div className="flex items-start gap-2">
-                                                        <CreditCard size={14} className="text-slate-300 mt-0.5 shrink-0" />
-                                                        <div className="min-w-0 w-full">
-                                                            <p className="text-[9px] font-bold uppercase tracking-[0.12em] text-slate-400">Pagamento</p>
-                                                            <p className="font-bold text-slate-900 text-xs mt-1">
-                                                                {({
-                                                                    'CASH': 'Dinheiro',
-                                                                    'PIX': 'PIX',
-                                                                    'CARD': 'Cartão',
-                                                                    'DEBIT': 'Débito',
-                                                                    'CREDIT': 'Crédito'
-                                                                } as Record<string, string>)[order.paymentMethod] || order.paymentMethod}
-                                                                {order.paymentMethod === 'CASH' && order.changeFor && (
-                                                                    <span className="block text-primary text-[10px] lowercase font-medium mt-0.5">
-                                                                        (Troco p/ {formatCurrency(order.changeFor)})
-                                                                    </span>
-                                                                )}
-                                                            </p>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <div className="border-t border-dashed border-slate-200 pt-3">
-                                                <div className="rounded-xl border border-slate-100 overflow-hidden bg-white max-h-64 overflow-y-auto">
-                                                    {order.items?.length ? (
-                                                        order.items.slice(0, 5).map((item: any, i: number) => {
-                                                            const addonList = formatItemDetails(item.addons);
-                                                            const removalList = formatItemDetails(item.removals);
-                                                            const detailsLine = [
-                                                                item.variation ? `Var: ${item.variation}` : null,
-                                                                addonList.length > 0 ? `Add: ${addonList.join(", ")}` : null,
-                                                                removalList.length > 0 ? `Remover: ${removalList.join(", ")}` : null,
-                                                                item.observations ? `Obs: ${item.observations}` : null
-                                                            ]
-                                                                .filter(Boolean)
-                                                                .join(" | ");
-
-                                                            return (
-                                                                <div key={i} className={cn("px-3 py-2", i !== Math.min(order.items.length, 5) - 1 && "border-b border-slate-100")}>
-                                                                    <div className="flex items-start justify-between gap-2">
-                                                                        <div className="min-w-0 flex-1">
-                                                                            <div className="flex items-center gap-2">
-                                                                                <span className="inline-flex min-w-6 items-center justify-center rounded-md bg-slate-950 px-1 py-0.5 text-[9px] font-bold text-white shrink-0">{item.quantity}x</span>
-                                                                                <p className="text-xs font-bold text-slate-900 uppercase tracking-tight truncate">{item.name || item.product?.name}</p>
-                                                                            </div>
-                                                                            {detailsLine && <p className="mt-0.5 text-[9px] text-slate-500 truncate">{detailsLine}</p>}
-                                                                        </div>
-                                                                        <div className="shrink-0 text-right">
-                                                                            <p className="text-[9px] font-mono font-bold text-primary">{formatCurrency((item.price || 0) * (item.quantity || 0))}</p>
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
-                                                            );
-                                                        })
-                                                    ) : (
-                                                        <div className="px-3 py-3 text-[10px] font-bold uppercase tracking-[0.08em] text-slate-300">
-                                                            Itens nao enviados
-                                                        </div>
+                                            <div className="text-right">
+                                                <p className={cn("font-black text-slate-950", isCompact ? "text-xs" : "text-sm")}>{formatCurrency(order.total)}</p>
+                                                <div className="flex flex-col items-end gap-1">
+                                                    <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">{getOrderMode(order)}</p>
+                                                    {order.tableNumber && (
+                                                        <span className="bg-slate-950 text-white text-[7px] font-black px-1.5 py-0.5 rounded tracking-tighter animate-pulse">
+                                                            MESA {String(order.tableNumber).padStart(2, '0')}
+                                                        </span>
                                                     )}
                                                 </div>
                                             </div>
+                                        </div>
 
-                                            {order.notes && (
-                                                <div className="rounded-xl border border-amber-100 bg-amber-50/70 px-3 py-2.5">
-                                                    <p className="text-[9px] font-bold uppercase tracking-[0.12em] text-amber-700">Obs gerais</p>
-                                                    <p className="text-xs text-slate-700 font-medium mt-1 line-clamp-2">{order.notes}</p>
-                                                </div>
+                                        <div className={cn("flex-1 rounded-xl bg-slate-50/50 border border-slate-100/50 space-y-1", isCompact ? "p-2" : "p-2.5")}>
+                                            {order.items?.slice(0, isCompact ? 2 : 3).map((item: any, i: number) => {
+                                                const addonList = formatItemDetails(item.addons);
+                                                return (
+                                                    <div key={i} className="flex flex-col">
+                                                        <div className="flex items-center justify-between text-[10px] font-bold">
+                                                            <div className="flex items-center gap-2 min-w-0">
+                                                                <span className="text-slate-400 text-[8px]">{item.quantity}x</span>
+                                                                <span className="text-slate-900 truncate uppercase">{item.name || item.product?.name}</span>
+                                                            </div>
+                                                        </div>
+                                                        {addonList.length > 0 && (
+                                                            <p className="text-[8px] text-emerald-600 font-bold uppercase tracking-tight ml-5">+ {addonList.join(", ")}</p>
+                                                        )}
+                                                    </div>
+                                                );
+                                            })}
+                                            {order.items?.length > (isCompact ? 2 : 3) && (
+                                                <p className="text-[8px] text-slate-400 font-black uppercase tracking-widest pt-1 px-1">
+                                                    + {order.items.length - (isCompact ? 2 : 3)} outros
+                                                </p>
                                             )}
+                                        </div>
 
-                                            <div className="flex flex-wrap gap-2 pt-2 border-t border-dashed border-slate-200">
-                                                {primaryAction && (
-                                                    <button
-                                                        onClick={() => updateStatus(order.id, primaryAction.nextStatus)}
-                                                        className={primaryAction.className}
-                                                    >
-                                                        {primaryAction.label}
-                                                    </button>
-                                                )}
-                                                {showCancelButton && (
-                                                    <button
-                                                        onClick={() => handleCancelOrder(order)}
-                                                        className="h-9 px-3 bg-rose-50 text-rose-700 border border-rose-200 rounded-lg font-body font-bold text-[10px] uppercase tracking-widest hover:bg-rose-100 transition-all active:scale-95 flex-1"
-                                                    >
-                                                        Cancelar
-                                                    </button>
-                                                )}
+                                        <div className="flex gap-2">
+                                            <div className={cn("flex-1 flex items-center justify-center gap-2 rounded-xl border border-slate-50 bg-white", isCompact ? "px-1.5 py-1" : "px-2 py-1.5")}>
+                                                <MapPin size={isCompact ? 8 : 10} className="text-slate-300" />
+                                                <span className={cn("font-black text-slate-600 uppercase truncate", isCompact ? "text-[7px]" : "text-[9px]")}>
+                                                    {order.address?.type === "PICKUP" ? "Retirada" : order.address?.type === "DINE_IN" ? "Mesa" : order.address?.details?.neighborhood || "Entrega"}
+                                                </span>
+                                            </div>
+                                            <div className={cn("flex items-center justify-center gap-2 rounded-xl border border-slate-50 bg-white shrink-0", isCompact ? "px-1.5 py-1" : "px-2 py-1.5")}>
+                                                <CreditCard size={isCompact ? 8 : 10} className="text-slate-300" />
+                                                <span className={cn("font-black text-slate-600 uppercase", isCompact ? "text-[7px]" : "text-[9px]")}>
+                                                    {order.paymentMethod}
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        <div className="flex items-center gap-2 pt-2 border-t border-slate-50">
+                                            {primaryAction && (
+                                                <button
+                                                    onClick={async () => {
+                                                        const success = await updateStatus(order.id, primaryAction.nextStatus);
+                                                        if (success && primaryAction.nextStatus === "CONFIRMED") {
+                                                            handlePrintOrder(order, printMode);
+                                                        }
+                                                    }}
+                                                    className="flex-1 h-9 bg-slate-950 text-white rounded-xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-slate-800 transition-all active:scale-95 shadow-md shadow-slate-950/20"
+                                                >
+                                                    {primaryAction.label}
+                                                </button>
+                                            )}
+                                            <div className="flex gap-1.5 shrink-0">
                                                 <button
                                                     onClick={() => requestPrintOrder(order)}
                                                     className={cn(
-                                                        "w-9 h-9 border rounded-lg flex items-center justify-center transition-all shrink-0",
+                                                        "w-9 h-9 border rounded-xl flex items-center justify-center transition-all",
                                                         printSummaryByOrderId[order.id]
-                                                            ? "bg-emerald-50 border-emerald-100 text-emerald-600 hover:bg-emerald-100"
-                                                            : "bg-slate-50 border-slate-100 text-slate-400 hover:bg-slate-100"
+                                                            ? "bg-emerald-50 border-emerald-100 text-emerald-600"
+                                                            : "bg-white border-slate-100 text-slate-400 hover:bg-slate-50"
                                                     )}
-                                                    title="Imprimir comanda"
+                                                    title="Reimprimir"
                                                 >
                                                     <Printer size={16} />
                                                 </button>
+                                                {showCancelButton && (
+                                                    <button
+                                                        onClick={() => handleCancelOrder(order)}
+                                                        className="w-9 h-9 border border-rose-100 bg-rose-50/50 text-rose-400 rounded-xl flex items-center justify-center hover:bg-rose-50 hover:text-rose-600 transition-all"
+                                                        title="Cancelar"
+                                                    >
+                                                        <span className="text-sm">✕</span>
+                                                    </button>
+                                                )}
                                             </div>
                                         </div>
                                     </div>
