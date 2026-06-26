@@ -9,22 +9,22 @@ import { sendToWhatsApp } from "../../../shared/utils/whatsapp";
 const PRODUCT_SURFACES = [
     {
         title: "Cardápio digital",
-        description: "Categorias, produtos, variações, tamanhos, adicionais e preços organizados para publicar a loja.",
+        description: "Monte categorias, produtos, variações, tamanhos e adicionais e publique sua loja em poucos minutos.",
         icon: ReceiptText,
     },
     {
         title: "Pedidos e checkout",
-        description: "Fluxo de compra do cliente com entrega, retirada, formas de pagamento e acompanhamento do pedido.",
+        description: "Entrega, retirada, formas de pagamento e acompanhamento do pedido em um fluxo de compra simples para o cliente.",
         icon: Store,
     },
     {
         title: "Caixa operacional",
-        description: "Abertura, fechamento, sangria, suprimento e conferência de divergência no fechamento.",
+        description: "Abertura, fechamento, sangria, suprimento e conferência automática de divergência — sem planilha paralela.",
         icon: Clock3,
     },
     {
-        title: "Painel administrativo",
-        description: "Clientes, lojas, onboarding, auditoria e provisioning para manter a operação organizada.",
+        title: "Painel da sua loja",
+        description: "Pedidos, produtos, clientes e vendas em um só painel, para você acompanhar a operação do dia a dia sem complicação.",
         icon: LayoutDashboard,
     },
 ];
@@ -42,12 +42,12 @@ const HOW_IT_WORKS = [
     {
         step: "01",
         title: "Entendemos a operação",
-        description: "Falamos com o responsável, ajustamos o cenário da loja e organizamos a entrada com clareza.",
+        description: "Conversamos com o responsável pela loja, entendemos o cenário e organizamos a entrada com clareza.",
     },
     {
         step: "02",
         title: "Configuramos a loja",
-        description: "Cardápio, preço, entrega, pagamentos e apresentação da marca ficam prontos para uso.",
+        description: "Cardápio, preços, entrega, pagamentos e identidade visual ficam prontos para uso, com acompanhamento da nossa equipe.",
     },
     {
         step: "03",
@@ -58,9 +58,9 @@ const HOW_IT_WORKS = [
 
 const OPERATIONAL_PROMISES = [
     "Canal próprio de venda",
-    "Fluxo de pedidos mais organizado",
-    "Configuração orientada por suporte",
-    "Foco em operação real, não em promessa vaga",
+    "Fluxo de pedidos organizado de ponta a ponta",
+    "Implantação acompanhada pela nossa equipe",
+    "Suporte direto para o dia a dia da loja",
 ];
 
 const PRICING_PLANS = [
@@ -96,19 +96,27 @@ const PRICING_PLANS = [
 const FAQ = [
     {
         question: "Isso é para restaurante que está começando?",
-        answer: "Sim. A proposta é justamente ajudar restaurantes em fase inicial ou em crescimento a ter um canal digital organizado desde o começo.",
+        answer: "Sim. A plataforma ajuda restaurantes em fase inicial ou em crescimento a terem um canal digital organizado desde o começo.",
     },
     {
-        question: "Vocês fazem implantação ou eu preciso configurar tudo sozinho?",
-        answer: "A entrada é guiada. A ideia é apoiar a configuração para que a loja comece com menos atrito e mais segurança.",
+        question: "Vocês fazem a implantação ou eu preciso configurar tudo sozinho?",
+        answer: "A entrada é guiada pela nossa equipe: ajudamos a publicar o cardápio, configurar entrega e pagamentos para a loja começar com menos atrito.",
     },
     {
         question: "Preciso ter equipe técnica?",
-        answer: "Não. A operação é pensada para o uso comercial e operacional, não para exigir conhecimento técnico da sua equipe.",
+        answer: "Não. O sistema foi pensado para uso comercial e operacional do dia a dia, sem exigir conhecimento técnico da sua equipe.",
     },
     {
-        question: "Como a empresa se posiciona se ainda está entrando no mercado?",
-        answer: "Com seriedade, transparência e suporte próximo. É melhor prometer o que conseguimos entregar do que inflar números sem base real.",
+        question: "Tenho suporte depois que a loja já está rodando?",
+        answer: "Sim. O suporte continua disponível após a implantação para resolver dúvidas e ajustes da operação no dia a dia.",
+    },
+    {
+        question: "Como funciona a cobrança dos planos?",
+        answer: "A assinatura é mensal, sem contrato de fidelidade, e você pode mudar de plano conforme o volume de pedidos da sua loja cresce.",
+    },
+    {
+        question: "Os valores dos planos têm taxa extra sobre os pedidos?",
+        answer: "Não. O valor da assinatura é fixo conforme o plano escolhido, sem comissão por pedido vendido.",
     },
 ];
 
@@ -120,7 +128,7 @@ export default function LandingPage() {
     const bannerTitle = settings?.bannerTitleLine1 || settings?.bannerTitleLine2
         ? `${settings?.bannerTitleLine1 ?? ""}${settings?.bannerTitleLine2 ? ` ${settings.bannerTitleLine2}` : ""}`.trim()
         : "Tudo o que seu restaurante precisa para vender direto e operar com controle.";
-    const bannerDescription = settings?.bannerDescription ?? "Cardápio digital, checkout, pedidos, caixa e painel administrativo em uma plataforma construída para a rotina do restaurante. Sem exagero, sem promessa vazia e com foco em operação real.";
+    const bannerDescription = settings?.bannerDescription ?? "Cardápio digital, checkout, pedidos, caixa e painel de gestão da loja em uma única plataforma, pensada para a rotina real do restaurante — com implantação acompanhada pela nossa equipe.";
     const bannerCta = settings?.bannerCtaLabel ?? "Solicitar acesso";
     const bannerImage = "/hero-mockup.png";
 
@@ -202,13 +210,13 @@ export default function LandingPage() {
                                 <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
                                     <p className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-400">Compromisso</p>
                                     <p className="mt-2 text-sm font-semibold leading-relaxed text-slate-700">
-                                        Apoiar restaurantes com implantação guiada, suporte próximo e foco no que a operação realmente usa no dia a dia.
+                                        Implantação guiada e suporte próximo, com foco no que a sua operação realmente usa no dia a dia.
                                     </p>
                                 </div>
                                 <div className="rounded-3xl border border-slate-950 bg-slate-950 p-5 text-white shadow-sm">
-                                    <p className="text-[10px] font-black uppercase tracking-[0.22em] text-primary">O que já existe</p>
+                                    <p className="text-[10px] font-black uppercase tracking-[0.22em] text-primary">O que você recebe</p>
                                     <p className="mt-2 text-sm font-semibold leading-relaxed text-slate-200">
-                                        Cardápio digital, checkout, pedidos, caixa operacional, painel administrativo e fluxo de apoio para a loja.
+                                        Cardápio digital, checkout, pedidos, caixa operacional e painel de gestão da loja, tudo integrado.
                                     </p>
                                 </div>
                             </div>
@@ -239,7 +247,7 @@ export default function LandingPage() {
                         <div className="max-w-3xl">
                             <p className="text-sm font-black uppercase tracking-[0.28em] text-orange-600">Solução</p>
                             <h2 className="mt-4 text-3xl font-black tracking-tighter text-slate-950 md:text-5xl">
-                                O que entregamos para o restaurante operar com mais ordem e menos improviso.
+                                O que entregamos para o seu restaurante operar com mais ordem e previsibilidade no dia a dia.
                             </h2>
                         </div>
 
@@ -313,7 +321,7 @@ export default function LandingPage() {
                                 Planos claros por volume da operação: preço, produtos e pedidos por mês.
                             </h2>
                             <p className="mt-5 text-base leading-relaxed text-slate-600">
-                                Comece com o plano que faz sentido para o seu momento e ajuste conforme a loja cresce.
+                                Comece com o plano que faz sentido para o seu momento e ajuste conforme a loja cresce. Sem taxa por pedido e sem contrato de fidelidade.
                             </p>
                         </div>
 
@@ -380,10 +388,10 @@ export default function LandingPage() {
                         <div className="max-w-3xl">
                             <p className="text-sm font-black uppercase tracking-[0.28em] text-orange-500">Acesso</p>
                             <h2 className="mt-4 text-3xl font-black tracking-tighter md:text-5xl">
-                                Neste momento, a oferta mais correta é acesso guiado, configuração assistida e conversa direta com a equipe.
+                                Acesso guiado, configuração assistida e contato direto com a equipe.
                             </h2>
                             <p className="mt-5 text-base leading-relaxed text-slate-300">
-                                Como a empresa está entrando agora, a comunicação precisa ser séria: mostrar o que já existe, como funciona e como o restaurante entra com apoio.
+                                Cada loja é configurada com acompanhamento da nossa equipe, do primeiro contato até o cardápio publicado e os primeiros pedidos chegando.
                             </p>
                         </div>
 
@@ -391,15 +399,15 @@ export default function LandingPage() {
                             {[
                                 {
                                     name: "Configuração guiada",
-                                    detail: "Ajuda para publicar loja, ajustar cardápio e deixar a operação pronta.",
+                                    detail: "Ajuda para publicar a loja, ajustar o cardápio e deixar a operação pronta para vender.",
                                 },
                                 {
                                     name: "Canal próprio",
-                                    detail: "Venda direta com cardápio, checkout e fluxo da loja sob controle.",
+                                    detail: "Venda direta com cardápio, checkout e fluxo da loja sob seu controle.",
                                 },
                                 {
                                     name: "Atendimento próximo",
-                                    detail: "Contato humano e acompanhamento para sair do papel com segurança.",
+                                    detail: "Contato humano e acompanhamento contínuo para a operação rodar com segurança.",
                                 },
                             ].map((plan) => (
                                 <article key={plan.name} className="rounded-4xl border border-white/10 bg-white/5 p-7 backdrop-blur-sm">
@@ -419,7 +427,7 @@ export default function LandingPage() {
                         <div className="max-w-3xl">
                             <p className="text-sm font-black uppercase tracking-[0.28em] text-orange-600">FAQ</p>
                             <h2 className="mt-4 text-3xl font-black tracking-tighter text-slate-950 md:text-5xl">
-                                Respostas diretas para perguntas que um restaurante sério faz antes de começar.
+                                Respostas diretas para as principais dúvidas antes de você começar.
                             </h2>
                         </div>
 
@@ -444,7 +452,7 @@ export default function LandingPage() {
                                         Se faz sentido para o seu restaurante, vamos conversar de forma objetiva.
                                     </h2>
                                     <p className="mt-5 max-w-2xl text-base leading-relaxed text-slate-300">
-                                        A entrada é pensada para quem quer ser atendido com seriedade, sem discurso genérico e com foco em implantação real.
+                                        A entrada é pensada para você ser atendido com atenção e clareza, com foco em colocar sua loja para operar de verdade.
                                     </p>
                                 </div>
 
@@ -470,7 +478,7 @@ export default function LandingPage() {
             <footer className="border-t border-slate-100 bg-white py-10">
                 <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 md:flex-row md:items-center md:justify-between">
                     <p className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-400">
-                        © 2026 FOODSYSTEM.SAAS - TODOS OS DIREITOS RESERVADOS.
+                        © 2026 FOODSYSTEM.APP.BR - TODOS OS DIREITOS RESERVADOS.
                     </p>
                     <div className="flex flex-wrap gap-5 text-[10px] font-black uppercase tracking-[0.22em] text-slate-400">
                         <a href="#solucao" className="transition-colors hover:text-primary">Solução</a>
