@@ -18,14 +18,27 @@ interface AuditLog {
 }
 
 const actionLabels: Record<string, string> = {
-  print_document: "Impressao de documento",
+  print_document: "Impressão de documento",
+  delete_restaurant: "Excluir restaurante",
+  update_user: "Atualizar usuário",
+  delete_user: "Excluir usuário",
+  open_cash_session: "Abrir sessão de caixa",
+  close_cash_session: "Fechar sessão de caixa",
+  create_cash_movement: "Criar movimento de caixa",
+  create_direct_sale: "Criar venda direta",
+  approve_user: "Aprovar usuário",
+  deny_restaurant: "Negar restaurante",
+  pause_restaurant: "Pausar restaurante",
+  retry_provisioning_start: "Iniciar retry de provisioning",
+  retry_provisioning_finish: "Finalizar retry de provisioning",
 };
 
 const subjectTypeLabels: Record<string, string> = {
-  user: "Usuario",
+  user: "Usuário",
   restaurant: "Restaurante",
   order: "Pedido",
-  cash_session: "Sessao de caixa",
+  cash_session: "Sessão de caixa",
+  cash_movement: "Movimento de caixa",
 };
 
 function formatAuditAction(action: string) {
@@ -270,9 +283,11 @@ function AuditContent() {
                         <div><strong>Formato:</strong> {log.details?.printMode || "-"}</div>
                         <div><strong>Impresso em:</strong> {log.details?.printedAt ? new Date(log.details.printedAt).toLocaleString() : new Date(log.createdAt).toLocaleString()}</div>
                       </div>
-                    ) : log.details ? (
+                    ) : log.details && Object.keys(log.details).length > 0 ? (
                       <pre className="mt-4 max-w-full overflow-auto rounded-3xl border border-slate-100 bg-white p-4 text-xs text-slate-600">{JSON.stringify(log.details, null, 2)}</pre>
-                    ) : null}
+                    ) : (
+                      <div className="mt-4 rounded-3xl border border-slate-100 bg-slate-50 p-4 text-xs text-slate-500">Sem detalhes adicionais.</div>
+                    )}
                   </article>
                 ))}
               </div>

@@ -107,15 +107,13 @@ export function AdminLayout({ children }: AdminLayoutProps) {
 
     const loadPendingCount = async () => {
       try {
-        const [usersResponse, restaurantsResponse] = await Promise.all([
+        const [usersResponse, provisioningSummary] = await Promise.all([
           api.get('/admin/users?filter=pending&page=1&perPage=1'),
-          api.get('/admin/provisioning')
+          api.get('/admin/provisioning/summary')
         ]);
 
         const totalPendingUsers = Number(usersResponse?.total || 0);
-        const totalPendingRestaurants = (restaurantsResponse || []).filter((restaurant: PendingRestaurantNotice) =>
-          ['PENDING', 'IN_PROGRESS', 'PAUSED', 'DENIED'].includes(restaurant.provisioningStatus)
-        ).length;
+        const totalPendingRestaurants = Number(provisioningSummary?.total || 0);
         const totalPending = totalPendingUsers + totalPendingRestaurants;
 
         setPendingCount(totalPending);
@@ -174,9 +172,9 @@ export function AdminLayout({ children }: AdminLayoutProps) {
 
     setNoticesLoading(true);
     try {
-      const [usersResponse, restaurantsResponse] = await Promise.all([
+      const [usersResponse, provisioningSummary] = await Promise.all([
         api.get('/admin/users?filter=pending&page=1&perPage=5'),
-        api.get('/admin/provisioning')
+        api.get('/admin/provisioning/summary')
       ]);
 
       setPendingUsers((usersResponse?.data || []).map((user: any) => ({
@@ -187,11 +185,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
         createdAt: user.createdAt,
       })));
 
-      setPendingRestaurants(
-        (restaurantsResponse || [])
-          .filter((restaurant: PendingRestaurantNotice) => ['PENDING', 'IN_PROGRESS', 'PAUSED', 'DENIED'].includes(restaurant.provisioningStatus))
-          .slice(0, 5)
-      );
+      setPendingRestaurants((provisioningSummary?.restaurants || []).slice(0, 5));
     } catch {
       setPendingUsers([]);
       setPendingRestaurants([]);

@@ -2149,6 +2149,52 @@ app.get('/api/admin/kpis/trends', authMiddleware, async (req: AuthRequest, res) 
   }
 });
 
+// Provisioning summary for Super Admin notices
+app.get('/api/admin/provisioning/summary', authMiddleware, async (req: AuthRequest, res) => {
+  if (req.userRole !== 'SUPER_ADMIN') {
+    return res.status(403).json({ error: 'Acesso restrito ao super admin' });
+  }
+
+  try {
+    const pendingStatuses = ['PENDING', 'IN_PROGRESS', 'PAUSED', 'DENIED'];
+
+    const countByStatus = await prisma.restaurant.groupBy({
+      by: ['provisioningStatus'],
+      where: { provisioningStatus: { in: pendingStatuses } },
+      _count: { provisioningStatus: true }
+    });
+
+    const statusTotals: Record<string, number> = {
+      PENDING: 0,
+      IN_PROGRESS: 0,
+      PAUSED: 0,
+      DENIED: 0
+    };
+
+    countByStatus.forEach((row: any) => {
+      statusTotals[row.provisioningStatus] = row._count.provisioningStatus;
+    });
+
+    const totalPending = Object.values(statusTotals).reduce((sum, value) => sum + value, 0);
+
+    const recentRestaurants = await prisma.restaurant.findMany({
+      where: { provisioningStatus: { in: pendingStatuses } },
+      orderBy: { createdAt: 'desc' },
+      take: 5,
+      select: { id: true, name: true, slug: true, provisioningStatus: true, createdAt: true }
+    });
+
+    res.json({
+      total: totalPending,
+      statusTotals,
+      restaurants: recentRestaurants
+    });
+  } catch (error) {
+    console.error('Error fetching provisioning summary:', error);
+    res.status(500).json({ error: 'Erro ao buscar resumo de provisioning' });
+  }
+});
+
 // Provisioning: listar restaurantes com status
 app.get('/api/admin/provisioning', authMiddleware, async (req: AuthRequest, res) => {
   if (req.userRole !== 'SUPER_ADMIN') {
