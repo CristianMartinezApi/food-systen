@@ -83,7 +83,10 @@ if (!JWT_SECRET) {
   throw new Error('❌ CRÍTICO: JWT_SECRET must be defined in environment variables. Use: openssl rand -base64 32');
 }
 
-const PORT = process.env.PORT || 8000;
+const PORT = Number(process.env.PORT || 8000);
+if (Number.isNaN(PORT) || PORT <= 0) {
+  throw new Error('❌ CRÍTICO: PORT must be a valid positive number');
+}
 
 // Inicialização e Correção do Banco de Dados
 async function bootstrap() {
