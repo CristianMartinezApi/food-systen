@@ -1,4 +1,4 @@
-﻿import type { ReactNode } from "react";
+import type { ReactNode } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
@@ -60,6 +60,12 @@ export function AdminLayout({ children }: AdminLayoutProps) {
   const [isNoticesOpen, setIsNoticesOpen] = useState(false);
   const [pendingUsers, setPendingUsers] = useState<PendingUserNotice[]>([]);
   const [pendingRestaurants, setPendingRestaurants] = useState<PendingRestaurantNotice[]>([]);
+  const [provisioningStatusTotals, setProvisioningStatusTotals] = useState<Record<string, number>>({
+    PENDING: 0,
+    IN_PROGRESS: 0,
+    PAUSED: 0,
+    DENIED: 0,
+  });
   const [noticesLoading, setNoticesLoading] = useState(false);
   const noticesRef = useRef<HTMLDivElement>(null);
   const storeLabel = settings?.storeName || "Master Admin";
@@ -117,6 +123,12 @@ export function AdminLayout({ children }: AdminLayoutProps) {
         const totalPending = totalPendingUsers + totalPendingRestaurants;
 
         setPendingCount(totalPending);
+        setProvisioningStatusTotals(provisioningSummary?.statusTotals || {
+          PENDING: 0,
+          IN_PROGRESS: 0,
+          PAUSED: 0,
+          DENIED: 0,
+        });
       } catch {
         setPendingCount(0);
       }
@@ -186,6 +198,12 @@ export function AdminLayout({ children }: AdminLayoutProps) {
       })));
 
       setPendingRestaurants((provisioningSummary?.restaurants || []).slice(0, 5));
+      setProvisioningStatusTotals(provisioningSummary?.statusTotals || {
+        PENDING: 0,
+        IN_PROGRESS: 0,
+        PAUSED: 0,
+        DENIED: 0,
+      });
     } catch {
       setPendingUsers([]);
       setPendingRestaurants([]);
@@ -267,7 +285,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
       </AnimatePresence>
 
       <aside className={cn(
-        "fixed inset-y-0 left-0 w-80 bg-white border-r border-slate-100 flex flex-col h-screen z-70 transition-transform duration-500 lg:sticky lg:translate-x-0 lg:z-50 shadow-[4px_0_24px_rgba(0,0,0,0.02)]",
+        "fixed inset-y-0 left-0 w-80 bg-white border-r border-slate-100 flex flex-col h-screen overflow-y-auto z-70 transition-transform duration-500 lg:sticky lg:translate-x-0 lg:z-50 shadow-[4px_0_24px_rgba(0,0,0,0.02)]",
         isSidebarOpen ? "translate-x-0" : "-translate-x-full"
       )}>
         <div className="p-10 pb-12 flex items-center justify-between">
@@ -374,7 +392,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
       </aside>
 
       {/* Main Content Area */}
-      <main className="flex-1 flex flex-col h-screen overflow-hidden bg-[#FDFDFD]">
+      <main className="flex-1 flex flex-col min-h-0 overflow-hidden bg-[#FDFDFD]">
         {/* Header Superior Premium */}
         <header className="h-20 lg:h-24 bg-white/80 backdrop-blur-md border-b border-slate-50 px-6 lg:px-12 flex items-center justify-between sticky top-0 z-40 shrink-0">
           <div className="flex items-center gap-4">
@@ -436,6 +454,30 @@ export function AdminLayout({ children }: AdminLayoutProps) {
                   </div>
 
                   <div className="max-h-96 overflow-auto p-4 space-y-4">
+                    <div className="grid grid-cols-2 gap-3 mb-3">
+                      {['PENDING', 'IN_PROGRESS', 'PAUSED', 'DENIED'].map((status) => {
+                        const labelMap: Record<string, string> = {
+                          PENDING: 'Pendente',
+                          IN_PROGRESS: 'Em andamento',
+                          PAUSED: 'Pausado',
+                          DENIED: 'Negado',
+                        };
+                        const colorMap: Record<string, string> = {
+                          PENDING: 'bg-amber-50 text-amber-700 border-amber-100',
+                          IN_PROGRESS: 'bg-sky-50 text-sky-700 border-sky-100',
+                          PAUSED: 'bg-slate-50 text-slate-700 border-slate-100',
+                          DENIED: 'bg-rose-50 text-rose-700 border-rose-100',
+                        };
+
+                        return (
+                          <div key={status} className={`rounded-2xl border px-3 py-2 text-[11px] font-black uppercase tracking-[0.16em] ${colorMap[status]}`}>
+                            <div className="text-slate-500">{labelMap[status]}</div>
+                            <div className="mt-1 text-xl text-slate-950">{provisioningStatusTotals[status] ?? 0}</div>
+                          </div>
+                        );
+                      })}
+                    </div>
+
                     {noticesLoading ? (
                       <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-500">
                         Carregando pendências...
@@ -526,7 +568,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
         </header>
 
         <div className="flex-1 overflow-y-auto px-4 py-4 md:px-6 md:py-6 lg:px-8 lg:py-8 no-scrollbar">
-          <div className="max-w-[1720px] mx-auto w-full min-h-full flex flex-col">
+          <div className="max-w-430 mx-auto w-full min-h-full flex flex-col">
             <motion.div
               className="flex-1"
               key={pathname}
@@ -541,7 +583,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
               <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
                 <div className="min-w-0">
                   <div className="mt-2 flex items-center gap-3 min-w-0">
-                    <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-gradient-to-br from-slate-900 to-slate-700 text-[11px] font-black uppercase tracking-[0.16em] text-white shadow-sm">
+                    <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-slate-200 bg-linear-to-br from-slate-900 to-slate-700 text-[11px] font-black uppercase tracking-[0.16em] text-white shadow-sm">
                       {footerBadgeLabel}
                     </span>
                     <div className="min-w-0">

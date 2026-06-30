@@ -564,7 +564,6 @@ export default function SettingsPage() {
                                     />
 
                                     {/* Lista de Sugestões */}
-                                    ...
                                     {status === "OK" && (
                                         <div className="absolute z-100 w-full mt-2 bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden animate-in fade-in zoom-in duration-200">
                                             {data.map(({ place_id, description }) => (
@@ -715,23 +714,7 @@ export default function SettingsPage() {
                                     </div>
                                     <p className="text-[10px] text-slate-400 font-bold uppercase mt-1 ml-1">No fechamento do caixa, divergências iguais ou acima desse valor exigem justificativa.</p>
                                 </div>
-                                    <div className="space-y-2">
-                                        <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Número de Mesas</label>
-                                        <div className="relative">
-                                            <div className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300">
-                                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v18"/><path d="m5 8 14 0"/><path d="m5 16 14 0"/></svg>
-                                            </div>
-                                            <input
-                                                type="number"
-                                                min={0}
-                                                max={100}
-                                                value={formData.tableCount || 0}
-                                                onChange={(e) => setFormData({ ...formData, tableCount: Number(e.target.value) })}
-                                                className="w-full h-10 sm:h-12 md:h-14 pl-11 sm:pl-14 pr-4 sm:pr-5 bg-slate-50 border-2 border-transparent focus:border-primary/20 focus:bg-white rounded-2xl transition-all font-bold text-slate-700 outline-none"
-                                            />
-                                        </div>
-                                        <p className="text-[10px] text-slate-400 font-bold uppercase mt-1 ml-1">Ative o controle de mesas no PDV informando quantas mesas possui.</p>
-                                    </div>
+                                
                                 </div>
                             </section>
 
@@ -761,6 +744,23 @@ export default function SettingsPage() {
                                 </div>
 
                                 <div className="grid grid-cols-1 gap-4">
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Número de Mesas</label>
+                                        <div className="relative">
+                                            <div className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300">
+                                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v18"/><path d="m5 8 14 0"/><path d="m5 16 14 0"/></svg>
+                                            </div>
+                                            <input
+                                                type="number"
+                                                min={0}
+                                                max={100}
+                                                value={formData.tableCount || 0}
+                                                onChange={(e) => setFormData({ ...formData, tableCount: Number(e.target.value) })}
+                                                className="w-full h-10 sm:h-12 md:h-14 pl-11 sm:pl-14 pr-4 sm:pr-5 bg-slate-50 border-2 border-transparent focus:border-primary/20 focus:bg-white rounded-2xl transition-all font-bold text-slate-700 outline-none"
+                                            />
+                                        </div>
+                                        <p className="text-[10px] text-slate-400 font-bold uppercase mt-1 ml-1">Ative o controle de mesas no PDV informando quantas mesas possui.</p>
+                                    </div>
                                     {DAY_OPTIONS.map((day) => {
                                         const daySchedule = operatingHours[day.key];
 

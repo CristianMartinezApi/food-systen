@@ -24,6 +24,7 @@ export default function Dashboard() {
   const router = useRouter();
   const [kpis, setKpis] = useState<any>(null);
   const [restaurants, setRestaurants] = useState<any[]>([]);
+  const [provisioningSummary, setProvisioningSummary] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [days, setDays] = useState<number>(14);
   const [errorText, setErrorText] = useState<string | null>(null);
@@ -31,12 +32,14 @@ export default function Dashboard() {
   useEffect(() => {
     const load = async () => {
       try {
-        const [data, restaurantData] = await Promise.all([
+        const [data, restaurantData, provisioningSummaryData] = await Promise.all([
           api.get("/admin/kpis"),
-          api.get("/admin/restaurants")
+          api.get("/admin/restaurants"),
+          api.get("/admin/provisioning/summary")
         ]);
         setKpis(data);
         setRestaurants(Array.isArray(restaurantData) ? restaurantData : []);
+        setProvisioningSummary(provisioningSummaryData);
       } catch (e: any) {
         setErrorText(e.message || "Erro ao carregar dashboard");
       } finally {
@@ -63,8 +66,12 @@ export default function Dashboard() {
 
   const approvalRate = kpis?.totalUsers > 0 ? Math.round(((kpis.totalUsers - kpis.pendingUsers) / kpis.totalUsers) * 100) : 0;
   const pendingUsers = Number(kpis?.pendingUsers || 0);
-  const pendingRestaurants = Number(kpis?.pendingRestaurants || 0);
-  const inProgressProvisioning = Number(kpis?.provisioning?.IN_PROGRESS || 0);
+  const provisioningCounts = provisioningSummary?.statusTotals || { PENDING: 0, IN_PROGRESS: 0, PAUSED: 0, DENIED: 0 };
+  const pendingRestaurants = Number(provisioningCounts.PENDING || 0);
+  const totalProvisioningPending = Number(provisioningSummary?.total || 0);
+  const inProgressProvisioning = Number(provisioningCounts.IN_PROGRESS || 0);
+  const pausedProvisioning = Number(provisioningCounts.PAUSED || 0);
+  const deniedProvisioning = Number(provisioningCounts.DENIED || 0);
 
   const usageSummary = useMemo(() => {
     const summary = {
@@ -211,8 +218,10 @@ export default function Dashboard() {
 
   const alerts: string[] = [];
   if (pendingUsers > 0) alerts.push(`${pendingUsers} cliente(s) aguardando aprovação`);
-  if (pendingRestaurants > 0) alerts.push(`${pendingRestaurants} loja(s) pendente(s)`);
+  if (totalProvisioningPending > 0) alerts.push(`${totalProvisioningPending} loja(s) com provisioning aberto`);
   if (inProgressProvisioning > 0) alerts.push(`${inProgressProvisioning} provisioning em andamento`);
+  if (pausedProvisioning > 0) alerts.push(`${pausedProvisioning} loja(s) com provisioning pausado`);
+  if (deniedProvisioning > 0) alerts.push(`${deniedProvisioning} loja(s) com provisioning negado`);
   if (usageSummary.limitReached > 0) alerts.push(`${usageSummary.limitReached} loja(s) no limite do plano`);
   if (usageSummary.critical > 0) alerts.push(`${usageSummary.critical} loja(s) com uso crítico de plano`);
   if (usageSummary.noPlan > 0) alerts.push(`${usageSummary.noPlan} loja(s) sem plano definido`);
@@ -272,7 +281,7 @@ export default function Dashboard() {
             {renderTrendBadge(trendSummary.users)}
           </div>
           <p className="mt-2 text-2xl font-black text-slate-950">{trendSummary.users.current}</p>
-          <p className="text-[11px] font-medium uppercase tracking-[0.1em] text-slate-400">vs {trendSummary.users.previous} no período anterior</p>
+          <p className="text-[11px] font-medium uppercase tracking-widest text-slate-400">vs {trendSummary.users.previous} no período anterior</p>
         </div>
 
         <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
@@ -281,7 +290,7 @@ export default function Dashboard() {
             {renderTrendBadge(trendSummary.restaurants)}
           </div>
           <p className="mt-2 text-2xl font-black text-slate-950">{trendSummary.restaurants.current}</p>
-          <p className="text-[11px] font-medium uppercase tracking-[0.1em] text-slate-400">vs {trendSummary.restaurants.previous} no período anterior</p>
+          <p className="text-[11px] font-medium uppercase tracking-widest text-slate-400">vs {trendSummary.restaurants.previous} no período anterior</p>
         </div>
 
         <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
@@ -292,7 +301,7 @@ export default function Dashboard() {
             </span>
           </div>
           <p className="mt-2 text-2xl font-black text-slate-950">{pendingRestaurants}</p>
-          <p className="text-[11px] font-medium uppercase tracking-[0.1em] text-slate-400">lojas aguardando ação operacional</p>
+          <p className="text-[11px] font-medium uppercase tracking-widest text-slate-400">lojas aguardando ação operacional</p>
         </div>
       </div>
 
@@ -303,7 +312,7 @@ export default function Dashboard() {
             <Users size={16} className="text-primary" />
           </div>
           <div className="mt-3 text-2xl sm:text-3xl font-black text-slate-950">{kpis.totalUsers}</div>
-          <p className="mt-1 text-[11px] font-medium text-slate-400 uppercase tracking-[0.1em]">{pendingUsers} pendentes</p>
+          <p className="mt-1 text-[11px] font-medium text-slate-400 uppercase tracking-widest">{pendingUsers} pendentes</p>
         </div>
 
         <div className="rounded-2xl sm:rounded-3xl border border-amber-100 bg-amber-50 p-4 sm:p-5 shadow-sm">
@@ -312,7 +321,7 @@ export default function Dashboard() {
             <Clock3 size={16} className="text-amber-700" />
           </div>
           <div className="mt-3 text-2xl sm:text-3xl font-black text-amber-800">{pendingRestaurants}</div>
-          <p className="mt-1 text-[11px] font-medium text-amber-700/80 uppercase tracking-[0.1em]">aguardando liberação</p>
+          <p className="mt-1 text-[11px] font-medium text-amber-700/80 uppercase tracking-widest">aguardando liberação</p>
         </div>
 
         <div className="rounded-2xl sm:rounded-3xl border border-sky-100 bg-sky-50 p-4 sm:p-5 shadow-sm">
@@ -321,7 +330,7 @@ export default function Dashboard() {
             <Building2 size={16} className="text-sky-600" />
           </div>
           <div className="mt-3 text-2xl sm:text-3xl font-black text-sky-700">{kpis.totalRestaurants}</div>
-          <p className="mt-1 text-[11px] font-medium text-sky-700/80 uppercase tracking-[0.1em]">{kpis.activeRestaurants} ativas</p>
+          <p className="mt-1 text-[11px] font-medium text-sky-700/80 uppercase tracking-widest">{kpis.activeRestaurants} ativas</p>
         </div>
 
         <div className="rounded-2xl sm:rounded-3xl border border-slate-100 bg-white p-4 sm:p-5 shadow-sm">
@@ -330,7 +339,7 @@ export default function Dashboard() {
             <ShieldCheck size={16} className="text-slate-600" />
           </div>
           <div className="mt-3 text-2xl sm:text-3xl font-black text-slate-950">{approvalRate}%</div>
-          <p className="mt-1 text-[11px] font-medium text-slate-400 uppercase tracking-[0.1em]">{inProgressProvisioning} em provisioning</p>
+          <p className="mt-1 text-[11px] font-medium text-slate-400 uppercase tracking-widest">{inProgressProvisioning} em provisioning</p>
         </div>
       </div>
 
@@ -341,7 +350,7 @@ export default function Dashboard() {
             <TrendingUp size={16} className="text-sky-700" />
           </div>
           <div className="mt-2 text-2xl sm:text-3xl font-black text-sky-800">{usageSummary.warning}</div>
-          <p className="text-[11px] font-medium text-sky-700/80 uppercase tracking-[0.1em]">lojas em atenção</p>
+          <p className="text-[11px] font-medium text-sky-700/80 uppercase tracking-widest">lojas em atenção</p>
         </div>
 
         <div className="rounded-2xl sm:rounded-3xl border border-amber-100 bg-amber-50 p-4 sm:p-5 shadow-sm">
@@ -350,7 +359,7 @@ export default function Dashboard() {
             <TriangleAlert size={16} className="text-amber-700" />
           </div>
           <div className="mt-2 text-2xl sm:text-3xl font-black text-amber-800">{usageSummary.critical}</div>
-          <p className="text-[11px] font-medium text-amber-700/80 uppercase tracking-[0.1em]">risco de bloqueio</p>
+          <p className="text-[11px] font-medium text-amber-700/80 uppercase tracking-widest">risco de bloqueio</p>
         </div>
 
         <div className="rounded-2xl sm:rounded-3xl border border-rose-100 bg-rose-50 p-4 sm:p-5 shadow-sm">
@@ -359,7 +368,45 @@ export default function Dashboard() {
             <AlertOctagon size={16} className="text-rose-700" />
           </div>
           <div className="mt-2 text-2xl sm:text-3xl font-black text-rose-800">{usageSummary.limitReached}</div>
-          <p className="text-[11px] font-medium text-rose-700/80 uppercase tracking-[0.1em]">exigem ação imediata</p>
+          <p className="text-[11px] font-medium text-rose-700/80 uppercase tracking-widest">exigem ação imediata</p>
+        </div>
+      </div>
+
+      <div className="grid gap-3 sm:gap-4 md:grid-cols-4">
+        <div className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Pendentes</span>
+            <Clock3 size={16} className="text-slate-500" />
+          </div>
+          <div className="mt-3 text-2xl font-black text-slate-950">{pendingRestaurants}</div>
+          <p className="mt-1 text-[11px] font-medium uppercase tracking-widest text-slate-400">aguardando aprovação</p>
+        </div>
+
+        <div className="rounded-2xl border border-sky-100 bg-sky-50 p-4 shadow-sm">
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-sky-600">Em andamento</span>
+            <ShieldCheck size={16} className="text-sky-700" />
+          </div>
+          <div className="mt-3 text-2xl font-black text-sky-800">{inProgressProvisioning}</div>
+          <p className="mt-1 text-[11px] font-medium uppercase tracking-widest text-sky-700">processos ativos</p>
+        </div>
+
+        <div className="rounded-2xl border border-amber-100 bg-amber-50 p-4 shadow-sm">
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-600">Pausados</span>
+            <AlertTriangle size={16} className="text-amber-700" />
+          </div>
+          <div className="mt-3 text-2xl font-black text-amber-800">{pausedProvisioning}</div>
+          <p className="mt-1 text-[11px] font-medium uppercase tracking-widest text-amber-700">aguardando revisão</p>
+        </div>
+
+        <div className="rounded-2xl border border-rose-100 bg-rose-50 p-4 shadow-sm">
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-rose-600">Negados</span>
+            <AlertOctagon size={16} className="text-rose-700" />
+          </div>
+          <div className="mt-3 text-2xl font-black text-rose-800">{deniedProvisioning}</div>
+          <p className="mt-1 text-[11px] font-medium uppercase tracking-widest text-rose-700">exigem correção</p>
         </div>
       </div>
 
@@ -377,6 +424,43 @@ export default function Dashboard() {
               <div key={`${alert}-${index}`} className="rounded-2xl bg-amber-50 p-4 text-sm font-bold text-amber-700">{alert}</div>
             ))}
           </div>
+        )}
+      </div>
+
+      <div className="rounded-2xl sm:rounded-3xl border border-slate-100 bg-white p-4 sm:p-6 shadow-sm">
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="text-sm sm:text-base font-black uppercase tracking-[0.14em] text-slate-700">Provisionings recentes</h2>
+          <button
+            onClick={() => openPage('/admin/provisioning')}
+            className="h-9 sm:h-10 px-4 rounded-full border border-slate-200 bg-white text-[10px] font-black uppercase tracking-[0.2em] text-slate-600"
+          >
+            Ver todos
+          </button>
+        </div>
+
+        {provisioningSummary?.restaurants?.length ? (
+          <div className="mt-4 space-y-3">
+            {provisioningSummary.restaurants.map((restaurant: any) => (
+              <button
+                key={restaurant.id}
+                onClick={() => openPage('/admin/provisioning')}
+                className="w-full rounded-2xl border border-slate-100 bg-slate-50 p-4 text-left transition-colors hover:bg-slate-100"
+              >
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-sm font-black text-slate-950 truncate">{restaurant.name}</p>
+                    <p className="mt-1 text-[11px] text-slate-500 truncate">Slug: {restaurant.slug}</p>
+                  </div>
+                  <span className="rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-slate-700 bg-white border border-slate-200">
+                    {restaurant.provisioningStatus}
+                  </span>
+                </div>
+                <p className="mt-2 text-[11px] text-slate-500 uppercase tracking-[0.16em]">Criado em {new Date(restaurant.createdAt).toLocaleDateString('pt-BR')}</p>
+              </button>
+            ))}
+          </div>
+        ) : (
+          <div className="mt-3 rounded-2xl bg-slate-50 p-4 text-sm text-slate-500">Nenhum provisioning recente no momento.</div>
         )}
       </div>
 
@@ -407,7 +491,7 @@ export default function Dashboard() {
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div>
                       <p className="text-sm font-black text-slate-900 uppercase tracking-[0.08em]">{restaurant.name}</p>
-                      <p className="text-[11px] font-medium text-slate-500 uppercase tracking-[0.1em]">Plano {restaurant?.plan?.name || 'sem plano'}</p>
+                      <p className="text-[11px] font-medium text-slate-500 uppercase tracking-widest">Plano {restaurant?.plan?.name || 'sem plano'}</p>
                     </div>
                     <span className="rounded-full bg-white px-3 py-1 text-[10px] font-black uppercase tracking-[0.2em] text-slate-700 border border-slate-200">
                       Pico {Math.round(peak)}%

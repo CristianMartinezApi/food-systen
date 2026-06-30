@@ -4839,8 +4839,8 @@ app.get('/api/stats', authMiddleware, async (req: AuthRequest, res) => {
   });
 });
 
-httpServer.listen(PORT, () => {
-  console.log(`🚀 API com PostgreSQL rodando em http://localhost:${PORT}`);
+httpServer.listen(PORT, '0.0.0.0', () => {
+  console.log(`🚀 API com PostgreSQL rodando em http://0.0.0.0:${PORT}`);
   scheduleAuditRetentionCleanup();
 });
 

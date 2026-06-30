@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { api } from "@/core/config/api";
-import { BadgeCheck, Download, FileText, Filter, Search, ShieldAlert } from "lucide-react";
+import { BadgeCheck, Download, FileText, Filter, Search, ShieldAlert, ChevronDown, ChevronUp } from "lucide-react";
 import toast from "react-hot-toast";
 
 interface AuditLog {
@@ -49,6 +49,33 @@ function formatAuditSubjectType(subjectType: string) {
   return subjectTypeLabels[subjectType] || subjectType;
 }
 
+function formatAuditDate(dateString: string) {
+  return new Date(dateString).toLocaleDateString('pt-BR', {
+    weekday: 'long',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric'
+  });
+}
+
+function groupLogsByDate(logs: AuditLog[]) {
+  const groups: Record<string, AuditLog[]> = {};
+
+  logs.forEach((log) => {
+    const day = formatAuditDate(log.createdAt);
+    if (!groups[day]) groups[day] = [];
+    groups[day].push(log);
+  });
+
+  return Object.entries(groups)
+    .map(([day, items]) => ({ day, items }))
+    .sort((a, b) => {
+      const dateA = new Date(a.items[0].createdAt).getTime();
+      const dateB = new Date(b.items[0].createdAt).getTime();
+      return dateB - dateA;
+    });
+}
+
 async function downloadAuditCsv(search: string, subjectType: string) {
   const q = new URLSearchParams();
   if (search) q.set("search", search);
@@ -86,6 +113,7 @@ function AuditContent() {
   const [isLoading, setIsLoading] = useState(false);
   const [search, setSearch] = useState("");
   const [subjectType, setSubjectType] = useState("");
+  const [expandedLogIds, setExpandedLogIds] = useState<number[]>([]);
 
   const load = async (p = 1) => {
     try {
@@ -120,6 +148,8 @@ function AuditContent() {
   const userCount = logs.filter((log) => log.subjectType === "user").length;
   const printCount = logs.filter((log) => log.action === "print_document").length;
   const latestLog = logs[0];
+  const hasAnyDetails = logs.some((log) => log.details && Object.keys(log.details).length > 0);
+  const groupedLogs = groupLogsByDate(logs);
 
   return (
     <div className="space-y-6 sm:space-y-8">
@@ -151,11 +181,11 @@ function AuditContent() {
             </div>
             <div className="rounded-2xl sm:rounded-[2.5rem] border border-amber-100 bg-amber-50/80 p-4 sm:p-5 shadow-sm hover:shadow-2xl hover:shadow-amber-200/40 transition-all duration-500">
               <div className="flex items-center justify-between">
-                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-500">Impressoes</span>
+                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-500">Impressões</span>
                 <ShieldAlert size={16} className="text-amber-600" />
               </div>
               <div className="mt-3 text-xl sm:text-heading-2 font-mono font-bold text-amber-700 tracking-tighter">{printCount}</div>
-              <p className="text-[12px] sm:text-label font-body font-medium text-amber-700/80 uppercase tracking-[0.06em]">eventos de impressao</p>
+              <p className="text-[12px] sm:text-label font-body font-medium text-amber-700/80 uppercase tracking-[0.06em]">eventos de impressão</p>
             </div>
           </div>
         </div>
@@ -252,7 +282,7 @@ function AuditContent() {
                   <div key={item} className="animate-pulse rounded-2xl sm:rounded-[2.5rem] border border-slate-50 bg-slate-50 p-4 sm:p-5">
                     <div className="h-4 w-1/3 rounded bg-slate-200" />
                     <div className="mt-3 h-3 w-2/3 rounded bg-slate-200" />
-                    <div className="mt-4 h-16 rounded bg-slate-100" />
+                    <div className="mt-4 h-12 rounded bg-slate-100" />
                   </div>
                 ))}
               </div>
@@ -261,34 +291,66 @@ function AuditContent() {
                 Nenhum log encontrado.
               </div>
             ) : (
-              <div className="space-y-3">
-                {logs.map((log) => (
-                  <article key={log.id} className="rounded-2xl sm:rounded-[2.5rem] border border-slate-50 bg-white p-4 sm:p-5 transition-all duration-500 hover:shadow-2xl hover:shadow-slate-200/40">
-                    <div className="flex flex-col gap-2 sm:gap-3 md:flex-row md:items-start md:justify-between">
-                      <div>
-                        <div className="flex flex-wrap items-center gap-2">
-                          <h3 className="text-sm sm:text-body-strong font-display font-bold text-slate-950 uppercase tracking-tight wrap-break-word">{formatAuditAction(log.action)}</h3>
-                          <span className="rounded-full bg-white px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.12em] sm:tracking-[0.2em] text-slate-500">{formatAuditSubjectType(log.subjectType)}</span>
-                        </div>
-                        <p className="mt-1 text-[11px] sm:text-label font-body font-medium text-slate-400 uppercase tracking-[0.04em] sm:tracking-[0.06em] break-all sm:break-normal">
-                          {log.actorEmail || "Sistema"} • {formatAuditSubjectType(log.subjectType)}#{log.subjectId || ""}
-                        </p>
-                      </div>
-                      <div className="text-[10px] font-black uppercase tracking-[0.12em] sm:tracking-[0.2em] text-slate-400">{new Date(log.createdAt).toLocaleString()}</div>
+              <div className="space-y-6">
+                {groupedLogs.map((group) => (
+                  <section key={group.day} className="space-y-3">
+                    <div className="rounded-3xl bg-slate-50 px-4 py-3 text-sm font-black uppercase tracking-[0.16em] text-slate-600 shadow-sm">
+                      {group.day}
                     </div>
+                    <div className="space-y-2">
+                      {group.items.map((log) => {
+                        const hasDetails = log.action === "print_document" || (log.details && Object.keys(log.details).length > 0);
+                        const isExpanded = expandedLogIds.includes(log.id);
 
-                    {log.action === "print_document" ? (
-                      <div className="mt-4 rounded-3xl border border-slate-100 bg-white p-4 text-xs text-slate-600">
-                        <div><strong>Template:</strong> {log.details?.template || "-"}</div>
-                        <div><strong>Formato:</strong> {log.details?.printMode || "-"}</div>
-                        <div><strong>Impresso em:</strong> {log.details?.printedAt ? new Date(log.details.printedAt).toLocaleString() : new Date(log.createdAt).toLocaleString()}</div>
-                      </div>
-                    ) : log.details && Object.keys(log.details).length > 0 ? (
-                      <pre className="mt-4 max-w-full overflow-auto rounded-3xl border border-slate-100 bg-white p-4 text-xs text-slate-600">{JSON.stringify(log.details, null, 2)}</pre>
-                    ) : (
-                      <div className="mt-4 rounded-3xl border border-slate-100 bg-slate-50 p-4 text-xs text-slate-500">Sem detalhes adicionais.</div>
-                    )}
-                  </article>
+                        return (
+                          <article key={log.id} className="rounded-2xl sm:rounded-[2.5rem] border border-slate-50 bg-white p-4 sm:p-5 transition-all duration-500 shadow-sm hover:shadow-2xl hover:shadow-slate-200/40">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (!hasDetails) return;
+                                setExpandedLogIds((current) =>
+                                  current.includes(log.id) ? current.filter((id) => id !== log.id) : [...current, log.id]
+                                );
+                              }}
+                              className="w-full flex items-center justify-between gap-3 text-left"
+                            >
+                              <div className="flex-1">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <h3 className="text-sm sm:text-body-strong font-display font-bold text-slate-950 uppercase tracking-tight wrap-break-word">{formatAuditAction(log.action)}</h3>
+                                  <span className="rounded-full bg-white px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.12em] sm:tracking-[0.2em] text-slate-500">{formatAuditSubjectType(log.subjectType)}</span>
+                                </div>
+                                <p className="mt-1 text-[11px] sm:text-label font-body font-medium text-slate-400 uppercase tracking-[0.04em] sm:tracking-[0.06em] break-all sm:break-normal">
+                                  {log.actorEmail || "Sistema"} • {formatAuditSubjectType(log.subjectType)}#{log.subjectId || ""}
+                                </p>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className="text-[10px] font-black uppercase tracking-[0.12em] sm:tracking-[0.2em] text-slate-400">{new Date(log.createdAt).toLocaleTimeString('pt-BR')}</span>
+                                {hasDetails ? (
+                                  isExpanded ? <ChevronUp size={18} className="text-slate-500" /> : <ChevronDown size={18} className="text-slate-500" />
+                                ) : null}
+                              </div>
+                            </button>
+
+                            {hasDetails && isExpanded ? (
+                              <div className="mt-4 rounded-3xl border border-slate-100 bg-white p-4 text-xs text-slate-600">
+                                {log.action === "print_document" ? (
+                                  <div className="space-y-2">
+                                    <div><strong>Template:</strong> {log.details?.template || "-"}</div>
+                                    <div><strong>Formato:</strong> {log.details?.printMode || "-"}</div>
+                                    <div><strong>Impresso em:</strong> {log.details?.printedAt ? new Date(log.details.printedAt).toLocaleString() : new Date(log.createdAt).toLocaleString()}</div>
+                                  </div>
+                                ) : log.details && Object.keys(log.details).length > 0 ? (
+                                  <pre className="max-w-full overflow-auto rounded-3xl border border-slate-100 bg-slate-50 p-4 text-xs text-slate-600">{JSON.stringify(log.details, null, 2)}</pre>
+                                ) : (
+                                  <div className="text-slate-500">Sem detalhes adicionais.</div>
+                                )}
+                              </div>
+                            ) : null}
+                          </article>
+                        );
+                      })}
+                    </div>
+                  </section>
                 ))}
               </div>
             )}
