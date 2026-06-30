@@ -74,7 +74,7 @@ export function ProductModal({ isOpen, onClose, onSave, product }: ProductModalP
         stockQuantity: product.stockQuantity || 0,
         trackStock: product.trackStock || false,
         discountPercent: clampDiscountPercent(product.discountPercent),
-        price: formatMoneyInputRealtime(String(product.price || 0)),
+        price: toMoneyInputValue((Number(product.price) || 0).toFixed(2)),
         addons: product.addons || [],
         sizes: product.sizes || [],
         ingredients: product.ingredients || []

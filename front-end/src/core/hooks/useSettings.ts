@@ -4,19 +4,38 @@ import { socket } from '../config/socket';
 import { getTenantSlug } from '../../shared/utils/tenant';
 import { createDefaultOperatingHours, isRestaurantOpenNow, normalizeOperatingHours } from '../../shared/utils/schedule';
 
+function getUserRoleFromStorage() {
+  if (typeof window === 'undefined') return null;
+
+  try {
+    const userData = localStorage.getItem('@FoodSystem:user');
+    if (!userData) return null;
+    const user = JSON.parse(userData);
+    return user?.role || null;
+  } catch {
+    return null;
+  }
+}
+
 export function useSettings() {
   const [settings, setSettings] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<boolean>(false);
-  const [slug, setSlug] = useState<string>("");
+  const [slug, setSlug] = useState<string>('');
+  const [isSuperAdmin, setIsSuperAdmin] = useState<boolean>(false);
 
   useEffect(() => {
     setSlug(getTenantSlug());
+    setIsSuperAdmin(getUserRoleFromStorage() === 'SUPER_ADMIN');
   }, []);
 
   const fetchSettings = async () => {
-    if (!slug) return;
-    
+    if (!slug || isSuperAdmin) {
+      setIsLoading(false);
+      return;
+    }
+
+    setIsLoading(true);
     try {
       setError(false);
       const data = await api.get('/settings');
@@ -46,6 +65,11 @@ export function useSettings() {
   useEffect(() => {
     fetchSettings();
 
+    if (!slug || isSuperAdmin) {
+      setIsLoading(false);
+      return;
+    }
+
     const eventName = `settings_updated_${slug}`;
     socket.on(eventName, (newSettings) => {
       newSettings.operatingHours = normalizeOperatingHours(newSettings.operatingHours || createDefaultOperatingHours());
@@ -59,7 +83,7 @@ export function useSettings() {
     return () => {
       socket.off(eventName);
     };
-  }, [slug]);
+  }, [slug, isSuperAdmin]);
 
   useEffect(() => {
     const interval = setInterval(() => {
