@@ -114,9 +114,11 @@ export function ProductCard({ product }: ProductCardProps) {
             </h3>
           </div>
 
-          <p className="text-slate-600 text-[10px] md:text-body line-clamp-2 leading-relaxed font-body uppercase tracking-wider">
-            {product.description || "Ingredientes selecionados para uma experiência gastronômica inesquecível e luxuosa."}
-          </p>
+          {product.description ? (
+            <p className="text-slate-600 text-[10px] md:text-body line-clamp-2 leading-relaxed font-body uppercase tracking-wider">
+              {product.description}
+            </p>
+          ) : null}
 
           <div className="pt-2 md:pt-4 flex items-center justify-between">
             <div className="flex flex-col">

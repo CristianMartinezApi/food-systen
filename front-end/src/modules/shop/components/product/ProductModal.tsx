@@ -166,34 +166,38 @@ export function ProductModal({ product, isOpen, onClose, editIndex = null, initi
                                     <ShoppingBag size={80} strokeWidth={1} className="md:size-30" />
                                 </div>
                             )}
-                            {/* Gradiente sutil para mobile para leitura do texto */}
                             <div className="absolute inset-x-0 bottom-0 h-40 bg-linear-to-t from-slate-950/80 via-slate-950/20 to-transparent md:hidden" />
-
-                            <div className="absolute bottom-6 left-6 right-6 md:hidden">
-                                <div className="flex items-center gap-2 mb-2">
-                                    <span className="h-0.5 w-6 bg-rose-600" />
-                                    <span className="text-[8px] font-black text-rose-600 uppercase tracking-[0.3em]">Exclusivo</span>
-                                </div>
-                                <h2 className="text-3xl font-display font-bold text-white uppercase tracking-tighter drop-shadow-2xl">
-                                    {product.name}
-                                </h2>
-                            </div>
                         </div>
 
                         <div className="flex-1 flex flex-col h-full bg-white md:bg-slate-100 relative overflow-hidden">
                             <div className="flex-1 overflow-y-auto no-scrollbar p-6 md:p-14 pb-32 md:pb-14">
+                                <div className="block md:hidden mb-8">
+                                    <h2 className="text-display font-display font-bold text-slate-950 uppercase tracking-tighter leading-[0.9] mb-4">
+                                        {product.name}
+                                    </h2>
+                                </div>
                                 <div className="hidden md:block mb-12">
-                                    <div className="flex items-center gap-3 mb-4">
-                                        <span className="h-0.5 w-10 bg-rose-600" />
-                                        <span className="text-label font-body font-bold text-rose-600 uppercase tracking-[0.3em] text-[10px]">Criação Exclusiva</span>
-                                    </div>
                                     <h2 className="text-display font-display font-bold text-slate-950 uppercase tracking-tighter leading-[0.9] mb-6">
                                         {product.name}
                                     </h2>
-                                    <p className="text-body-lg font-body text-slate-400 uppercase tracking-widest leading-relaxed max-w-md">
-                                        {product.description || "Uma composição harmônica de ingredientes selecionados para paladares exigentes."}
-                                    </p>
+                                    {product.description ? (
+                                        <p className="text-body-lg font-body text-slate-400 uppercase tracking-widest leading-relaxed max-w-md">
+                                            {product.description}
+                                        </p>
+                                    ) : null}
                                 </div>
+
+                                {product.description ? (
+                                    <section className="md:hidden">
+                                        <div className="flex items-center gap-2 mb-4">
+                                            <span className="h-px w-4 bg-rose-600 opacity-50" />
+                                            <h3 className="text-[9px] font-black text-rose-600 uppercase tracking-[0.25em]">Descrição</h3>
+                                        </div>
+                                        <p className="text-body-sm font-body text-slate-600 leading-relaxed">
+                                            {product.description}
+                                        </p>
+                                    </section>
+                                ) : null}
 
                                 <div className="space-y-12">
                                     {hasProductDiscount(discountPercent) && (

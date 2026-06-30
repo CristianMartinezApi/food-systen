@@ -2604,7 +2604,7 @@ app.get('/api/categories', async (req: TenantRequest, res) => {
   try {
     const categories = await prisma.category.findMany({
       where: { restaurantId: req.restaurantId },
-      include: { products: true },
+      include: { _count: { select: { products: true } } },
       orderBy: { order: 'asc' }
     });
     res.json(categories);
