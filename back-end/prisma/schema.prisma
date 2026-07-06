@@ -111,6 +111,8 @@ model Category {
   restaurantId Int
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
+  typeMontagem String?    @default("padrao")
+  guidedAssemblyConfig Json?
   restaurant   Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
   products     Product[]
 
@@ -138,6 +140,8 @@ model Product {
   addons       Json?
   ingredients  Json?
   sizes        Json?
+  usesGuidedAssembly Boolean @default(false)
+  guidedAssemblyConfig Json?
   orderItems   OrderItem[]
   category     Category    @relation(fields: [categoryId], references: [id], onDelete: Cascade)
   restaurant   Restaurant  @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
@@ -189,6 +193,7 @@ model OrderItem {
   observations String?
   removals     Json?
   variation    String?
+  guidedAssemblySelections Json?
   order        Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
   product      Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
 

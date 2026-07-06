@@ -16,6 +16,7 @@ import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import { getNextOpeningLabel, isRestaurantOpenNow, normalizeOperatingHours } from './utils/hours';
+import { validateGuidedSelections } from './utils/guided-assembly';
 
 dotenv.config();
 
@@ -55,6 +56,67 @@ function validatePasswordStrength(password: string): { isValid: boolean; errors:
 function normalizeCnpj(value: unknown): string | null {
   const digits = String(value || '').replace(/\D/g, '');
   return digits.length ? digits : null;
+}
+
+function getGuidedAssemblyGroups(product: any, category: any) {
+  const configuredGroups = Array.isArray(product?.guidedAssemblyConfig)
+    ? product.guidedAssemblyConfig
+    : Array.isArray(category?.guidedAssemblyConfig)
+      ? category.guidedAssemblyConfig
+      : [];
+
+  if (configuredGroups.length > 0) {
+    return configuredGroups.map((group: any) => ({
+      id: group.id || group.name,
+      name: group.name,
+      minSelections: Number(group.minSelections ?? 0),
+      maxSelections: Number(group.maxSelections ?? group.options?.length ?? 1),
+      options: Array.isArray(group.options) ? group.options : [],
+    }));
+  }
+
+  const normalizedCategory = `${category?.name || ''} ${category?.slug || ''}`.toLowerCase();
+  if (!normalizedCategory.includes('pasteis')) {
+    return null;
+  }
+
+  return [
+    { id: 'base', name: 'Ingredientes Base', minSelections: 2, maxSelections: 2 },
+    { id: 'queijo', name: 'Tipo de Queijo', minSelections: 1, maxSelections: 1 },
+    { id: 'complemento', name: 'Complemento', minSelections: 1, maxSelections: 1 },
+  ];
+}
+
+function normalizeGuidedAssemblySelections(item: any) {
+  const selections = Array.isArray(item?.guidedAssemblySelections)
+    ? item.guidedAssemblySelections
+    : [];
+
+  if (selections.length > 0) {
+    return selections.map((selection: any) => ({
+      groupId: selection.groupId || selection.groupName || selection.step,
+      optionIds: Array.isArray(selection.selected)
+        ? selection.selected.map((entry: any) => entry.id || entry.name)
+        : [selection.selected?.id || selection.selected?.name].filter(Boolean),
+    }));
+  }
+
+  const customization = Array.isArray(item?.customization) ? item.customization : [];
+  if (customization.length === 0) {
+    return [];
+  }
+
+  const grouped = customization.reduce((acc: Record<string, any[]>, entry: any) => {
+    const groupId = entry.step || entry.groupId || 'complemento';
+    acc[groupId] = acc[groupId] || [];
+    acc[groupId].push(entry);
+    return acc;
+  }, {});
+
+  return Object.entries(grouped).map(([groupId, selected]) => ({
+    groupId,
+    optionIds: (selected as any[]).map((entry: any) => entry.id || entry.name),
+  }));
 }
 
 function isValidCnpj(value: string): boolean {
@@ -2665,7 +2727,15 @@ app.get('/api/categories', async (req: TenantRequest, res) => {
 
 app.post('/api/categories', authMiddleware, async (req: AuthRequest, res) => {
   try {
-    const { id, restaurantId, status, ...categoryData } = req.body;
+    const { id, restaurantId, status, createdAt, updatedAt, products, _count, ...categoryData } = req.body;
+
+    if (req.body.typeMontagem !== undefined) {
+      categoryData.typeMontagem = req.body.typeMontagem;
+    }
+
+    if (req.body.guidedAssemblyConfig !== undefined) {
+      categoryData.guidedAssemblyConfig = req.body.guidedAssemblyConfig;
+    }
 
     if (categoryData.name) {
       categoryData.name = categoryData.name.toUpperCase().trim();
@@ -2697,7 +2767,15 @@ app.post('/api/categories', authMiddleware, async (req: AuthRequest, res) => {
 app.patch('/api/categories/:id', authMiddleware, async (req: AuthRequest, res) => {
   try {
     const id = parseInt(req.params.id);
-    const { id: bodyId, restaurantId, products, status, createdAt, updatedAt, ...updateData } = req.body;
+    const { id: bodyId, restaurantId, products, status, createdAt, updatedAt, _count, ...updateData } = req.body;
+
+    if (req.body.typeMontagem !== undefined) {
+      updateData.typeMontagem = req.body.typeMontagem;
+    }
+
+    if (req.body.guidedAssemblyConfig !== undefined) {
+      updateData.guidedAssemblyConfig = req.body.guidedAssemblyConfig;
+    }
 
     if (updateData.name) {
       updateData.name = updateData.name.toUpperCase().trim();
@@ -2759,7 +2837,15 @@ app.get('/api/products', async (req: TenantRequest, res) => {
 
 app.post('/api/products', authMiddleware, async (req: AuthRequest, res) => {
   try {
-    const { id, restaurantId, status, ...productData } = req.body;
+    const { id, restaurantId, status, createdAt, updatedAt, category, ...productData } = req.body;
+
+    if (req.body.usesGuidedAssembly !== undefined) {
+      productData.usesGuidedAssembly = req.body.usesGuidedAssembly;
+    }
+
+    if (req.body.guidedAssemblyConfig !== undefined) {
+      productData.guidedAssemblyConfig = req.body.guidedAssemblyConfig;
+    }
 
     // Converter categoryId para Int se vier como string
     if (productData.categoryId) {
@@ -2772,6 +2858,17 @@ app.post('/api/products', authMiddleware, async (req: AuthRequest, res) => {
     if (productData.sizes) productData.sizes = (productData.sizes as any[]).map(s => ({ ...s, name: s.name.toUpperCase().trim() }));
     if (productData.ingredients) productData.ingredients = (productData.ingredients as string[]).map(i => i.toUpperCase().trim());
     productData.discountPercent = Math.max(0, Math.min(100, Number(productData.discountPercent || 0)));
+
+    if (productData.usesGuidedAssembly && productData.guidedAssemblyConfig) {
+      const category = await prisma.category.findUnique({
+        where: { id: productData.categoryId },
+        select: { id: true, name: true }
+      }) as any;
+      const categoryType = (productData.categoryTypeMontagem || '') as string;
+      if (!category || (categoryType !== 'guiada_por_etapas' && categoryType !== 'guiada_por_etapas')) {
+        return res.status(400).json({ error: 'Produtos com montagem guiada precisam estar em uma categoria com tipo_montagem = guiada_por_etapas.' });
+      }
+    }
 
     // Verificar limite de produtos do plano
     const productCount = await prisma.product.count({
@@ -2802,6 +2899,14 @@ app.patch('/api/products/:id', authMiddleware, async (req: AuthRequest, res) => 
   try {
     const id = parseInt(req.params.id);
     const { id: bodyId, restaurantId, createdAt, updatedAt, category, status, ...updateData } = req.body;
+
+    if (req.body.usesGuidedAssembly !== undefined) {
+      updateData.usesGuidedAssembly = req.body.usesGuidedAssembly;
+    }
+
+    if (req.body.guidedAssemblyConfig !== undefined) {
+      updateData.guidedAssemblyConfig = req.body.guidedAssemblyConfig;
+    }
 
     // Converter categoryId para Int se vier como string
     if (updateData.categoryId) {
@@ -2955,6 +3060,7 @@ app.post('/api/orders', async (req: TenantRequest, res) => {
         observations: item.observations,
         addons: item.addons,
         removals: item.removals,
+        guidedAssemblySelections: normalizeGuidedAssemblySelections(item),
       }))
       : [];
 
@@ -3016,6 +3122,7 @@ app.post('/api/orders', async (req: TenantRequest, res) => {
           name: true,
           trackStock: true,
           stockQuantity: true,
+          categoryId: true,
         },
       });
 
@@ -3023,6 +3130,27 @@ app.post('/api/orders', async (req: TenantRequest, res) => {
 
       for (const item of normalizedItems) {
         const product = productMap.get(item.productId);
+
+        if (product) {
+          const productWithConfig = await tx.product.findUnique({
+            where: { id: product.id },
+            select: { id: true, categoryId: true, addons: true, guidedAssemblyConfig: true, usesGuidedAssembly: true }
+          });
+
+          const category = await tx.category.findUnique({
+            where: { id: productWithConfig?.categoryId },
+            select: { id: true, name: true, slug: true, guidedAssemblyConfig: true, typeMontagem: true }
+          }) as any;
+
+          if ((item.guidedAssemblySelections?.length || 0) > 0) {
+            const guidedGroups = getGuidedAssemblyGroups(productWithConfig, category);
+            const selections = normalizeGuidedAssemblySelections(item);
+
+            if (guidedGroups) {
+              validateGuidedSelections(guidedGroups, selections);
+            }
+          }
+        }
 
         if (!product) {
           throw new Error('PRODUCT_NOT_FOUND');
@@ -3107,6 +3235,7 @@ app.post('/api/orders', async (req: TenantRequest, res) => {
               observations: item.observations,
               addons: item.addons,
               removals: item.removals,
+              guidedAssemblySelections: item.guidedAssemblySelections,
             })),
           },
         },
