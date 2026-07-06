@@ -289,7 +289,7 @@ export default function ProvisioningPanel() {
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                   <div>
                     <div className="flex flex-wrap items-center gap-2">
-                      <h3 className="text-base sm:text-lg font-black text-slate-950 break-words">{r.name}</h3>
+                      <h3 className="text-base sm:text-lg font-black text-slate-950 .break-words">{r.name}</h3>
                       <span className={`rounded-full border px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.18em] ${statusClass}`}>{r.provisioningStatus}</span>
                       <span className={`rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.18em] ${r.isActive ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>{r.isActive ? 'Ativa' : 'Inativa'}</span>
                     </div>

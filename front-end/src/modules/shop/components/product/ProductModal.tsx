@@ -25,6 +25,7 @@ export function ProductModal({ product, isOpen, onClose, editIndex = null, initi
 
     const [selectedSize, setSelectedSize] = useState<any>(null);
     const [selectedAddons, setSelectedAddons] = useState<any[]>([]);
+    const [selectedGuidedOptions, setSelectedGuidedOptions] = useState<Record<string, any[]>>({});
     const [removals, setRemovals] = useState<string[]>([]);
     const [observations, setObservations] = useState("");
 
@@ -33,13 +34,32 @@ export function ProductModal({ product, isOpen, onClose, editIndex = null, initi
 
     useEffect(() => {
         if (isOpen && product) {
+            const genericAddons = Array.isArray(initialData?.addons)
+                ? initialData.addons.filter((item: any) => !item.step)
+                : [];
+
+            const initialGuidedSelections = Array.isArray(initialData?.guidedAssemblySelections)
+                ? initialData.guidedAssemblySelections
+                : [];
+
+            const initialState: Record<string, any[]> = {};
+            guidedGroups.forEach((group: any) => {
+                const groupId = String(group.id || group.name);
+                const selection = initialGuidedSelections.find((item: any) => String(item.groupId) === groupId);
+                const optionIds = Array.isArray(selection?.optionIds)
+                    ? selection.optionIds
+                    : [];
+                initialState[groupId] = (group.options || []).filter((option: any) => optionIds.includes(option.id || option.name));
+            });
+
             setQuantity(initialData?.quantity || 1);
             setSelectedSize(initialSize);
-            setSelectedAddons(initialData?.addons || []);
+            setSelectedAddons(genericAddons);
+            setSelectedGuidedOptions(initialState);
             setRemovals(initialData?.removals || []);
             setObservations(initialData?.observations || "");
         }
-    }, [isOpen, product, initialData, initialSize]);
+    }, [isOpen, product, initialData, initialSize, guidedGroups]);
 
     // Bloquear scroll do body quando o modal estiver aberto
     useEffect(() => {
@@ -61,17 +81,78 @@ export function ProductModal({ product, isOpen, onClose, editIndex = null, initi
         return selectedSize ? selectedSize.price : (product.price || 0);
     }, [selectedSize, product]);
 
+    const guidedGroups = useMemo(() => {
+        const configured = Array.isArray(product?.guidedAssemblyConfig)
+            ? product.guidedAssemblyConfig
+            : Array.isArray(product?.category?.guidedAssemblyConfig)
+                ? product.category.guidedAssemblyConfig
+                : [];
+        return configured.filter((group: any) => group?.name);
+    }, [product]);
+
+    const isGuidedProduct = guidedGroups.length > 0;
+
+    const selectedCustomizationItems = useMemo(() => {
+        return Object.values(selectedGuidedOptions).flat();
+    }, [selectedGuidedOptions]);
+
     const addonsTotal = useMemo(() => {
-        return selectedAddons.reduce((acc, addon) => acc + ((addon.price || 0) * (addon.quantity || 1)), 0);
-    }, [selectedAddons]);
+        const addonTotal = selectedAddons.reduce((acc, addon) => acc + ((addon.price || 0) * (addon.quantity || 1)), 0);
+        const customizationTotal = selectedCustomizationItems.reduce((acc, addon) => acc + ((addon.price || 0) * (addon.quantity || 1)), 0);
+        return addonTotal + customizationTotal;
+    }, [selectedAddons, selectedCustomizationItems]);
 
     const discountPercent = clampDiscountPercent(product?.discountPercent);
     const discountedBasePrice = getProductDiscountedPrice(basePrice, discountPercent);
     const unitPrice = discountedBasePrice + addonsTotal;
     const totalPrice = unitPrice * quantity;
 
+const toggleGuidedOption = (group: any, option: any) => {
+        const groupId = String(group.id || group.name);
+        const current = selectedGuidedOptions[groupId] || [];
+        const exists = current.some((item: any) => item.name === option.name);
+        const maxSelections = Number(group.maxSelections ?? 1);
+
+        if (exists) {
+            setSelectedGuidedOptions(prev => ({ ...prev, [groupId]: current.filter((item: any) => item.name !== option.name) }));
+            return;
+        }
+
+        if (current.length >= maxSelections) {
+            return;
+        }
+
+        setSelectedGuidedOptions(prev => ({ ...prev, [groupId]: [...current, option] }));
+    };
+
     const handleAdd = () => {
         if (!product) return;
+
+        const selectedCustomization = Object.entries(selectedGuidedOptions).flatMap(([groupId, options]) =>
+            (options || []).map((option: any) => ({ ...option, groupId, step: groupId }))
+        );
+
+        const guidedAssemblySelections = guidedGroups
+            .map((group: any) => {
+                const groupId = String(group.id || group.name);
+                const selected = selectedGuidedOptions[groupId] || [];
+                return {
+                    groupId,
+                    optionIds: selected.map((option: any) => option.id || option.name)
+                };
+            })
+            .filter((selection: any) => selection.optionIds.length > 0);
+
+        const customizationSummary = isGuidedProduct
+            ? guidedGroups
+                .map((group: any) => {
+                    const groupId = String(group.id || group.name);
+                    const selected = selectedGuidedOptions[groupId] || [];
+                    return selected.length > 0 ? `${group.name}: ${selected.map((item: any) => item.name).join(', ')}` : null;
+                })
+                .filter(Boolean)
+                .join(' | ')
+            : "";
 
         const itemData = {
             productId: product.id,
@@ -79,9 +160,11 @@ export function ProductModal({ product, isOpen, onClose, editIndex = null, initi
             price: unitPrice,
             quantity: quantity,
             variation: selectedSize?.name,
-            addons: selectedAddons,
+            addons: [...selectedAddons, ...selectedCustomization],
             removals: removals,
-            observations: observations,
+            observations: [observations, customizationSummary].filter(Boolean).join(' | '),
+            customization: selectedCustomization,
+            guidedAssemblySelections,
             image: product.image
         };
 
@@ -99,6 +182,7 @@ export function ProductModal({ product, isOpen, onClose, editIndex = null, initi
                 setQuantity(1);
                 setSelectedSize(product?.sizes?.[0] || null);
                 setSelectedAddons([]);
+                setSelectedGuidedOptions({});
                 setRemovals([]);
                 setObservations("");
             }
@@ -255,7 +339,50 @@ export function ProductModal({ product, isOpen, onClose, editIndex = null, initi
                                         </section>
                                     )}
 
-                                    {product.addons && product.addons.length > 0 && (
+                                    {isGuidedProduct && (
+                                        <section>
+                                            <div className="flex items-center gap-2 mb-4">
+                                                <span className="h-px w-4 bg-rose-600 opacity-50" />
+                                                <h3 className="text-[9px] font-black text-rose-600 uppercase tracking-[0.25em]">Monte sua seleção</h3>
+                                            </div>
+                                            <div className="space-y-4">
+                                                {guidedGroups.map((group: any) => {
+                                                    const groupId = String(group.id || group.name);
+                                                    const selected = selectedGuidedOptions[groupId] || [];
+                                                    const maxSelections = Number(group.maxSelections ?? 1);
+
+                                                    return (
+                                                        <div key={groupId} className="rounded-2xl border border-slate-200 bg-white p-4">
+                                                            <div className="flex items-center justify-between gap-2 mb-3">
+                                                                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">{group.name}</p>
+                                                                <span className="text-[10px] font-bold text-slate-400">{maxSelections === 1 ? '1 opção' : `até ${maxSelections} opções`}</span>
+                                                            </div>
+                                                            <div className="flex flex-wrap gap-2">
+                                                                {(group.options || []).map((option: any) => {
+                                                                    const isSelected = selected.some((item: any) => item.name === option.name);
+                                                                    return (
+                                                                        <button
+                                                                            key={option.name}
+                                                                            type="button"
+                                                                            onClick={() => toggleGuidedOption(group, option)}
+                                                                            className={cn(
+                                                                                'px-3 py-2 rounded-2xl border text-[10px] font-bold uppercase tracking-tight transition-all',
+                                                                                isSelected ? 'bg-slate-950 text-white border-slate-950' : 'bg-slate-50 text-slate-600 border-slate-200 hover:border-slate-300'
+                                                                            )}
+                                                                        >
+                                                                            {option.name}
+                                                                        </button>
+                                                                    );
+                                                                })}
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        </section>
+                                    )}
+
+                                    {!isGuidedProduct && product.addons && product.addons.length > 0 && (
                                         <section>
                                             <div className="flex items-center gap-2 mb-4">
                                                 <span className="h-px w-4 bg-rose-600 opacity-50" />

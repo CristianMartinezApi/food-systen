@@ -12,8 +12,17 @@ export interface Product {
   trackStock: boolean;
   slug: string;
   sizes?: { name: string; price: number }[];
-  addons?: { name: string; price: number }[];
+  addons?: { name: string; price: number; step?: string }[];
   ingredients?: string[];
+  usesGuidedAssembly?: boolean;
+  guidedAssemblyConfig?: Array<{
+    id?: number;
+    name: string;
+    order: number;
+    minSelections: number;
+    maxSelections: number;
+    options?: Array<{ name: string; price: number }>;
+  }>;
 }
 
 export interface Category {
@@ -22,6 +31,15 @@ export interface Category {
   slug: string;
   order: number;
   isActive: boolean;
+  typeMontagem?: 'padrao' | 'guiada_por_etapas';
+  guidedAssemblyConfig?: Array<{
+    id?: number;
+    name: string;
+    order: number;
+    minSelections: number;
+    maxSelections: number;
+    options?: Array<{ name: string; price: number }>;
+  }>;
   products?: Product[];
 }
 
@@ -45,9 +63,14 @@ export interface OrderItem {
   quantity: number;
   price: number;
   variation?: string;
-  addons?: { name: string; price: number }[];
+  addons?: { name: string; price: number; step?: string }[];
   removals?: string[];
   observations?: string;
+  customization?: { step: string; name: string; price: number }[];
+  guidedAssemblySelections?: Array<{
+    groupName: string;
+    selected: Array<{ name: string; price: number }>;
+  }>;
 }
 
 export interface Address {

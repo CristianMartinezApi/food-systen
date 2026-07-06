@@ -30,6 +30,7 @@ export function ProductModal({ isOpen, onClose, onSave, product }: ProductModalP
   const [newAddon, setNewAddon] = useState({ name: "", price: "" });
   const [newSize, setNewSize] = useState({ name: "", price: "" });
   const [newIngredient, setNewIngredient] = useState("");
+  const [newCustomizationOption, setNewCustomizationOption] = useState({ name: "", price: "", step: "base" });
 
   const [categories, setCategories] = useState<any[]>([]);
   const [isSaving, setIsSaving] = useState(false);
@@ -44,6 +45,9 @@ export function ProductModal({ isOpen, onClose, onSave, product }: ProductModalP
     selectedCategory?.name?.toLowerCase().includes('cerveja') ||
     selectedCategory?.name?.toLowerCase().includes('agua') ||
     selectedCategory?.name?.toLowerCase().includes('água');
+  const isPasteisCategory = selectedCategory?.slug?.toLowerCase().includes('pasteis') ||
+    selectedCategory?.name?.toLowerCase().includes('pasteis') ||
+    selectedCategory?.typeMontagem === 'guiada_por_etapas';
 
   const fetchCategories = async () => {
     try {
@@ -149,6 +153,30 @@ export function ProductModal({ isOpen, onClose, onSave, product }: ProductModalP
     setFormData({
       ...formData,
       ingredients: formData.ingredients.filter((_: any, i: number) => i !== index)
+    });
+  };
+
+  const addCustomizationOption = () => {
+    if (!newCustomizationOption.name || !newCustomizationOption.price) return;
+
+    setFormData({
+      ...formData,
+      addons: [
+        ...formData.addons,
+        {
+          name: newCustomizationOption.name,
+          price: parseMoneyInput(newCustomizationOption.price),
+          step: newCustomizationOption.step,
+        }
+      ]
+    });
+    setNewCustomizationOption({ name: "", price: "", step: newCustomizationOption.step });
+  };
+
+  const removeCustomizationOption = (index: number) => {
+    setFormData({
+      ...formData,
+      addons: formData.addons.filter((_: any, i: number) => i !== index)
     });
   };
 
@@ -385,7 +413,74 @@ export function ProductModal({ isOpen, onClose, onSave, product }: ProductModalP
               />
             </div>
 
-            {!isSimpleProduct && (
+            {isPasteisCategory && (
+              <div className="md:col-span-2 space-y-4 rounded-3xl border border-amber-100 bg-amber-50/70 p-5">
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Montagem do pastel</label>
+                    <p className="text-xs text-slate-500 mt-1">Cadastre as opções de cada etapa para o cliente montar o pastel.</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-[1.2fr_110px_140px_auto] gap-2">
+                  <input
+                    value={newCustomizationOption.name}
+                    onChange={(e) => setNewCustomizationOption({ ...newCustomizationOption, name: e.target.value })}
+                    placeholder="Nome da opção"
+                    className="h-12 px-4 bg-white rounded-xl font-bold text-sm outline-none border border-amber-200"
+                  />
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    value={newCustomizationOption.price}
+                    onChange={(e) => setNewCustomizationOption({ ...newCustomizationOption, price: formatMoneyInputRealtime(e.target.value) })}
+                    placeholder="Preço R$"
+                    className="h-12 px-4 bg-white rounded-xl font-bold text-sm outline-none border border-amber-200"
+                  />
+                  <select
+                    value={newCustomizationOption.step}
+                    onChange={(e) => setNewCustomizationOption({ ...newCustomizationOption, step: e.target.value })}
+                    className="h-12 px-4 bg-white rounded-xl font-bold text-sm outline-none border border-amber-200"
+                  >
+                    <option value="base">1. Base</option>
+                    <option value="queijo">2. Queijo</option>
+                    <option value="complemento">3. Complemento</option>
+                  </select>
+                  <button
+                    type="button"
+                    onClick={addCustomizationOption}
+                    className="h-12 bg-slate-900 text-white rounded-xl flex items-center justify-center hover:bg-black transition-all"
+                  >
+                    <Plus size={18} />
+                  </button>
+                </div>
+
+                <div className="space-y-3">
+                  {(['base', 'queijo', 'complemento'] as const).map((step) => {
+                    const title = step === 'base' ? 'Bases' : step === 'queijo' ? 'Queijos' : 'Complementos';
+                    const options = formData.addons.filter((addon: any) => addon.step === step);
+                    return (
+                      <div key={step} className="rounded-2xl border border-amber-200 bg-white/80 p-3">
+                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">{title}</p>
+                        <div className="flex flex-wrap gap-2">
+                          {options.length > 0 ? options.map((addon: any, idx: number) => (
+                            <div key={`${addon.name}-${idx}`} className="flex items-center gap-2 bg-amber-50 px-3 py-1.5 rounded-lg border border-amber-200">
+                              <span className="text-[10px] font-black text-slate-700 uppercase tracking-tight">{addon.name}</span>
+                              <span className="text-[10px] font-bold text-emerald-500">+{formatCurrency(addon.price || 0)}</span>
+                              <button type="button" onClick={() => removeCustomizationOption(formData.addons.findIndex((item: any) => item.name === addon.name && item.step === addon.step && item.price === addon.price))} className="text-slate-400 hover:text-rose-500 transition-all">
+                                <X size={12} strokeWidth={3} />
+                              </button>
+                            </div>
+                          )) : <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">Nenhuma opção cadastrada ainda.</span>}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {!isSimpleProduct && !isPasteisCategory && (
               <>
                 {/* Tamanhos / Variações */}
                 <div className="md:col-span-2 space-y-4">

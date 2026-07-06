@@ -8,6 +8,9 @@ const inter = Inter({ subsets: ["latin"] });
 export const metadata: Metadata = {
   title: "Food System",
   description: "Multi-tenant food ordering system",
+  icons: {
+    icon: "/foodsystem.png",
+  },
 };
 
 export default function RootLayout({

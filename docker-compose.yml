@@ -5,10 +5,10 @@ services:
       context: ./front-end
       dockerfile: Dockerfile
       args:
-        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000/api}
-        NEXT_PUBLIC_SOCKET_URL: ${NEXT_PUBLIC_SOCKET_URL:-http://localhost:8000}
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8001/api}
+        NEXT_PUBLIC_SOCKET_URL: ${NEXT_PUBLIC_SOCKET_URL:-http://localhost:8001}
     ports:
-      - "3000:3000"
+      - "3001:3000"
     volumes:
       - ./front-end/src:/app/src
       - ./front-end/app:/app/app
@@ -28,7 +28,7 @@ services:
       dockerfile: Dockerfile
     command: sh -c "npx prisma migrate deploy && npm run dev"
     ports:
-      - "8000:8000"
+      - "8001:8000"
     volumes:
       - ./back-end/src:/app/src
       - ./back-end/prisma:/app/prisma
@@ -62,7 +62,7 @@ services:
     # ⚠️ CUIDADO: Porta 5432 removida em produção
     # Descomente apenas em desenvolvimento local:
     ports:
-      - "5432:5432"
+     - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
