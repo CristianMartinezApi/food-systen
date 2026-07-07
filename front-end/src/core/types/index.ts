@@ -5,6 +5,7 @@ export interface Product {
   price: number;
   discountPercent?: number;
   categoryId: number;
+  category?: Category;
   image: string;
   isActive: boolean;
   isFeatured?: boolean;
@@ -58,6 +59,7 @@ export interface Order {
 }
 
 export interface OrderItem {
+  image?: string;
   productId: number;
   name: string;
   quantity: number;

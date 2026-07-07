@@ -21,7 +21,7 @@ export default function Login() {
 
     const ctx = gsap.context(() => {
       gsap.from(".login-hero", { y: 20, opacity: 0, duration: 0.8, ease: "power3.out" });
-      gsap.from(".login-form", { y: 28, opacity: 0, duration: 0.9, ease: "power3.out" }, "-=0.35");
+      gsap.from(".login-form", { y: 28, opacity: 0, duration: 0.9, ease: "power3.out" });
     }, rootRef);
 
     return () => ctx.revert();

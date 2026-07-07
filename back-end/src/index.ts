@@ -58,6 +58,40 @@ function normalizeCnpj(value: unknown): string | null {
   return digits.length ? digits : null;
 }
 
+function normalizeSlug(value: unknown): string {
+  return String(value || '')
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
+async function getUniqueCategorySlug(restaurantId: number, value: unknown, ignoreCategoryId?: number): Promise<string> {
+  const baseSlug = normalizeSlug(value) || `categoria-${Date.now()}`;
+  let candidate = baseSlug;
+  let suffix = 2;
+
+  while (true) {
+    const existing = await prisma.category.findFirst({
+      where: {
+        restaurantId,
+        slug: candidate,
+        ...(ignoreCategoryId ? { id: { not: ignoreCategoryId } } : {})
+      },
+      select: { id: true }
+    });
+
+    if (!existing) {
+      return candidate;
+    }
+
+    candidate = `${baseSlug}-${suffix}`;
+    suffix += 1;
+  }
+}
+
 function getGuidedAssemblyGroups(product: any, category: any) {
   const configuredGroups = Array.isArray(product?.guidedAssemblyConfig)
     ? product.guidedAssemblyConfig
@@ -159,6 +193,26 @@ async function bootstrap() {
   } catch (e) {
     // Ignora se já existir ou se o provider não for Postgres
     console.log('ℹ️ Banco de Dados: Verificação de Enum concluída');
+  }
+
+  try {
+    await prisma.$executeRawUnsafe(`
+      ALTER TABLE "categories"
+        ADD COLUMN IF NOT EXISTS "typeMontagem" TEXT DEFAULT 'padrao',
+        ADD COLUMN IF NOT EXISTS "guidedAssemblyConfig" JSONB
+    `);
+    await prisma.$executeRawUnsafe(`
+      ALTER TABLE "products"
+        ADD COLUMN IF NOT EXISTS "usesGuidedAssembly" BOOLEAN NOT NULL DEFAULT false,
+        ADD COLUMN IF NOT EXISTS "guidedAssemblyConfig" JSONB
+    `);
+    await prisma.$executeRawUnsafe(`
+      ALTER TABLE "order_items"
+        ADD COLUMN IF NOT EXISTS "guidedAssemblySelections" JSONB
+    `);
+    console.log('✅ Banco de Dados: Campos de montagem guiada verificados');
+  } catch (e) {
+    console.warn('⚠️ Banco de Dados: Não foi possível verificar campos de montagem guiada', e);
   }
 }
 
@@ -2727,7 +2781,12 @@ app.get('/api/categories', async (req: TenantRequest, res) => {
 
 app.post('/api/categories', authMiddleware, async (req: AuthRequest, res) => {
   try {
-    const { id, restaurantId, status, createdAt, updatedAt, products, _count, ...categoryData } = req.body;
+    const restaurantId = req.restaurantId;
+    if (!restaurantId) {
+      return res.status(400).json({ error: 'Restaurante não identificado.' });
+    }
+
+    const { id, restaurantId: bodyRestaurantId, status, createdAt, updatedAt, products, _count, ...categoryData } = req.body;
 
     if (req.body.typeMontagem !== undefined) {
       categoryData.typeMontagem = req.body.typeMontagem;
@@ -2741,9 +2800,14 @@ app.post('/api/categories', authMiddleware, async (req: AuthRequest, res) => {
       categoryData.name = categoryData.name.toUpperCase().trim();
     }
 
+    categoryData.slug = await getUniqueCategorySlug(
+      restaurantId,
+      categoryData.slug || categoryData.name
+    );
+
     // Verificar limite de categorias do plano
     const categoryCount = await prisma.category.count({
-      where: { restaurantId: req.restaurantId }
+      where: { restaurantId }
     });
 
     const maxCategories = req.restaurant?.plan?.maxCategories || 5;
@@ -2755,19 +2819,24 @@ app.post('/api/categories', authMiddleware, async (req: AuthRequest, res) => {
     }
 
     const category = await prisma.category.create({
-      data: { ...categoryData, restaurantId: req.restaurantId }
+      data: { ...categoryData, restaurantId }
     });
     res.status(201).json(category);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error creating category:', error);
-    res.status(400).json({ error: 'Erro ao criar categoria. Verifique se o slug já existe.' });
+    res.status(400).json({ error: error?.message || 'Erro ao criar categoria.' });
   }
 });
 
 app.patch('/api/categories/:id', authMiddleware, async (req: AuthRequest, res) => {
   try {
+    const restaurantId = req.restaurantId;
+    if (!restaurantId) {
+      return res.status(400).json({ error: 'Restaurante não identificado.' });
+    }
+
     const id = parseInt(req.params.id);
-    const { id: bodyId, restaurantId, products, status, createdAt, updatedAt, _count, ...updateData } = req.body;
+    const { id: bodyId, restaurantId: bodyRestaurantId, products, status, createdAt, updatedAt, _count, ...updateData } = req.body;
 
     if (req.body.typeMontagem !== undefined) {
       updateData.typeMontagem = req.body.typeMontagem;
@@ -2781,10 +2850,18 @@ app.patch('/api/categories/:id', authMiddleware, async (req: AuthRequest, res) =
       updateData.name = updateData.name.toUpperCase().trim();
     }
 
+    if (updateData.slug || updateData.name) {
+      updateData.slug = await getUniqueCategorySlug(
+        restaurantId,
+        updateData.slug || updateData.name,
+        id
+      );
+    }
+
     const result = await prisma.category.updateMany({
       where: {
         id,
-        restaurantId: req.restaurantId
+        restaurantId
       },
       data: updateData
     });
@@ -2860,12 +2937,11 @@ app.post('/api/products', authMiddleware, async (req: AuthRequest, res) => {
     productData.discountPercent = Math.max(0, Math.min(100, Number(productData.discountPercent || 0)));
 
     if (productData.usesGuidedAssembly && productData.guidedAssemblyConfig) {
-      const category = await prisma.category.findUnique({
-        where: { id: productData.categoryId },
-        select: { id: true, name: true }
+      const category = await prisma.category.findFirst({
+        where: { id: productData.categoryId, restaurantId: req.restaurantId },
+        select: { id: true, name: true, typeMontagem: true }
       }) as any;
-      const categoryType = (productData.categoryTypeMontagem || '') as string;
-      if (!category || (categoryType !== 'guiada_por_etapas' && categoryType !== 'guiada_por_etapas')) {
+      if (!category || category.typeMontagem !== 'guiada_por_etapas') {
         return res.status(400).json({ error: 'Produtos com montagem guiada precisam estar em uma categoria com tipo_montagem = guiada_por_etapas.' });
       }
     }
@@ -2934,10 +3010,15 @@ app.patch('/api/products/:id', authMiddleware, async (req: AuthRequest, res) => 
     }
 
     const product = await prisma.product.findUnique({ where: { id } });
+    const allProducts = await prisma.product.findMany({ where: { restaurantId: req.restaurantId } });
+    io.emit(`products_updated_${req.restaurant?.slug}`, allProducts);
     res.json(product);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error updating product:', error);
-    res.status(400).json({ error: 'Erro ao atualizar produto.' });
+    const errorMessage = error?.code === 'P2002' 
+      ? 'Um produto com este nome já existe nesta categoria.' 
+      : error?.message || 'Erro ao atualizar produto.';
+    res.status(400).json({ error: errorMessage });
   }
 });
 

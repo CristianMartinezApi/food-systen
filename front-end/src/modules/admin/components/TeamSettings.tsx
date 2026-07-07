@@ -22,7 +22,7 @@ type TeamMember = {
     id: number;
     name: string;
     email: string;
-    role: "MANAGER" | "EMPLOYEE";
+    role: "MANAGER" | "EMPLOYEE" | "CASHIER";
     isActive: boolean;
     createdAt: string;
 };
@@ -37,7 +37,7 @@ export default function TeamSettings() {
     const [newName, setNewName] = useState("");
     const [newEmail, setNewEmail] = useState("");
     const [newPassword, setNewPassword] = useState("");
-    const [newRole, setNewRole] = useState<"MANAGER" | "EMPLOYEE">("EMPLOYEE");
+    const [newRole, setNewRole] = useState<"MANAGER" | "EMPLOYEE" | "CASHIER">("EMPLOYEE");
 
     const loadTeam = async () => {
         try {

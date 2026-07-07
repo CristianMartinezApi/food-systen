@@ -32,6 +32,15 @@ export function ProductModal({ product, isOpen, onClose, editIndex = null, initi
     const addItem = useCartStore((state: any) => state.addItem);
     const updateItem = useCartStore((state: any) => state.updateItem);
 
+    const guidedGroups = useMemo(() => {
+        const configured = Array.isArray(product?.guidedAssemblyConfig)
+            ? product.guidedAssemblyConfig
+            : Array.isArray(product?.category?.guidedAssemblyConfig)
+                ? product.category.guidedAssemblyConfig
+                : [];
+        return configured.filter((group: any) => group?.name);
+    }, [product]);
+
     useEffect(() => {
         if (isOpen && product) {
             const genericAddons = Array.isArray(initialData?.addons)
@@ -53,7 +62,8 @@ export function ProductModal({ product, isOpen, onClose, editIndex = null, initi
             });
 
             setQuantity(initialData?.quantity || 1);
-            setSelectedSize(initialSize);
+            // Só deixa pré-selecionado se estiver editando; senão deixa vazio
+            setSelectedSize(initialData ? initialSize : null);
             setSelectedAddons(genericAddons);
             setSelectedGuidedOptions(initialState);
             setRemovals(initialData?.removals || []);
@@ -76,19 +86,24 @@ export function ProductModal({ product, isOpen, onClose, editIndex = null, initi
         };
     }, [isOpen]);
 
+    // Calcula o menor preço entre os tamanhos
+    const minSizePrice = useMemo(() => {
+        if (!product?.sizes || product.sizes.length === 0) return null;
+        return Math.min(...product.sizes.map((s: any) => s.price || 0));
+    }, [product?.sizes]);
+
+    // Define o preço base: se tem tamanhos, usa o menor; senão usa o preço do produto
     const basePrice = useMemo(() => {
         if (!product) return 0;
-        return selectedSize ? selectedSize.price : (product.price || 0);
-    }, [selectedSize, product]);
+        if (selectedSize) return selectedSize.price;
+        if (minSizePrice !== null) return minSizePrice;
+        return product.price || 0;
+    }, [selectedSize, product, minSizePrice]);
 
-    const guidedGroups = useMemo(() => {
-        const configured = Array.isArray(product?.guidedAssemblyConfig)
-            ? product.guidedAssemblyConfig
-            : Array.isArray(product?.category?.guidedAssemblyConfig)
-                ? product.category.guidedAssemblyConfig
-                : [];
-        return configured.filter((group: any) => group?.name);
-    }, [product]);
+    // Indica se está mostrando "a partir de..."
+    const isShowingStartingFrom = useMemo(() => {
+        return minSizePrice !== null && !selectedSize;
+    }, [minSizePrice, selectedSize]);
 
     const isGuidedProduct = guidedGroups.length > 0;
 
@@ -107,26 +122,49 @@ export function ProductModal({ product, isOpen, onClose, editIndex = null, initi
     const unitPrice = discountedBasePrice + addonsTotal;
     const totalPrice = unitPrice * quantity;
 
-const toggleGuidedOption = (group: any, option: any) => {
+const updateGuidedOptionQuantity = (group: any, option: any, delta: number) => {
         const groupId = String(group.id || group.name);
         const current = selectedGuidedOptions[groupId] || [];
-        const exists = current.some((item: any) => item.name === option.name);
         const maxSelections = Number(group.maxSelections ?? 1);
-
-        if (exists) {
-            setSelectedGuidedOptions(prev => ({ ...prev, [groupId]: current.filter((item: any) => item.name !== option.name) }));
+        
+        // Contar quantas vezes esta opção foi selecionada
+        const optionCount = current.filter((item: any) => item.name === option.name).length;
+        const newCount = optionCount + delta;
+        
+        // Se newCount <= 0, remover todas as instâncias
+        if (newCount <= 0) {
+            const updatedCurrent = current.filter((item: any) => item.name !== option.name);
+            setSelectedGuidedOptions(prev => ({ ...prev, [groupId]: updatedCurrent }));
             return;
         }
-
-        if (current.length >= maxSelections) {
+        
+        // Se newCount > maxSelections, não permite
+        if (newCount > maxSelections) {
             return;
         }
-
-        setSelectedGuidedOptions(prev => ({ ...prev, [groupId]: [...current, option] }));
+        
+        // Se delta é positivo e newCount é válido, adicionar uma instância
+        if (delta > 0) {
+            setSelectedGuidedOptions(prev => ({ ...prev, [groupId]: [...current, option] }));
+        } else if (delta < 0) {
+            // Se delta é negativo, remover UMA instância
+            const index = current.findIndex((item: any) => item.name === option.name);
+            if (index > -1) {
+                const updatedCurrent = [...current];
+                updatedCurrent.splice(index, 1);
+                setSelectedGuidedOptions(prev => ({ ...prev, [groupId]: updatedCurrent }));
+            }
+        }
     };
 
     const handleAdd = () => {
         if (!product) return;
+
+        // Validar se tem tamanhos e nenhum foi selecionado
+        if (product?.sizes && product.sizes.length > 0 && !selectedSize) {
+            alert("Por favor, selecione um tamanho para continuar!");
+            return;
+        }
 
         const selectedCustomization = Object.entries(selectedGuidedOptions).flatMap(([groupId, options]) =>
             (options || []).map((option: any) => ({ ...option, groupId, step: groupId }))
@@ -180,7 +218,7 @@ const toggleGuidedOption = (group: any, option: any) => {
             onClose();
             if (editIndex === null) {
                 setQuantity(1);
-                setSelectedSize(product?.sizes?.[0] || null);
+                setSelectedSize(null);
                 setSelectedAddons([]);
                 setSelectedGuidedOptions({});
                 setRemovals([]);
@@ -303,30 +341,26 @@ const toggleGuidedOption = (group: any, option: any) => {
                                                 <span className="h-px w-4 bg-rose-600 opacity-50" />
                                                 <h3 className="text-[9px] font-black text-rose-600 uppercase tracking-[0.25em]">Escolha o Tamanho</h3>
                                             </div>
-                                            <div className="grid grid-cols-1 gap-2.5">
+                                            <div className="grid grid-cols-1 gap-2">
                                                 {product.sizes.map((size: any) => (
                                                     <button
                                                         key={size.name}
                                                         onClick={() => setSelectedSize(size)}
                                                         className={cn(
-                                                            "p-4 rounded-xl border transition-all duration-500 flex items-center justify-between group relative overflow-hidden",
+                                                            "px-3 py-2 rounded-xl border transition-all duration-500 flex items-center justify-between group relative overflow-hidden",
                                                             selectedSize?.name === size.name
                                                                 ? "bg-slate-950 border-slate-900 shadow-xl shadow-slate-950/10"
                                                                 : "bg-white border-slate-100 hover:border-slate-200"
                                                         )}
                                                     >
-                                                        <div className="flex flex-col relative z-10 pl-2">
+                                                        <div className="flex flex-col relative z-10 pl-1">
                                                             <span className={cn(
-                                                                "font-display font-bold text-[16px] uppercase tracking-tight leading-none transition-colors",
+                                                                "font-display font-bold text-[14px] uppercase tracking-tight leading-tight transition-colors",
                                                                 selectedSize?.name === size.name ? "text-white" : "text-slate-950"
                                                             )}>{size.name}</span>
-                                                            <span className={cn(
-                                                                "text-[8px] font-black uppercase tracking-widest mt-1.5 transition-opacity",
-                                                                selectedSize?.name === size.name ? "text-rose-500 opacity-100" : "text-slate-400 opacity-60"
-                                                            )}>Seleção Premium</span>
                                                         </div>
                                                         <span className={cn(
-                                                            "font-mono font-bold text-[16px] relative z-10 px-4 py-1.5 rounded-2xl transition-all",
+                                                            "font-mono font-bold text-[13px] relative z-10 px-3 py-1 rounded-2xl transition-all",
                                                             selectedSize?.name === size.name ? "bg-white/10 text-rose-500" : "text-slate-950"
                                                         )}>{formatCurrency(size.price)}</span>
                                                         
@@ -345,36 +379,115 @@ const toggleGuidedOption = (group: any, option: any) => {
                                                 <span className="h-px w-4 bg-rose-600 opacity-50" />
                                                 <h3 className="text-[9px] font-black text-rose-600 uppercase tracking-[0.25em]">Monte sua seleção</h3>
                                             </div>
-                                            <div className="space-y-4">
-                                                {guidedGroups.map((group: any) => {
+                                            <div className="space-y-5">
+                                                {guidedGroups.map((group: any, idx: number) => {
                                                     const groupId = String(group.id || group.name);
                                                     const selected = selectedGuidedOptions[groupId] || [];
+                                                    const minSelections = Number(group.minSelections ?? 0);
                                                     const maxSelections = Number(group.maxSelections ?? 1);
-
+                                                    const isValid = selected.length >= minSelections && selected.length <= maxSelections;
                                                     return (
-                                                        <div key={groupId} className="rounded-2xl border border-slate-200 bg-white p-4">
-                                                            <div className="flex items-center justify-between gap-2 mb-3">
-                                                                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">{group.name}</p>
-                                                                <span className="text-[10px] font-bold text-slate-400">{maxSelections === 1 ? '1 opção' : `até ${maxSelections} opções`}</span>
+                                                        <div key={groupId} className="rounded-2xl border-2 border-slate-100 bg-white p-4 space-y-4">
+                                                            <div className="flex items-center gap-3 pb-3 border-b border-slate-100">
+                                                                <div className="w-7 h-7 rounded-full bg-rose-600 text-white flex items-center justify-center font-black text-xs">
+                                                                    {idx + 1}
+                                                                </div>
+                                                                <div className="flex-1">
+                                                                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-600">{group.name}</p>
+                                                                    <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">
+                                                                        {minSelections === maxSelections ? `Escolha ${minSelections} ${minSelections === 1 ? 'opção' : 'opções'}` : `Mínimo ${minSelections} • Máximo ${maxSelections}`}
+                                                                    </p>
+                                                                </div>
+                                                                {isValid && <div className="text-emerald-600 text-xs">✓</div>}
                                                             </div>
-                                                            <div className="flex flex-wrap gap-2">
+                                                            <div className="space-y-2.5">
                                                                 {(group.options || []).map((option: any) => {
-                                                                    const isSelected = selected.some((item: any) => item.name === option.name);
+                                                                    const optionCount = selected.filter((item: any) => item.name === option.name).length;
+                                                                    const isSelected = optionCount > 0;
+                                                                    const canAdd = selected.length < maxSelections && optionCount < maxSelections;
                                                                     return (
-                                                                        <button
+                                                                        <div
                                                                             key={option.name}
-                                                                            type="button"
-                                                                            onClick={() => toggleGuidedOption(group, option)}
                                                                             className={cn(
-                                                                                'px-3 py-2 rounded-2xl border text-[10px] font-bold uppercase tracking-tight transition-all',
-                                                                                isSelected ? 'bg-slate-950 text-white border-slate-950' : 'bg-slate-50 text-slate-600 border-slate-200 hover:border-slate-300'
+                                                                                'p-3 rounded-xl border transition-all duration-300 flex items-center justify-between group',
+                                                                                isSelected ? 'bg-slate-950 border-slate-900 shadow-lg shadow-slate-950/10' : 'bg-slate-50 border-slate-100 hover:border-slate-200'
                                                                             )}
                                                                         >
-                                                                            {option.name}
-                                                                        </button>
+                                                                            <div className="flex flex-col flex-1">
+                                                                                <span className={cn(
+                                                                                    'text-[12px] font-bold uppercase tracking-tight transition-colors',
+                                                                                    isSelected ? 'text-white' : 'text-slate-900'
+                                                                                )}>
+                                                                                    {option.name}
+                                                                                </span>
+                                                                                {option.price > 0 && (
+                                                                                    <span className={cn(
+                                                                                        'font-mono font-bold text-[10px] mt-0.5 transition-colors',
+                                                                                        isSelected ? 'text-rose-400' : 'text-emerald-600'
+                                                                                    )}>
+                                                                                        +{formatCurrency(option.price)}
+                                                                                    </span>
+                                                                                )}
+                                                                            </div>
+
+                                                                            <div className={cn(
+                                                                                'flex items-center h-8 px-1 rounded-2xl transition-all duration-300 gap-0.5 ml-3',
+                                                                                isSelected ? 'bg-white/10' : 'bg-slate-100 shadow-inner'
+                                                                            )}>
+                                                                                <button
+                                                                                    onClick={() => updateGuidedOptionQuantity(group, option, -1)}
+                                                                                    disabled={!isSelected}
+                                                                                    className={cn(
+                                                                                        'w-6 h-6 flex items-center justify-center rounded transition-colors active:scale-90',
+                                                                                        isSelected ? 'text-white/60 hover:text-white' : 'text-slate-300 cursor-not-allowed'
+                                                                                    )}
+                                                                                >
+                                                                                    <Minus size={11} strokeWidth={3} />
+                                                                                </button>
+                                                                                <span className={cn(
+                                                                                    'w-6 text-center font-mono font-bold text-[11px] transition-colors',
+                                                                                    isSelected ? 'text-white' : 'text-slate-600'
+                                                                                )}>
+                                                                                    {optionCount}
+                                                                                </span>
+                                                                                <button
+                                                                                    onClick={() => updateGuidedOptionQuantity(group, option, 1)}
+                                                                                    disabled={!canAdd}
+                                                                                    className={cn(
+                                                                                        'w-6 h-6 rounded flex items-center justify-center transition-all active:scale-90 font-bold',
+                                                                                        canAdd
+                                                                                            ? isSelected ? 'bg-rose-600 text-white hover:bg-rose-700' : 'bg-slate-950 text-white hover:bg-slate-800'
+                                                                                            : 'bg-slate-200 text-slate-400 cursor-not-allowed opacity-50'
+                                                                                    )}
+                                                                                >
+                                                                                    <Plus size={11} strokeWidth={3} />
+                                                                                </button>
+                                                                            </div>
+                                                                        </div>
                                                                     );
                                                                 })}
                                                             </div>
+                                                            {selected.length > 0 && (
+                                                                <div className="flex flex-wrap gap-1.5 pt-2 border-t border-slate-100">
+                                                                    {(() => {
+                                                                        const grouped: Record<string, { item: any; count: number }> = {};
+                                                                        selected.forEach((item: any) => {
+                                                                            if (!grouped[item.name]) {
+                                                                                grouped[item.name] = { item, count: 0 };
+                                                                            }
+                                                                            grouped[item.name].count++;
+                                                                        });
+                                                                        return Object.entries(grouped).map(([name, { item, count }]) => (
+                                                                            <div key={name} className="flex items-center gap-1.5 bg-rose-50 px-2.5 py-1 rounded-lg border border-rose-200">
+                                                                                <span className="text-[9px] font-black text-rose-700 uppercase tracking-tight">
+                                                                                    {count > 1 ? `${count}x ${item.name}` : item.name}
+                                                                                </span>
+                                                                                {item.price > 0 && <span className="text-[8px] font-mono font-bold text-emerald-600">+{formatCurrency(item.price * count)}</span>}
+                                                                            </div>
+                                                                        ));
+                                                                    })()}
+                                                                </div>
+                                                            )}
                                                         </div>
                                                     );
                                                 })}
@@ -382,11 +495,11 @@ const toggleGuidedOption = (group: any, option: any) => {
                                         </section>
                                     )}
 
-                                    {!isGuidedProduct && product.addons && product.addons.length > 0 && (
+                                    {product.addons && product.addons.length > 0 && (
                                         <section>
                                             <div className="flex items-center gap-2 mb-4">
                                                 <span className="h-px w-4 bg-rose-600 opacity-50" />
-                                                <h3 className="text-[9px] font-black text-rose-600 uppercase tracking-[0.25em]">Turbine seu Pedido</h3>
+                                                <h3 className="text-[9px] font-black text-rose-600 uppercase tracking-[0.25em]">Adicionais</h3>
                                             </div>
                                             <div className="grid grid-cols-1 gap-2.5">
                                                 {product.addons.map((addon: any) => {
@@ -499,6 +612,80 @@ const toggleGuidedOption = (group: any, option: any) => {
                                             placeholder="Ex: Sem cebola, carne bem passada..."
                                             className="w-full h-24 p-5 bg-slate-50 border border-slate-50 rounded-2xl focus:bg-white focus:border-rose-500/20 transition-all font-bold text-slate-950 text-[12px] outline-none placeholder:text-slate-300 resize-none uppercase"
                                         />
+                                    </section>
+
+                                    {/* Resumo de Preço */}
+                                    <section className="rounded-2xl border-2 border-slate-100 bg-gradient-to-br from-slate-50 to-white p-5 space-y-3">
+                                        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 mb-4">Resumo do Preço</p>
+                                        
+                                        <div className="space-y-2 text-sm">
+                                            {/* Preço Base */}
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-[11px] font-bold text-slate-600 uppercase tracking-tight">
+                                                    {isShowingStartingFrom ? 'A partir de' : selectedSize ? `${selectedSize.name} (Base)` : 'Preço Base'}
+                                                </span>
+                                                <span className="text-[11px] font-mono font-bold text-slate-900">
+                                                    {formatCurrency(basePrice)}
+                                                </span>
+                                            </div>
+
+                                            {/* Desconto se houver */}
+                                            {hasProductDiscount(discountPercent) && (
+                                                <div className="flex items-center justify-between">
+                                                    <span className="text-[11px] font-bold text-rose-600 uppercase tracking-tight">
+                                                        Desconto -{discountPercent}%
+                                                    </span>
+                                                    <span className="text-[11px] font-mono font-bold text-rose-600">
+                                                        -{formatCurrency(basePrice - discountedBasePrice)}
+                                                    </span>
+                                                </div>
+                                            )}
+
+                                            {/* Opções Guiadas */}
+                                            {selectedCustomizationItems.length > 0 && (
+                                                <div>
+                                                    {selectedCustomizationItems.map((item: any) => (
+                                                        <div key={item.id || item.name} className="flex items-center justify-between">
+                                                            <span className="text-[11px] font-bold text-slate-600 uppercase tracking-tight">
+                                                                +{item.name}
+                                                            </span>
+                                                            <span className="text-[11px] font-mono font-bold text-emerald-600">
+                                                                +{formatCurrency(item.price || 0)}
+                                                            </span>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+
+                                            {/* Adicionais */}
+                                            {selectedAddons.length > 0 && (
+                                                <div>
+                                                    {selectedAddons.map((addon: any) => (
+                                                        <div key={addon.name} className="flex items-center justify-between">
+                                                            <span className="text-[11px] font-bold text-slate-600 uppercase tracking-tight">
+                                                                +{addon.name} {addon.quantity && addon.quantity > 1 ? `(×${addon.quantity})` : ''}
+                                                            </span>
+                                                            <span className="text-[11px] font-mono font-bold text-emerald-600">
+                                                                +{formatCurrency((addon.price || 0) * (addon.quantity || 1))}
+                                                            </span>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+
+                                            {/* Divisor */}
+                                            <div className="h-px bg-slate-200 my-2" />
+
+                                            {/* Total */}
+                                            <div className="flex items-center justify-between bg-gradient-to-r from-slate-950/5 to-rose-600/5 p-3 rounded-xl border border-slate-100">
+                                                <span className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-900">
+                                                    Valor Unitário
+                                                </span>
+                                                <span className="text-[14px] font-mono font-black text-slate-950">
+                                                    {formatCurrency(unitPrice)}
+                                                </span>
+                                            </div>
+                                        </div>
                                     </section>
                                 </div>
                             </div>

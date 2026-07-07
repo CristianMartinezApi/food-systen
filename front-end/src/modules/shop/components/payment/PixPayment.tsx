@@ -64,6 +64,12 @@ export default function PixPayment({ orderId, total, restaurantId, onConfirmed }
         return () => clearTimeout(t);
     }, [timeLeft, pixData, isConfirmed]);
 
+    const confirm = useCallback(() => {
+        setIsConfirmed(true);
+        socket.disconnect();
+        setTimeout(onConfirmed, 2000);
+    }, [onConfirmed]);
+
     // ─── Socket.IO — evento em tempo real ─────────────────────────────────────
     useEffect(() => {
         if (!pixData) return;
@@ -90,11 +96,6 @@ export default function PixPayment({ orderId, total, restaurantId, onConfirmed }
         return () => clearInterval(interval);
     }, [pixData, isConfirmed, orderId]);
 
-    const confirm = () => {
-        setIsConfirmed(true);
-        socket.disconnect();
-        setTimeout(onConfirmed, 2000);
-    };
 
     // ─── Copiar copia-e-cola ───────────────────────────────────────────────────
     const handleCopy = async () => {

@@ -11,6 +11,15 @@ interface ProductModalProps {
   product?: any;
 }
 
+const getGuidedGroupId = (group: any) =>
+  String(group?.id || group?.name || "")
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+
 export function ProductModal({ isOpen, onClose, onSave, product }: ProductModalProps) {
   const [formData, setFormData] = useState<any>({
     name: "",
@@ -23,6 +32,8 @@ export function ProductModal({ isOpen, onClose, onSave, product }: ProductModalP
     stockQuantity: 0,
     trackStock: false,
     addons: [],
+    usesGuidedAssembly: false,
+    guidedAssemblyConfig: [],
     sizes: [],
     ingredients: []
   });
@@ -31,6 +42,8 @@ export function ProductModal({ isOpen, onClose, onSave, product }: ProductModalP
   const [newSize, setNewSize] = useState({ name: "", price: "" });
   const [newIngredient, setNewIngredient] = useState("");
   const [newCustomizationOption, setNewCustomizationOption] = useState({ name: "", price: "", step: "base" });
+  const [newGuidedGroup, setNewGuidedGroup] = useState({ name: "", minSelections: 1, maxSelections: 1 });
+  const [newGroupOption, setNewGroupOption] = useState({ name: "", price: "", groupId: "" });
 
   const [categories, setCategories] = useState<any[]>([]);
   const [isSaving, setIsSaving] = useState(false);
@@ -45,9 +58,19 @@ export function ProductModal({ isOpen, onClose, onSave, product }: ProductModalP
     selectedCategory?.name?.toLowerCase().includes('cerveja') ||
     selectedCategory?.name?.toLowerCase().includes('agua') ||
     selectedCategory?.name?.toLowerCase().includes('água');
-  const isPasteisCategory = selectedCategory?.slug?.toLowerCase().includes('pasteis') ||
-    selectedCategory?.name?.toLowerCase().includes('pasteis') ||
-    selectedCategory?.typeMontagem === 'guiada_por_etapas';
+  const isGuidedAssemblyCategory = selectedCategory?.typeMontagem === 'guiada_por_etapas';
+  const categoryGuidedGroups = Array.isArray(selectedCategory?.guidedAssemblyConfig)
+    ? selectedCategory.guidedAssemblyConfig.filter((group: any) => group?.name)
+    : [];
+  const guidedGroupsSource = Array.isArray(formData.guidedAssemblyConfig) && formData.guidedAssemblyConfig.length > 0
+    ? formData.guidedAssemblyConfig
+    : categoryGuidedGroups;
+  const guidedGroups = guidedGroupsSource.map((group: any, index: number) => ({
+    ...group,
+    id: getGuidedGroupId(group) || `etapa-${index + 1}`,
+    order: group.order || index + 1,
+    options: Array.isArray(group.options) ? group.options : []
+  }));
 
   const fetchCategories = async () => {
     try {
@@ -80,6 +103,8 @@ export function ProductModal({ isOpen, onClose, onSave, product }: ProductModalP
         discountPercent: clampDiscountPercent(product.discountPercent),
         price: toMoneyInputValue((Number(product.price) || 0).toFixed(2)),
         addons: product.addons || [],
+        usesGuidedAssembly: product.usesGuidedAssembly || false,
+        guidedAssemblyConfig: Array.isArray(product.guidedAssemblyConfig) ? product.guidedAssemblyConfig : [],
         sizes: product.sizes || [],
         ingredients: product.ingredients || []
       });
@@ -95,11 +120,53 @@ export function ProductModal({ isOpen, onClose, onSave, product }: ProductModalP
         image: "",
         isActive: true,
         addons: [],
+        usesGuidedAssembly: false,
+        guidedAssemblyConfig: [],
         sizes: [],
         ingredients: []
       });
     }
   }, [product, isOpen]);
+
+  useEffect(() => {
+    if (!isOpen || !selectedCategory || !isGuidedAssemblyCategory) return;
+
+    const hasGuidedConfig = Array.isArray(formData.guidedAssemblyConfig) && formData.guidedAssemblyConfig.length > 0;
+    if (hasGuidedConfig) {
+      if (!newCustomizationOption.step) {
+        setNewCustomizationOption((prev) => ({ ...prev, step: getGuidedGroupId(formData.guidedAssemblyConfig[0]) }));
+      }
+      return;
+    }
+
+    if (categoryGuidedGroups.length === 0) {
+      // Nenhuma etapa na categoria - deixa vazio para o usuário configurar
+      setFormData((prev: any) => ({
+        ...prev,
+        usesGuidedAssembly: false,
+        guidedAssemblyConfig: [],
+        sizes: [],
+        ingredients: []
+      }));
+      return;
+    }
+
+    const initialGroups = categoryGuidedGroups.map((group: any, index: number) => ({
+      ...group,
+      id: getGuidedGroupId(group) || `etapa-${index + 1}`,
+      order: group.order || index + 1,
+      options: Array.isArray(group.options) ? group.options : []
+    }));
+
+    setFormData((prev: any) => ({
+      ...prev,
+      usesGuidedAssembly: true,
+      guidedAssemblyConfig: initialGroups,
+      sizes: [],
+      ingredients: []
+    }));
+    setNewCustomizationOption((prev) => ({ ...prev, step: initialGroups[0]?.id || `etapa-1` }));
+  }, [isOpen, selectedCategory?.id, isGuidedAssemblyCategory]);
 
   const discountPercent = clampDiscountPercent(formData.discountPercent);
   const basePrice = parseMoneyInput(formData.price) || 0;
@@ -159,25 +226,112 @@ export function ProductModal({ isOpen, onClose, onSave, product }: ProductModalP
   const addCustomizationOption = () => {
     if (!newCustomizationOption.name || !newCustomizationOption.price) return;
 
-    setFormData({
-      ...formData,
-      addons: [
-        ...formData.addons,
-        {
-          name: newCustomizationOption.name,
-          price: parseMoneyInput(newCustomizationOption.price),
-          step: newCustomizationOption.step,
-        }
-      ]
-    });
+    setFormData((prev: any) => ({
+      ...prev,
+      guidedAssemblyConfig: guidedGroups.map((group: any) => {
+        if (String(group.id) !== String(newCustomizationOption.step)) return group;
+
+        return {
+          ...group,
+          options: [
+            ...(group.options || []),
+            {
+              id: `${group.id}-${Date.now()}`,
+              name: newCustomizationOption.name,
+              price: parseMoneyInput(newCustomizationOption.price),
+            }
+          ]
+        };
+      })
+    }));
     setNewCustomizationOption({ name: "", price: "", step: newCustomizationOption.step });
   };
 
-  const removeCustomizationOption = (index: number) => {
-    setFormData({
-      ...formData,
-      addons: formData.addons.filter((_: any, i: number) => i !== index)
-    });
+  const removeCustomizationOption = (groupId: string, optionIndex: number) => {
+    setFormData((prev: any) => ({
+      ...prev,
+      guidedAssemblyConfig: guidedGroups.map((group: any) => {
+        if (String(group.id) !== String(groupId)) return group;
+
+        return {
+          ...group,
+          options: (group.options || []).filter((_: any, i: number) => i !== optionIndex)
+        };
+      })
+    }));
+  };
+
+  const addGuidedGroup = () => {
+    if (!newGuidedGroup.name.trim()) return;
+
+    const newGroup = {
+      id: `etapa-${Date.now()}`,
+      name: newGuidedGroup.name.trim(),
+      order: (formData.guidedAssemblyConfig?.length || 0) + 1,
+      minSelections: newGuidedGroup.minSelections,
+      maxSelections: newGuidedGroup.maxSelections,
+      options: []
+    };
+
+    setFormData((prev: any) => ({
+      ...prev,
+      guidedAssemblyConfig: [...(prev.guidedAssemblyConfig || []), newGroup]
+    }));
+
+    setNewGuidedGroup({ name: "", minSelections: 1, maxSelections: 1 });
+  };
+
+  const removeGuidedGroup = (groupId: string) => {
+    setFormData((prev: any) => ({
+      ...prev,
+      guidedAssemblyConfig: (prev.guidedAssemblyConfig || []).filter((g: any) => g.id !== groupId)
+    }));
+  };
+
+  const updateGuidedGroup = (groupId: string, field: string, value: any) => {
+    setFormData((prev: any) => ({
+      ...prev,
+      guidedAssemblyConfig: (prev.guidedAssemblyConfig || []).map((g: any) =>
+        g.id === groupId ? { ...g, [field]: value } : g
+      )
+    }));
+  };
+
+  const addGroupOption = (groupId: string) => {
+    if (!newGroupOption.name.trim() || !newGroupOption.price) return;
+
+    setFormData((prev: any) => ({
+      ...prev,
+      guidedAssemblyConfig: (prev.guidedAssemblyConfig || []).map((g: any) => {
+        if (g.id !== groupId) return g;
+        return {
+          ...g,
+          options: [
+            ...(g.options || []),
+            {
+              id: `opt-${Date.now()}`,
+              name: newGroupOption.name.trim().toUpperCase(),
+              price: parseMoneyInput(newGroupOption.price)
+            }
+          ]
+        };
+      })
+    }));
+
+    setNewGroupOption({ name: "", price: "", groupId: "" });
+  };
+
+  const removeGroupOption = (groupId: string, optionIndex: number) => {
+    setFormData((prev: any) => ({
+      ...prev,
+      guidedAssemblyConfig: (prev.guidedAssemblyConfig || []).map((g: any) => {
+        if (g.id !== groupId) return g;
+        return {
+          ...g,
+          options: (g.options || []).filter((_: any, i: number) => i !== optionIndex)
+        };
+      })
+    }));
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -207,10 +361,20 @@ export function ProductModal({ isOpen, onClose, onSave, product }: ProductModalP
         name: formData.name.toUpperCase().trim(),
         price: parseMoneyInput(formData.price) || 0,
         categoryId: parseInt(formData.categoryId),
-        addons: formData.addons?.map((a: any) => ({ ...a, name: a.name.toUpperCase().trim() })),
+        usesGuidedAssembly: isGuidedAssemblyCategory,
+        guidedAssemblyConfig: isGuidedAssemblyCategory ? guidedGroups.map((group: any) => ({
+          ...group,
+          name: group.name,
+          options: (group.options || []).map((option: any) => ({
+            ...option,
+            name: option.name.toUpperCase().trim(),
+            price: Number(option.price || 0)
+          }))
+        })) : [],
+        addons: isGuidedAssemblyCategory ? [] : formData.addons?.map((a: any) => ({ ...a, name: a.name.toUpperCase().trim() })),
         sizes: formData.sizes?.map((s: any) => ({ ...s, name: s.name.toUpperCase().trim() })),
-        ingredients: formData.ingredients?.map((i: string) => i.toUpperCase().trim())
-        , discountPercent: discountPercent
+        ingredients: isGuidedAssemblyCategory ? [] : formData.ingredients?.map((i: string) => i.toUpperCase().trim()),
+        discountPercent: discountPercent
       };
 
       if (product?.id) {
@@ -305,7 +469,12 @@ export function ProductModal({ isOpen, onClose, onSave, product }: ProductModalP
               <select
                 required
                 value={formData.categoryId}
-                onChange={(e) => setFormData({ ...formData, categoryId: e.target.value })}
+                onChange={(e) => setFormData({
+                  ...formData,
+                  categoryId: e.target.value,
+                  usesGuidedAssembly: false,
+                  guidedAssemblyConfig: []
+                })}
                 className="w-full h-14 px-5 bg-slate-50 border-2 border-transparent focus:border-primary/20 focus:bg-white rounded-2xl transition-all font-bold text-slate-700 outline-none appearance-none disabled:opacity-50"
               >
                 <option value="" disabled>Selecione uma categoria</option>
@@ -413,74 +582,164 @@ export function ProductModal({ isOpen, onClose, onSave, product }: ProductModalP
               />
             </div>
 
-            {isPasteisCategory && (
-              <div className="md:col-span-2 space-y-4 rounded-3xl border border-amber-100 bg-amber-50/70 p-5">
-                <div className="flex items-center justify-between gap-4">
-                  <div>
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Montagem do pastel</label>
-                    <p className="text-xs text-slate-500 mt-1">Cadastre as opções de cada etapa para o cliente montar o pastel.</p>
+            {isGuidedAssemblyCategory && (
+              <div className="md:col-span-2 space-y-5 rounded-3xl border border-amber-200 bg-amber-50/80 p-6">
+                <div>
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Montagem por Etapas</label>
+                  <p className="text-xs text-slate-500 mt-2">Crie as etapas e opções para seu produto. Ex: Base, Queijo, Complemento.</p>
+                </div>
+
+                {/* Adicionar Nova Etapa */}
+                <div className="rounded-2xl border border-amber-200 bg-white p-4 space-y-3">
+                  <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Nova Etapa</p>
+                  <div className="grid grid-cols-1 md:grid-cols-[1fr_100px_100px_auto] gap-2">
+                    <input
+                      value={newGuidedGroup.name}
+                      onChange={(e) => setNewGuidedGroup({ ...newGuidedGroup, name: e.target.value })}
+                      placeholder="Nome (ex: Base, Queijo, Complemento)"
+                      className="h-12 px-4 bg-slate-50 rounded-xl font-bold text-sm outline-none border border-amber-100"
+                    />
+                    <input
+                      type="number"
+                      min="0"
+                      value={newGuidedGroup.minSelections}
+                      onChange={(e) => setNewGuidedGroup({ ...newGuidedGroup, minSelections: parseInt(e.target.value) || 0 })}
+                      placeholder="Min"
+                      className="h-12 px-3 bg-slate-50 rounded-xl font-bold text-sm outline-none border border-amber-100 text-center"
+                    />
+                    <input
+                      type="number"
+                      min="1"
+                      value={newGuidedGroup.maxSelections}
+                      onChange={(e) => setNewGuidedGroup({ ...newGuidedGroup, maxSelections: parseInt(e.target.value) || 1 })}
+                      placeholder="Max"
+                      className="h-12 px-3 bg-slate-50 rounded-xl font-bold text-sm outline-none border border-amber-100 text-center"
+                    />
+                    <button
+                      type="button"
+                      onClick={addGuidedGroup}
+                      className="h-12 px-4 bg-slate-900 text-white rounded-xl flex items-center justify-center hover:bg-black transition-all whitespace-nowrap font-bold text-xs"
+                    >
+                      <Plus size={18} className="mr-1" /> Etapa
+                    </button>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-[1.2fr_110px_140px_auto] gap-2">
-                  <input
-                    value={newCustomizationOption.name}
-                    onChange={(e) => setNewCustomizationOption({ ...newCustomizationOption, name: e.target.value })}
-                    placeholder="Nome da opção"
-                    className="h-12 px-4 bg-white rounded-xl font-bold text-sm outline-none border border-amber-200"
-                  />
-                  <input
-                    type="text"
-                    inputMode="decimal"
-                    value={newCustomizationOption.price}
-                    onChange={(e) => setNewCustomizationOption({ ...newCustomizationOption, price: formatMoneyInputRealtime(e.target.value) })}
-                    placeholder="Preço R$"
-                    className="h-12 px-4 bg-white rounded-xl font-bold text-sm outline-none border border-amber-200"
-                  />
-                  <select
-                    value={newCustomizationOption.step}
-                    onChange={(e) => setNewCustomizationOption({ ...newCustomizationOption, step: e.target.value })}
-                    className="h-12 px-4 bg-white rounded-xl font-bold text-sm outline-none border border-amber-200"
-                  >
-                    <option value="base">1. Base</option>
-                    <option value="queijo">2. Queijo</option>
-                    <option value="complemento">3. Complemento</option>
-                  </select>
-                  <button
-                    type="button"
-                    onClick={addCustomizationOption}
-                    className="h-12 bg-slate-900 text-white rounded-xl flex items-center justify-center hover:bg-black transition-all"
-                  >
-                    <Plus size={18} />
-                  </button>
-                </div>
-
-                <div className="space-y-3">
-                  {(['base', 'queijo', 'complemento'] as const).map((step) => {
-                    const title = step === 'base' ? 'Bases' : step === 'queijo' ? 'Queijos' : 'Complementos';
-                    const options = formData.addons.filter((addon: any) => addon.step === step);
-                    return (
-                      <div key={step} className="rounded-2xl border border-amber-200 bg-white/80 p-3">
-                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">{title}</p>
-                        <div className="flex flex-wrap gap-2">
-                          {options.length > 0 ? options.map((addon: any, idx: number) => (
-                            <div key={`${addon.name}-${idx}`} className="flex items-center gap-2 bg-amber-50 px-3 py-1.5 rounded-lg border border-amber-200">
-                              <span className="text-[10px] font-black text-slate-700 uppercase tracking-tight">{addon.name}</span>
-                              <span className="text-[10px] font-bold text-emerald-500">+{formatCurrency(addon.price || 0)}</span>
-                              <button type="button" onClick={() => removeCustomizationOption(formData.addons.findIndex((item: any) => item.name === addon.name && item.step === addon.step && item.price === addon.price))} className="text-slate-400 hover:text-rose-500 transition-all">
-                                <X size={12} strokeWidth={3} />
-                              </button>
+                {/* Lista de Etapas Criadas */}
+                {formData.guidedAssemblyConfig && formData.guidedAssemblyConfig.length > 0 ? (
+                  <div className="space-y-4">
+                    {(formData.guidedAssemblyConfig || []).map((group: any, groupIdx: number) => (
+                      <div key={group.id} className="rounded-2xl border-2 border-amber-200 bg-white p-4 space-y-3">
+                        {/* Header da Etapa */}
+                        <div className="flex items-center justify-between gap-3 pb-3 border-b-2 border-amber-100">
+                          <div className="flex items-center gap-3 flex-1">
+                            <div className="w-8 h-8 rounded-full bg-amber-200 text-amber-900 flex items-center justify-center font-black text-xs">
+                              {groupIdx + 1}
                             </div>
-                          )) : <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">Nenhuma opção cadastrada ainda.</span>}
+                            <div className="flex-1 grid grid-cols-1 md:grid-cols-[1fr_80px_80px] gap-2">
+                              <input
+                                value={group.name}
+                                onChange={(e) => updateGuidedGroup(group.id, "name", e.target.value)}
+                                placeholder="Nome da etapa"
+                                className="h-10 px-3 bg-amber-50 rounded-lg font-bold text-sm outline-none border border-amber-100"
+                              />
+                              <div className="flex items-center gap-1 text-[10px] font-black text-slate-500 uppercase tracking-tight">
+                                <span>Min:</span>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  value={group.minSelections ?? 0}
+                                  onChange={(e) => updateGuidedGroup(group.id, "minSelections", parseInt(e.target.value) || 0)}
+                                  placeholder="0"
+                                  className="w-12 h-10 px-2 bg-amber-50 rounded-lg font-bold text-sm outline-none border border-amber-100 text-center"
+                                  title="Mínimo de seleções"
+                                />
+                              </div>
+                              <div className="flex items-center gap-1 text-[10px] font-black text-slate-500 uppercase tracking-tight">
+                                <span>Max:</span>
+                                <input
+                                  type="number"
+                                  min="1"
+                                  value={group.maxSelections ?? 1}
+                                  onChange={(e) => updateGuidedGroup(group.id, "maxSelections", parseInt(e.target.value) || 1)}
+                                  placeholder="1"
+                                  className="w-12 h-10 px-2 bg-amber-50 rounded-lg font-bold text-sm outline-none border border-amber-100 text-center"
+                                  title="Máximo de seleções"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => removeGuidedGroup(group.id)}
+                            className="h-10 w-10 bg-rose-100 text-rose-600 rounded-lg hover:bg-rose-200 transition-all flex items-center justify-center flex-shrink-0"
+                            title="Remover etapa"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+
+                        {/* Adicionar Opção à Etapa */}
+                        <div className="space-y-2 pt-2">
+                          <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest">Opções desta Etapa</p>
+                          <div className="grid grid-cols-1 md:grid-cols-[1fr_110px_auto] gap-2">
+                            <input
+                              value={newGroupOption.groupId === group.id ? newGroupOption.name : ""}
+                              onChange={(e) => setNewGroupOption({ ...newGroupOption, groupId: group.id, name: e.target.value })}
+                              placeholder="Nome da opção (ex: Carne Moída)"
+                              className="h-10 px-3 bg-slate-50 rounded-lg font-bold text-sm outline-none border border-amber-100"
+                            />
+                            <input
+                              type="text"
+                              inputMode="decimal"
+                              value={newGroupOption.groupId === group.id ? newGroupOption.price : ""}
+                              onChange={(e) => setNewGroupOption({ ...newGroupOption, groupId: group.id, price: formatMoneyInputRealtime(e.target.value) })}
+                              placeholder="Preço R$"
+                              className="h-10 px-3 bg-slate-50 rounded-lg font-bold text-sm outline-none border border-amber-100"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => addGroupOption(group.id)}
+                              className="h-10 w-10 bg-slate-900 text-white rounded-lg hover:bg-black transition-all flex items-center justify-center"
+                            >
+                              <Plus size={16} />
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Lista de Opções */}
+                        <div className="flex flex-wrap gap-2 pt-2">
+                          {(group.options || []).length > 0 ? (
+                            (group.options || []).map((option: any, optIdx: number) => (
+                              <div key={option.id} className="flex items-center gap-2 bg-gradient-to-r from-amber-100 to-amber-50 px-3 py-2 rounded-lg border border-amber-200 shadow-sm">
+                                <span className="text-[10px] font-black text-slate-700 uppercase tracking-tight">{option.name}</span>
+                                <span className="text-[10px] font-bold text-emerald-600 bg-white px-2 py-0.5 rounded">+{formatCurrency(option.price || 0)}</span>
+                                <button
+                                  type="button"
+                                  onClick={() => removeGroupOption(group.id, optIdx)}
+                                  className="text-slate-500 hover:text-rose-600 transition-all ml-1"
+                                >
+                                  <X size={14} strokeWidth={3} />
+                                </button>
+                              </div>
+                            ))
+                          ) : (
+                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">Nenhuma opção ainda</span>
+                          )}
                         </div>
                       </div>
-                    );
-                  })}
-                </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="rounded-2xl border-2 border-dashed border-amber-200 bg-white/50 p-6 text-center">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Nenhuma etapa cadastrada</p>
+                    <p className="text-xs text-slate-500 mt-2">Adicione a primeira etapa acima para começar.</p>
+                  </div>
+                )}
               </div>
             )}
 
-            {!isSimpleProduct && !isPasteisCategory && (
+            {!isSimpleProduct && (
               <>
                 {/* Tamanhos / Variações */}
                 <div className="md:col-span-2 space-y-4">
@@ -523,7 +782,8 @@ export function ProductModal({ isOpen, onClose, onSave, product }: ProductModalP
                   </div>
                 </div>
 
-                {/* Adicionais */}
+                {/* Adicionais - Não aparece em montagem por etapas */}
+                {!isGuidedAssemblyCategory && (
                 <div className="md:col-span-2 space-y-4">
                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Adicionais (Ex: Bacon, Queijo Extra...)</label>
                   <div className="flex gap-2">
@@ -563,8 +823,10 @@ export function ProductModal({ isOpen, onClose, onSave, product }: ProductModalP
                     ))}
                   </div>
                 </div>
+                )}
 
-                {/* Ingredientes para Remoção */}
+                {/* Ingredientes para Remoção - Não aparece em montagem por etapas */}
+                {!isGuidedAssemblyCategory && (
                 <div className="md:col-span-2 space-y-4">
                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Ingredientes (Permite que o cliente remova no pedido)</label>
                   <div className="flex gap-2">
@@ -594,6 +856,7 @@ export function ProductModal({ isOpen, onClose, onSave, product }: ProductModalP
                     ))}
                   </div>
                 </div>
+                )}
               </>
             )}
           </div>

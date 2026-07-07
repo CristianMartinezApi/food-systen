@@ -461,7 +461,7 @@ export default function ClientsPage() {
       message: 'Tem certeza que deseja pausar esta loja?',
       onConfirm: async () => {
         try {
-          await api.patch(`/admin/restaurants/${id}/pause`);
+          await api.patch(`/admin/restaurants/${id}/pause`, {});
           toast.success('Loja pausada');
           await loadRestaurants();
         } catch (error: any) {
@@ -478,7 +478,7 @@ export default function ClientsPage() {
       message: 'Tem certeza que deseja pausar o acesso deste usuário? Ele não poderá entrar na plataforma.',
       onConfirm: async () => {
         try {
-          await api.patch(`/admin/users/${id}/pause`);
+          await api.patch(`/admin/users/${id}/pause`, {});
           toast.success('Acesso do usuário pausado');
           await loadUsers();
         } catch (error: any) {
@@ -495,7 +495,7 @@ export default function ClientsPage() {
       message: 'Deseja ativar o acesso deste usuário?',
       onConfirm: async () => {
         try {
-          await api.patch(`/admin/users/${id}/activate`);
+          await api.patch(`/admin/users/${id}/activate`, {});
           toast.success('Acesso do usuário ativado');
           await loadUsers();
         } catch (error: any) {

@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
-import { X, Save, Loader2, Plus, Trash2 } from "lucide-react";
+import { X, Save, Loader2, Plus, Minus } from "lucide-react";
 import { api } from "../../../../core/config/api";
-import { parseMoneyInput } from "../../../../shared/utils";
 
 interface CategoryModalProps {
   isOpen: boolean;
@@ -10,116 +9,77 @@ interface CategoryModalProps {
   category?: any;
 }
 
+const normalizeSlug = (value: string) =>
+  value
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+
 export function CategoryModal({ isOpen, onClose, onSave, category }: CategoryModalProps) {
   const [formData, setFormData] = useState<any>({
     name: "",
     slug: "",
     order: 0,
     isActive: true,
-    typeMontagem: "padrao",
-    guidedAssemblyConfig: []
+    typeMontagem: "padrao"
   });
   const [isSaving, setIsSaving] = useState(false);
-  const [newGroupName, setNewGroupName] = useState("");
-  const [newGuidedOption, setNewGuidedOption] = useState({ groupIndex: 0, name: "", price: "" });
+  const [allCategories, setAllCategories] = useState<any[]>([]);
+  const [loadingCategories, setLoadingCategories] = useState(false);
+
+  // Buscar todas as categorias quando modal abre
+  useEffect(() => {
+    if (isOpen) {
+      setLoadingCategories(true);
+      api.get('/categories')
+        .then(data => {
+          const sorted = Array.isArray(data) ? [...data].sort((a, b) => a.order - b.order) : [];
+          setAllCategories(sorted);
+        })
+        .catch(err => console.error('Erro ao buscar categorias:', err))
+        .finally(() => setLoadingCategories(false));
+    }
+  }, [isOpen]);
+
+  // Calcular próxima ordem sugerida
+  const nextSuggestedOrder = allCategories.length > 0 
+    ? Math.max(...allCategories.map(c => c.order || 0)) + 1
+    : 1;
 
   useEffect(() => {
     if (category) {
       setFormData({
-        ...category,
+        name: category.name || "",
+        slug: category.slug || "",
+        order: category.order || 0,
         isActive: category.isActive !== undefined ? category.isActive : true,
-        guidedAssemblyConfig: category.guidedAssemblyConfig || []
+        typeMontagem: category.typeMontagem || "padrao"
       });
     } else {
       setFormData({
         name: "",
         slug: "",
-        order: 0,
+        order: nextSuggestedOrder,
         isActive: true,
-        typeMontagem: "padrao",
-        guidedAssemblyConfig: []
+        typeMontagem: "padrao"
       });
     }
-  }, [category, isOpen]);
-
-  const addGuidedGroup = () => {
-    const groupName = newGroupName.trim();
-    if (!groupName) return;
-
-    setFormData((prev: any) => ({
-      ...prev,
-      guidedAssemblyConfig: [
-        ...(prev.guidedAssemblyConfig || []),
-        {
-          name: groupName,
-          order: (prev.guidedAssemblyConfig?.length || 0) + 1,
-          minSelections: 1,
-          maxSelections: 1,
-          options: []
-        }
-      ]
-    }));
-    setNewGroupName("");
-  };
-
-  const updateGuidedGroup = (index: number, field: string, value: any) => {
-    setFormData((prev: any) => {
-      const nextGroups = [...(prev.guidedAssemblyConfig || [])];
-      nextGroups[index] = { ...nextGroups[index], [field]: value };
-      return { ...prev, guidedAssemblyConfig: nextGroups };
-    });
-  };
-
-  const addGuidedOption = (groupIndex: number) => {
-    const optionName = newGuidedOption.name.trim();
-    if (!optionName || !newGuidedOption.price) return;
-
-    setFormData((prev: any) => {
-      const nextGroups = [...(prev.guidedAssemblyConfig || [])];
-      nextGroups[groupIndex] = {
-        ...nextGroups[groupIndex],
-        options: [
-          ...(nextGroups[groupIndex]?.options || []),
-          {
-            name: optionName.toUpperCase().trim(),
-            price: parseMoneyInput(newGuidedOption.price) || 0
-          }
-        ]
-      };
-      return { ...prev, guidedAssemblyConfig: nextGroups };
-    });
-    setNewGuidedOption({ groupIndex, name: "", price: "" });
-  };
-
-  const removeGuidedGroup = (groupIndex: number) => {
-    setFormData((prev: any) => ({
-      ...prev,
-      guidedAssemblyConfig: (prev.guidedAssemblyConfig || []).filter((_: any, index: number) => index !== groupIndex)
-    }));
-  };
-
-  const removeGuidedOption = (groupIndex: number, optionIndex: number) => {
-    setFormData((prev: any) => {
-      const nextGroups = [...(prev.guidedAssemblyConfig || [])];
-      nextGroups[groupIndex] = {
-        ...nextGroups[groupIndex],
-        options: (nextGroups[groupIndex]?.options || []).filter((_: any, index: number) => index !== optionIndex)
-      };
-      return { ...prev, guidedAssemblyConfig: nextGroups };
-    });
-  };
+  }, [category, isOpen, nextSuggestedOrder]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSaving(true);
     try {
-      const slug = formData.slug || formData.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, '-');
-      const { status, _count, products, ...rest } = formData; // Remove fields derived from the API payload
+      const slug = normalizeSlug(formData.slug || formData.name);
       const payload = { 
-        ...rest, 
         name: formData.name.toUpperCase().trim(),
         slug,
-        guidedAssemblyConfig: formData.typeMontagem === "guiada_por_etapas" ? (formData.guidedAssemblyConfig || []) : []
+        order: formData.order,
+        isActive: formData.isActive,
+        typeMontagem: formData.typeMontagem
       };
 
       if (category?.id) {
@@ -146,8 +106,8 @@ export function CategoryModal({ isOpen, onClose, onSave, category }: CategoryMod
         onClick={onClose}
       />
       
-      <div className="relative w-full max-w-lg bg-white rounded-[3rem] shadow-2xl overflow-hidden">
-        <div className="flex items-center justify-between p-8 border-b border-slate-100">
+      <div className="relative w-full max-w-lg max-h-[calc(100vh-2rem)] bg-white rounded-[3rem] shadow-2xl overflow-hidden flex flex-col">
+        <div className="flex shrink-0 items-center justify-between p-8 border-b border-slate-100">
             <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tighter">
                 {category ? "Editar Categoria" : "Nova Categoria"}
             </h2>
@@ -159,7 +119,7 @@ export function CategoryModal({ isOpen, onClose, onSave, category }: CategoryMod
             </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-8 space-y-6">
+        <form onSubmit={handleSubmit} className="flex-1 min-h-0 overflow-y-auto p-8 space-y-6">
             <div className="space-y-2">
                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Nome da Categoria</label>
                 <input 
@@ -173,12 +133,62 @@ export function CategoryModal({ isOpen, onClose, onSave, category }: CategoryMod
 
             <div className="space-y-2">
                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Ordem (Exibição)</label>
-                <input 
-                    type="number"
-                    value={formData.order}
-                    onChange={(e) => setFormData({...formData, order: parseInt(e.target.value)})}
-                    className="w-full h-14 px-5 bg-slate-50 border-2 border-transparent focus:border-primary/20 focus:bg-white rounded-2xl transition-all font-bold text-slate-700 outline-none"
-                />
+                
+                {/* Lista de categorias existentes */}
+                {loadingCategories ? (
+                    <div className="p-4 bg-slate-50 rounded-2xl text-center text-slate-400 text-sm">Carregando...</div>
+                ) : allCategories.length > 0 ? (
+                    <div className="p-4 bg-slate-50 rounded-2xl space-y-2">
+                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Categorias existentes:</p>
+                        <div className="space-y-1.5">
+                            {allCategories.map((cat, idx) => (
+                                <div 
+                                    key={cat.id} 
+                                    className={`flex items-center gap-3 p-2.5 rounded-lg transition-all ${
+                                        formData.order === cat.order 
+                                            ? 'bg-rose-100 border border-rose-200' 
+                                            : 'bg-white border border-slate-200'
+                                    }`}
+                                >
+                                    <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black ${
+                                        formData.order === cat.order
+                                            ? 'bg-rose-500 text-white'
+                                            : 'bg-slate-200 text-slate-600'
+                                    }`}>
+                                        {cat.order}
+                                    </div>
+                                    <span className="text-sm font-bold text-slate-700 flex-1">{cat.name}</span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                ) : null}
+
+                {/* Spinner para ordem */}
+                <div className="flex gap-2 items-center">
+                    <button
+                        type="button"
+                        onClick={() => setFormData({...formData, order: Math.max(0, formData.order - 1)})}
+                        className="w-12 h-12 bg-slate-900 text-white rounded-xl flex items-center justify-center hover:bg-slate-950 transition-all"
+                    >
+                        <Minus size={20} />
+                    </button>
+                    <input 
+                        type="number"
+                        min="0"
+                        value={formData.order}
+                        onChange={(e) => setFormData({...formData, order: Math.max(0, parseInt(e.target.value) || 0)})}
+                        className="flex-1 h-12 px-5 bg-slate-50 border-2 border-transparent focus:border-rose-500/20 focus:bg-white rounded-2xl transition-all font-black text-center text-slate-700 outline-none text-xl"
+                    />
+                    <button
+                        type="button"
+                        onClick={() => setFormData({...formData, order: formData.order + 1})}
+                        className="w-12 h-12 bg-rose-600 text-white rounded-xl flex items-center justify-center hover:bg-rose-700 transition-all"
+                    >
+                        <Plus size={20} />
+                    </button>
+                </div>
+                <p className="text-xs text-slate-500">Sugestão próxima: <span className="font-black text-slate-700">{nextSuggestedOrder}</span></p>
             </div>
 
             <div className="space-y-2">
@@ -189,114 +199,14 @@ export function CategoryModal({ isOpen, onClose, onSave, category }: CategoryMod
                     className="w-full h-14 px-5 bg-slate-50 border-2 border-transparent focus:border-primary/20 focus:bg-white rounded-2xl transition-all font-bold text-slate-700 outline-none"
                 >
                     <option value="padrao">Padrão (adicionais livres)</option>
-                    <option value="guiada_por_etapas">Guiada por etapas</option>
+                    <option value="guiada_por_etapas">Guiada por etapas (customizável por produto)</option>
                 </select>
+                <p className="text-xs text-slate-500 mt-2">
+                  {formData.typeMontagem === "guiada_por_etapas" 
+                    ? "Cada produto pode ter suas próprias etapas e opções de montagem."
+                    : "Os clientes podem adicionar adicionais livremente."}
+                </p>
             </div>
-
-            {formData.typeMontagem === "guiada_por_etapas" && (
-              <div className="space-y-3 rounded-3xl border border-amber-200 bg-amber-50/70 p-4">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Configuração da montagem guiada</label>
-                    <p className="text-xs text-slate-500 mt-1">Adicione etapas, limites e opções para esse tipo de categoria.</p>
-                  </div>
-                </div>
-
-                <div className="flex gap-2">
-                  <input
-                    value={newGroupName}
-                    onChange={(e) => setNewGroupName(e.target.value)}
-                    placeholder="Nome da etapa (ex: Base, Recheio)"
-                    className="flex-1 h-12 px-4 bg-white rounded-xl font-bold text-sm outline-none border border-amber-200"
-                  />
-                  <button
-                    type="button"
-                    onClick={addGuidedGroup}
-                    className="h-12 px-4 bg-slate-900 text-white rounded-xl flex items-center justify-center gap-2 hover:bg-black transition-all"
-                  >
-                    <Plus size={16} />
-                    Etapa
-                  </button>
-                </div>
-
-                <div className="space-y-3">
-                  {(formData.guidedAssemblyConfig || []).map((group: any, index: number) => (
-                    <div key={`${group.name}-${index}`} className="rounded-2xl border border-amber-200 bg-white p-3 space-y-3">
-                      <div className="flex items-center justify-between gap-2">
-                        <input
-                          value={group.name || ""}
-                          onChange={(e) => updateGuidedGroup(index, "name", e.target.value)}
-                          placeholder="Nome da etapa"
-                          className="flex-1 h-10 px-3 bg-amber-50 rounded-xl font-bold text-sm outline-none"
-                        />
-                        <button type="button" onClick={() => removeGuidedGroup(index)} className="text-slate-400 hover:text-rose-500 transition-all">
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                          Min. seleções
-                          <input
-                            type="number"
-                            min="0"
-                            value={group.minSelections ?? 0}
-                            onChange={(e) => updateGuidedGroup(index, "minSelections", parseInt(e.target.value) || 0)}
-                            className="mt-1 w-full h-10 px-3 bg-amber-50 rounded-xl font-bold text-sm outline-none"
-                          />
-                        </label>
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                          Max. seleções
-                          <input
-                            type="number"
-                            min="0"
-                            value={group.maxSelections ?? 1}
-                            onChange={(e) => updateGuidedGroup(index, "maxSelections", parseInt(e.target.value) || 1)}
-                            className="mt-1 w-full h-10 px-3 bg-amber-50 rounded-xl font-bold text-sm outline-none"
-                          />
-                        </label>
-                      </div>
-
-                      <div className="flex gap-2">
-                        <input
-                          value={newGuidedOption.groupIndex === index ? newGuidedOption.name : ""}
-                          onChange={(e) => setNewGuidedOption({ ...newGuidedOption, groupIndex: index, name: e.target.value })}
-                          placeholder="Nome da opção"
-                          className="flex-1 h-10 px-3 bg-amber-50 rounded-xl font-bold text-sm outline-none"
-                        />
-                        <input
-                          type="text"
-                          inputMode="decimal"
-                          value={newGuidedOption.groupIndex === index ? newGuidedOption.price : ""}
-                          onChange={(e) => setNewGuidedOption({ ...newGuidedOption, groupIndex: index, price: e.target.value })}
-                          placeholder="Preço"
-                          className="w-24 h-10 px-3 bg-amber-50 rounded-xl font-bold text-sm outline-none"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => addGuidedOption(index)}
-                          className="h-10 px-3 bg-slate-900 text-white rounded-xl flex items-center justify-center hover:bg-black transition-all"
-                        >
-                          <Plus size={14} />
-                        </button>
-                      </div>
-
-                      <div className="flex flex-wrap gap-2">
-                        {(group.options || []).map((option: any, optionIndex: number) => (
-                          <div key={`${option.name}-${optionIndex}`} className="flex items-center gap-2 bg-amber-50 px-3 py-1.5 rounded-lg border border-amber-200">
-                            <span className="text-[10px] font-black text-slate-700 uppercase tracking-tight">{option.name}</span>
-                            {option.price ? <span className="text-[10px] font-bold text-emerald-500">+R$ {option.price}</span> : null}
-                            <button type="button" onClick={() => removeGuidedOption(index, optionIndex)} className="text-slate-400 hover:text-rose-500 transition-all">
-                              <Trash2 size={12} />
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
 
             <div className="space-y-2">
                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Status</label>
@@ -319,7 +229,7 @@ export function CategoryModal({ isOpen, onClose, onSave, category }: CategoryMod
             </div>
         </form>
 
-        <div className="p-8 bg-slate-50 flex gap-4">
+        <div className="shrink-0 p-8 bg-slate-50 flex gap-4">
             <button 
                 type="button"
                 onClick={onClose}

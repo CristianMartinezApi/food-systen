@@ -54,7 +54,7 @@ export const normalizeOperatingHours = (value: any): OperatingHours => {
     if (Array.isArray(raw.shifts)) {
       const shifts = raw.shifts
         .map(normalizeShift)
-        .filter((shift) => shift.open && shift.close);
+        .filter((shift: OperatingShift) => shift.open && shift.close);
 
       normalized[day] = {
         enabled: raw.enabled !== false,
