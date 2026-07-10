@@ -294,7 +294,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
               <img src={settings.logo} alt="Logo" className="w-12 h-12 rounded-[1.25rem] object-cover shadow-2xl shadow-slate-200" />
             ) : (
               <div className="w-12 h-12 bg-slate-950 rounded-[1.25rem] flex items-center justify-center shadow-lg shadow-slate-950/20">
-                <Package className="text-white" size={24} />
+                <Utensils className="text-white" size={24} />
               </div>
             )}
             <div className="flex flex-col">

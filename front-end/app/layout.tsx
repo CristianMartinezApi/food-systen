@@ -9,7 +9,9 @@ export const metadata: Metadata = {
   title: "Food System",
   description: "Multi-tenant food ordering system",
   icons: {
-    icon: "/foodsystem.png",
+    icon: "/logo.foodsystem.png",
+    shortcut: "/logo.foodsystem.png",
+    apple: "/logo.foodsystem.png",
   },
 };
 

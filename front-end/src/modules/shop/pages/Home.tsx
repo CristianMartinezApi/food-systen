@@ -155,7 +155,7 @@ export default function Home() {
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-100 bg-slate-950 flex items-center justify-center px-6"
           >
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(239,68,68,0.18),transparent_35%),linear-gradient(180deg,rgba(15,23,42,0.985),rgba(2,6,23,0.99))]" />
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(245,158,11,0.16),transparent_34%),radial-gradient(circle_at_20%_90%,rgba(56,189,248,0.12),transparent_38%),linear-gradient(180deg,rgba(15,23,42,0.985),rgba(2,6,23,0.99))]" />
 
             <motion.div
               initial={{ opacity: 0, y: 18, scale: 0.97 }}
@@ -167,9 +167,15 @@ export default function Home() {
                 initial={{ opacity: 0, scale: 0.9, y: 6 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 transition={{ type: "spring", stiffness: 180, damping: 14, delay: 0.12 }}
-                className="w-24 h-24 md:w-28 md:h-28 rounded-3xl bg-white/10 border border-white/10 backdrop-blur-xl flex items-center justify-center shadow-2xl shadow-black/30 mb-7"
+                className="w-24 h-24 md:w-28 md:h-28 rounded-3xl bg-white/6 border border-white/0 backdrop-blur-xl flex items-center justify-center shadow-xl shadow-black/25 mb-7 p-1"
               >
-                <Utensils size={42} className="text-primary" />
+                <img
+                  src="/logo.foodsystem.png"
+                  alt="Logo FoodSystem"
+                  className="w-full h-full object-contain rounded-[1.1rem]"
+                  loading="eager"
+                  decoding="async"
+                />
               </motion.div>
 
               <motion.h1
@@ -190,12 +196,12 @@ export default function Home() {
                 A maneira inteligente de pedir comida.
               </motion.p>
 
-              <div className="mt-10 relative h-1.5 w-64 overflow-hidden rounded-full bg-white/10 border border-white/10">
+              <div className="mt-10 relative h-1 w-64 overflow-hidden rounded-full bg-white/10 border border-white/0">
                 <motion.div
                   initial={{ x: "-60%" }}
                   animate={{ x: "120%" }}
                   transition={{ duration: 1.4, repeat: Infinity, ease: "easeInOut" }}
-                  className="absolute inset-y-0 left-0 w-1/2 rounded-full bg-linear-to-r from-transparent via-primary to-transparent opacity-90"
+                  className="absolute inset-y-0 left-0 w-1/2 rounded-full bg-linear-to-r from-transparent via-amber-400 to-transparent opacity-90"
                 />
               </div>
             </motion.div>

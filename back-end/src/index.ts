@@ -894,6 +894,7 @@ const seedSettings = async () => {
       data: {
         name: 'FoodSystem Burger',
         slug: 'foodsystem-burger',
+        logo: '/logo.foodsystem.png',
         provisioningStatus: 'READY',
         databaseName: 'foodsystem-burger',
         planId: startPlan.id,
@@ -918,6 +919,7 @@ const seedSettings = async () => {
             bannerDescription: 'Experiência gastronômica executiva com ingredientes selecionados e preparo artesanal.',
             bannerCtaLabel: 'Explorar Menu',
             bannerImage: 'https://images.unsplash.com/photo-1550547660-d9450f859349?q=80&w=2000',
+            logo: '/logo.foodsystem.png',
             operatingHours: {
               seg: { enabled: true, shifts: [{ open: '18:00', close: '23:00' }] },
               ter: { enabled: true, shifts: [{ open: '18:00', close: '23:00' }] },
@@ -2651,7 +2653,7 @@ app.post('/api/onboarding/create-store', authMiddleware, async (req: AuthRequest
           slug,
           description,
           phone,
-          logo,
+          logo: logo || '/logo.foodsystem.png',
           provisioningStatus: 'READY',
           databaseName: slug,
           planId: plan?.id,
@@ -2665,6 +2667,7 @@ app.post('/api/onboarding/create-store', authMiddleware, async (req: AuthRequest
               bannerDescription: 'Abra sua loja, gerencie pedidos e personalize sua operação com o fluxo aprovado pela plataforma.',
               bannerCtaLabel: 'Publicar Loja',
               bannerImage: 'https://images.unsplash.com/photo-1556742205-9e9352e2f1f0?q=80&w=2000',
+              logo: logo || '/logo.foodsystem.png',
               instagram,
               facebook,
             }
