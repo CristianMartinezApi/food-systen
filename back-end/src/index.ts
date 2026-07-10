@@ -1,8 +1,4 @@
 ﻿import express from 'express';
-import {
-  createPixCharge,
-  validateWebhookSignature,
-} from './services/pix.service';
 
 import cors from 'cors';
 import dotenv from 'dotenv';
@@ -5440,7 +5436,7 @@ httpServer.listen(PORT, '0.0.0.0', () => {
 
 // ─── PIX ROUTES ──────────────────────────────────────────────────────────────
 
-// Salvar chave PIX do lojista (apenas a chave PIX, não credenciais Efi)
+// Salvar chave PIX do lojista (fluxo manual, sem webhook)
 apiRouter.put('/pix/settings', authMiddleware, tenantMiddleware, async (req: AuthRequest & TenantRequest, res) => {
   try {
     const { pixKey, pixEnabled } = req.body;
@@ -5619,41 +5615,3 @@ apiRouter.post('/pix/charge/:orderId', tenantMiddleware, async (req: TenantReque
   }
 });
 
-// Webhook Efi Bank — confirmação de pagamento PIX
-// Registre no painel Efi: https://seudominio.com/api/pix/webhook
-app.post(
-  '/api/pix/webhook',
-  express.raw({ type: '*/*' }),
-  async (req, res) => {
-    const sig = req.headers['x-hub-signature'] as string | undefined;
-    if (!validateWebhookSignature(req.body as Buffer, sig)) {
-      return res.status(401).json({ error: 'Assinatura inválida' });
-    }
-    try {
-      const payload = JSON.parse((req.body as Buffer).toString());
-      const pixArr: any[] = payload?.pix ?? [];
-      for (const pix of pixArr) {
-        const txid: string = pix.txid;
-        if (!txid) continue;
-        const orders = await prisma.order.findMany({
-          where: { notes: { contains: txid } },
-        });
-        for (const order of orders) {
-          if (order.status === 'PAID') continue;
-          await prisma.order.update({ where: { id: order.id }, data: { status: 'PAID' } });
-          io.emit(`order:${order.restaurantId}:paid`, {
-            orderId: order.id,
-            txid,
-            paidAt: pix.horario,
-            endToEndId: pix.endToEndId,
-          });
-          console.log(`✅ PIX confirmado — Pedido #${order.id}`);
-        }
-      }
-      res.status(200).json({ ok: true });
-    } catch (err) {
-      console.error('Erro no webhook PIX:', err);
-      res.status(500).json({ error: 'Erro interno' });
-    }
-  }
-);

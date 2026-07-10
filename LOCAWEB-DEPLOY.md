@@ -98,11 +98,8 @@ ALLOWED_ORIGINS=https://seu-dominio.com.br,https://www.seu-dominio.com.br
 # JWT (Gere com: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))")
 JWT_SECRET=GERE_UM_SECRET_ALEATORIO_32_CHARS
 
-# PIX Gerencianet (opcional)
-EFI_SANDBOX=false
-EFI_CLIENT_ID=seu_client_id
-EFI_CLIENT_SECRET=seu_client_secret
-EFI_CERT_BASE64=seu_certificado_base64
+# PIX (modo manual)
+# Sem credenciais de gateway e sem webhook.
 
 # Email (opcional)
 SMTP_HOST=smtp.seu-provedor.com

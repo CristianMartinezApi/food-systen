@@ -34,11 +34,6 @@ services:
       - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-https://foodsystem.app.br}
       - INITIAL_ADMIN_PASSWORD=${INITIAL_ADMIN_PASSWORD}
       - INITIAL_SUPERADMIN_PASSWORD=${INITIAL_SUPERADMIN_PASSWORD}
-      - EFI_SANDBOX=${EFI_SANDBOX}
-      - EFI_CLIENT_ID=${EFI_CLIENT_ID}
-      - EFI_CLIENT_SECRET=${EFI_CLIENT_SECRET}
-      - EFI_CERT_BASE64=${EFI_CERT_BASE64}
-      - PIX_WEBHOOK_SECRET=${PIX_WEBHOOK_SECRET}
     volumes:
       - uploads_data:/app/uploads
     depends_on:
