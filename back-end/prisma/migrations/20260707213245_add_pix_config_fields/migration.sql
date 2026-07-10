@@ -1,14 +1,14 @@
 -- AlterEnum
-ALTER TYPE "UserRole" ADD VALUE 'CASHIER';
+ALTER TYPE "UserRole" ADD VALUE IF NOT EXISTS 'CASHIER';
 
 -- AlterTable
-ALTER TABLE "orders" ADD COLUMN     "pixConfirmedAt" TIMESTAMP(3),
-ADD COLUMN     "pixConfirmedBy" TEXT,
-ADD COLUMN     "pixProofAt" TIMESTAMP(3),
-ADD COLUMN     "pixProofUrl" TEXT;
+ALTER TABLE "orders" ADD COLUMN IF NOT EXISTS "pixConfirmedAt" TIMESTAMP(3),
+ADD COLUMN IF NOT EXISTS "pixConfirmedBy" TEXT,
+ADD COLUMN IF NOT EXISTS "pixProofAt" TIMESTAMP(3),
+ADD COLUMN IF NOT EXISTS "pixProofUrl" TEXT;
 
 -- AlterTable
-ALTER TABLE "restaurants" ADD COLUMN     "pixInstructions" TEXT,
-ADD COLUMN     "pixKey" TEXT,
-ADD COLUMN     "pixKeyType" TEXT,
-ADD COLUMN     "whatsappNumber" TEXT;
+ALTER TABLE "restaurants" ADD COLUMN IF NOT EXISTS "pixInstructions" TEXT,
+ADD COLUMN IF NOT EXISTS "pixKey" TEXT,
+ADD COLUMN IF NOT EXISTS "pixKeyType" TEXT,
+ADD COLUMN IF NOT EXISTS "whatsappNumber" TEXT;
