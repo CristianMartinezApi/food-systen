@@ -9,12 +9,9 @@ export interface TenantRequest extends Request {
 export const tenantMiddleware = async (req: TenantRequest, res: Response, next: NextFunction) => {
   const slug = req.headers['x-tenant-slug'] as string;
   const isProd = process.env.NODE_ENV === 'production';
-  
-  console.log(`[Tenant] Buscando tenant para slug: "${slug}" na rota: ${req.path}`);
 
   if (!slug) {
     if (isProd) {
-      console.warn(`[Tenant] Slug ausente para a rota: ${req.path}`);
       return res.status(400).json({ error: 'Tenant slug is missing in headers (x-tenant-slug)' });
     }
 
@@ -29,7 +26,6 @@ export const tenantMiddleware = async (req: TenantRequest, res: Response, next: 
       return res.status(404).json({ error: 'Restaurant not found' });
     }
 
-    console.warn(`[Tenant] Slug ausente. Usando fallback local: "${fallbackRestaurant.slug}"`);
     req.restaurantId = fallbackRestaurant.id;
     req.restaurant = fallbackRestaurant;
     return next();
@@ -50,7 +46,6 @@ export const tenantMiddleware = async (req: TenantRequest, res: Response, next: 
         });
 
         if (fallbackRestaurant) {
-          console.warn(`[Tenant] Slug "${slug}" não encontrado. Usando fallback local: "${fallbackRestaurant.slug}"`);
           req.restaurantId = fallbackRestaurant.id;
           req.restaurant = fallbackRestaurant;
           return next();
@@ -61,7 +56,6 @@ export const tenantMiddleware = async (req: TenantRequest, res: Response, next: 
     }
 
     if (!restaurant.isActive) {
-      console.warn(`[Tenant] Tentativa de acesso a restaurante inativo: "${slug}"`);
       return res.status(403).json({ error: 'Restaurant is inactive' });
     }
 

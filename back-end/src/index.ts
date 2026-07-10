@@ -4012,8 +4012,6 @@ app.post('/api/cashier/direct-sales', authMiddleware, async (req: AuthRequest, r
     const tableNumber = req.body?.tableNumber ? Number(req.body.tableNumber) : null;
     const sendToKitchen = Boolean(req.body?.sendToKitchen);
 
-    console.log('[DEBUG] Direct Sale Body:', JSON.stringify(req.body, null, 2));
-
     // Permitir pagamento nulo apenas se for uma mesa ou se solicitado explicitamente como 'OPEN' (Venda Balcão Pendente)
     const isValidPayment = ['PIX', 'CASH', 'CARD', 'DEBIT', 'CREDIT'].includes(paymentMethod);
     const isPendingPayment = paymentMethod === 'OPEN';

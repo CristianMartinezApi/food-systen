@@ -41,13 +41,9 @@ export const authMiddleware = (req: AuthRequest, res: Response, next: NextFuncti
     req.userId = decoded.id;
     req.userRole = decoded.role;
 
-    // DEBUG: Validação de restaurante
-    console.log(`[Auth] User: ${req.userId}, Role: ${req.userRole}, TokenRestaurant: ${decoded.restaurantId}, RequestRestaurant: ${req.restaurantId}`);
-
     // Se o usuário estiver tentando acessar um recurso de um restaurante,
     // verificamos se ele pertence a esse restaurante (exceto se for SUPER_ADMIN)
     if (decoded.role !== 'SUPER_ADMIN' && req.restaurantId !== undefined && Number(decoded.restaurantId) !== Number(req.restaurantId)) {
-      console.error(`[Auth] Denied: Restaurant ID mismatch. User: ${decoded.restaurantId} vs Order: ${req.restaurantId}`);
       return res.status(403).json({ error: 'Forbidden: You do not belong to this restaurant' });
     }
 
