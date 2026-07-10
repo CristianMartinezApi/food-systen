@@ -1,6 +1,7 @@
 # 🚀 GUIA DE DEPLOY - FOOD-SYSTEN NA LOCAWEB
 
 ## 📋 Pré-requisitos
+
 - Conta Locaweb (VPS/Cloud)
 - SSH configurado
 - Docker instalado no servidor
@@ -11,16 +12,19 @@
 ## ⚙️ PASSO 1: Preparar o Servidor Locaweb
 
 ### 1.1 Conectar via SSH
+
 ```bash
 ssh root@seu_ip_vps
 ```
 
 ### 1.2 Atualizar sistema
+
 ```bash
 apt update && apt upgrade -y
 ```
 
 ### 1.3 Instalar Docker e Docker Compose
+
 ```bash
 # Instalar Docker
 curl -fsSL https://get.docker.com -o get-docker.sh
@@ -36,6 +40,7 @@ docker-compose --version
 ```
 
 ### 1.4 Criar usuário para aplicação
+
 ```bash
 useradd -m -s /bin/bash food-systen
 usermod -aG docker food-systen
@@ -46,6 +51,7 @@ usermod -aG docker food-systen
 ## 📂 PASSO 2: Preparar Repositório
 
 ### 2.1 Clonar repositório no servidor
+
 ```bash
 cd /home/food-systen
 git clone https://seu-repo.git food-system
@@ -53,6 +59,7 @@ cd food-system
 ```
 
 ### 2.2 Criar estrutura de dados
+
 ```bash
 mkdir -p /home/food-systen/data/postgres
 mkdir -p /home/food-systen/uploads
@@ -65,12 +72,14 @@ chown -R food-systen:food-systen /home/food-systen/uploads
 ## 🔐 PASSO 3: Configurar Variáveis de Ambiente
 
 ### 3.1 Backend - Criar `.env`
+
 ```bash
 # Criar arquivo
 nano /home/food-systen/food-system/back-end/.env
 ```
 
 **Conteúdo:**
+
 ```env
 # Banco de Dados
 DATABASE_URL="postgresql://food_user:SENHA_FORTE_AQUI@db:5432/food_db?schema=public"
@@ -110,12 +119,14 @@ AUDIT_RETENTION_DAYS=90
 ```
 
 ### 3.2 Frontend - Criar `.env.local`
+
 ```bash
 # Criar arquivo
 nano /home/food-systen/food-system/front-end/.env.local
 ```
 
 **Conteúdo:**
+
 ```env
 NEXT_PUBLIC_API_URL=https://api.seu-dominio.com.br
 NEXT_PUBLIC_APP_URL=https://seu-dominio.com.br
@@ -127,13 +138,15 @@ NODE_ENV=production
 ## 🐳 PASSO 4: Atualizar Docker Compose para Produção
 
 ### 4.1 Criar `docker-compose.prod.yml`
+
 ```bash
 nano docker-compose.prod.yml
 ```
 
 **Conteúdo:**
+
 ```yaml
-version: '3.8'
+version: "3.8"
 
 services:
   db:
@@ -209,6 +222,7 @@ networks:
 ## 🌐 PASSO 5: Configurar Nginx (Reverse Proxy)
 
 ### 5.1 Instalar Nginx
+
 ```bash
 sudo apt install nginx -y
 sudo systemctl start nginx
@@ -216,11 +230,13 @@ sudo systemctl enable nginx
 ```
 
 ### 5.2 Criar configuração
+
 ```bash
 sudo nano /etc/nginx/sites-available/food-systen
 ```
 
 **Conteúdo:**
+
 ```nginx
 # Redirecionar HTTP para HTTPS
 server {
@@ -284,6 +300,7 @@ server {
 ```
 
 ### 5.3 Habilitar site
+
 ```bash
 sudo ln -s /etc/nginx/sites-available/food-systen /etc/nginx/sites-enabled/
 sudo nginx -t
@@ -295,16 +312,19 @@ sudo systemctl reload nginx
 ## 🔒 PASSO 6: SSL com Let's Encrypt
 
 ### 6.1 Instalar Certbot
+
 ```bash
 sudo apt install certbot python3-certbot-nginx -y
 ```
 
 ### 6.2 Gerar certificado
+
 ```bash
 sudo certbot certonly --nginx -d seu-dominio.com.br -d www.seu-dominio.com.br
 ```
 
 ### 6.3 Configurar renovação automática
+
 ```bash
 sudo systemctl enable certbot.timer
 sudo systemctl start certbot.timer
@@ -315,11 +335,13 @@ sudo systemctl start certbot.timer
 ## 🚀 PASSO 7: Deploy da Aplicação
 
 ### 7.1 Entrar no diretório
+
 ```bash
 cd /home/food-systen/food-system
 ```
 
 ### 7.2 Build e iniciar containers
+
 ```bash
 # Carregar variáveis do .env
 export $(cat back-end/.env | xargs)
@@ -335,11 +357,13 @@ docker-compose -f docker-compose.prod.yml ps
 ```
 
 ### 7.3 Executar migrations
+
 ```bash
 docker-compose -f docker-compose.prod.yml exec backend npx prisma migrate deploy
 ```
 
 ### 7.4 Verificar logs
+
 ```bash
 docker-compose -f docker-compose.prod.yml logs -f
 ```
@@ -349,6 +373,7 @@ docker-compose -f docker-compose.prod.yml logs -f
 ## 📊 PASSO 8: Monitoramento e Manutenção
 
 ### 8.1 Ver logs em tempo real
+
 ```bash
 # Backend
 docker-compose -f docker-compose.prod.yml logs -f backend
@@ -361,6 +386,7 @@ docker-compose -f docker-compose.prod.yml logs -f db
 ```
 
 ### 8.2 Backup do banco de dados
+
 ```bash
 # Backup manual
 docker-compose -f docker-compose.prod.yml exec db pg_dump -U ${POSTGRES_USER} ${POSTGRES_DB} > backup_$(date +%Y%m%d_%H%M%S).sql
@@ -370,6 +396,7 @@ docker-compose -f docker-compose.prod.yml exec -T db psql -U ${POSTGRES_USER} ${
 ```
 
 ### 8.3 Atualizar aplicação
+
 ```bash
 # Pull das mudanças
 git pull origin main
@@ -407,6 +434,7 @@ docker-compose -f docker-compose.prod.yml exec backend npx prisma migrate deploy
 ## 🆘 Troubleshooting
 
 ### Problema: "Connection refused"
+
 ```bash
 # Verificar se containers estão rodando
 docker-compose -f docker-compose.prod.yml ps
@@ -416,6 +444,7 @@ docker-compose -f docker-compose.prod.yml logs backend
 ```
 
 ### Problema: "Database connection error"
+
 ```bash
 # Verificar se DB está saudável
 docker-compose -f docker-compose.prod.yml ps
@@ -425,6 +454,7 @@ docker-compose -f docker-compose.prod.yml restart db
 ```
 
 ### Problema: "SSL certificate error"
+
 ```bash
 # Renovar certificado manualmente
 sudo certbot renew --force-renewal
@@ -435,6 +465,7 @@ sudo certbot renew --force-renewal
 ## 📞 Suporte
 
 Para dúvidas:
+
 - Documentação Locaweb: https://www.locaweb.com.br/ajuda/
 - Docker Docs: https://docs.docker.com/
 - Nginx Docs: https://nginx.org/en/docs/

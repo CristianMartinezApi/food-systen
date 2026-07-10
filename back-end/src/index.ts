@@ -15,6 +15,8 @@ import { authMiddleware, AuthRequest } from './middlewares/auth.middleware';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
+import { promises as fs } from 'fs';
+import path from 'path';
 import { getNextOpeningLabel, isRestaurantOpenNow, normalizeOperatingHours } from './utils/hours';
 import { validateGuidedSelections } from './utils/guided-assembly';
 
@@ -228,9 +230,64 @@ const AUDIT_EXPORT_MAX_CONCURRENT_JOBS = Math.min(5, Math.max(1, Number(process.
 const AUDIT_RETENTION_ENABLED = process.env.AUDIT_RETENTION_ENABLED !== 'false';
 const AUDIT_RETENTION_DAYS = Math.min(3650, Math.max(7, Number(process.env.AUDIT_RETENTION_DAYS || 180)));
 const AUDIT_RETENTION_INTERVAL_HOURS = Math.min(168, Math.max(1, Number(process.env.AUDIT_RETENTION_INTERVAL_HOURS || 24)));
+const UPLOADS_ROOT = process.env.UPLOADS_DIR || path.join(process.cwd(), 'uploads');
+
+function sanitizeAssetFolder(folder?: string): string {
+  return String(folder || 'general')
+    .toLowerCase()
+    .replace(/[^a-z0-9-_/]/g, '')
+    .replace(/\.{2,}/g, '')
+    .replace(/^\/+/, '')
+    .replace(/\/+$/, '') || 'general';
+}
+
+function parseDataUrl(dataUrl: string): { mime: string; base64: string } | null {
+  const match = /^data:(image\/[a-zA-Z0-9.+-]+);base64,(.+)$/.exec(dataUrl);
+  if (!match) return null;
+  return { mime: match[1], base64: match[2] };
+}
+const PUBLIC_STORE_CACHE_TTL_MS = Math.min(60000, Math.max(5000, Number(process.env.PUBLIC_STORE_CACHE_TTL_MS || 15000)));
 const CASH_COUNTED_ORDER_STATUSES: OrderStatus[] = ['OPEN', 'CONFIRMED', 'PREPARING', 'READY', 'DELIVERED', 'PAID', 'RETIRED' as OrderStatus];
 const CASHIER_OPERATION_ROLES = new Set(['SUPER_ADMIN', 'OWNER', 'MANAGER', 'CASHIER', 'EMPLOYEE']);
 const CASHIER_OPEN_CLOSE_ROLES = new Set(['SUPER_ADMIN', 'OWNER', 'MANAGER', 'CASHIER']);
+
+const publicStoreCache = new Map<string, { expiresAt: number; payload: unknown }>();
+
+function getPublicStoreCacheKey(type: 'settings' | 'categories' | 'products', restaurantId?: number) {
+  return `${type}:${restaurantId || 'unknown'}`;
+}
+
+function readPublicStoreCache<T>(type: 'settings' | 'categories' | 'products', restaurantId?: number): T | null {
+  const key = getPublicStoreCacheKey(type, restaurantId);
+  const cached = publicStoreCache.get(key);
+
+  if (!cached) return null;
+
+  if (cached.expiresAt <= Date.now()) {
+    publicStoreCache.delete(key);
+    return null;
+  }
+
+  return cached.payload as T;
+}
+
+function writePublicStoreCache(type: 'settings' | 'categories' | 'products', restaurantId: number | undefined, payload: unknown) {
+  if (!restaurantId) return;
+
+  const key = getPublicStoreCacheKey(type, restaurantId);
+  publicStoreCache.set(key, {
+    payload,
+    expiresAt: Date.now() + PUBLIC_STORE_CACHE_TTL_MS,
+  });
+}
+
+function invalidatePublicStoreCache(restaurantId?: number) {
+  if (!restaurantId) return;
+
+  publicStoreCache.delete(getPublicStoreCacheKey('settings', restaurantId));
+  publicStoreCache.delete(getPublicStoreCacheKey('categories', restaurantId));
+  publicStoreCache.delete(getPublicStoreCacheKey('products', restaurantId));
+}
 
 type OrderMode = 'DELIVERY' | 'PICKUP' | 'DINE_IN';
 
@@ -478,6 +535,7 @@ app.use(cors({
   methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE'],
   optionsSuccessStatus: 200
 }));
+app.use('/uploads', express.static(UPLOADS_ROOT, { maxAge: '7d', immutable: false }));
 
 // ✅ SEGURO: Socket.io com CORS configurado
 const io = new Server(httpServer, {
@@ -2656,38 +2714,89 @@ app.use('/api', apiRouter);
 
 // Settings
 app.get('/api/settings', async (req: TenantRequest, res) => {
-  const settings = await prisma.settings.findUnique({
+  const cachedSettings = readPublicStoreCache<any>('settings', req.restaurantId);
+  if (cachedSettings) {
+    return res.json(cachedSettings);
+  }
+
+  let settings = await prisma.settings.findUnique({
     where: { restaurantId: req.restaurantId },
     include: {
       restaurant: {
         select: {
           corporateName: true,
           cnpj: true,
+          pixKey: true,
+          pixKeyType: true,
+          whatsappNumber: true,
+          pixInstructions: true,
         },
       },
     },
   });
+
+  // Evita 404 em ambientes de teste quando o registro de settings ainda não existe.
+  if (!settings && req.restaurantId) {
+    settings = await prisma.settings.create({
+      data: {
+        restaurantId: req.restaurantId,
+        storeName: req.restaurant?.name || 'Minha Loja',
+        phone: req.restaurant?.phone || null,
+        logo: req.restaurant?.logo || null,
+      },
+      include: {
+        restaurant: {
+          select: {
+            corporateName: true,
+            cnpj: true,
+            pixKey: true,
+            pixKeyType: true,
+            whatsappNumber: true,
+            pixInstructions: true,
+          },
+        },
+      },
+    });
+  }
+
   if (!settings) {
     return res.status(404).json({ error: 'Configurações não encontradas' });
   }
 
   const { restaurant, ...plainSettings } = settings;
+  const effectivePixKey = plainSettings.pixKey || restaurant?.pixKey || null;
+  const effectivePixEnabled = Boolean((plainSettings.pixEnabled && effectivePixKey) || restaurant?.pixKey);
 
-  res.json({
+  const responsePayload = {
     ...plainSettings,
     corporateName: restaurant?.corporateName || null,
     cnpj: restaurant?.cnpj || null,
+    pixEnabled: effectivePixEnabled,
+    pixKey: effectivePixKey,
+    pixKeyType: restaurant?.pixKeyType || null,
+    whatsappNumber: restaurant?.whatsappNumber || null,
+    pixInstructions: restaurant?.pixInstructions || null,
     operatingHours: normalizeOperatingHours(plainSettings.operatingHours),
     isOpen: isRestaurantOpenNow(plainSettings.operatingHours),
     nextOpeningLabel: getNextOpeningLabel(plainSettings.operatingHours),
-  });
+  };
+
+  writePublicStoreCache('settings', req.restaurantId, responsePayload);
+  res.json(responsePayload);
 });
 
 app.patch('/api/settings', authMiddleware, async (req: AuthRequest, res) => {
   try {
     const { id, restaurantId, createdAt, updatedAt, nextOpeningLabel, isOpen, corporateName, cnpj, ...updateData } = req.body;
+    const {
+      pixKeyType,
+      whatsappNumber,
+      pixInstructions,
+      restaurant: _ignoredRestaurant,
+      ...settingsData
+    } = updateData;
     const operatingHours = normalizeOperatingHours(updateData.operatingHours);
-    const parsedDifferenceThreshold = Number(updateData.cashDifferenceNoteThreshold);
+    const parsedDifferenceThreshold = Number(settingsData.cashDifferenceNoteThreshold);
     const cashDifferenceNoteThreshold = Number.isFinite(parsedDifferenceThreshold) && parsedDifferenceThreshold >= 0
       ? parsedDifferenceThreshold
       : DEFAULT_CASH_DIFFERENCE_NOTE_THRESHOLD;
@@ -2726,11 +2835,11 @@ app.patch('/api/settings', authMiddleware, async (req: AuthRequest, res) => {
       return tx.settings.update({
         where: { restaurantId: req.restaurantId },
         data: {
-          ...updateData,
+          ...settingsData,
           cashDifferenceNoteThreshold,
           operatingHours,
           isOpen: isRestaurantOpenNow(operatingHours),
-          deliveryEtaMinutes: updateData.deliveryEtaMinutes || 35,
+          deliveryEtaMinutes: settingsData.deliveryEtaMinutes || 35,
         },
         include: {
           restaurant: {
@@ -2744,6 +2853,7 @@ app.patch('/api/settings', authMiddleware, async (req: AuthRequest, res) => {
     });
 
     const { restaurant, ...plainSettings } = settings;
+    invalidatePublicStoreCache(req.restaurantId);
 
     io.emit(`settings_updated_${req.restaurant?.slug}`, {
       ...plainSettings,
@@ -2767,11 +2877,17 @@ app.patch('/api/settings', authMiddleware, async (req: AuthRequest, res) => {
 // Categories
 app.get('/api/categories', async (req: TenantRequest, res) => {
   try {
+    const cachedCategories = readPublicStoreCache<any[]>('categories', req.restaurantId);
+    if (cachedCategories) {
+      return res.json(cachedCategories);
+    }
+
     const categories = await prisma.category.findMany({
       where: { restaurantId: req.restaurantId },
       include: { _count: { select: { products: true } } },
       orderBy: { order: 'asc' }
     });
+    writePublicStoreCache('categories', req.restaurantId, categories);
     res.json(categories);
   } catch (error) {
     console.error('Error fetching categories:', error);
@@ -2821,6 +2937,7 @@ app.post('/api/categories', authMiddleware, async (req: AuthRequest, res) => {
     const category = await prisma.category.create({
       data: { ...categoryData, restaurantId }
     });
+    invalidatePublicStoreCache(restaurantId);
     res.status(201).json(category);
   } catch (error: any) {
     console.error('Error creating category:', error);
@@ -2871,6 +2988,7 @@ app.patch('/api/categories/:id', authMiddleware, async (req: AuthRequest, res) =
     }
 
     const category = await prisma.category.findUnique({ where: { id } });
+    invalidatePublicStoreCache(restaurantId);
     res.json(category);
   } catch (error) {
     console.error('Error updating category:', error);
@@ -2891,6 +3009,7 @@ app.delete('/api/categories/:id', authMiddleware, async (req: AuthRequest, res) 
       return res.status(404).json({ error: 'Categoria não encontrada ou sem permissão.' });
     }
 
+    invalidatePublicStoreCache(req.restaurantId);
     res.status(204).send();
   } catch (error) {
     console.error('Error deleting category:', error);
@@ -2901,10 +3020,40 @@ app.delete('/api/categories/:id', authMiddleware, async (req: AuthRequest, res) 
 // Products
 app.get('/api/products', async (req: TenantRequest, res) => {
   try {
+    const cachedProducts = readPublicStoreCache<any[]>('products', req.restaurantId);
+    if (cachedProducts) {
+      return res.json(cachedProducts);
+    }
+
     const products = await prisma.product.findMany({
       where: { restaurantId: req.restaurantId },
-      include: { category: true }
+      orderBy: [
+        { categoryId: 'asc' },
+        { name: 'asc' }
+      ],
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        price: true,
+        image: true,
+        isActive: true,
+        isFeatured: true,
+        discountPercent: true,
+        stockQuantity: true,
+        trackStock: true,
+        restaurantId: true,
+        categoryId: true,
+        createdAt: true,
+        updatedAt: true,
+        addons: true,
+        ingredients: true,
+        sizes: true,
+        usesGuidedAssembly: true,
+        guidedAssemblyConfig: true,
+      }
     });
+    writePublicStoreCache('products', req.restaurantId, products);
     res.json(products);
   } catch (error) {
     console.error('Error fetching products:', error);
@@ -2962,6 +3111,7 @@ app.post('/api/products', authMiddleware, async (req: AuthRequest, res) => {
     const product = await prisma.product.create({
       data: { ...productData, restaurantId: req.restaurantId }
     });
+    invalidatePublicStoreCache(req.restaurantId);
     const allProducts = await prisma.product.findMany({ where: { restaurantId: req.restaurantId } });
     io.emit(`products_updated_${req.restaurant?.slug}`, allProducts);
     res.status(201).json(product);
@@ -3010,6 +3160,7 @@ app.patch('/api/products/:id', authMiddleware, async (req: AuthRequest, res) => 
     }
 
     const product = await prisma.product.findUnique({ where: { id } });
+  invalidatePublicStoreCache(req.restaurantId);
     const allProducts = await prisma.product.findMany({ where: { restaurantId: req.restaurantId } });
     io.emit(`products_updated_${req.restaurant?.slug}`, allProducts);
     res.json(product);
@@ -3035,6 +3186,7 @@ app.delete('/api/products/:id', authMiddleware, async (req: AuthRequest, res) =>
       return res.status(404).json({ error: 'Produto não encontrado ou sem permissão.' });
     }
 
+    invalidatePublicStoreCache(req.restaurantId);
     res.status(204).send();
   } catch (error) {
     console.error('Error deleting product:', error);
@@ -4041,6 +4193,53 @@ app.post('/api/cashier/direct-sales', authMiddleware, async (req: AuthRequest, r
     }
 
     res.status(500).json({ error: 'Erro ao registrar venda direta.' });
+  }
+});
+
+app.post('/api/assets/image', authMiddleware, async (req: AuthRequest, res) => {
+  try {
+    const { dataUrl, folder } = req.body as { dataUrl?: string; folder?: string };
+
+    if (!req.restaurantId) {
+      return res.status(403).json({ error: 'Restaurante não identificado para upload.' });
+    }
+
+    if (!dataUrl || typeof dataUrl !== 'string') {
+      return res.status(400).json({ error: 'dataUrl é obrigatório.' });
+    }
+
+    if (!dataUrl.startsWith('data:image/')) {
+      return res.status(400).json({ error: 'Formato de imagem inválido.' });
+    }
+
+    const parsed = parseDataUrl(dataUrl);
+    if (!parsed) {
+      return res.status(400).json({ error: 'Data URL inválida.' });
+    }
+
+    const bytes = Buffer.from(parsed.base64, 'base64');
+    const maxSizeInBytes = 5 * 1024 * 1024;
+    if (bytes.length > maxSizeInBytes) {
+      return res.status(413).json({ error: 'Imagem muito grande. Limite de 5MB.' });
+    }
+
+    const safeFolder = sanitizeAssetFolder(folder);
+    const targetDir = path.join(UPLOADS_ROOT, String(req.restaurantId), safeFolder);
+    await fs.mkdir(targetDir, { recursive: true });
+
+    const extension = parsed.mime.includes('png') ? 'png' : parsed.mime.includes('jpeg') || parsed.mime.includes('jpg') ? 'jpg' : 'webp';
+    const fileName = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}.${extension}`;
+    const filePath = path.join(targetDir, fileName);
+
+    await fs.writeFile(filePath, bytes);
+
+    const relativeUrl = `/uploads/${req.restaurantId}/${safeFolder}/${fileName}`;
+    const absoluteUrl = `${req.protocol}://${req.get('host')}${relativeUrl}`;
+
+    return res.status(201).json({ url: absoluteUrl, relativeUrl });
+  } catch (error) {
+    console.error('Erro no upload de imagem:', error);
+    return res.status(500).json({ error: 'Erro ao enviar imagem.' });
   }
 });
 
@@ -5052,6 +5251,188 @@ app.get('/api/stats', authMiddleware, async (req: AuthRequest, res) => {
   });
 });
 
+// ============================================================================
+// 🔐 PIX DINÂMICO - QR CODES COM VALOR REAL
+// ============================================================================
+
+// GET /api/orders/:id/pix-qrcode
+// Retorna QR code PIX dinâmico com valor do pedido
+app.get('/api/orders/:id/pix-qrcode', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Buscar pedido
+    const order = await prisma.order.findUnique({
+      where: { id: parseInt(id) },
+      include: {
+        restaurant: {
+          select: {
+            pixKey: true,
+            pixKeyType: true,
+            name: true,
+            whatsappNumber: true
+          }
+        }
+      }
+    });
+
+    if (!order) {
+      return res.status(404).json({
+        code: 'ORDER_NOT_FOUND',
+        userMessage: 'Pedido não encontrado'
+      });
+    }
+
+    // Validar se restaurante tem PIX configurado
+    if (!order.restaurant?.pixKey) {
+      return res.status(400).json({
+        code: 'PIX_NOT_CONFIGURED',
+        userMessage: '❌ PIX não está configurado para este restaurante'
+      });
+    }
+
+    // Importar PixService
+    const { PixService } = await import('./services/PixService');
+
+    // Validar chave PIX
+    if (!PixService.validatePixKey(order.restaurant.pixKey, order.restaurant.pixKeyType!)) {
+      return res.status(400).json({
+        code: 'INVALID_PIX_KEY',
+        userMessage: 'Chave PIX configurada está inválida'
+      });
+    }
+
+    // GERAR QR CODE DINÂMICO COM VALOR DO PEDIDO
+    const qrcodeDataUrl = await PixService.generateDynamicPixQRCode({
+      key: order.restaurant.pixKey,
+      amount: Math.round(order.total * 100), // Valor em centavos
+      orderId: id,
+      recipientName: order.restaurant.name
+    });
+
+    // GERAR CÓPIA E COLA (alternativa se QR code não escanear)
+    const copiaCola = PixService.generatePixCopiaCola(
+      order.restaurant.pixKey,
+      Math.round(order.total * 100),
+      id,
+      order.restaurant.name
+    );
+
+    return res.json({
+      qrcode: qrcodeDataUrl, // Base64 SVG/PNG
+      copiaCola: copiaCola, // Texto para copiar/colar
+      amount: parseFloat((order.total).toFixed(2)), // R$ formatado
+      key: order.restaurant.pixKey,
+      keyType: order.restaurant.pixKeyType,
+      whatsappNumber: order.restaurant.whatsappNumber,
+      instructions: `Escaneie o QR code ou use a cópia e cola. Valor: R$ ${(order.total).toFixed(2)}`
+    });
+  } catch (error) {
+    console.error('Erro ao gerar QR code PIX:', error);
+    return res.status(500).json({
+      code: 'QR_GENERATION_FAILED',
+      userMessage: 'Erro ao gerar QR code PIX'
+    });
+  }
+});
+
+// GET /api/restaurant/pix-config
+// Obter configuração PIX da loja
+app.get('/api/restaurant/pix-config', tenantMiddleware, async (req: TenantRequest, res) => {
+  try {
+    const config = await prisma.restaurant.findUnique({
+      where: { id: req.restaurant?.id },
+      select: {
+        pixKey: true,
+        pixKeyType: true,
+        whatsappNumber: true,
+        pixInstructions: true
+      }
+    });
+
+    return res.json(config);
+  } catch (error) {
+    return res.status(500).json({
+      code: 'FETCH_FAILED',
+      userMessage: 'Erro ao buscar configuração PIX'
+    });
+  }
+});
+
+// PATCH /api/restaurant/pix-config (ADMIN)
+// Atualizar configuração PIX da loja
+app.patch('/api/restaurant/pix-config', authMiddleware, tenantMiddleware, async (req: AuthRequest & TenantRequest, res) => {
+  try {
+    const { pixKey, pixKeyType, whatsappNumber } = req.body;
+
+    // Validação básica
+    if (!pixKey || !pixKeyType) {
+      return res.status(400).json({
+        code: 'MISSING_REQUIRED_FIELDS',
+        userMessage: 'Chave PIX e tipo são obrigatórios'
+      });
+    }
+
+    // Validar tipo
+    const validTypes = ['cpf', 'cnpj', 'email', 'phone'];
+    if (!validTypes.includes(pixKeyType)) {
+      return res.status(400).json({
+        code: 'INVALID_PIX_TYPE',
+        userMessage: `Tipo PIX inválido. Use: ${validTypes.join(', ')}`
+      });
+    }
+
+    // Importar PixService
+    const { PixService } = await import('./services/PixService');
+
+    // Validar formato da chave
+    if (!PixService.validatePixKey(pixKey, pixKeyType)) {
+      return res.status(400).json({
+        code: 'INVALID_PIX_KEY_FORMAT',
+        userMessage: `Formato de chave PIX inválido para tipo "${pixKeyType}"`
+      });
+    }
+
+    // Validar WhatsApp (opcional)
+    if (whatsappNumber) {
+      const phoneRegex = /^\+?55?\d{10,11}$/;
+      if (!phoneRegex.test(whatsappNumber)) {
+        return res.status(400).json({
+          code: 'INVALID_WHATSAPP',
+          userMessage: 'Número de WhatsApp inválido'
+        });
+      }
+    }
+
+    // Atualizar no banco
+    const updated = await prisma.restaurant.update({
+      where: { id: req.restaurant?.id },
+      data: {
+        pixKey,
+        pixKeyType,
+        whatsappNumber: whatsappNumber || null,
+        pixInstructions: `Escaneie o QR code ou use a chave: ${pixKey}`
+      }
+    });
+
+    return res.json({
+      success: true,
+      message: '✅ Configuração PIX atualizada com sucesso',
+      data: {
+        pixKey: updated.pixKey,
+        pixKeyType: updated.pixKeyType,
+        whatsappNumber: updated.whatsappNumber
+      }
+    });
+  } catch (error) {
+    console.error('Erro ao atualizar PIX config:', error);
+    return res.status(500).json({
+      code: 'UPDATE_FAILED',
+      userMessage: 'Erro ao atualizar configuração PIX'
+    });
+  }
+});
+
 httpServer.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 API com PostgreSQL rodando em http://0.0.0.0:${PORT}`);
   scheduleAuditRetentionCleanup();
@@ -5068,11 +5449,27 @@ apiRouter.put('/pix/settings', authMiddleware, tenantMiddleware, async (req: Aut
       return res.status(400).json({ error: 'pixKey é obrigatório quando PIX está ativado' });
     }
 
-    await prisma.settings.update({
+    await prisma.settings.upsert({
       where: { restaurantId: req.restaurant!.id },
-      data: {
+      update: {
         pixEnabled: pixEnabled ?? false,
         pixKey: pixKey ?? null,
+      },
+      create: {
+        restaurantId: req.restaurant!.id,
+        storeName: req.restaurant?.name || 'Minha Loja',
+        phone: req.restaurant?.phone || null,
+        logo: req.restaurant?.logo || null,
+        pixEnabled: pixEnabled ?? false,
+        pixKey: pixKey ?? null,
+      },
+    });
+
+    await prisma.restaurant.update({
+      where: { id: req.restaurant!.id },
+      data: {
+        pixKey: pixEnabled ? (pixKey ?? null) : null,
+        pixInstructions: pixEnabled && pixKey ? `Escaneie o QR code ou use a chave: ${pixKey}` : null,
       },
     });
 
@@ -5096,6 +5493,65 @@ apiRouter.get('/pix/settings', authMiddleware, tenantMiddleware, async (req: Aut
   }
 });
 
+// Gerar PIX de pré-visualização sem criar pedido (usado antes da confirmação final)
+apiRouter.post('/pix/preview', tenantMiddleware, async (req: TenantRequest, res) => {
+  try {
+    const total = Number(req.body?.total);
+
+    if (!Number.isFinite(total) || total <= 0) {
+      return res.status(400).json({ error: 'Valor inválido para gerar PIX' });
+    }
+
+    const restaurant = await prisma.restaurant.findUnique({
+      where: { id: req.restaurant!.id },
+      select: {
+        name: true,
+        pixKey: true,
+      },
+    });
+
+    const s = await prisma.settings.findUnique({ where: { restaurantId: req.restaurant!.id } });
+    const effectivePixKey = restaurant?.pixKey || s?.pixKey || null;
+    const effectivePixEnabled = Boolean((s?.pixEnabled && effectivePixKey) || restaurant?.pixKey);
+
+    if (!effectivePixEnabled || !effectivePixKey) {
+      return res.status(400).json({ error: 'PIX não configurado nesta loja' });
+    }
+
+    const { PixService } = await import('./services/PixService');
+    const previewReference = `${Date.now()}`;
+
+    const qrcodeDataUrl = await PixService.generateDynamicPixQRCode({
+      key: effectivePixKey,
+      amount: Math.round(total * 100),
+      orderId: previewReference,
+      recipientName: restaurant?.name || req.restaurant?.name || 'Minha Loja',
+    });
+
+    const pixCopiaECola = PixService.generatePixCopiaCola(
+      effectivePixKey,
+      Math.round(total * 100),
+      previewReference,
+      restaurant?.name || req.restaurant?.name || 'Minha Loja'
+    );
+
+    const imagemQrcode = qrcodeDataUrl.includes(',')
+      ? qrcodeDataUrl.split(',')[1]
+      : qrcodeDataUrl;
+
+    return res.json({
+      txid: `preview-${previewReference}`,
+      qrcode: pixCopiaECola,
+      imagemQrcode,
+      pixCopiaECola,
+      expiracao: 900,
+    });
+  } catch (err: any) {
+    console.error('Erro ao gerar PIX pré-visualização:', err?.response?.data || err.message);
+    return res.status(500).json({ error: 'Erro ao gerar PIX.' });
+  }
+});
+
 // Criar cobrança PIX para um pedido (chamado pelo frontend após criar o pedido)
 apiRouter.post('/pix/charge/:orderId', tenantMiddleware, async (req: TenantRequest, res) => {
   try {
@@ -5109,27 +5565,54 @@ apiRouter.post('/pix/charge/:orderId', tenantMiddleware, async (req: TenantReque
       return res.status(400).json({ error: 'Pedido não é PIX' });
     }
 
-    const s = await prisma.settings.findUnique({ where: { restaurantId: req.restaurant!.id } });
+    const restaurant = await prisma.restaurant.findUnique({
+      where: { id: req.restaurant!.id },
+      select: {
+        name: true,
+        pixKey: true,
+      },
+    });
 
-    if (!s?.pixEnabled || !s.pixKey) {
+    const s = await prisma.settings.findUnique({ where: { restaurantId: req.restaurant!.id } });
+    const effectivePixKey = restaurant?.pixKey || s?.pixKey || null;
+    const effectivePixEnabled = Boolean((s?.pixEnabled && effectivePixKey) || restaurant?.pixKey);
+
+    if (!effectivePixEnabled || !effectivePixKey) {
       return res.status(400).json({ error: 'PIX não configurado nesta loja' });
     }
 
-    // Chamar serviço com credenciais centrais (via .env) e chave PIX do lojista
-    const charge = await createPixCharge(
-      s.pixKey,
-      order.total,
-      orderId.toString()
+    const { PixService } = await import('./services/PixService');
+    const qrcodeDataUrl = await PixService.generateDynamicPixQRCode({
+      key: effectivePixKey,
+      amount: Math.round(order.total * 100),
+      orderId: orderId.toString(),
+      recipientName: restaurant?.name || req.restaurant?.name || 'Minha Loja',
+    });
+
+    const pixCopiaECola = PixService.generatePixCopiaCola(
+      effectivePixKey,
+      Math.round(order.total * 100),
+      orderId.toString(),
+      restaurant?.name || req.restaurant?.name || 'Minha Loja'
     );
 
-    // Salvar txid no pedido para correlacionar webhook
+    const imagemQrcode = qrcodeDataUrl.includes(',')
+      ? qrcodeDataUrl.split(',')[1]
+      : qrcodeDataUrl;
+
     const existingNotes = order.notes ? JSON.parse(order.notes) : {};
     await prisma.order.update({
       where: { id: orderId },
-      data: { notes: JSON.stringify({ ...existingNotes, pixTxid: charge.txid }) },
+      data: { notes: JSON.stringify({ ...existingNotes, manualPix: true }) },
     });
 
-    res.json(charge);
+    return res.json({
+      txid: `manual-${orderId}-${Date.now()}`,
+      qrcode: pixCopiaECola,
+      imagemQrcode,
+      pixCopiaECola,
+      expiracao: 900,
+    });
   } catch (err: any) {
     console.error('Erro ao criar cobrança PIX:', err?.response?.data || err.message);
     res.status(500).json({ error: 'Erro ao gerar cobrança PIX. Verifique a configuração.' });

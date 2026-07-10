@@ -3,23 +3,85 @@ import { api } from '../../../core/config/api';
 import { getTenantSlug } from '../../../shared/utils/tenant';
 import type { Product, Category } from '../../../core/types';
 
+type ProductsSnapshot = {
+  products: Product[];
+  categories: Category[];
+};
+
+const PRODUCTS_CACHE_TTL_MS = 30_000;
+const productsCache = new Map<string, ProductsSnapshot & { loadedAt: number }>();
+const inflightRequests = new Map<string, Promise<ProductsSnapshot>>();
+
+async function fetchProductsSnapshot(slug: string): Promise<ProductsSnapshot> {
+  const cached = productsCache.get(slug);
+  const isFresh = cached && (Date.now() - cached.loadedAt) < PRODUCTS_CACHE_TTL_MS;
+
+  if (isFresh) {
+    return {
+      products: cached.products,
+      categories: cached.categories,
+    };
+  }
+
+  const existingRequest = inflightRequests.get(slug);
+  if (existingRequest) {
+    return existingRequest;
+  }
+
+  const request = Promise.all([
+    api.get('/products'),
+    api.get('/categories'),
+  ]).then(([productsData, categoriesData]) => {
+    const snapshot = {
+      products: Array.isArray(productsData) ? productsData : [],
+      categories: Array.isArray(categoriesData) ? categoriesData : [],
+    };
+
+    productsCache.set(slug, {
+      ...snapshot,
+      loadedAt: Date.now(),
+    });
+
+    return snapshot;
+  }).finally(() => {
+    inflightRequests.delete(slug);
+  });
+
+  inflightRequests.set(slug, request);
+  return request;
+}
+
 export function useProducts() {
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const slug = getTenantSlug();
 
   useEffect(() => {
     let isMounted = true;
 
-    async function fetchProducts() {
+    async function loadSnapshot() {
       try {
+        setError(null);
+        const cached = productsCache.get(slug);
+        if (cached && (Date.now() - cached.loadedAt) < PRODUCTS_CACHE_TTL_MS) {
+          setProducts(cached.products);
+          setCategories(cached.categories);
+          setIsLoading(false);
+          return;
+        }
+
         setIsLoading(true);
-        const productsData = await api.get('/products');
+        const snapshot = await fetchProductsSnapshot(slug);
         if (!isMounted) return;
-        setProducts(productsData);
-      } catch (error) {
+        setProducts(snapshot.products);
+        setCategories(snapshot.categories);
+      } catch (error: any) {
         console.error('Falha ao buscar produtos:', error);
+        if (isMounted) {
+          setError(error?.message || 'Não foi possível carregar os produtos da loja.');
+        }
       } finally {
         if (isMounted) {
           setIsLoading(false);
@@ -27,19 +89,8 @@ export function useProducts() {
       }
     }
 
-    async function fetchCategories() {
-      try {
-        const categoriesData = await api.get('/categories');
-        if (!isMounted) return;
-        setCategories(categoriesData);
-      } catch (error) {
-        console.error('Falha ao buscar categorias:', error);
-      }
-    }
-
     if (slug) {
-      fetchProducts();
-      fetchCategories();
+      loadSnapshot();
     }
 
     return () => {
@@ -51,5 +102,6 @@ export function useProducts() {
     products,
     categories,
     isLoading,
+    error,
   };
 }

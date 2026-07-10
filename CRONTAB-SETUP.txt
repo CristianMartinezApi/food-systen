@@ -1,0 +1,47 @@
+# 🛡️ CRONTAB PARA BACKUPS AUTOMÁTICOS
+# 
+# Como usar:
+# 1. Na Locaweb VPS, execute:
+#    crontab -e
+#
+# 2. Cole este conteúdo:
+
+# Fazer backup automaticamente 2x por dia (06:00 e 18:00)
+0 6,18 * * * /home/food-systen/backup.sh >> /home/food-systen/backups/cron.log 2>&1
+
+# Limpeza de backups antigos (30 dias) - todo dia às 00:30
+30 0 * * * find /home/food-systen/backups -name "backup_*.sql.gz" -type f -mtime +30 -delete
+
+# Verificação de saúde do sistema - a cada 30 minutos
+*/30 * * * * docker compose -f /home/food-systen/food-system/docker-compose.prod.yml ps | grep -q "Up" || /home/food-systen/alertas.sh
+
+# 3. Salve com Ctrl+X, depois Y, depois Enter
+
+# ============================================================================
+# REFERÊNCIA DE FREQUÊNCIAS CRON:
+# ============================================================================
+# 
+# ┌───────────── minuto (0 - 59)
+# │ ┌───────────── hora (0 - 23)
+# │ │ ┌───────────── dia do mês (1 - 31)
+# │ │ │ ┌───────────── mês (1 - 12)
+# │ │ │ │ ┌───────────── dia da semana (0 - 6, 0 = domingo)
+# │ │ │ │ │
+# │ │ │ │ │
+# * * * * *
+#
+# EXEMPLOS:
+# 0 6 * * *       → Todos os dias às 6:00
+# 0 6,18 * * *    → Todos os dias às 6:00 e 18:00
+# */30 * * * *    → A cada 30 minutos
+# 0 0 1 * *       → Primeira dia do mês
+# 0 * * * *       → Toda hora
+# 0 * * * MON     → Toda segunda-feira
+# 
+# ============================================================================
+
+# Verificar cron agendado:
+# crontab -l
+
+# Ver logs do cron:
+# grep CRON /var/log/syslog | tail -20

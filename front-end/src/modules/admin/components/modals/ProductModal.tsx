@@ -1,8 +1,10 @@
 import { useState, useEffect, useRef } from "react";
 import { X, ImagePlus, Loader2, Save, Plus, Trash2 } from "lucide-react";
 import { api } from "../../../../core/config/api";
+import { uploadImageAsset } from "../../../../core/services/assets";
 import { formatCurrency, cn, normalizeMoneyInput, parseMoneyInput, toMoneyInputValue, formatMoneyInputRealtime } from "../../../../shared/utils";
 import { clampDiscountPercent, getProductDiscountedPrice } from "../../../../shared/utils/product";
+import { compressImageFileToDataUrl } from "../../../../shared/utils/image";
 
 interface ProductModalProps {
   isOpen: boolean;
@@ -334,14 +336,29 @@ export function ProductModal({ isOpen, onClose, onSave, product }: ProductModalP
     }));
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setFormData({ ...formData, image: reader.result as string });
-      };
-      reader.readAsDataURL(file);
+      try {
+        const optimizedImage = await compressImageFileToDataUrl(file, {
+          maxWidth: 900,
+          maxHeight: 900,
+          quality: 0.72,
+          mimeType: 'image/webp',
+        });
+
+        let imageValue = optimizedImage;
+        try {
+          imageValue = await uploadImageAsset(optimizedImage, 'products');
+        } catch (uploadError) {
+          console.warn('Falha ao enviar imagem para storage, usando base64:', uploadError);
+        }
+
+        setFormData({ ...formData, image: imageValue });
+      } catch (error) {
+        console.error("Erro ao otimizar imagem:", error);
+        alert("Não foi possível processar a imagem. Tente outro arquivo.");
+      }
     }
   };
 
@@ -672,7 +689,7 @@ export function ProductModal({ isOpen, onClose, onSave, product }: ProductModalP
                           <button
                             type="button"
                             onClick={() => removeGuidedGroup(group.id)}
-                            className="h-10 w-10 bg-rose-100 text-rose-600 rounded-lg hover:bg-rose-200 transition-all flex items-center justify-center flex-shrink-0"
+                            className="h-10 w-10 bg-rose-100 text-rose-600 rounded-lg hover:bg-rose-200 transition-all flex items-center justify-center shrink-0"
                             title="Remover etapa"
                           >
                             <Trash2 size={16} />
@@ -711,7 +728,7 @@ export function ProductModal({ isOpen, onClose, onSave, product }: ProductModalP
                         <div className="flex flex-wrap gap-2 pt-2">
                           {(group.options || []).length > 0 ? (
                             (group.options || []).map((option: any, optIdx: number) => (
-                              <div key={option.id} className="flex items-center gap-2 bg-gradient-to-r from-amber-100 to-amber-50 px-3 py-2 rounded-lg border border-amber-200 shadow-sm">
+                              <div key={option.id} className="flex items-center gap-2 bg-linear-to-r from-amber-100 to-amber-50 px-3 py-2 rounded-lg border border-amber-200 shadow-sm">
                                 <span className="text-[10px] font-black text-slate-700 uppercase tracking-tight">{option.name}</span>
                                 <span className="text-[10px] font-bold text-emerald-600 bg-white px-2 py-0.5 rounded">+{formatCurrency(option.price || 0)}</span>
                                 <button

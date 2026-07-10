@@ -32,6 +32,8 @@ import { SAAS_SUPPORT_PHONE } from "../../../../core/config/support";
 import ChangePassword from "../../components/ChangePassword";
 import PixSettings from "../../components/PixSettings";
 import TeamSettings from "../../components/TeamSettings";
+import { compressImageFileToDataUrl } from "../../../../shared/utils/image";
+import { uploadImageAsset } from "../../../../core/services/assets";
 
 const DAY_OPTIONS = [
     { key: "seg", label: "Segunda" },
@@ -170,25 +172,55 @@ export default function SettingsPage() {
         }
     };
 
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                setFormData({ ...formData, logo: reader.result as string });
-            };
-            reader.readAsDataURL(file);
+            try {
+                const optimizedLogo = await compressImageFileToDataUrl(file, {
+                    maxWidth: 512,
+                    maxHeight: 512,
+                    quality: 0.8,
+                    mimeType: 'image/webp',
+                });
+
+                let logoValue = optimizedLogo;
+                try {
+                    logoValue = await uploadImageAsset(optimizedLogo, 'logos');
+                } catch (uploadError) {
+                    console.warn('Falha ao enviar logo para storage, usando base64:', uploadError);
+                }
+
+                setFormData({ ...formData, logo: logoValue });
+            } catch (error) {
+                console.error("Erro ao processar logo:", error);
+                toast.error("Não foi possível processar a logo.");
+            }
         }
     };
 
-    const handleBannerFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleBannerFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                setFormData({ ...formData, bannerImage: reader.result as string });
-            };
-            reader.readAsDataURL(file);
+            try {
+                const optimizedBanner = await compressImageFileToDataUrl(file, {
+                    maxWidth: 1400,
+                    maxHeight: 900,
+                    quality: 0.72,
+                    mimeType: 'image/webp',
+                });
+
+                let bannerValue = optimizedBanner;
+                try {
+                    bannerValue = await uploadImageAsset(optimizedBanner, 'banners');
+                } catch (uploadError) {
+                    console.warn('Falha ao enviar banner para storage, usando base64:', uploadError);
+                }
+
+                setFormData({ ...formData, bannerImage: bannerValue });
+            } catch (error) {
+                console.error("Erro ao processar banner:", error);
+                toast.error("Não foi possível processar a imagem do banner.");
+            }
         }
     };
 

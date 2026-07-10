@@ -91,7 +91,7 @@ export function CategoryModal({ isOpen, onClose, onSave, category }: CategoryMod
       onClose();
     } catch (error: any) {
       console.error("Erro ao salvar categoria:", error);
-      alert(error.response?.data?.error || "Erro ao salvar categoria. Verifique se o nome já existe.");
+      alert(error?.message || "Erro ao salvar categoria. Verifique os dados e tente novamente.");
     } finally {
       setIsSaving(false);
     }

@@ -8,13 +8,14 @@ import { Footer } from "../components/layout/Footer";
 import { ProductCard } from "../components/product/ProductCard";
 import { Button } from "../../../shared/components/ui/button";
 import { useSettings } from "../../../core/hooks/useSettings";
-import { Utensils, ArrowRight, Flame } from "lucide-react";
+import { Utensils, ArrowRight, Flame, RefreshCw, MessageCircle, Phone, AlertTriangle } from "lucide-react";
 import { cn } from "../../../shared/utils";
 import { AnimatePresence, motion } from "framer-motion";
+import { sendToWhatsApp } from "../../../shared/utils/whatsapp";
 
 export default function Home() {
-  const { products, categories, isLoading: productsLoading } = useProducts() as any;
-  const { settings, isLoading: settingsLoading } = useSettings();
+  const { products, categories, isLoading: productsLoading, error: productsError } = useProducts() as any;
+  const { settings, isLoading: settingsLoading, error: settingsError } = useSettings();
   const [activeCategory, setActiveCategory] = useState<number | "all">("all");
   const [isNavOpen, setIsNavOpen] = useState(false);
   const [showSplash, setShowSplash] = useState(true);
@@ -29,6 +30,36 @@ export default function Home() {
       return () => clearTimeout(timer);
     }
   }, [settingsLoading, productsLoading]);
+
+  useEffect(() => {
+    const maxWaitTimer = setTimeout(() => {
+      setShowSplash(false);
+    }, 8000);
+
+    return () => clearTimeout(maxWaitTimer);
+  }, []);
+
+  const hasStoreLoadError = !showSplash && (Boolean(settingsError) || Boolean(productsError));
+  const supportPhone = settings?.phone || "";
+
+  const handleContactStore = () => {
+    if (!supportPhone) return;
+
+    const digits = supportPhone.replace(/\D/g, "");
+    if (!digits) return;
+
+    const message = encodeURIComponent("Olá! Não consegui carregar a loja no app e preciso de ajuda para finalizar meu pedido.");
+    sendToWhatsApp(supportPhone, message);
+  };
+
+  const handleCallStore = () => {
+    if (!supportPhone) return;
+
+    const digits = supportPhone.replace(/\D/g, "");
+    if (!digits) return;
+
+    window.location.href = `tel:${digits}`;
+  };
 
   const filteredProducts = useMemo(() => {
     if (!products) return [];
@@ -54,7 +85,65 @@ export default function Home() {
   const heroTitleLine2 = settings?.bannerTitleLine2 || "Transforma";
   const heroDescription = settings?.bannerDescription || settings?.bio || "Experiência gastronômica executiva com ingredientes selecionados e preparo artesanal.";
   const heroCtaLabel = settings?.bannerCtaLabel || "Explorar Menu";
-  const heroImage = settings?.bannerImage || "https://images.unsplash.com/photo-1550547660-d9450f859349?q=80&w=2000";
+  const heroImage = settings?.bannerImage || "https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=1200&q=70";
+
+  if (hasStoreLoadError) {
+    return (
+      <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center px-6 py-12">
+        <div className="w-full max-w-xl rounded-4xl border border-white/10 bg-white/5 backdrop-blur-xl p-8 md:p-10 text-center shadow-2xl shadow-black/30 space-y-6">
+          <div className="mx-auto w-18 h-18 rounded-3xl bg-amber-500/15 border border-amber-400/20 flex items-center justify-center text-amber-300">
+            <AlertTriangle size={34} />
+          </div>
+
+          <div className="space-y-3">
+            <p className="text-[10px] uppercase tracking-[0.24em] font-black text-amber-300">Loja indisponível no momento</p>
+            <h1 className="text-3xl md:text-4xl font-display font-black uppercase tracking-tight leading-tight">
+              Não foi possível carregar esta loja agora
+            </h1>
+            <p className="text-sm md:text-base text-slate-300 leading-relaxed max-w-lg mx-auto">
+              Estamos com instabilidade temporária para carregar o cardápio e as informações da loja.
+              Você pode tentar novamente agora ou entrar em contato direto com o estabelecimento.
+            </p>
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <Button
+              onClick={() => window.location.reload()}
+              className="bg-primary hover:bg-primary/90 text-white rounded-2xl px-6 h-13 font-black uppercase tracking-widest"
+            >
+              <RefreshCw size={16} className="mr-2" />
+              Tentar novamente
+            </Button>
+
+            {supportPhone ? (
+              <Button
+                onClick={handleContactStore}
+                variant="outline"
+                className="border-white/20 bg-white/5 text-white hover:bg-white/10 rounded-2xl px-6 h-13 font-black uppercase tracking-widest"
+              >
+                <MessageCircle size={16} className="mr-2" />
+                Falar com a loja
+              </Button>
+            ) : null}
+          </div>
+
+          {supportPhone ? (
+            <button
+              onClick={handleCallStore}
+              className="mx-auto flex items-center gap-2 text-sm text-slate-300 hover:text-white transition-colors"
+            >
+              <Phone size={15} />
+              {supportPhone}
+            </button>
+          ) : (
+            <p className="text-xs text-slate-400 uppercase tracking-[0.16em]">
+              O contato da loja não está disponível no momento.
+            </p>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col selection:bg-primary selection:text-white overflow-x-hidden">
@@ -64,7 +153,7 @@ export default function Home() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] bg-slate-950 flex items-center justify-center px-6"
+            className="fixed inset-0 z-100 bg-slate-950 flex items-center justify-center px-6"
           >
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(239,68,68,0.18),transparent_35%),linear-gradient(180deg,rgba(15,23,42,0.985),rgba(2,6,23,0.99))]" />
 
@@ -141,6 +230,8 @@ export default function Home() {
                     src={heroImage}
                     className="w-full h-full object-cover object-center"
                     alt={settings?.storeName || "Fundo Gourmet"}
+                    loading="eager"
+                    decoding="async"
                   />
                   <div className="absolute inset-0 bg-linear-to-b from-black/50 via-black/30 to-black/60 md:bg-none md:[background:linear-gradient(to_right,rgba(15,23,42,0.6),rgba(15,23,42,0.3),transparent)]" />
                 </div>

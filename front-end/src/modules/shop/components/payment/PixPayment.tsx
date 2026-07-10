@@ -1,24 +1,19 @@
 "use client";
 
-/**
- * PixPayment.tsx
- * Exibe o QR Code PIX gerado pela Efi Bank, um contador regressivo
- * e detecta automaticamente o pagamento via Socket.IO ou polling.
- */
-
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { CheckCircle2, Copy, Loader2, RefreshCw, Zap } from "lucide-react";
+import { CheckCircle2, Copy, Loader2, RefreshCw, Zap, MessageCircle } from "lucide-react";
 import { api } from "../../../../core/config/api";
-import { socket } from "../../../../core/config/socket";
 import { formatCurrency } from "../../../../shared/utils";
+import { sendToWhatsApp } from "../../../../shared/utils/whatsapp";
 import toast from "react-hot-toast";
 
 interface Props {
-    orderId: number;
     total: number;
-    restaurantId: number;
-    onConfirmed: () => void;  // callback quando pagamento confirmado
+    storePhone?: string;
+    storeName?: string;
+    onConfirmed: () => void | Promise<void>;
+    isConfirming?: boolean;
 }
 
 interface PixData {
@@ -29,12 +24,9 @@ interface PixData {
     expiracao: number;
 }
 
-const POLL_INTERVAL_MS = 5000;  // verifica status a cada 5s (fallback ao Socket.IO)
-
-export default function PixPayment({ orderId, total, restaurantId, onConfirmed }: Props) {
+export default function PixPayment({ total, storePhone, storeName, onConfirmed, isConfirming = false }: Props) {
     const [pixData, setPixData] = useState<PixData | null>(null);
     const [isLoading, setIsLoading] = useState(true);
-    const [isConfirmed, setIsConfirmed] = useState(false);
     const [timeLeft, setTimeLeft] = useState(0);
     const [isCopied, setIsCopied] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -44,7 +36,7 @@ export default function PixPayment({ orderId, total, restaurantId, onConfirmed }
         setIsLoading(true);
         setError(null);
         try {
-            const data: PixData = await api.post(`/pix/charge/${orderId}`, {});
+            const data: PixData = await api.post('/pix/preview', { total });
             setPixData(data);
             setTimeLeft(data.expiracao);
         } catch (err: any) {
@@ -52,49 +44,17 @@ export default function PixPayment({ orderId, total, restaurantId, onConfirmed }
         } finally {
             setIsLoading(false);
         }
-    }, [orderId]);
+    }, [total]);
 
     useEffect(() => { generateCharge(); }, [generateCharge]);
 
     // ─── Countdown ────────────────────────────────────────────────────────────
     useEffect(() => {
-        if (!pixData || isConfirmed) return;
+        if (!pixData) return;
         if (timeLeft <= 0) return;
         const t = setTimeout(() => setTimeLeft(v => v - 1), 1000);
         return () => clearTimeout(t);
-    }, [timeLeft, pixData, isConfirmed]);
-
-    const confirm = useCallback(() => {
-        setIsConfirmed(true);
-        socket.disconnect();
-        setTimeout(onConfirmed, 2000);
-    }, [onConfirmed]);
-
-    // ─── Socket.IO — evento em tempo real ─────────────────────────────────────
-    useEffect(() => {
-        if (!pixData) return;
-        const event = `order:${restaurantId}:paid`;
-
-        const handler = (data: { orderId: number }) => {
-            if (data.orderId === orderId) confirm();
-        };
-
-        socket.connect();
-        socket.on(event, handler);
-        return () => { socket.off(event, handler); };
-    }, [pixData, orderId, restaurantId]);
-
-    // ─── Polling de fallback ───────────────────────────────────────────────────
-    useEffect(() => {
-        if (!pixData || isConfirmed) return;
-        const interval = setInterval(async () => {
-            try {
-                const order = await api.get(`/orders/${orderId}`);
-                if (order?.status === "PAID" || order?.status === "CONFIRMED") confirm();
-            } catch { }
-        }, POLL_INTERVAL_MS);
-        return () => clearInterval(interval);
-    }, [pixData, isConfirmed, orderId]);
+    }, [timeLeft, pixData]);
 
 
     // ─── Copiar copia-e-cola ───────────────────────────────────────────────────
@@ -104,6 +64,19 @@ export default function PixPayment({ orderId, total, restaurantId, onConfirmed }
         setIsCopied(true);
         toast.success("Código copiado!");
         setTimeout(() => setIsCopied(false), 3000);
+    };
+
+    const handleWhatsAppNotify = () => {
+        if (!storePhone) {
+            toast.error("Telefone da loja não configurado.");
+            return;
+        }
+
+        const message = encodeURIComponent(
+            `Olá! Realizei o pagamento PIX no valor de ${formatCurrency(total)}. Vou enviar o comprovante para conferência.`
+        );
+
+        sendToWhatsApp(storePhone, message);
     };
 
     const minutes = Math.floor(timeLeft / 60).toString().padStart(2, "0");
@@ -131,27 +104,6 @@ export default function PixPayment({ orderId, total, restaurantId, onConfirmed }
                 <RefreshCw size={14} /> Tentar novamente
             </button>
         </div>
-    );
-
-    if (isConfirmed) return (
-        <motion.div
-            initial={{ scale: 0.9, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            className="flex flex-col items-center justify-center py-16 gap-6 text-center"
-        >
-            <motion.div
-                initial={{ scale: 0.5 }}
-                animate={{ scale: 1 }}
-                transition={{ type: "spring", stiffness: 200 }}
-                className="w-24 h-24 bg-emerald-50 rounded-[2rem] flex items-center justify-center border border-emerald-100"
-            >
-                <CheckCircle2 size={48} className="text-emerald-500" strokeWidth={1.5} />
-            </motion.div>
-            <div>
-                <p className="text-2xl font-bold text-slate-950 uppercase tracking-tight">Pagamento Confirmado!</p>
-                <p className="text-sm text-slate-400 mt-1">Seu pedido já está sendo preparado.</p>
-            </div>
-        </motion.div>
     );
 
     if (timeLeft <= 0 && pixData) return (
@@ -226,9 +178,36 @@ export default function PixPayment({ orderId, total, restaurantId, onConfirmed }
                 </div>
 
                 {/* Instrução */}
-                <p className="text-xs text-slate-400 text-center max-w-xs leading-relaxed">
-                    Abra o app do seu banco, escolha <strong>PIX</strong> e escaneie o QR Code ou cole o código acima.
-                    A confirmação é automática.
+                <div className="text-xs text-slate-400 text-center max-w-sm leading-relaxed space-y-2">
+                    <p>
+                        Abra o app do seu banco, escolha <strong>PIX</strong> e escaneie o QR Code ou cole o código acima.
+                    </p>
+                    <p>
+                        Depois do pagamento, envie o comprovante diretamente para a loja para agilizar a conferência manual.
+                    </p>
+                </div>
+
+                <div className="w-full grid gap-3">
+                    <button
+                        onClick={handleWhatsAppNotify}
+                        className="h-12 px-4 rounded-xl font-bold text-sm flex items-center justify-center gap-2 bg-green-600 text-white hover:bg-green-700 transition-all"
+                    >
+                        <MessageCircle size={16} />
+                        Avisar a loja no WhatsApp
+                    </button>
+
+                    <button
+                        disabled={isConfirming}
+                        onClick={onConfirmed}
+                        className="h-12 px-4 rounded-xl font-bold text-sm flex items-center justify-center gap-2 bg-slate-950 text-white hover:bg-black transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+                    >
+                        {isConfirming ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />}
+                        {isConfirming ? 'Enviando pedido...' : 'Já paguei, concluir pedido'}
+                    </button>
+                </div>
+
+                <p className="text-[11px] text-slate-400 text-center max-w-sm leading-relaxed">
+                    {storeName ? `${storeName} fará a conferência do pagamento manualmente.` : 'A loja fará a conferência do pagamento manualmente.'}
                 </p>
             </motion.div>
         </AnimatePresence>

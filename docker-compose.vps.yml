@@ -39,6 +39,8 @@ services:
       - EFI_CLIENT_SECRET=${EFI_CLIENT_SECRET}
       - EFI_CERT_BASE64=${EFI_CERT_BASE64}
       - PIX_WEBHOOK_SECRET=${PIX_WEBHOOK_SECRET}
+    volumes:
+      - uploads_data:/app/uploads
     depends_on:
       - db
     networks:
@@ -62,3 +64,4 @@ networks:
 
 volumes:
   postgres_data:
+  uploads_data:

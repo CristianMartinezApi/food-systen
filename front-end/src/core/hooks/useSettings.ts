@@ -4,6 +4,51 @@ import { socket } from '../config/socket';
 import { getTenantSlug } from '../../shared/utils/tenant';
 import { createDefaultOperatingHours, isRestaurantOpenNow, normalizeOperatingHours } from '../../shared/utils/schedule';
 
+const SETTINGS_CACHE_TTL_MS = 30_000;
+const settingsCache = new Map<string, { data: any; loadedAt: number }>();
+const inflightSettingsRequests = new Map<string, Promise<any>>();
+
+function normalizeSettingsPayload(data: any) {
+  if (!data) return data;
+
+  return {
+    ...data,
+    operatingHours: normalizeOperatingHours(data.operatingHours || createDefaultOperatingHours()),
+    isOpen: isRestaurantOpenNow(data.operatingHours),
+    deliveryEtaMinutes: data.deliveryEtaMinutes || 35,
+  };
+}
+
+async function fetchSettingsSnapshot(slug: string) {
+  const cached = settingsCache.get(slug);
+  const isFresh = cached && (Date.now() - cached.loadedAt) < SETTINGS_CACHE_TTL_MS;
+
+  if (isFresh) {
+    return cached.data;
+  }
+
+  const existingRequest = inflightSettingsRequests.get(slug);
+  if (existingRequest) {
+    return existingRequest;
+  }
+
+  const request = api.get('/settings')
+    .then((data) => {
+      const normalized = normalizeSettingsPayload(data);
+      settingsCache.set(slug, {
+        data: normalized,
+        loadedAt: Date.now(),
+      });
+      return normalized;
+    })
+    .finally(() => {
+      inflightSettingsRequests.delete(slug);
+    });
+
+  inflightSettingsRequests.set(slug, request);
+  return request;
+}
+
 function getUserRoleFromStorage() {
   if (typeof window === 'undefined') return null;
 
@@ -35,19 +80,27 @@ export function useSettings() {
       return;
     }
 
-    setIsLoading(true);
     try {
+      const cached = settingsCache.get(slug);
+      if (cached && (Date.now() - cached.loadedAt) < SETTINGS_CACHE_TTL_MS) {
+        setError(false);
+        setSettings(cached.data);
+        if (cached.data?.primaryColor) {
+          document.documentElement.style.setProperty('--color-primary', cached.data.primaryColor);
+          document.documentElement.style.setProperty('--color-primary-foreground', '#ffffff');
+        }
+        setIsLoading(false);
+        return;
+      }
+
+      setIsLoading(true);
       setError(false);
-      const data = await api.get('/settings');
+      const data = await fetchSettingsSnapshot(slug);
       
       if (!data) {
         setError(true);
         return;
       }
-
-      data.operatingHours = normalizeOperatingHours(data.operatingHours || createDefaultOperatingHours());
-      data.isOpen = isRestaurantOpenNow(data.operatingHours);
-      data.deliveryEtaMinutes = data.deliveryEtaMinutes || 35;
 
       setSettings(data);
       if (data.primaryColor) {
@@ -72,11 +125,14 @@ export function useSettings() {
 
     const eventName = `settings_updated_${slug}`;
     socket.on(eventName, (newSettings) => {
-      newSettings.operatingHours = normalizeOperatingHours(newSettings.operatingHours || createDefaultOperatingHours());
-      newSettings.isOpen = isRestaurantOpenNow(newSettings.operatingHours);
-      setSettings(newSettings);
-      if (newSettings.primaryColor) {
-        document.documentElement.style.setProperty('--color-primary', newSettings.primaryColor);
+      const normalizedSettings = normalizeSettingsPayload(newSettings);
+      settingsCache.set(slug, {
+        data: normalizedSettings,
+        loadedAt: Date.now(),
+      });
+      setSettings(normalizedSettings);
+      if (normalizedSettings.primaryColor) {
+        document.documentElement.style.setProperty('--color-primary', normalizedSettings.primaryColor);
       }
     });
 

@@ -1,0 +1,196 @@
+/**
+ * ADICIONE ESTES ENDPOINTS AO back-end/src/index.ts
+ * 
+ * Estes endpoints geram QR codes PIX dinâmicos com valor real do pedido
+ */
+
+import { PixService } from './services/PixService';
+
+// ============================================================================
+// GET /api/orders/:id/pix-qrcode
+// ============================================================================
+// Retorna QR code PIX dinâmico com valor do pedido
+// Usado após cliente clicar em "Pagar com PIX"
+app.get('/api/orders/:id/pix-qrcode', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Buscar pedido
+    const order = await db.order.findUnique({
+      where: { id },
+      include: {
+        restaurant: {
+          select: {
+            pixKey: true,
+            pixKeyType: true,
+            name: true,
+            whatsappNumber: true
+          }
+        }
+      }
+    });
+
+    if (!order) {
+      return res.status(404).json({
+        code: 'ORDER_NOT_FOUND',
+        userMessage: 'Pedido não encontrado'
+      });
+    }
+
+    // Validar se restaurante tem PIX configurado
+    if (!order.restaurant?.pixKey) {
+      return res.status(400).json({
+        code: 'PIX_NOT_CONFIGURED',
+        userMessage: '❌ PIX não está configurado para este restaurante'
+      });
+    }
+
+    // Validar chave PIX
+    if (
+      !PixService.validatePixKey(
+        order.restaurant.pixKey,
+        order.restaurant.pixKeyType
+      )
+    ) {
+      return res.status(400).json({
+        code: 'INVALID_PIX_KEY',
+        userMessage: 'Chave PIX configurada está inválida'
+      });
+    }
+
+    // GERAR QR CODE DINÂMICO COM VALOR DO PEDIDO
+    const qrcodeDataUrl = await PixService.generateDynamicPixQRCode({
+      key: order.restaurant.pixKey,
+      amount: order.total, // Valor real em centavos
+      orderId: id,
+      recipientName: order.restaurant.name
+    });
+
+    // GERAR CÓPIA E COLA (alternativa se QR code não escanear)
+    const copiaCola = PixService.generatePixCopiaCola(
+      order.restaurant.pixKey,
+      order.total,
+      id,
+      order.restaurant.name
+    );
+
+    return res.json({
+      qrcode: qrcodeDataUrl, // Base64 SVG/PNG
+      copiaCola: copiaCola, // Texto para copiar/colar
+      amount: order.total / 100, // R$ formatado
+      key: order.restaurant.pixKey,
+      keyType: order.restaurant.pixKeyType,
+      whatsappNumber: order.restaurant.whatsappNumber,
+      instructions: `Escaneie o QR code ou use a cópia e cola. Valor: R$ ${(order.total / 100).toFixed(2)}`
+    });
+  } catch (error) {
+    console.error('Erro ao gerar QR code PIX:', error);
+    return res.status(500).json({
+      code: 'QR_GENERATION_FAILED',
+      userMessage: 'Erro ao gerar QR code PIX'
+    });
+  }
+});
+
+// ============================================================================
+// PATCH /api/restaurant/pix-config (ADMIN)
+// ============================================================================
+// Atualizar configuração PIX da loja
+app.patch(
+  '/api/restaurant/pix-config',
+  requireAuth,
+  requireAdmin,
+  async (req, res) => {
+    try {
+      const { pixKey, pixKeyType, whatsappNumber, recipientName } = req.body;
+
+      // Validação básica
+      if (!pixKey || !pixKeyType) {
+        return res.status(400).json({
+          code: 'MISSING_REQUIRED_FIELDS',
+          userMessage: 'Chave PIX e tipo são obrigatórios'
+        });
+      }
+
+      // Validar tipo
+      const validTypes = ['cpf', 'cnpj', 'email', 'phone'];
+      if (!validTypes.includes(pixKeyType)) {
+        return res.status(400).json({
+          code: 'INVALID_PIX_TYPE',
+          userMessage: `Tipo PIX inválido. Use: ${validTypes.join(', ')}`
+        });
+      }
+
+      // Validar formato da chave
+      if (!PixService.validatePixKey(pixKey, pixKeyType)) {
+        return res.status(400).json({
+          code: 'INVALID_PIX_KEY_FORMAT',
+          userMessage: `Formato de chave PIX inválido para tipo "${pixKeyType}"`
+        });
+      }
+
+      // Validar WhatsApp (opcional)
+      if (whatsappNumber) {
+        const phoneRegex = /^\+?55?\d{10,11}$/;
+        if (!phoneRegex.test(whatsappNumber)) {
+          return res.status(400).json({
+            code: 'INVALID_WHATSAPP',
+            userMessage: 'Número de WhatsApp inválido'
+          });
+        }
+      }
+
+      // Atualizar no banco
+      const updated = await db.restaurant.update({
+        where: { id: req.restaurantId },
+        data: {
+          pixKey,
+          pixKeyType,
+          whatsappNumber,
+          pixInstructions: `Escaneie o QR code ou use a chave: ${pixKey}`
+        }
+      });
+
+      return res.json({
+        success: true,
+        message: '✅ Configuração PIX atualizada com sucesso',
+        data: {
+          pixKey: updated.pixKey,
+          pixKeyType: updated.pixKeyType,
+          whatsappNumber: updated.whatsappNumber
+        }
+      });
+    } catch (error) {
+      console.error('Erro ao atualizar PIX config:', error);
+      return res.status(500).json({
+        code: 'UPDATE_FAILED',
+        userMessage: 'Erro ao atualizar configuração PIX'
+      });
+    }
+  }
+);
+
+// ============================================================================
+// GET /api/restaurant/pix-config (ADMIN)
+// ============================================================================
+// Obter configuração PIX da loja
+app.get('/api/restaurant/pix-config', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const config = await db.restaurant.findUnique({
+      where: { id: req.restaurantId },
+      select: {
+        pixKey: true,
+        pixKeyType: true,
+        whatsappNumber: true,
+        pixInstructions: true
+      }
+    });
+
+    return res.json(config);
+  } catch (error) {
+    return res.status(500).json({
+      code: 'FETCH_FAILED',
+      userMessage: 'Erro ao buscar configuração PIX'
+    });
+  }
+});

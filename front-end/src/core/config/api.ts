@@ -1,6 +1,7 @@
 ﻿import { getTenantSlug } from '../../shared/utils/tenant';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
+const API_TIMEOUT_MS = 12000;
 
 const getHeaders = (headers: Record<string, string> = {}) => {
   const token = localStorage.getItem('@FoodSystem:token');
@@ -22,11 +23,32 @@ const parseErrorMessage = async (response: Response, fallback: string) => {
   return errorData.error || fallback;
 };
 
+const fetchWithTimeout = async (input: string, init?: RequestInit) => {
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(), API_TIMEOUT_MS);
+
+  try {
+    return await fetch(input, {
+      ...init,
+      signal: controller.signal,
+    });
+  } catch (error: any) {
+    if (error?.name === 'AbortError') {
+      throw new Error('A loja demorou demais para responder. Tente novamente em instantes.');
+    }
+
+    throw error;
+  } finally {
+    window.clearTimeout(timeoutId);
+  }
+};
+
 // Redireciona para login e limpa sessão quando token expira
 const handleUnauthorized = () => {
   localStorage.removeItem('@FoodSystem:token');
   localStorage.removeItem('@FoodSystem:user');
   localStorage.removeItem('@FoodSystem:restaurant');
+  localStorage.removeItem('tenant_slug');
   if (typeof window !== 'undefined' && !window.location.pathname.includes('/login')) {
     window.location.href = '/login';
   }
@@ -42,19 +64,30 @@ const handleError = async (response: Response, endpoint: string) => {
     throw new Error(await parseErrorMessage(response, 'Sessão expirada. Faça login novamente.'));
   }
 
+  if (response.status === 403) {
+    const message = await parseErrorMessage(response, 'Acesso negado.');
+
+    if (message.includes('You do not belong to this restaurant')) {
+      handleUnauthorized();
+      throw new Error('Sua sessão está vinculada a outra loja. Faça login novamente.');
+    }
+
+    throw new Error(message);
+  }
+
   throw new Error(await parseErrorMessage(response, 'Erro na requisição'));
 };
 
 export const api = {
   get: async (endpoint: string) => {
-    const response = await fetch(`${API_URL}${endpoint}`, {
+    const response = await fetchWithTimeout(`${API_URL}${endpoint}`, {
       headers: getHeaders()
     });
     if (!response.ok) await handleError(response, endpoint);
     return response.json();
   },
   post: async (endpoint: string, data: any) => {
-    const response = await fetch(`${API_URL}${endpoint}`, {
+    const response = await fetchWithTimeout(`${API_URL}${endpoint}`, {
       method: 'POST',
       headers: getHeaders(),
       body: JSON.stringify(data),
@@ -63,7 +96,7 @@ export const api = {
     return response.json();
   },
   put: async (endpoint: string, data: any) => {
-    const response = await fetch(`${API_URL}${endpoint}`, {
+    const response = await fetchWithTimeout(`${API_URL}${endpoint}`, {
       method: 'PUT',
       headers: getHeaders(),
       body: JSON.stringify(data),
@@ -72,7 +105,7 @@ export const api = {
     return response.json();
   },
   patch: async (endpoint: string, data: any) => {
-    const response = await fetch(`${API_URL}${endpoint}`, {
+    const response = await fetchWithTimeout(`${API_URL}${endpoint}`, {
       method: 'PATCH',
       headers: getHeaders(),
       body: JSON.stringify(data),
@@ -81,7 +114,7 @@ export const api = {
     return response.json();
   },
   delete: async (endpoint: string) => {
-    const response = await fetch(`${API_URL}${endpoint}`, {
+    const response = await fetchWithTimeout(`${API_URL}${endpoint}`, {
       method: 'DELETE',
       headers: getHeaders()
     });

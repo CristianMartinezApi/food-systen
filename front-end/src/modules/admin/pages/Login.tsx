@@ -38,8 +38,12 @@ export default function Login() {
       localStorage.setItem("@FoodSystem:user", JSON.stringify(response.user));
       if (response.restaurant) {
         localStorage.setItem("@FoodSystem:restaurant", JSON.stringify(response.restaurant));
+        if (response.restaurant.slug) {
+          localStorage.setItem('tenant_slug', response.restaurant.slug);
+        }
       } else {
         localStorage.removeItem("@FoodSystem:restaurant");
+        localStorage.removeItem('tenant_slug');
       }
 
       toast.success("Bem-vindo de volta!");

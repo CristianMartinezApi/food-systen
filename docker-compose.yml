@@ -32,6 +32,7 @@ services:
     volumes:
       - ./back-end/src:/app/src
       - ./back-end/prisma:/app/prisma
+      - ./back-end/uploads:/app/uploads
     environment:
       - PORT=8000
       - TZ=America/Sao_Paulo

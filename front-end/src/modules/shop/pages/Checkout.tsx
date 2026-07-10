@@ -70,6 +70,7 @@ export default function Checkout() {
   const [createdOrder, setCreatedOrder] = useState<any>(null);
   const [createdOrderId, setCreatedOrderIdState] = useState<number | null>(null);
   const [orderCreatedId, setOrderCreatedId] = useState<number | null>(null);
+  const [pendingPixOrderData, setPendingPixOrderData] = useState<any | null>(null);
   const [isCepLoading, setIsCepLoading] = useState(false);
 
   const hasHydrated = useHasHydrated();
@@ -502,13 +503,14 @@ export default function Checkout() {
         total: total
       };
 
-      const response = await api.post("/orders", orderData);
-      setCreatedOrder(response);
-      setOrderCreatedId(response.id);
-      setCreatedOrderIdState(response.id);
       if (orderData.paymentMethod === 'PIX' && deliveryMode !== 'DINE_IN') {
+        setPendingPixOrderData(orderData);
         setStep("pix");
       } else {
+        const response = await api.post("/orders", orderData);
+        setCreatedOrder(response);
+        setOrderCreatedId(response.id);
+        setCreatedOrderIdState(response.id);
         setStep("success");
         clearCart();
         toast.success("Pedido enviado com sucesso!", shopSuccessToastOptions);
@@ -881,10 +883,10 @@ export default function Checkout() {
                   {!isPixAvailable && (
                     <div className="mb-5 md:mb-7 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 md:px-5 md:py-4">
                       <p className="text-[10px] md:text-label font-body font-bold text-amber-700 uppercase tracking-[0.12em]">
-                        PIX em homologação neste momento
+                        PIX indisponível no momento
                       </p>
                       <p className="mt-1 text-[11px] md:text-body font-body font-medium text-amber-800">
-                        Use dinheiro, crédito ou débito. O PIX será habilitado assim que a integração real estiver concluída.
+                        Use dinheiro, crédito ou débito. O PIX será habilitado quando a chave da loja estiver configurada.
                       </p>
                     </div>
                   )}
@@ -1121,18 +1123,35 @@ export default function Checkout() {
                     </div>
                   </div>
                   <div className="bg-slate-50 rounded-xl md:rounded-2xl border border-slate-200 p-6 md:p-10 shadow-xl shadow-slate-300/30">
-                    {createdOrder && (
-                      <PixPayment
-                        orderId={createdOrder.id}
-                        total={createdOrder.total}
-                        restaurantId={createdOrder.restaurantId}
-                        onConfirmed={() => {
+                    <PixPayment
+                      total={Number(pendingPixOrderData?.total || total)}
+                      storePhone={settings?.phone || ""}
+                      storeName={settings?.storeName || "FoodSystem"}
+                      isConfirming={isSubmitting}
+                      onConfirmed={async () => {
+                        if (!pendingPixOrderData) {
+                          toast.error("Não foi possível recuperar os dados do pedido. Tente novamente.", shopErrorToastOptions);
+                          return;
+                        }
+
+                        setIsSubmitting(true);
+                        try {
+                          const response = await api.post('/orders', pendingPixOrderData);
+                          setCreatedOrder(response);
+                          setOrderCreatedId(response.id);
+                          setCreatedOrderIdState(response.id);
+                          setPendingPixOrderData(null);
                           clearCart();
-                          toast.success("Pagamento confirmado! Seu pedido está sendo preparado.", shopSuccessToastOptions);
+                          toast.success("Pedido enviado! A loja irá conferir o pagamento PIX manualmente.", shopSuccessToastOptions);
                           setStep("success");
-                        }}
-                      />
-                    )}
+                        } catch (error: any) {
+                          console.error('Order error (pix confirm):', error);
+                          toast.error(error.message || 'Erro ao concluir pedido. Tente novamente.', shopErrorToastOptions);
+                        } finally {
+                          setIsSubmitting(false);
+                        }
+                      }}
+                    />
                   </div>
                 </motion.div>
               )}

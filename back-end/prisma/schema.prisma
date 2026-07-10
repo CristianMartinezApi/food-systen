@@ -49,6 +49,12 @@ model Restaurant {
   provisioningLogs   ProvisioningLog[]
   printDevices       PrintDevice[]
   printJobs          PrintJob[]
+  
+  // PIX Configuration for Dynamic QR Codes
+  pixKey             String?
+  pixKeyType         String?    // 'cpf' | 'cnpj' | 'email' | 'phone'
+  whatsappNumber     String?
+  pixInstructions    String?
 
   @@map("restaurants")
 }
@@ -174,6 +180,12 @@ model Order {
   customer      Customer?     @relation(fields: [customerId], references: [id])
   restaurant    Restaurant    @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
   cashSessionId Int?
+  
+  // PIX Payment Fields
+  pixProofUrl    String?
+  pixProofAt     DateTime?
+  pixConfirmedAt DateTime?
+  pixConfirmedBy String?
 
   @@index([restaurantId])
   @@index([customerId])

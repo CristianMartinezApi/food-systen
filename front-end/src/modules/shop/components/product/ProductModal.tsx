@@ -281,6 +281,8 @@ const updateGuidedOptionQuantity = (group: any, option: any, delta: number) => {
                                 <img
                                     src={product.image}
                                     alt={product.name}
+                                    loading="lazy"
+                                    decoding="async"
                                     className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-[2s] ease-out"
                                 />
                             ) : (
@@ -615,7 +617,7 @@ const updateGuidedOptionQuantity = (group: any, option: any, delta: number) => {
                                     </section>
 
                                     {/* Resumo de Preço */}
-                                    <section className="rounded-2xl border-2 border-slate-100 bg-gradient-to-br from-slate-50 to-white p-5 space-y-3">
+                                    <section className="rounded-2xl border-2 border-slate-100 bg-linear-to-br from-slate-50 to-white p-5 space-y-3">
                                         <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 mb-4">Resumo do Preço</p>
                                         
                                         <div className="space-y-2 text-sm">
@@ -677,7 +679,7 @@ const updateGuidedOptionQuantity = (group: any, option: any, delta: number) => {
                                             <div className="h-px bg-slate-200 my-2" />
 
                                             {/* Total */}
-                                            <div className="flex items-center justify-between bg-gradient-to-r from-slate-950/5 to-rose-600/5 p-3 rounded-xl border border-slate-100">
+                                            <div className="flex items-center justify-between bg-linear-to-r from-slate-950/5 to-rose-600/5 p-3 rounded-xl border border-slate-100">
                                                 <span className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-900">
                                                     Valor Unitário
                                                 </span>
