@@ -532,6 +532,7 @@ app.use(cors({
   optionsSuccessStatus: 200
 }));
 app.use('/uploads', express.static(UPLOADS_ROOT, { maxAge: '7d', immutable: false }));
+app.use('/api/uploads', express.static(UPLOADS_ROOT, { maxAge: '7d', immutable: false }));
 
 // ✅ SEGURO: Socket.io com CORS configurado
 const io = new Server(httpServer, {

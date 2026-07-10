@@ -33,14 +33,22 @@ async function fetchProductsSnapshot(slug: string): Promise<ProductsSnapshot> {
     api.get('/products'),
     api.get('/categories'),
   ]).then(([productsData, categoriesData]) => {
+    const normalizedCategories = Array.isArray(categoriesData) ? categoriesData : [];
+    const categoriesById = new Map(
+      normalizedCategories
+        .filter((category: Category) => category?.id != null)
+        .map((category: Category) => [Number(category.id), category])
+    );
+
     const snapshot = {
       products: Array.isArray(productsData)
         ? productsData.map((product: Product) => ({
             ...product,
             image: normalizeAssetUrl((product as any)?.image),
+            category: (product as any)?.category || categoriesById.get(Number((product as any)?.categoryId)),
           }))
         : [],
-      categories: Array.isArray(categoriesData) ? categoriesData : [],
+      categories: normalizedCategories,
     };
 
     productsCache.set(slug, {
