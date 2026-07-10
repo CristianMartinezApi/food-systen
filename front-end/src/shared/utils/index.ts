@@ -67,18 +67,25 @@ export const normalizeAssetUrl = (value: string | null | undefined) => {
   if (!raw) return "";
 
   if (raw.startsWith('/uploads/')) {
-    return `/api${raw}`;
+    return raw;
+  }
+
+  if (raw.startsWith('/api/uploads/')) {
+    return raw.replace('/api/uploads/', '/uploads/');
   }
 
   if (raw.startsWith('uploads/')) {
-    return `/api/${raw}`;
+    return `/${raw}`;
   }
 
   if (raw.startsWith('http://') || raw.startsWith('https://')) {
     try {
       const parsed = new URL(raw);
+      if (parsed.pathname.startsWith('/api/uploads/')) {
+        return `${parsed.pathname.replace('/api/uploads/', '/uploads/')}${parsed.search}`;
+      }
       if (parsed.pathname.startsWith('/uploads/')) {
-        return `/api${parsed.pathname}${parsed.search}`;
+        return `${parsed.pathname}${parsed.search}`;
       }
     } catch {
       return raw;
