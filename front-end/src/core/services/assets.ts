@@ -7,5 +7,6 @@ interface UploadImageAssetResponse {
 
 export async function uploadImageAsset(dataUrl: string, folder: string): Promise<string> {
   const response = await api.post('/assets/image', { dataUrl, folder }) as UploadImageAssetResponse;
-  return response?.url || dataUrl;
+  // Prefer relative URL to avoid host/protocol mismatch behind proxy in production.
+  return response?.relativeUrl || response?.url || dataUrl;
 }

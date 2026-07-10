@@ -14,7 +14,7 @@ import { useHasHydrated } from "../../../../core/hooks/useHasHydrated";
 
 export function CartSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   const hasHydrated = useHasHydrated();
-  const { items, removeItem, updateQuantity, getSubtotal, syncTenantCart } = useCartStore() as any;
+  const { items, removeItem, updateQuantity, clearCart, getSubtotal, syncTenantCart } = useCartStore() as any;
   const { products } = useProducts() as any;
   const total = hasHydrated ? getSubtotal() : 0;
   const cartItems = hasHydrated ? items : [];
@@ -47,6 +47,12 @@ export function CartSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
     if (originalProduct) {
       setEditingItem({ index, data: { ...item, ...originalProduct, id: item.productId } });
     }
+  };
+
+  const handleClearCart = () => {
+    const confirmed = window.confirm("Tem certeza que deseja esvaziar o carrinho?");
+    if (!confirmed) return;
+    clearCart();
   };
 
   const content = (
@@ -215,6 +221,15 @@ export function CartSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
                   <Plus size={14} className="text-primary md:group-hover:scale-110 transition-transform" />
                   Adicionar mais itens
                 </Link>
+
+                <button
+                  type="button"
+                  onClick={handleClearCart}
+                  className="mb-3 h-12 md:h-14 w-full bg-rose-50 border border-rose-200 text-rose-700 rounded-lg md:rounded-xl font-body font-bold uppercase tracking-widest text-[10px] md:text-label flex items-center justify-center gap-2 md:hover:bg-rose-100 md:hover:border-rose-300 transition-all shadow-sm group"
+                >
+                  <Trash2 size={14} className="md:group-hover:scale-110 transition-transform" />
+                  Esvaziar carrinho
+                </button>
 
                 <Link
                   href={`/${slug}/checkout`}
