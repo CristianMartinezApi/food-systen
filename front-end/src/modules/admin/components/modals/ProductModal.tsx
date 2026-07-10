@@ -50,6 +50,7 @@ export function ProductModal({ isOpen, onClose, onSave, product }: ProductModalP
   const [categories, setCategories] = useState<any[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [isLoadingCats, setIsLoadingCats] = useState(true);
+  const [pendingImageUpload, setPendingImageUpload] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Lógica para esconder campos extras em categorias específicas (Bebidas, etc)
@@ -110,6 +111,7 @@ export function ProductModal({ isOpen, onClose, onSave, product }: ProductModalP
         sizes: product.sizes || [],
         ingredients: product.ingredients || []
       });
+      setPendingImageUpload(null);
     } else if (isOpen) {
       setFormData({
         name: "",
@@ -127,6 +129,7 @@ export function ProductModal({ isOpen, onClose, onSave, product }: ProductModalP
         sizes: [],
         ingredients: []
       });
+      setPendingImageUpload(null);
     }
   }, [product, isOpen]);
 
@@ -347,14 +350,9 @@ export function ProductModal({ isOpen, onClose, onSave, product }: ProductModalP
           mimeType: 'image/webp',
         });
 
-        let imageValue = optimizedImage;
-        try {
-          imageValue = await uploadImageAsset(optimizedImage, 'products');
-        } catch (uploadError) {
-          console.warn('Falha ao enviar imagem para storage, usando base64:', uploadError);
-        }
-
-        setFormData({ ...formData, image: imageValue });
+        // Preview imediato sem depender da disponibilidade do storage no meio da edição.
+        setPendingImageUpload(optimizedImage);
+        setFormData((prev: any) => ({ ...prev, image: optimizedImage }));
       } catch (error) {
         console.error("Erro ao otimizar imagem:", error);
         alert("Não foi possível processar a imagem. Tente outro arquivo.");
@@ -372,9 +370,20 @@ export function ProductModal({ isOpen, onClose, onSave, product }: ProductModalP
 
     setIsSaving(true);
     try {
+      let imageValue = formData.image;
+
+      if (pendingImageUpload && pendingImageUpload.startsWith('data:image/')) {
+        try {
+          imageValue = await uploadImageAsset(pendingImageUpload, 'products');
+        } catch (uploadError) {
+          console.warn('Falha ao enviar imagem para storage, mantendo base64:', uploadError);
+        }
+      }
+
       const { status, ...rest } = formData;
       const payload = {
         ...rest,
+        image: imageValue,
         name: formData.name.toUpperCase().trim(),
         price: parseMoneyInput(formData.price) || 0,
         categoryId: parseInt(formData.categoryId),
@@ -399,6 +408,7 @@ export function ProductModal({ isOpen, onClose, onSave, product }: ProductModalP
       } else {
         await api.post('/products', payload);
       }
+      setPendingImageUpload(null);
       onSave();
       onClose();
     } catch (error: any) {
