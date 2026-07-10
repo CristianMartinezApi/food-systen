@@ -59,3 +59,31 @@ export const formatMoneyInputRealtime = (value: string) => {
     maximumFractionDigits: 2,
   });
 };
+
+export const normalizeAssetUrl = (value: string | null | undefined) => {
+  if (!value) return "";
+
+  const raw = String(value).trim();
+  if (!raw) return "";
+
+  if (raw.startsWith('/uploads/')) {
+    return `/api${raw}`;
+  }
+
+  if (raw.startsWith('uploads/')) {
+    return `/api/${raw}`;
+  }
+
+  if (raw.startsWith('http://') || raw.startsWith('https://')) {
+    try {
+      const parsed = new URL(raw);
+      if (parsed.pathname.startsWith('/uploads/')) {
+        return `/api${parsed.pathname}${parsed.search}`;
+      }
+    } catch {
+      return raw;
+    }
+  }
+
+  return raw;
+};

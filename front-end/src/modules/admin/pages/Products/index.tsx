@@ -12,7 +12,7 @@ import {
   Tag
 } from "lucide-react";
 import { api } from "../../../../core/config/api";
-import { formatCurrency, cn } from "../../../../shared/utils";
+import { formatCurrency, cn, normalizeAssetUrl } from "../../../../shared/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { ProductModal } from "../../components/modals/ProductModal";
 import { gsap } from "gsap";
@@ -35,7 +35,13 @@ export default function ProductsPage() {
   const fetchProducts = async () => {
     try {
       const data = await api.get('/products');
-      setProducts(data);
+      const normalized = Array.isArray(data)
+        ? data.map((product: any) => ({
+            ...product,
+            image: normalizeAssetUrl(product?.image),
+          }))
+        : [];
+      setProducts(normalized);
     } catch (error) {
       console.error("Erro ao buscar produtos:", error);
     } finally {

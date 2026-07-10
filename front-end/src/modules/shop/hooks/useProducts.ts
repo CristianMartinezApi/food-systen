@@ -1,6 +1,7 @@
 ﻿import { useState, useEffect } from 'react';
 import { api } from '../../../core/config/api';
 import { getTenantSlug } from '../../../shared/utils/tenant';
+import { normalizeAssetUrl } from '../../../shared/utils';
 import type { Product, Category } from '../../../core/types';
 
 type ProductsSnapshot = {
@@ -33,7 +34,12 @@ async function fetchProductsSnapshot(slug: string): Promise<ProductsSnapshot> {
     api.get('/categories'),
   ]).then(([productsData, categoriesData]) => {
     const snapshot = {
-      products: Array.isArray(productsData) ? productsData : [],
+      products: Array.isArray(productsData)
+        ? productsData.map((product: Product) => ({
+            ...product,
+            image: normalizeAssetUrl((product as any)?.image),
+          }))
+        : [],
       categories: Array.isArray(categoriesData) ? categoriesData : [],
     };
 

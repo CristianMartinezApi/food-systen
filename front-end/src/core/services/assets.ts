@@ -1,4 +1,5 @@
 import { api } from '../config/api';
+import { normalizeAssetUrl } from '../../shared/utils';
 
 interface UploadImageAssetResponse {
   url?: string;
@@ -7,6 +8,6 @@ interface UploadImageAssetResponse {
 
 export async function uploadImageAsset(dataUrl: string, folder: string): Promise<string> {
   const response = await api.post('/assets/image', { dataUrl, folder }) as UploadImageAssetResponse;
-  // Prefer relative URL to avoid host/protocol mismatch behind proxy in production.
-  return response?.relativeUrl || response?.url || dataUrl;
+  // Normalize to /api/uploads so it works even when /uploads is not directly exposed by nginx.
+  return normalizeAssetUrl(response?.relativeUrl || response?.url || dataUrl);
 }
