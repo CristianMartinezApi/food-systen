@@ -51,10 +51,31 @@ function normalizeWhatsApp(value?: string | null) {
   return `https://wa.me/${digits}`;
 }
 
+function buildStoreMapUrl(settings?: any) {
+  const address = typeof settings?.address === "string" ? settings.address.trim() : "";
+  if (address) {
+    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
+  }
+
+  const latitude = Number(settings?.latitude);
+  const longitude = Number(settings?.longitude);
+  const hasValidCoordinates =
+    Number.isFinite(latitude) &&
+    Number.isFinite(longitude) &&
+    !(latitude === 0 && longitude === 0);
+
+  if (hasValidCoordinates) {
+    return `https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`;
+  }
+
+  return null;
+}
+
 export function Footer({ settings }: FooterProps) {
   const currentYear = new Date().getFullYear();
   const [slug, setSlug] = useState<string>("");
   const contactSocial = settings?.contact?.social;
+  const storeMapUrl = buildStoreMapUrl(settings);
 
   const socialLinks: SocialLink[] = [
     {
@@ -159,9 +180,21 @@ export function Footer({ settings }: FooterProps) {
                 </div>
                 <div className="space-y-1 md:space-y-2 min-w-0">
                   <span className="text-[10px] md:text-label font-body font-bold text-slate-600 uppercase tracking-[0.15em] md:tracking-[0.2em] leading-none block">Logradouro</span>
-                  <p className="text-[10px] md:text-label font-body font-bold text-slate-300 leading-tight uppercase tracking-tight truncate">
-                    {settings?.address || 'Carregando destino...'}
-                  </p>
+                  {storeMapUrl ? (
+                    <a
+                      href={storeMapUrl}
+                      target="_blank"
+                      rel="noreferrer noopener"
+                      title="Abrir localização no mapa"
+                      className="text-[10px] md:text-label font-body font-bold text-slate-300 hover:text-primary leading-tight uppercase tracking-tight truncate transition-colors"
+                    >
+                      {settings?.address || "Abrir no mapa"}
+                    </a>
+                  ) : (
+                    <p className="text-[10px] md:text-label font-body font-bold text-slate-300 leading-tight uppercase tracking-tight truncate">
+                      {settings?.address || "Carregando destino..."}
+                    </p>
+                  )}
                 </div>
               </div>
               <div className="flex items-start gap-3 md:gap-4 group">

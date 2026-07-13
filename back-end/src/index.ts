@@ -1041,7 +1041,10 @@ app.post('/api/auth/login', async (req, res) => {
       { expiresIn: '7d' }
     );
 
-    res.json({ user, token, restaurant: user.restaurant });
+    // Nunca expor hash de senha no payload de resposta.
+    const { password: _password, ...safeUser } = user;
+
+    res.json({ user: safeUser, token, restaurant: user.restaurant });
   } catch (error) {
     res.status(500).json({ error: 'Erro ao fazer login' });
   }
