@@ -2,7 +2,6 @@
 
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Home, ShoppingBag, Utensils, Phone, MapPin, Clock, Star, Compass, History } from "lucide-react";
-import { useSettings } from "../../../../core/hooks/useSettings";
 import { getNextOpeningLabel, getOperatingHoursSummary } from "../../../../shared/utils/schedule";
 import { useLocationStore } from "../../../../core/stores/useLocationStore";
 import { AddressModal } from "../modals/AddressModal";
@@ -15,12 +14,12 @@ interface NavSidebarProps {
   isOpen: boolean;
   onClose: () => void;
   categories: any[];
+  settings?: any;
   activeCategory: number | 'all';
   onCategorySelect: (id: number | 'all') => void;
 }
 
-export function NavSidebar({ isOpen, onClose, categories, activeCategory, onCategorySelect }: NavSidebarProps) {
-  const { settings } = useSettings() as any;
+export function NavSidebar({ isOpen, onClose, categories, settings, activeCategory, onCategorySelect }: NavSidebarProps) {
   const { address } = useLocationStore() as any;
   const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
   const [slug, setSlug] = useState<string>("");

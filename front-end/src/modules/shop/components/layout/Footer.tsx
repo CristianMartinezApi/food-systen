@@ -12,7 +12,6 @@ import {
   Heart,
   ArrowRight
 } from "lucide-react";
-import { useSettings } from "../../../../core/hooks/useSettings";
 import { getTenantSlug } from "../../../../shared/utils/tenant";
 import { cn } from "../../../../shared/utils";
 import Link from "next/link";
@@ -24,6 +23,10 @@ type SocialLink = {
   href: string;
   Icon: typeof Instagram;
 };
+
+interface FooterProps {
+  settings?: any;
+}
 
 function normalizeInstagram(value?: string | null) {
   if (!value) return null;
@@ -48,8 +51,7 @@ function normalizeWhatsApp(value?: string | null) {
   return `https://wa.me/${digits}`;
 }
 
-export function Footer() {
-  const { settings } = useSettings();
+export function Footer({ settings }: FooterProps) {
   const currentYear = new Date().getFullYear();
   const [slug, setSlug] = useState<string>("");
   const contactSocial = settings?.contact?.social;

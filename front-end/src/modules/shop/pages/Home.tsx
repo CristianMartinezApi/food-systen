@@ -170,7 +170,7 @@ export default function Home() {
                 className="w-24 h-24 md:w-28 md:h-28 rounded-3xl bg-white/6 border border-white/0 backdrop-blur-xl flex items-center justify-center shadow-xl shadow-black/25 mb-7 p-1"
               >
                 <img
-                  src="/logo.foodsystem.png"
+                  src="/foodsystem-icon-512.png"
                   alt="Logo FoodSystem"
                   className="w-full h-full object-contain rounded-[1.1rem]"
                   loading="eager"
@@ -223,6 +223,7 @@ export default function Home() {
           isOpen={isNavOpen}
           onClose={() => setIsNavOpen(false)}
           categories={categories}
+          settings={settings}
           activeCategory={activeCategory}
           onCategorySelect={setActiveCategory}
         />
@@ -355,7 +356,7 @@ export default function Home() {
           </section>
         </main>
 
-        <Footer />
+        <Footer settings={settings} />
       </div>
     </div>
   );

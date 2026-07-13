@@ -1,4 +1,4 @@
-﻿import { useState, useMemo, useEffect } from "react";
+﻿import { useState, useMemo, useEffect, useRef } from "react";
 import { X, Plus, Minus, ShoppingBag, Check } from "lucide-react";
 import { formatCurrency, cn } from "../../../../shared/utils";
 import { useCartStore } from "../../../../core/stores/useCartStore";
@@ -17,6 +17,8 @@ export function ProductModal({ product, isOpen, onClose, editIndex = null, initi
     const [quantity, setQuantity] = useState(initialData?.quantity || 1);
     const [added, setAdded] = useState(false);
     const isOutOfStock = product?.trackStock && product?.stockQuantity <= 0;
+    const modalHistoryActiveRef = useRef(false);
+    const closingFromPopRef = useRef(false);
 
     const initialSize = useMemo(() => {
         if (!product?.sizes || !initialData?.variation) return product?.sizes?.[0] || null;
@@ -85,6 +87,45 @@ export function ProductModal({ product, isOpen, onClose, editIndex = null, initi
             document.body.style.height = 'unset';
         };
     }, [isOpen]);
+
+    // Integra o modal ao histórico do navegador para que o botão voltar no celular feche o modal.
+    useEffect(() => {
+        if (!isOpen || typeof window === "undefined") {
+            return;
+        }
+
+        window.history.pushState(
+            {
+                ...(window.history.state || {}),
+                __fsProductModalOpen: true,
+            },
+            ""
+        );
+        modalHistoryActiveRef.current = true;
+
+        const handlePopState = () => {
+            closingFromPopRef.current = true;
+            modalHistoryActiveRef.current = false;
+            onClose();
+            window.setTimeout(() => {
+                closingFromPopRef.current = false;
+            }, 0);
+        };
+
+        window.addEventListener("popstate", handlePopState);
+
+        return () => {
+            window.removeEventListener("popstate", handlePopState);
+        };
+    }, [isOpen, onClose]);
+
+    const handleRequestClose = () => {
+        if (typeof window !== "undefined" && modalHistoryActiveRef.current && !closingFromPopRef.current) {
+            modalHistoryActiveRef.current = false;
+            window.history.back();
+        }
+        onClose();
+    };
 
     // Calcula o menor preço entre os tamanhos
     const minSizePrice = useMemo(() => {
@@ -215,7 +256,7 @@ const updateGuidedOptionQuantity = (group: any, option: any, delta: number) => {
         setAdded(true);
         setTimeout(() => {
             setAdded(false);
-            onClose();
+            handleRequestClose();
             if (editIndex === null) {
                 setQuantity(1);
                 setSelectedSize(null);
@@ -259,7 +300,7 @@ const updateGuidedOptionQuantity = (group: any, option: any, delta: number) => {
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        onClick={onClose}
+                        onClick={handleRequestClose}
                         className="absolute inset-0 bg-black/60 backdrop-blur-md"
                     />
                     <motion.div
@@ -270,7 +311,7 @@ const updateGuidedOptionQuantity = (group: any, option: any, delta: number) => {
                         className="bg-slate-100 w-full max-w-none md:max-w-6xl h-[92dvh] md:h-[min(90vh,900px)] rounded-t-2xl md:rounded-3xl overflow-hidden shadow-[0_-15px_60px_rgba(15,23,42,0.15)] md:shadow-[0_35px_80px_rgba(15,23,42,0.28)] relative z-10 flex flex-col md:flex-row"
                     >
                         <button
-                            onClick={onClose}
+                            onClick={handleRequestClose}
                             className="absolute top-4 md:top-8 right-4 md:right-8 z-50 w-10 h-10 md:w-14 md:h-14 bg-white/90 md:bg-slate-100/95 backdrop-blur-xl rounded-full md:rounded-2xl flex items-center justify-center text-slate-900 shadow-xl border border-slate-200/50 hover:bg-slate-950 hover:text-white transition-all duration-500 active:scale-90 group"
                         >
                             <X size={18} className="md:size-6 group-hover:rotate-90 transition-transform duration-500" />
