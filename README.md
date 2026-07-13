@@ -138,15 +138,15 @@ npm run dev     # Inicia em http://localhost:3000
 docker compose down
 ```
 
-## 🔑 Credenciais Padrão (Desenvolvimento)
+## 🔑 Acesso Inicial (Desenvolvimento)
 
-Os containers são iniciados com seeding automático.
-As senhas iniciais devem vir do seu arquivo `.env` (INITIAL_SUPERADMIN_PASSWORD e INITIAL_ADMIN_PASSWORD).
+Os containers são iniciados com seeding automático para facilitar o ambiente local.
 
-- **Usuário Super Admin:** `superadmin@foodsystem.com` / senha definida em `INITIAL_SUPERADMIN_PASSWORD`
-- **Usuário Admin Padrão:** `admin@restaurant.com` / senha definida em `INITIAL_ADMIN_PASSWORD`
+- Defina as senhas iniciais no arquivo `.env` (`INITIAL_SUPERADMIN_PASSWORD` e `INITIAL_ADMIN_PASSWORD`).
+- Use senhas fortes e diferentes entre si.
+- Não reutilize credenciais de produção em desenvolvimento.
 
-⚠️ **Em produção, altere essas senhas imediatamente via variáveis de ambiente!**
+⚠️ **Produção:** use credenciais próprias, rotacione senhas periodicamente e evite expor detalhes operacionais no repositório público.
 
 ## ✨ Funcionalidades Implementadas
 
@@ -224,12 +224,14 @@ Opções suportadas:
 
 Copie `.env.example` para `.env` e configure:
 
+⚠️ **Importante:** todos os valores abaixo são placeholders. Gere segredos fortes e use credenciais reais apenas no seu `.env` local/servidor.
+
 ```env
 # Backend
 PORT=8000
 NODE_ENV=production
-DATABASE_URL=postgresql://user:password@db:5432/food_db
-JWT_SECRET=seu_secret_jwt_aqui_com_32_caracteres_minimo
+DATABASE_URL=postgresql://SEU_USUARIO:SUA_SENHA_FORTE@db:5432/food_db
+JWT_SECRET=GERE_UM_SECRET_FORTE_COM_OPENSSL_BASE64_32
 FRONTEND_URL=https://seu-dominio.com
 
 # Security
@@ -240,8 +242,8 @@ NEXT_PUBLIC_API_URL=https://seu-dominio.com/api
 NEXT_PUBLIC_SOCKET_URL=https://seu-dominio.com
 
 # Senhas iniciais (apenas primeira execução)
-INITIAL_SUPERADMIN_PASSWORD=senhafortealeatoria
-INITIAL_ADMIN_PASSWORD=outrassenhaforte
+INITIAL_SUPERADMIN_PASSWORD=DEFINA_UMA_SENHA_FORTE_UNICA
+INITIAL_ADMIN_PASSWORD=DEFINA_OUTRA_SENHA_FORTE_UNICA
 ```
 
 ## 🐛 Troubleshooting
