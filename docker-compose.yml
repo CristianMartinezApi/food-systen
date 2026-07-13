@@ -26,7 +26,7 @@ services:
     build:
       context: ./back-end
       dockerfile: Dockerfile
-    command: sh -c "npx prisma migrate resolve --rolled-back 20260707213245_add_pix_config_fields || true; npx prisma migrate deploy && npm run dev"
+    command: sh -c "npx prisma migrate deploy && npm run dev"
     ports:
       - "8001:8000"
     volumes:
