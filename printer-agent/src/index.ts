@@ -139,6 +139,10 @@ function asArray(value: unknown) {
   return Array.isArray(value) ? value : [];
 }
 
+function isPaidTicket(payload: any) {
+  return String(payload?.paymentStatusLabel || '').toUpperCase() === 'PAGO';
+}
+
 function renderOrderTicket(payload: any, width: number) {
   const lines: string[] = [];
   lines.push(center(payload?.restaurant?.name || 'FOOD SYSTEM', width));
@@ -149,37 +153,58 @@ function renderOrderTicket(payload: any, width: number) {
   lines.push(center(`PEDIDO #${payload?.orderId || '-'}`, width));
   lines.push(stripAccents(new Date(payload?.createdAt || Date.now()).toLocaleString('pt-BR')));
   lines.push(separator(width));
+  lines.push('RESUMO DO PEDIDO');
   lines.push(`Cliente: ${stripAccents(payload?.customerName || 'Cliente')}`);
   if (payload?.phone) lines.push(`Fone: ${stripAccents(String(payload.phone))}`);
-  lines.push(`Pagamento: ${stripAccents(String(payload?.paymentMethod || '-'))}`);
-  lines.push(`Status: ${stripAccents(String(payload?.status || '-'))}`);
-  lines.push(`Entrega: ${stripAccents(String(payload?.addressLabel || 'Nao informado'))}`);
+  lines.push(`Status pedido: ${stripAccents(String(payload?.status || '-'))}`);
+  lines.push(`Financeiro: ${stripAccents(String(payload?.paymentStatusLabel || '-'))}`);
+  lines.push(`Pagamento: ${stripAccents(String(payload?.paymentLabel || payload?.paymentMethod || '-'))}`);
   if (payload?.cpf) lines.push(`CPF: ${stripAccents(String(payload.cpf))}`);
   if (payload?.changeFor) lines.push(`Troco para: ${stripAccents(String(payload.changeFor))}`);
-  if (payload?.notes) lines.push(`Obs: ${stripAccents(String(payload.notes))}`);
+  lines.push(separator(width));
+
+  lines.push(isPaidTicket(payload) ? 'ENTREGA LIBERADA: SIM' : 'ENTREGA LIBERADA: COBRAR/PENDENTE');
+  lines.push(`Entrega: ${stripAccents(String(payload?.addressLabel || 'Nao informado'))}`);
+  for (const addressLine of asArray(payload?.addressLines)) {
+    if (stripAccents(String(addressLine)).toUpperCase() === stripAccents(String(payload?.addressLabel || '')).toUpperCase()) continue;
+    for (const line of wrapText(String(addressLine), width)) lines.push(line);
+  }
+  if (payload?.notes) {
+    lines.push(separator(width));
+    lines.push('OBSERVACOES DO PEDIDO');
+    for (const line of wrapText(String(payload.notes), width)) lines.push(line);
+  }
+  lines.push(separator(width));
+  lines.push('ITENS PARA PRODUCAO');
   lines.push(separator(width));
 
   for (const item of asArray(payload?.items)) {
-    lines.push(twoCols(`${item.quantity}x ${item.name || 'Item'}`, formatCurrency(Number(item.totalPrice || 0)), width));
+    lines.push(`${item.quantity}x ${stripAccents(String(item.name || 'Item'))}`);
 
     if (item.variation) {
-      for (const line of wrapText(`Var: ${item.variation}`, width - 2)) lines.push(`  ${line}`);
+      for (const line of wrapText(`Tamanho/variacao: ${item.variation}`, width - 2)) lines.push(`  ${line}`);
+    }
+
+    for (const guided of asArray(item.guidedAssemblySelections)) {
+      for (const line of wrapText(`Montagem: ${guided}`, width - 2)) lines.push(`  ${line}`);
     }
 
     for (const addon of asArray(item.addons)) {
-      for (const line of wrapText(`+ ${addon}`, width - 2)) lines.push(`  ${line}`);
+      for (const line of wrapText(`Adicionar: ${addon}`, width - 2)) lines.push(`  ${line}`);
     }
 
     for (const removal of asArray(item.removals)) {
-      for (const line of wrapText(`- ${removal}`, width - 2)) lines.push(`  ${line}`);
+      for (const line of wrapText(`Remover: ${removal}`, width - 2)) lines.push(`  ${line}`);
     }
 
     if (item.observations) {
-      for (const line of wrapText(`Obs: ${item.observations}`, width - 2)) lines.push(`  ${line}`);
+      for (const line of wrapText(`Obs item: ${item.observations}`, width - 2)) lines.push(`  ${line}`);
     }
+
+    lines.push(`  Total item: ${formatCurrency(Number(item.totalPrice || 0))}`);
+    lines.push(separator(width));
   }
 
-  lines.push(separator(width));
   lines.push(twoCols('Subtotal', formatCurrency(Number(payload?.totals?.subtotal || 0)), width));
   lines.push(twoCols('Taxa entrega', formatCurrency(Number(payload?.totals?.deliveryFee || 0)), width));
   lines.push(twoCols('TOTAL', formatCurrency(Number(payload?.totals?.total || 0)), width));

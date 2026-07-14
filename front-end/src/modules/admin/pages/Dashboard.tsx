@@ -87,6 +87,17 @@ export default function Dashboard() {
     return () => ctx.revert();
   }, [isLoading, stats]);
 
+  const formatPaymentMethodLabel = (value?: string) => {
+    const normalized = String(value || "").toUpperCase();
+    if (normalized === "PIX") return "PIX";
+    if (normalized === "CASH") return "DINHEIRO";
+    if (normalized === "DEBIT") return "DEBITO";
+    if (normalized === "CREDIT") return "CREDITO";
+    if (normalized === "CARD") return "CARTAO";
+    if (normalized === "OPEN") return "EM ABERTO";
+    return normalized || "NAO INFORMADO";
+  };
+
   if (isLoading) {
     return (
       <div className="h-96 flex items-center justify-center">
@@ -214,7 +225,7 @@ export default function Dashboard() {
                   </div>
                   <div className="text-right">
                     <p className="text-heading-3 font-mono font-medium text-slate-950 tracking-tighter">{formatCurrency(order.total)}</p>
-                    <p className="text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em] mt-1">{order.paymentMethod}</p>
+                    <p className="text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em] mt-1">{formatPaymentMethodLabel(order.paymentMethod)}</p>
                   </div>
                 </motion.div>
               ))

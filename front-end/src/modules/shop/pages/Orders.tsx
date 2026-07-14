@@ -166,9 +166,22 @@ export default function CustomerOrdersPage() {
 
   const getPaymentLabel = (method?: string) => {
     if (method === "PIX") return "Pix";
+    if (method === "CREDIT") return "Credito";
+    if (method === "DEBIT") return "Debito";
     if (method === "CARD") return "Cartao";
     if (method === "CASH") return "Dinheiro";
     return method || "Nao informado";
+  };
+
+  const getPaymentMomentLabel = (order: any) => {
+    const paymentMethod = String(order?.paymentMethod || "").toUpperCase();
+    const orderType = String(order?.address?.type || "DELIVERY").toUpperCase();
+
+    if (order?.status === "PAID") return "Pago";
+    if (paymentMethod === "PIX") return "Aguardando PIX";
+    if (orderType === "PICKUP") return "Pagamento na retirada";
+    if (orderType === "DINE_IN") return "Pagamento no local";
+    return "Pagamento na entrega";
   };
 
   const getOrderAddressLabel = (address: any) => {
@@ -176,14 +189,24 @@ export default function CustomerOrdersPage() {
     if (typeof address === "string") return address;
 
     if (typeof address === "object") {
+      if (address.type === "PICKUP") return "Retirada em unidade";
+      if (address.type === "DINE_IN") return "Consumo no local";
+
+      const details = address.details && typeof address.details === "object"
+        ? address.details
+        : address;
+
       const parts = [
-        address.street,
-        address.number,
-        address.neighborhood,
-        address.city,
-        address.state,
-        address.zipCode,
+        details.street,
+        details.number,
+        details.neighborhood,
+        details.city,
+        details.state,
+        details.zipCode,
       ].filter(Boolean);
+
+      if (details.complement) parts.push(`Complemento: ${details.complement}`);
+      if (details.reference) parts.push(`Referencia: ${details.reference}`);
 
       const composed = parts.join(", ").trim();
       if (composed) return composed;
@@ -357,6 +380,9 @@ export default function CustomerOrdersPage() {
                                         (Troco p/ {formatCurrency(order.changeFor)})
                                       </span>
                                     )}
+                                  </p>
+                                  <p className="text-[10px] md:text-[11px] font-body font-medium text-slate-500 uppercase tracking-[0.08em] mt-1">
+                                    {getPaymentMomentLabel(order)}
                                   </p>
                                 </div>
                               </div>

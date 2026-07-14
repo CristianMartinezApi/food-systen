@@ -577,20 +577,28 @@ export default function Checkout() {
     : deliveryMode === "PICKUP"
       ? "Retirada"
       : "Consumo no local";
+  const getPaymentMomentLabel = (mode: DeliveryMode, method: CheckoutPaymentMethod) => {
+    if (method === "PIX") return "Pagamento agora via PIX";
+    if (mode === "PICKUP") return "Pagamento na retirada";
+    if (mode === "DINE_IN") return "Pagamento no local";
+    return "Pagamento na entrega";
+  };
   const paymentMethodLabels: Record<CheckoutPaymentMethod, string> = {
     PIX: "Pix",
     CASH: "Dinheiro",
-    CREDIT: "Cartão de crédito",
-    DEBIT: "Cartão de débito",
+    CREDIT: "Credito",
+    DEBIT: "Debito",
   };
   const selectedPaymentLabel = paymentMethodLabels[formData.paymentMethod];
-  const reviewPaymentLabel = deliveryMode === "DINE_IN" ? "Pagamento no local" : selectedPaymentLabel;
+  const reviewPaymentMethodLabel = deliveryMode === "DINE_IN" ? "A definir no local" : selectedPaymentLabel;
+  const reviewPaymentMomentLabel = getPaymentMomentLabel(deliveryMode, formData.paymentMethod);
   const successDeliveryLabel = deliveryModeLabel;
-  const successPaymentLabel = deliveryMode === "DINE_IN"
-    ? "Pagamento no local"
+  const successPaymentMethodLabel = deliveryMode === "DINE_IN"
+    ? "A definir no local"
     : formData.paymentMethod === "CASH" && formData.needsChange && formData.changeFor
       ? `${selectedPaymentLabel} (Troco p/ ${formData.changeFor})`
       : selectedPaymentLabel;
+  const successPaymentMomentLabel = getPaymentMomentLabel(deliveryMode, formData.paymentMethod);
   const successEtaLabel = deliveryMode === "DINE_IN"
     ? "Atendimento imediato"
     : `${estimatedDeliveryMinutes} min`;
@@ -907,14 +915,14 @@ export default function Checkout() {
                         onClick={() => setFormData({ ...formData, paymentMethod: 'CREDIT' })}
                         icon={<CreditCard size={24} />}
                         title="Crédito"
-                        description="Maquininha na entrega"
+                        description={deliveryMode === "PICKUP" ? "Maquininha na retirada" : "Maquininha no recebimento"}
                       />
                       <SelectOption
                         active={formData.paymentMethod === 'DEBIT'}
                         onClick={() => setFormData({ ...formData, paymentMethod: 'DEBIT' })}
                         icon={<CreditCard size={24} />}
                         title="Débito"
-                        description="Maquininha na entrega"
+                        description={deliveryMode === "PICKUP" ? "Maquininha na retirada" : "Maquininha no recebimento"}
                       />
                     </div>
                     <SelectOption
@@ -922,7 +930,7 @@ export default function Checkout() {
                       onClick={() => setFormData({ ...formData, paymentMethod: 'CASH' })}
                       icon={<ShoppingBag size={24} />}
                       title="Dinheiro"
-                      description="Pagamento na entrega"
+                      description={deliveryMode === "PICKUP" ? "Pagamento na retirada" : "Pagamento no recebimento"}
                     />
 
                     {formData.paymentMethod === 'CASH' && (
@@ -1039,9 +1047,12 @@ export default function Checkout() {
                             </div>
                             <span className="hidden md:block w-1.5 h-1.5 rounded-full bg-primary" />
                             <div className="px-3 md:px-4 py-2 bg-primary/10 text-primary border border-primary/20 rounded-lg md:rounded-xl text-[11px] md:text-label font-body font-bold uppercase tracking-[0.08em] md:tracking-widest max-w-full wrap-break-word">
-                              {reviewPaymentLabel}
+                              {reviewPaymentMethodLabel}
                             </div>
                           </div>
+                          <p className="text-label font-body font-medium text-slate-500 uppercase tracking-[0.06em] leading-relaxed border-l-2 border-primary/20 pl-4">
+                            {reviewPaymentMomentLabel}
+                          </p>
                           {formData.paymentMethod === 'CASH' && formData.needsChange && formData.changeFor && (
                             <p className="text-label font-body font-bold text-primary uppercase tracking-[0.06em] mt-1 italic">
                               Troco para {formData.changeFor}
@@ -1186,7 +1197,8 @@ export default function Checkout() {
                       </div>
                       <div className="rounded-lg md:rounded-xl border border-slate-200 bg-white p-3 md:p-4">
                         <p className="text-[10px] font-body font-bold uppercase tracking-[0.12em] text-slate-400">Pagamento</p>
-                        <p className="text-xs md:text-sm font-body font-bold text-slate-950 mt-1 uppercase">{successPaymentLabel}</p>
+                        <p className="text-xs md:text-sm font-body font-bold text-slate-950 mt-1 uppercase">{successPaymentMethodLabel}</p>
+                        <p className="text-[10px] font-body font-medium uppercase tracking-[0.08em] text-slate-500 mt-1">{successPaymentMomentLabel}</p>
                       </div>
                       <div className="rounded-lg md:rounded-xl border border-slate-200 bg-white p-3 md:p-4">
                         <p className="text-[10px] font-body font-bold uppercase tracking-[0.12em] text-slate-400">Previsao</p>

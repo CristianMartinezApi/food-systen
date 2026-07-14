@@ -2,10 +2,12 @@
 
 import { useState, useMemo, useEffect } from "react";
 import { useProducts } from "../hooks/useProducts";
+import { useHighlights } from "../hooks/useHighlights";
 import { Header } from "../components/layout/Header";
 import { NavSidebar } from "../components/layout/NavSidebar";
 import { Footer } from "../components/layout/Footer";
 import { ProductCard } from "../components/product/ProductCard";
+import { HighlightProductCard } from "../components/product/HighlightProductCard";
 import { Button } from "../../../shared/components/ui/button";
 import { useSettings } from "../../../core/hooks/useSettings";
 import { Utensils, ArrowRight, Flame, RefreshCw, MessageCircle, Phone, AlertTriangle } from "lucide-react";
@@ -15,6 +17,7 @@ import { sendToWhatsApp } from "../../../shared/utils/whatsapp";
 
 export default function Home() {
   const { products, categories, isLoading: productsLoading, error: productsError } = useProducts() as any;
+  const { productIds: highlightProductIds } = useHighlights();
   const { settings, isLoading: settingsLoading, error: settingsError } = useSettings();
   const [activeCategory, setActiveCategory] = useState<number | "all">("all");
   const [isNavOpen, setIsNavOpen] = useState(false);
@@ -79,6 +82,25 @@ export default function Home() {
 
     return filtered;
   }, [products, activeCategory, searchTerm]);
+
+  const highlightedProducts = useMemo(() => {
+    if (!Array.isArray(products) || products.length === 0) return [];
+
+    const byId = new Map(products.map((product: any) => [Number(product.id), product]));
+    const topSelling = Array.isArray(highlightProductIds)
+      ? highlightProductIds
+          .map((productId) => byId.get(Number(productId)))
+          .filter((product: any) => Boolean(product && product.isActive))
+      : [];
+
+    if (topSelling.length > 0) {
+      return topSelling;
+    }
+
+    return products
+      .filter((product: any) => product.isActive && product.isFeatured)
+      .slice(0, 6);
+  }, [highlightProductIds, products]);
 
   const heroBadge = settings?.bannerBadge || "Destaque da semana";
   const heroTitleLine1 = settings?.bannerTitleLine1 || "Sabor que";
@@ -282,6 +304,31 @@ export default function Home() {
               </div>
             </div>
           </section>
+
+          {highlightedProducts.length > 0 && (
+            <section className="space-y-5 md:space-y-8">
+              <div className="flex flex-col gap-2 md:gap-3">
+                <p className="text-[9px] md:text-[10px] uppercase tracking-[0.24em] text-primary font-black">Em alta na loja</p>
+                <div className="flex items-end justify-between gap-4">
+                  <div className="space-y-2">
+                    <h2 className="text-2xl md:text-heading-2 font-display font-bold text-slate-950 uppercase tracking-tight">Mais pedidos</h2>
+                    <p className="text-sm md:text-base text-slate-600 max-w-2xl">
+                      Uma seleção rápida dos pedidos que mais saem por aqui, sem competir com o cardápio completo.
+                    </p>
+                  </div>
+                </div>
+                <div className="h-1 md:h-1.5 w-24 bg-primary rounded-full" />
+              </div>
+
+              <div className="flex gap-3 overflow-x-auto pb-2 md:grid md:grid-cols-2 xl:grid-cols-3 md:gap-5 md:overflow-visible snap-x snap-mandatory no-scrollbar">
+                {highlightedProducts.map((product: any) => (
+                  <div key={product.id} className="min-w-[86vw] sm:min-w-[58vw] md:min-w-0 snap-start">
+                    <HighlightProductCard product={product} />
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
 
           <div className="h-px w-full bg-slate-200/60 my-6 md:my-10" />
 

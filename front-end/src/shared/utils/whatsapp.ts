@@ -15,6 +15,17 @@ interface OrderData {
 }
 
 export const formatWhatsAppMessage = (order: OrderData, storeName: string) => {
+  const formatPaymentMethodLabel = (value?: string) => {
+    const normalized = String(value || '').toUpperCase();
+    if (normalized === 'PIX') return 'Pix';
+    if (normalized === 'CASH') return 'Dinheiro';
+    if (normalized === 'DEBIT') return 'Debito';
+    if (normalized === 'CREDIT') return 'Credito';
+    if (normalized === 'CARD') return 'Cartao';
+    if (normalized === 'OPEN') return 'Em Aberto';
+    return normalized || 'Nao informado';
+  };
+
   const itemsList = order.items
     .map(item => {
       let itemMsg = `✅ *${item.quantity}x* ${item.name}`;
@@ -62,7 +73,7 @@ ${d.reference ? `Ref: ${d.reference}` : ''}
     ? `\n💵 *Troco para:* ${formatCurrency(Number(order.changeFor))}`
     : '';
 
-  const paymentMethodLabel = order.address.type === 'DINE_IN' ? 'A Combinar (No Local)' : order.paymentMethod;
+  const paymentMethodLabel = order.address.type === 'DINE_IN' ? 'A Combinar (No Local)' : formatPaymentMethodLabel(order.paymentMethod);
 
   const message = `
 🍔 *NOVO PEDIDO - ${storeName.toUpperCase()}*

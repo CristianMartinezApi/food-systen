@@ -244,16 +244,17 @@ function parseDataUrl(dataUrl: string): { mime: string; base64: string } | null 
 }
 const PUBLIC_STORE_CACHE_TTL_MS = Math.min(60000, Math.max(5000, Number(process.env.PUBLIC_STORE_CACHE_TTL_MS || 15000)));
 const CASH_COUNTED_ORDER_STATUSES: OrderStatus[] = ['OPEN', 'CONFIRMED', 'PREPARING', 'READY', 'DELIVERED', 'PAID', 'RETIRED' as OrderStatus];
+const HIGHLIGHTED_ORDER_STATUSES: OrderStatus[] = ['DELIVERED', 'PAID', 'RETIRED' as OrderStatus];
 const CASHIER_OPERATION_ROLES = new Set(['SUPER_ADMIN', 'OWNER', 'MANAGER', 'CASHIER', 'EMPLOYEE']);
 const CASHIER_OPEN_CLOSE_ROLES = new Set(['SUPER_ADMIN', 'OWNER', 'MANAGER', 'CASHIER']);
 
 const publicStoreCache = new Map<string, { expiresAt: number; payload: unknown }>();
 
-function getPublicStoreCacheKey(type: 'settings' | 'categories' | 'products', restaurantId?: number) {
+function getPublicStoreCacheKey(type: 'settings' | 'categories' | 'products' | 'highlights', restaurantId?: number) {
   return `${type}:${restaurantId || 'unknown'}`;
 }
 
-function readPublicStoreCache<T>(type: 'settings' | 'categories' | 'products', restaurantId?: number): T | null {
+function readPublicStoreCache<T>(type: 'settings' | 'categories' | 'products' | 'highlights', restaurantId?: number): T | null {
   const key = getPublicStoreCacheKey(type, restaurantId);
   const cached = publicStoreCache.get(key);
 
@@ -267,7 +268,7 @@ function readPublicStoreCache<T>(type: 'settings' | 'categories' | 'products', r
   return cached.payload as T;
 }
 
-function writePublicStoreCache(type: 'settings' | 'categories' | 'products', restaurantId: number | undefined, payload: unknown) {
+function writePublicStoreCache(type: 'settings' | 'categories' | 'products' | 'highlights', restaurantId: number | undefined, payload: unknown) {
   if (!restaurantId) return;
 
   const key = getPublicStoreCacheKey(type, restaurantId);
@@ -283,6 +284,34 @@ function invalidatePublicStoreCache(restaurantId?: number) {
   publicStoreCache.delete(getPublicStoreCacheKey('settings', restaurantId));
   publicStoreCache.delete(getPublicStoreCacheKey('categories', restaurantId));
   publicStoreCache.delete(getPublicStoreCacheKey('products', restaurantId));
+  publicStoreCache.delete(getPublicStoreCacheKey('highlights', restaurantId));
+}
+
+async function getTopSellingProductIds(restaurantId?: number, limit = 6, windowDays = 30) {
+  if (!restaurantId) return [] as number[];
+
+  const since = new Date();
+  since.setDate(since.getDate() - windowDays);
+
+  const groupedItems = await prisma.orderItem.groupBy({
+    by: ['productId'],
+    _sum: { quantity: true },
+    where: {
+      order: {
+        restaurantId,
+        status: { in: HIGHLIGHTED_ORDER_STATUSES },
+        createdAt: { gte: since },
+      },
+    },
+    orderBy: {
+      _sum: { quantity: 'desc' },
+    },
+    take: limit,
+  });
+
+  return groupedItems
+    .map((item) => Number(item.productId))
+    .filter((productId) => Number.isFinite(productId));
 }
 
 type OrderMode = 'DELIVERY' | 'PICKUP' | 'DINE_IN';
@@ -631,6 +660,93 @@ function formatItemDetailsForPrint(value: unknown): string[] {
     .filter(Boolean) as string[];
 }
 
+function formatGuidedAssemblySelectionsForPrint(value: unknown): string[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .map((entry: any) => {
+      const groupName = String(entry?.groupName || entry?.groupId || entry?.step || '').trim();
+      const selected = Array.isArray(entry?.selected)
+        ? entry.selected
+        : Array.isArray(entry?.optionIds)
+          ? entry.optionIds.map((optionId: any) => ({ name: optionId }))
+          : entry?.selected
+            ? [entry.selected]
+            : [];
+
+      const optionNames = selected
+        .map((option: any) => {
+          if (typeof option === 'string') return option.trim();
+          return String(option?.name || option?.label || option?.title || option?.id || '').trim();
+        })
+        .filter(Boolean);
+
+      if (!groupName && optionNames.length === 0) return null;
+      if (!groupName) return optionNames.join(', ');
+      if (optionNames.length === 0) return groupName;
+      return `${groupName}: ${optionNames.join(', ')}`;
+    })
+    .filter(Boolean) as string[];
+}
+
+function formatPaymentMethodLabelForPrint(value: unknown) {
+  const normalized = String(value || '').toUpperCase();
+
+  if (normalized === 'PIX') return 'PIX';
+  if (normalized === 'CASH') return 'DINHEIRO';
+  if (normalized === 'CREDIT') return 'CREDITO';
+  if (normalized === 'DEBIT') return 'DEBITO';
+  if (normalized === 'CARD') return 'CARTAO';
+  if (normalized === 'OPEN') return 'EM ABERTO';
+
+  return normalized || 'NAO INFORMADO';
+}
+
+function formatPaymentStatusLabelForPrint(order: { status?: string | null; paymentMethod?: unknown; pixConfirmedAt?: Date | null; address?: any }) {
+  const paymentMethod = String(order?.paymentMethod || '').toUpperCase();
+  const orderMode = order?.address?.type === 'PICKUP'
+    ? 'PICKUP'
+    : order?.address?.type === 'DINE_IN'
+      ? 'DINE_IN'
+      : 'DELIVERY';
+
+  if (order?.status === 'PAID' || order?.pixConfirmedAt) {
+    return 'PAGO';
+  }
+
+  if (paymentMethod === 'PIX') {
+    return 'AGUARDANDO PIX';
+  }
+
+  if (paymentMethod === 'CASH' || paymentMethod === 'CARD' || paymentMethod === 'DEBIT' || paymentMethod === 'CREDIT') {
+    if (orderMode === 'PICKUP') return 'COBRAR NA RETIRADA';
+    if (orderMode === 'DINE_IN') return 'COBRAR NO LOCAL';
+    return 'COBRAR NA ENTREGA';
+  }
+
+  return 'PENDENTE';
+}
+
+function formatOrderAddressLinesForPrint(address: any) {
+  if (!address) return ['NAO INFORMADO'];
+  if (typeof address === 'string') return [address];
+
+  if (address?.type === 'PICKUP') return ['RETIRADA EM UNIDADE'];
+  if (address?.type === 'DINE_IN') return ['CONSUMO NO LOCAL'];
+
+  const details = address?.details || address;
+  const lines = [
+    [details.street, details.number].filter(Boolean).join(', '),
+    [details.neighborhood, details.city, details.state].filter(Boolean).join(' - '),
+    details.complement ? `Complemento: ${details.complement}` : null,
+    details.reference ? `Referencia: ${details.reference}` : null,
+  ].filter(Boolean);
+
+  return lines.length > 0 ? lines : ['NAO INFORMADO'];
+}
+
 function formatOrderAddressForPrint(address: any) {
   if (!address) return 'Nao informado';
   if (typeof address === 'string') return address;
@@ -668,8 +784,11 @@ async function buildOrderTicketPayload(restaurantId: number, orderId: number) {
     customerName: order.customer?.name || order.customerName || 'Cliente',
     phone: order.phone || null,
     paymentMethod: order.paymentMethod,
+    paymentLabel: formatPaymentMethodLabelForPrint(order.paymentMethod),
+    paymentStatusLabel: formatPaymentStatusLabelForPrint(order),
     status: order.status,
     addressLabel: formatOrderAddressForPrint(order.address),
+    addressLines: formatOrderAddressLinesForPrint(order.address),
     notes: order.notes || null,
     cpf: order.cpf || null,
     changeFor: order.changeFor || null,
@@ -680,6 +799,7 @@ async function buildOrderTicketPayload(restaurantId: number, orderId: number) {
       observations: item.observations || null,
       addons: formatItemDetailsForPrint(item.addons),
       removals: formatItemDetailsForPrint(item.removals),
+      guidedAssemblySelections: formatGuidedAssemblySelectionsForPrint(item.guidedAssemblySelections),
       unitPrice: Number(item.price || 0),
       totalPrice: Number((Number(item.price || 0) * Number(item.quantity || 0)).toFixed(2)),
     })),
@@ -759,18 +879,31 @@ async function buildCashClosingPayload(restaurantId: number, sessionId: number) 
   const informedPixAmount = Number(session.informedPixAmount || 0);
   const differenceAmount = Number(((session.closingAmount ?? expectedAmount) - expectedAmount).toFixed(2));
 
-  const paymentMethods = ['PIX', 'CASH', 'CARD'];
-  const salesByPayment = paymentMethods.map((method) => {
-    const row = salesByPaymentRaw.find((entry) => entry.paymentMethod === method);
-    const total = Number(row?._sum.total || 0);
+  const salesByPaymentMap = new Map(
+    (salesByPaymentRaw || []).map((entry) => [String(entry.paymentMethod || '').toUpperCase(), Number(entry?._sum?.total || 0)])
+  );
+  const cardTotal =
+    Number(salesByPaymentMap.get('CARD') || 0) +
+    Number(salesByPaymentMap.get('DEBIT') || 0) +
+    Number(salesByPaymentMap.get('CREDIT') || 0);
+
+  const salesByPayment = [
+    { method: 'PIX', total: Number(salesByPaymentMap.get('PIX') || 0) },
+    { method: 'CASH', total: Number(salesByPaymentMap.get('CASH') || 0) },
+    { method: 'CARD', total: Number(cardTotal.toFixed(2)) },
+  ].map((entry) => {
     let difference = 0;
-    if (method === 'CARD' && session.status === 'CLOSED') difference = Number((informedCardAmount - total).toFixed(2));
-    if (method === 'PIX' && session.status === 'CLOSED') difference = Number((informedPixAmount - total).toFixed(2));
+    if (entry.method === 'CARD' && session.status === 'CLOSED') {
+      difference = Number((informedCardAmount - entry.total).toFixed(2));
+    }
+    if (entry.method === 'PIX' && session.status === 'CLOSED') {
+      difference = Number((informedPixAmount - entry.total).toFixed(2));
+    }
 
     return {
-      method,
-      total,
-      informed: method === 'CASH' ? closingAmount : (method === 'CARD' ? informedCardAmount : informedPixAmount),
+      method: entry.method,
+      total: entry.total,
+      informed: entry.method === 'CASH' ? closingAmount : (entry.method === 'CARD' ? informedCardAmount : informedPixAmount),
       difference,
     };
   });
@@ -3021,6 +3154,22 @@ app.delete('/api/categories/:id', authMiddleware, async (req: AuthRequest, res) 
 });
 
 // Products
+app.get('/api/highlights', async (req: TenantRequest, res) => {
+  try {
+    const cachedHighlights = readPublicStoreCache<number[]>('highlights', req.restaurantId);
+    if (cachedHighlights) {
+      return res.json({ productIds: cachedHighlights });
+    }
+
+    const productIds = await getTopSellingProductIds(req.restaurantId, 6, 30);
+    writePublicStoreCache('highlights', req.restaurantId, productIds);
+    res.json({ productIds });
+  } catch (error) {
+    console.error('Error fetching highlights:', error);
+    res.status(500).json({ error: 'Erro ao buscar destaques da loja' });
+  }
+});
+
 app.get('/api/products', async (req: TenantRequest, res) => {
   try {
     const cachedProducts = readPublicStoreCache<any[]>('products', req.restaurantId);
@@ -3243,15 +3392,17 @@ app.get('/api/orders', authMiddleware, async (req: AuthRequest, res) => {
       { restaurantId: req.restaurantId },
       {
         OR: [
-          // 1. Pedidos desta sessão que ainda NÃO foram totalmente finalizados (Entregues/Pagos)
+          // 1. Pedidos vinculados ao caixa aberto atual (quando houver)
           ...(activeSession ? [{ 
-            AND: [
-              { cashSessionId: activeSession.id },
-              { status: { notIn: ['PAID', 'DELIVERED', 'RETIRED', 'CANCELLED'] } }
-            ]
+            cashSessionId: activeSession.id,
           }] : []),
+
+          // 2. Pedidos criados hoje (inclui finalizados para aparecer no admin sem depender de caixa aberto)
+          {
+            createdAt: { gte: today }
+          },
           
-          // 2. Pedidos "Sobreviventes": Criados hoje (ou antes), mas que ainda estão ativos/pendentes
+          // 3. Pedidos "Sobreviventes": criados antes, mas ainda ativos/pendentes
           { 
             status: { in: ['PENDING', 'OPEN', 'CONFIRMED', 'PREPARING', 'READY', 'OUT_FOR_DELIVERY'] }
           }
@@ -5104,19 +5255,32 @@ app.get('/api/cashier/sessions/:id/report', authMiddleware, async (req: AuthRequ
     const informedPixAmount = Number(session.informedPixAmount || 0);
 
     const differenceAmount = Number(((session.closingAmount ?? expectedAmount) - expectedAmount).toFixed(2));
-    const paymentMethods = ['PIX', 'CASH', 'CARD'];
-    const salesByPayment = paymentMethods.map((method) => {
-      const row = salesByPaymentRaw.find((entry) => entry.paymentMethod === method);
-      const total = Number(row?._sum.total || 0);
+    const salesByPaymentMap = new Map(
+      (salesByPaymentRaw || []).map((entry) => [String(entry.paymentMethod || '').toUpperCase(), Number(entry?._sum?.total || 0)])
+    );
+    const cardTotal =
+      Number(salesByPaymentMap.get('CARD') || 0) +
+      Number(salesByPaymentMap.get('DEBIT') || 0) +
+      Number(salesByPaymentMap.get('CREDIT') || 0);
+
+    const salesByPayment = [
+      { method: 'PIX', total: Number(salesByPaymentMap.get('PIX') || 0) },
+      { method: 'CASH', total: Number(salesByPaymentMap.get('CASH') || 0) },
+      { method: 'CARD', total: Number(cardTotal.toFixed(2)) },
+    ].map((entry) => {
       let difference = 0;
-      if (method === 'CARD' && session.status === 'CLOSED') difference = Number((informedCardAmount - total).toFixed(2));
-      if (method === 'PIX' && session.status === 'CLOSED') difference = Number((informedPixAmount - total).toFixed(2));
+      if (entry.method === 'CARD' && session.status === 'CLOSED') {
+        difference = Number((informedCardAmount - entry.total).toFixed(2));
+      }
+      if (entry.method === 'PIX' && session.status === 'CLOSED') {
+        difference = Number((informedPixAmount - entry.total).toFixed(2));
+      }
 
       return {
-        method,
-        total,
-        informed: method === 'CASH' ? closingAmount : (method === 'CARD' ? informedCardAmount : informedPixAmount),
-        difference
+        method: entry.method,
+        total: entry.total,
+        informed: entry.method === 'CASH' ? closingAmount : (entry.method === 'CARD' ? informedCardAmount : informedPixAmount),
+        difference,
       };
     });
 

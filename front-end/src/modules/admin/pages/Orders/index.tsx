@@ -174,6 +174,74 @@ export default function OrdersPage({ isCompact = false, onOrdersChange }: { isCo
         return [JSON.stringify(value)];
     };
 
+    const formatPaymentMethodLabel = (paymentMethod: string | null | undefined, changeFor?: string | null) => {
+        const normalized = String(paymentMethod || "").toUpperCase();
+
+        if (normalized === "CASH") {
+            return changeFor
+                ? `DINHEIRO (TROCO P/ ${formatCurrency(Number(changeFor))})`
+                : "DINHEIRO";
+        }
+
+        if (normalized === "PIX") return "PIX";
+        if (normalized === "DEBIT") return "DEBITO";
+        if (normalized === "CREDIT") return "CREDITO";
+        if (normalized === "CARD") return "CARTAO";
+        if (normalized === "OPEN") return "EM ABERTO";
+
+        return normalized || "NAO INFORMADO";
+    };
+
+    const formatPaymentStatusLabel = (order: any) => {
+        const paymentMethod = String(order?.paymentMethod || "").toUpperCase();
+        const orderMode = order?.address?.type === "PICKUP"
+            ? "PICKUP"
+            : order?.address?.type === "DINE_IN"
+                ? "DINE_IN"
+                : "DELIVERY";
+
+        if (order?.status === "PAID") {
+            return "PAGO";
+        }
+
+        if (paymentMethod === "PIX") {
+            return "AGUARDANDO PIX";
+        }
+
+        if (["CASH", "CARD", "DEBIT", "CREDIT"].includes(paymentMethod)) {
+            if (orderMode === "PICKUP") return "COBRAR NA RETIRADA";
+            if (orderMode === "DINE_IN") return "COBRAR NO LOCAL";
+            return "COBRAR NA ENTREGA";
+        }
+
+        return "PENDENTE";
+    };
+
+    const formatGuidedAssemblyDetails = (value: any) => {
+        if (!Array.isArray(value)) return [];
+
+        return value.map((entry: any) => {
+            const groupName = entry?.groupName || entry?.groupId || entry?.step || "Montagem";
+            const selected = Array.isArray(entry?.selected)
+                ? entry.selected
+                : Array.isArray(entry?.optionIds)
+                    ? entry.optionIds.map((optionId: any) => ({ name: optionId }))
+                    : entry?.selected
+                        ? [entry.selected]
+                        : [];
+
+            const names = selected
+                .map((option: any) => {
+                    if (typeof option === "string") return option;
+                    return option?.name || option?.label || option?.title || option?.id || null;
+                })
+                .filter(Boolean);
+
+            if (names.length === 0) return null;
+            return `${groupName}: ${names.join(", ")}`;
+        }).filter(Boolean);
+    };
+
     useEffect(() => {
         isMutedRef.current = isMuted;
     }, [isMuted]);
@@ -241,6 +309,17 @@ export default function OrdersPage({ isCompact = false, onOrdersChange }: { isCo
         setActiveAlertCount(count);
 
         if (count === 0) {
+            stopRepeatAlerts();
+            stopTitleBlink();
+        }
+    };
+
+    const dismissOrderAlert = (orderId: number) => {
+        alertingOrderIdsRef.current.delete(Number(orderId));
+        const nextCount = alertingOrderIdsRef.current.size;
+        setActiveAlertCount(nextCount);
+
+        if (nextCount === 0) {
             stopRepeatAlerts();
             stopTitleBlink();
         }
@@ -392,7 +471,25 @@ export default function OrdersPage({ isCompact = false, onOrdersChange }: { isCo
     const updateStatus = async (orderId: number, status: string) => {
         try {
             await api.patch(`/orders/${orderId}`, { status });
-            fetchOrders();
+            setOrders((prev) => prev.map((order) => (
+                Number(order.id) === Number(orderId)
+                    ? { ...order, status }
+                    : order
+            )));
+
+            if (onOrdersChange) {
+                onOrdersChange(orders.map((order) => (
+                    Number(order.id) === Number(orderId)
+                        ? { ...order, status }
+                        : order
+                )));
+            }
+
+            if (status !== "PENDING") {
+                dismissOrderAlert(orderId);
+            }
+
+            await fetchOrders();
             return true;
         } catch (error) {
             console.error("Erro ao atualizar status:", error);
@@ -423,23 +520,38 @@ export default function OrdersPage({ isCompact = false, onOrdersChange }: { isCo
 
         const customerLabel = order.customer?.name || order.customerName || "Cliente Ocasional";
         const createdAt = new Date(order.createdAt).toLocaleString();
+        const paymentMethodLabel = formatPaymentMethodLabel(order.paymentMethod, order.changeFor);
+        const paymentStatusLabel = formatPaymentStatusLabel(order);
+        const deliveryModeLabel = order.address?.type === "PICKUP"
+            ? "RETIRADA"
+            : order.address?.type === "DINE_IN"
+                ? "CONSUMO NO LOCAL"
+                : "ENTREGA";
         const addressText = order.address?.type === "PICKUP"
             ? "Retirada em unidade"
             : order.address?.type === "DINE_IN"
                 ? "Consumo no local"
                 : `${order.address?.details?.street || "Nao informado"}, ${order.address?.details?.number || "S/N"} - ${order.address?.details?.neighborhood || "Bairro"}`;
+        const addressLines = order.address?.type === "DELIVERY" || !order.address?.type
+            ? [
+                `${order.address?.details?.street || "Nao informado"}, ${order.address?.details?.number || "S/N"}`,
+                [order.address?.details?.neighborhood, order.address?.details?.city, order.address?.details?.state].filter(Boolean).join(" - "),
+                order.address?.details?.complement ? `Complemento: ${order.address.details.complement}` : null,
+                order.address?.details?.reference ? `Referencia: ${order.address.details.reference}` : null,
+            ].filter(Boolean) as string[]
+            : [addressText];
 
         const itemsRows = (order.items || []).map((item: any) => {
             const addonList = formatItemDetails(item.addons);
             const removalList = formatItemDetails(item.removals);
-            const detailsLine = [
-                item.variation ? `Var: ${item.variation}` : null,
-                addonList.length ? `Add: ${addonList.join(", ")}` : null,
-                removalList.length ? `Remover: ${removalList.join(", ")}` : null,
-                item.observations ? `Obs: ${item.observations}` : null,
-            ]
-                .filter(Boolean)
-                .join(" | ");
+            const guidedAssemblyList = formatGuidedAssemblyDetails(item.guidedAssemblySelections) as string[];
+            const detailsLines = [
+                item.variation ? `<div style="font-size: 11px; margin-top: 3px;"><strong>Tamanho/variacao:</strong> ${item.variation}</div>` : "",
+                ...guidedAssemblyList.map((detail: string) => `<div style="font-size: 11px; margin-top: 2px;"><strong>Montagem:</strong> ${detail}</div>`),
+                ...addonList.map((detail: string) => `<div style="font-size: 11px; margin-top: 2px;"><strong>Adicionar:</strong> ${detail}</div>`),
+                ...removalList.map((detail: string) => `<div style="font-size: 11px; margin-top: 2px;"><strong>Remover:</strong> ${detail}</div>`),
+                item.observations ? `<div style="font-size: 11px; margin-top: 2px;"><strong>Obs item:</strong> ${item.observations}</div>` : "",
+            ].filter(Boolean).join("");
 
             return `
                             <tr>
@@ -448,7 +560,7 @@ export default function OrdersPage({ isCompact = false, onOrdersChange }: { isCo
                                         <span style="font-size: 14px; font-weight: bold; min-width: 25px;">${item.quantity || 0}x</span>
                                         <div style="flex: 1;">
                                             <div style="font-size: 13px; font-weight: bold; text-transform: uppercase;">${item.name || item.product?.name || "Item"}</div>
-                                            ${detailsLine ? `<div style="font-size: 11px; margin-top: 2px;">${detailsLine}</div>` : ""}
+                                            ${detailsLines}
                                         </div>
                                     </div>
                                 </td>
@@ -487,6 +599,8 @@ export default function OrdersPage({ isCompact = false, onOrdersChange }: { isCo
                                 .summary-row { display: flex; justify-content: space-between; margin: 4px 0; }
                                 .total { font-size: 16px; font-weight: 900; border-top: 1px solid #000; padding-top: 4px; margin-top: 4px; }
                                 .badge { background: #000; color: #fff; padding: 2px 8px; font-weight: bold; font-size: 16px; display: inline-block; }
+                                .section-title { font-size: 10px; font-weight: 900; text-transform: uppercase; margin-bottom: 4px; }
+                                .info-box { border: 1px solid #000; padding: 6px; margin-top: 6px; }
                             </style>
                         </head>
                         <body>
@@ -505,17 +619,19 @@ export default function OrdersPage({ isCompact = false, onOrdersChange }: { isCo
                                 </div>
                             ` : ""}
 
-                            <div style="margin-bottom: 4px;"><strong>CLIENTE:</strong> ${customerLabel.toUpperCase()}</div>
-                            ${order.phone ? `<div><strong>FONE:</strong> ${order.phone}</div>` : ""}
-                            <div><strong>PAGTO:</strong> ${
-                                order.paymentMethod === 'CASH' && order.changeFor 
-                                    ? `DINHEIRO (TROCO P/ ${formatCurrency(order.changeFor)})` 
-                                    : (order.paymentMethod || "NÃO INFORMADO").toUpperCase()
-                            }</div>
-                            
-                            <div style="margin-top: 4px;">
-                                <strong>ENTREGA:</strong><br/>
-                                ${addressText.toUpperCase()}
+                            <div class="info-box">
+                                <div class="section-title">Resumo do pedido</div>
+                                <div style="margin-bottom: 4px;"><strong>CLIENTE:</strong> ${customerLabel.toUpperCase()}</div>
+                                ${order.phone ? `<div><strong>FONE:</strong> ${order.phone}</div>` : ""}
+                                <div><strong>STATUS:</strong> ${(order.status || "-").toUpperCase()}</div>
+                                <div><strong>FINANCEIRO:</strong> ${paymentStatusLabel}</div>
+                                <div><strong>PAGTO:</strong> ${paymentMethodLabel}</div>
+                            </div>
+
+                            <div class="info-box">
+                                <div class="section-title">Entrega / retirada</div>
+                                <div><strong>TIPO:</strong> ${deliveryModeLabel}</div>
+                                ${addressLines.map((line: string) => `<div>${String(line).toUpperCase()}</div>`).join("")}
                             </div>
 
                             ${order.notes ? `
@@ -530,7 +646,7 @@ export default function OrdersPage({ isCompact = false, onOrdersChange }: { isCo
                             <table>
                                 <thead>
                                     <tr>
-                                        <th align="left" style="font-size: 10px; padding-bottom: 4px;">ITEM</th>
+                                        <th align="left" style="font-size: 10px; padding-bottom: 4px;">ITENS PARA PRODUÇÃO</th>
                                         <th align="right" style="font-size: 10px; padding-bottom: 4px;">TOTAL</th>
                                     </tr>
                                 </thead>
@@ -586,7 +702,10 @@ export default function OrdersPage({ isCompact = false, onOrdersChange }: { isCo
                             <div class="box">
                                 <div><strong>Cliente:</strong> ${customerLabel}</div>
                                 <div><strong>Telefone:</strong> ${order.phone || "Nao informado"}</div>
-                                <div><strong>Pagamento:</strong> ${order.paymentMethod === 'CASH' && order.changeFor ? `Dinheiro (Troco p/ ${formatCurrency(order.changeFor)})` : (order.paymentMethod || "Nao informado")}</div>
+                                <div><strong>Status:</strong> ${order.status || "-"}</div>
+                                <div><strong>Financeiro:</strong> ${paymentStatusLabel}</div>
+                                <div><strong>Pagamento:</strong> ${paymentMethodLabel}</div>
+                                <div><strong>Tipo:</strong> ${deliveryModeLabel}</div>
                                 <div><strong>Entrega:</strong> ${addressText}</div>
                                 ${order.tableNumber ? `<div style="margin-top: 4px;"><span style="background: #000; color: #fff; padding: 2px 8px; font-weight: bold; border-radius: 4px;">MESA: ${String(order.tableNumber).padStart(2, '0')}</span></div>` : ""}
                                 ${order.notes ? `<div><strong>Obs:</strong> ${order.notes}</div>` : ""}
@@ -913,7 +1032,7 @@ export default function OrdersPage({ isCompact = false, onOrdersChange }: { isCo
                                             <div className={cn("flex items-center justify-center gap-2 rounded-xl border border-slate-50 bg-white shrink-0", isCompact ? "px-1.5 py-1" : "px-2 py-1.5")}>
                                                 <CreditCard size={isCompact ? 8 : 10} className="text-slate-300" />
                                                 <span className={cn("font-black text-slate-600 uppercase", isCompact ? "text-[7px]" : "text-[9px]")}>
-                                                    {order.paymentMethod}
+                                                    {formatPaymentMethodLabel(order.paymentMethod, order.changeFor)}
                                                 </span>
                                             </div>
                                         </div>
