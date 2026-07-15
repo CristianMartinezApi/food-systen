@@ -1,62 +1,105 @@
+name: food-systen
+
 services:
   frontend:
+    env_file:
+      - ../.env
     build:
       context: ../front-end
       dockerfile: Dockerfile
       args:
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-https://foodsystem.app.br/api}
         NEXT_PUBLIC_SOCKET_URL: ${NEXT_PUBLIC_SOCKET_URL:-https://foodsystem.app.br}
+
     restart: unless-stopped
+
     ports:
       - "127.0.0.1:3000:3000"
+
     environment:
       - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-https://foodsystem.app.br/api}
       - NEXT_PUBLIC_SOCKET_URL=${NEXT_PUBLIC_SOCKET_URL:-https://foodsystem.app.br}
+
     depends_on:
       - backend
+
     networks:
       - food-network
 
+
   backend:
+    env_file:
+      - ../.env
+
     build:
       context: ../back-end
       dockerfile: Dockerfile
+
     command: sh -c "npx prisma migrate deploy && npm start"
+
     restart: unless-stopped
+
     ports:
       - "127.0.0.1:8000:8000"
+
     environment:
-      - PORT=8000
+      - PORT=${PORT:-8000}
       - TZ=America/Sao_Paulo
+
       - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+
       - JWT_SECRET=${JWT_SECRET}
+
       - FRONTEND_URL=${FRONTEND_URL:-https://foodsystem.app.br}
+
       - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-https://foodsystem.app.br}
+
       - INITIAL_ADMIN_PASSWORD=${INITIAL_ADMIN_PASSWORD}
+
       - INITIAL_SUPERADMIN_PASSWORD=${INITIAL_SUPERADMIN_PASSWORD}
+
+      - RATE_LIMIT_MAX=${RATE_LIMIT_MAX:-100}
+
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+
     volumes:
       - uploads_data:/app/uploads
+
     depends_on:
       - db
+
     networks:
       - food-network
 
+
   db:
+    env_file:
+      - ../.env
+
     image: postgres:15-alpine
+
     restart: unless-stopped
+
     environment:
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       - POSTGRES_DB=${POSTGRES_DB}
+
     volumes:
       - postgres_data:/var/lib/postgresql/data
+
     networks:
       - food-network
+
 
 networks:
   food-network:
     driver: bridge
 
+
 volumes:
   postgres_data:
+    name: food-systen_postgres_data
+
   uploads_data:
+    name: food-systen_uploads_data
