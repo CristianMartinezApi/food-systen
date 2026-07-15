@@ -134,7 +134,7 @@ export default function TeamSettings() {
                     <span className="font-bold uppercase tracking-widest text-[10px]">Sincronizando equipe...</span>
                 </div>
             ) : team.length === 0 ? (
-                <div className="py-20 text-center border-2 border-dashed border-slate-50 rounded-[2rem]">
+                <div className="py-20 text-center border-2 border-dashed border-slate-50 rounded-2rem">
                     <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
                         <Contact className="text-slate-200" size={32} />
                     </div>
@@ -146,7 +146,7 @@ export default function TeamSettings() {
                         <div 
                             key={member.id} 
                             className={cn(
-                                "p-6 rounded-[2rem] border-2 transition-all flex flex-col justify-between group",
+                                "p-6 rounded-2rem border-2 transition-all flex flex-col justify-between group",
                                 member.isActive ? "border-slate-50 bg-white" : "border-slate-100 bg-slate-50/50 grayscale"
                             )}
                         >
@@ -204,7 +204,7 @@ export default function TeamSettings() {
 
             {/* Modal de Adição (Simples/Moderno) */}
             {showAddModal && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                <div className="fixed inset-0 z-100 flex items-center justify-center p-4">
                     <div 
                         className="absolute inset-0 bg-slate-950/40 backdrop-blur-sm"
                         onClick={() => setShowAddModal(false)}
@@ -291,7 +291,7 @@ export default function TeamSettings() {
                                 <button
                                     type="submit"
                                     disabled={isSubmitting}
-                                    className="flex-[2] h-14 bg-slate-950 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl shadow-slate-900/20 hover:bg-indigo-600 transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center"
+                                    className="flex-2 h-14 bg-slate-950 text-white rounded-2xl font-black text-10px uppercase tracking-widest shadow-xl shadow-slate-900/20 hover:bg-indigo-600 transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center"
                                 >
                                     {isSubmitting ? <Loader2 className="animate-spin" /> : "CRIAR ACESSO AGORA"}
                                 </button>

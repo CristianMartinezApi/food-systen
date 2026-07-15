@@ -100,7 +100,7 @@ export function CategoryModal({ isOpen, onClose, onSave, category }: CategoryMod
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[999] flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-999 flex items-center justify-center p-4">
       <div 
         className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" 
         onClick={onClose}
@@ -240,7 +240,7 @@ export function CategoryModal({ isOpen, onClose, onSave, category }: CategoryMod
             <button 
                 onClick={handleSubmit}
                 disabled={isSaving}
-                className="flex-[2] h-14 bg-primary text-white rounded-2xl font-black flex items-center justify-center gap-3 shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 uppercase tracking-widest text-xs"
+                className="flex-2 h-14 bg-primary text-white rounded-2xl font-black flex items-center justify-center gap-3 shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 uppercase tracking-widest text-xs"
             >
                 {isSaving ? <Loader2 className="animate-spin" /> : <Save size={20} />}
                 {category ? "Salvar Alterações" : "Criar Categoria"}
