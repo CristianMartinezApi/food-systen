@@ -1,7 +1,7 @@
 services:
   frontend:
     build:
-      context: ./front-end
+      context: ../front-end
       dockerfile: Dockerfile
       args:
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-https://foodsystem.app.br/api}
@@ -19,7 +19,7 @@ services:
 
   backend:
     build:
-      context: ./back-end
+      context: ../back-end
       dockerfile: Dockerfile
     command: sh -c "npx prisma migrate deploy && npm start"
     restart: unless-stopped
