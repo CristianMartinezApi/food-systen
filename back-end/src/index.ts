@@ -600,10 +600,10 @@ async function createAudit(req: AuthRequest | any, action: string, subjectType: 
 }
 
 const PRINTABLE_SUBJECT_TYPES = new Set(['order', 'cash_session']);
-// const PRINTER_CONNECTION_TYPES = new Set(['NETWORK', 'USB']);
-// const PRINT_TEMPLATES = new Set(['ORDER_TICKET', 'CASH_CLOSING_REPORT', 'TEST_TICKET']);
-// const PRINT_MODES = new Set(['THERMAL', 'A4']);
-// const ACTIVE_PRINT_JOB_STATUSES = new Set(['PENDING', 'PROCESSING']);
+const PRINTER_CONNECTION_TYPES = new Set(['NETWORK', 'USB']);
+const PRINT_TEMPLATES = new Set(['ORDER_TICKET', 'CASH_CLOSING_REPORT', 'TEST_TICKET']);
+const PRINT_MODES = new Set(['THERMAL', 'A4']);
+const ACTIVE_PRINT_JOB_STATUSES = new Set(['PENDING', 'PROCESSING']);
 
 function normalizePrintTemplate(value: string): string | null {
   const normalized = value.trim().toUpperCase();
@@ -634,8 +634,10 @@ function generatePrinterAgentToken(): string {
 }
 
 async function getPrimaryPrintDevice(restaurantId: number) {
-  // TODO: Configurar impressoras - tabela printDevice não existe ainda
-  return null;
+  return prisma.printDevice.findFirst({
+    where: { restaurantId, isActive: true },
+    orderBy: { createdAt: 'asc' },
+  });
 }
 
 function formatCurrencyForPrint(value: number) {
@@ -953,8 +955,21 @@ async function buildPrintJobPayload(params: {
   template: string | null;
   fallbackPayload?: any;
 }) {
-  // TODO: Configurar impressoras - função suspensa
-  return params.fallbackPayload || {};
+  const { restaurantId, subjectType, subjectId, template, fallbackPayload } = params;
+
+  try {
+    if (subjectId && subjectType === 'order' && template === 'ORDER_TICKET') {
+      return await buildOrderTicketPayload(restaurantId, subjectId);
+    }
+
+    if (subjectId && subjectType === 'cash_session' && template === 'CASH_CLOSING_REPORT') {
+      return await buildCashClosingPayload(restaurantId, subjectId);
+    }
+  } catch (error) {
+    console.error('Error building print job payload, using fallback payload:', error);
+  }
+
+  return fallbackPayload || {};
 }
 
 async function enqueuePrintJob(params: {
@@ -968,13 +983,35 @@ async function enqueuePrintJob(params: {
   payload: any;
   copies?: number;
 }) {
-  // TODO: Configurar impressoras - tabela printJob não existe ainda
-  return { id: 0 };
+  const copies = Number.isInteger(params.copies) && Number(params.copies) > 0 ? Number(params.copies) : 1;
+
+  return prisma.printJob.create({
+    data: {
+      restaurantId: params.restaurantId,
+      printerId: params.printerId ?? null,
+      requestedById: params.requestedById ?? null,
+      subjectType: params.subjectType,
+      subjectId: params.subjectId ?? null,
+      template: (params.template || 'TEST_TICKET') as any,
+      printMode: (params.printMode || 'THERMAL') as any,
+      payload: params.payload,
+      copies,
+    },
+  });
 }
 
 async function getPrintDeviceFromAgentToken(req: express.Request) {
-  // TODO: Configurar impressoras - tabela printDevice não existe ainda
-  return null;
+  const token = String(req.headers['x-printer-token'] || '').trim();
+  if (!token) {
+    return null;
+  }
+
+  return prisma.printDevice.findUnique({
+    where: { agentToken: token },
+    include: {
+      restaurant: { select: { id: true, isActive: true } },
+    },
+  });
 }
 
 // --- SEEDER INICIAL ---
@@ -4644,8 +4681,7 @@ app.get('/api/cashier/operators', authMiddleware, async (req: AuthRequest, res) 
   }
 });
 
-// TODO: Configurar impressoras - rotas suspensas até que tabelas printDevice e printJob sejam criadas
-/*
+
 apiRouter.get('/print/settings', authMiddleware, tenantMiddleware, async (req: AuthRequest & TenantRequest, res) => {
   try {
     const restaurantId = req.restaurant!.id;
@@ -4657,7 +4693,7 @@ apiRouter.get('/print/settings', authMiddleware, tenantMiddleware, async (req: A
       prisma.printJob.count({
         where: {
           restaurantId,
-          status: { in: Array.from(ACTIVE_PRINT_JOB_STATUSES) },
+          status: { in: Array.from(ACTIVE_PRINT_JOB_STATUSES) as any },
         },
       }),
       prisma.printJob.findMany({
@@ -4701,19 +4737,18 @@ apiRouter.get('/print/settings', authMiddleware, tenantMiddleware, async (req: A
     res.status(500).json({ error: 'Erro ao carregar configurações de impressão.' });
   }
 });
-// TODO: Configurar impressoras - rotas suspensas até que tabelas printDevice e printJob sejam criadas
-// apiRouter.put('/print/settings', authMiddleware, tenantMiddleware, async (req: AuthRequest & TenantRequest, res) => {
-//   try {
-//     const restaurantId = req.restaurant!.id;
-//     const name = String(req.body?.name || '').trim();
-//     const connectionType = normalizeConnectionType(String(req.body?.connectionType || ''));
-//     const ipAddress = String(req.body?.ipAddress || '').trim() || null;
-//     const portValue = Number(req.body?.port || 9100);
-//     const paperWidthMm = Number(req.body?.paperWidthMm || 80);
-//     const usbVendorId = String(req.body?.usbVendorId || '').trim() || null;
-//     const usbProductId = String(req.body?.usbProductId || '').trim() || null;
-//     const isActive = Boolean(req.body?.isActive);
-//     const autoPrintOrders = req.body?.autoPrintOrders !== false;
+apiRouter.put('/print/settings', authMiddleware, tenantMiddleware, async (req: AuthRequest & TenantRequest, res) => {
+  try {
+    const restaurantId = req.restaurant!.id;
+    const name = String(req.body?.name || '').trim();
+    const connectionType = normalizeConnectionType(String(req.body?.connectionType || ''));
+    const ipAddress = String(req.body?.ipAddress || '').trim() || null;
+    const portValue = Number(req.body?.port || 9100);
+    const paperWidthMm = Number(req.body?.paperWidthMm || 80);
+    const usbVendorId = String(req.body?.usbVendorId || '').trim() || null;
+    const usbProductId = String(req.body?.usbProductId || '').trim() || null;
+    const isActive = Boolean(req.body?.isActive);
+    const autoPrintOrders = req.body?.autoPrintOrders !== false;
 
     if (!name) {
       return res.status(400).json({ error: 'Nome da impressora é obrigatório.' });
@@ -4749,7 +4784,7 @@ apiRouter.get('/print/settings', authMiddleware, tenantMiddleware, async (req: A
           where: { id: existingDevice.id },
           data: {
             name,
-            connectionType,
+            connectionType: connectionType as any,
             ipAddress: connectionType === 'NETWORK' ? ipAddress : null,
             port: connectionType === 'NETWORK' ? portValue : null,
             usbVendorId: connectionType === 'USB' ? usbVendorId : null,
@@ -4764,7 +4799,7 @@ apiRouter.get('/print/settings', authMiddleware, tenantMiddleware, async (req: A
             restaurantId,
             name,
             agentToken: generatePrinterAgentToken(),
-            connectionType,
+            connectionType: connectionType as any,
             ipAddress: connectionType === 'NETWORK' ? ipAddress : null,
             port: connectionType === 'NETWORK' ? portValue : null,
             usbVendorId: connectionType === 'USB' ? usbVendorId : null,
@@ -4801,81 +4836,78 @@ apiRouter.get('/print/settings', authMiddleware, tenantMiddleware, async (req: A
     res.status(500).json({ error: 'Erro ao salvar configurações de impressão.' });
   }
 });
-// });
 
-// apiRouter.post('/print/settings/test', authMiddleware, tenantMiddleware, async (req: AuthRequest & TenantRequest, res) => {
-//   try {
-//     const restaurantId = req.restaurant!.id;
-//     const device = await getPrimaryPrintDevice(restaurantId);
+apiRouter.post('/print/settings/test', authMiddleware, tenantMiddleware, async (req: AuthRequest & TenantRequest, res) => {
+  try {
+    const restaurantId = req.restaurant!.id;
+    const device = await getPrimaryPrintDevice(restaurantId);
 
-//     if (!device) {
-//       return res.status(400).json({ error: 'Nenhuma impressora ativa configurada para a loja.' });
-//     }
+    if (!device) {
+      return res.status(400).json({ error: 'Nenhuma impressora ativa configurada para a loja.' });
+    }
 
-//     const printJob = await enqueuePrintJob({
-//       restaurantId,
-//       printerId: device.id,
-//       requestedById: req.userId,
-//       subjectType: 'restaurant',
-//       subjectId: restaurantId,
-//       template: 'TEST_TICKET',
-//       printMode: 'THERMAL',
-//       payload: await buildPrintJobPayload({
-//         restaurantId,
-//         subjectType: 'restaurant',
-//         subjectId: restaurantId,
-//         template: 'TEST_TICKET',
-//         fallbackPayload: {
-//           type: 'test_ticket',
-//           title: 'Teste de Impressao 80mm',
-//           storeName: req.restaurant?.name,
-//           printerName: device.name,
-//           generatedAt: new Date().toISOString(),
-//           message: 'Se este cupom saiu corretamente, a integracao local esta pronta.',
-//         },
-//       }),
-//     });
+    const printJob = await enqueuePrintJob({
+      restaurantId,
+      printerId: device.id,
+      requestedById: req.userId,
+      subjectType: 'restaurant',
+      subjectId: restaurantId,
+      template: 'TEST_TICKET',
+      printMode: 'THERMAL',
+      payload: await buildPrintJobPayload({
+        restaurantId,
+        subjectType: 'restaurant',
+        subjectId: restaurantId,
+        template: 'TEST_TICKET',
+        fallbackPayload: {
+          type: 'test_ticket',
+          title: 'Teste de Impressao 80mm',
+          storeName: req.restaurant?.name,
+          printerName: device.name,
+          generatedAt: new Date().toISOString(),
+          message: 'Se este cupom saiu corretamente, a integracao local esta pronta.',
+        },
+      }),
+    });
 
-//     await createAudit(req, 'queue_print_test', 'restaurant', restaurantId, {
-//       printerId: device.id,
-//       printJobId: printJob.id,
-//       template: printJob.template,
-//       printMode: printJob.printMode,
-//     });
+    await createAudit(req, 'queue_print_test', 'restaurant', restaurantId, {
+      printerId: device.id,
+      printJobId: printJob.id,
+      template: printJob.template,
+      printMode: printJob.printMode,
+    });
 
-//     res.status(201).json({
-//       success: true,
-//       printJobId: printJob.id,
-//       printerId: device.id,
-//     });
-//   } catch (error) {
-//     console.error('Error queueing print test:', error);
-//     res.status(500).json({ error: 'Erro ao enfileirar teste de impressão.' });
-//   }
-// });
+    res.status(201).json({
+      success: true,
+      printJobId: printJob.id,
+      printerId: device.id,
+    });
+  } catch (error) {
+    console.error('Error queueing print test:', error);
+    res.status(500).json({ error: 'Erro ao enfileirar teste de impressão.' });
+  }
+});
 
-// apiRouter.get('/print/jobs', authMiddleware, tenantMiddleware, async (req: AuthRequest & TenantRequest, res) => {
-//   try {
-//     const jobs = await prisma.printJob.findMany({
-//       where: { restaurantId: req.restaurant!.id },
-//       orderBy: { createdAt: 'desc' },
-//       take: 20,
-//       include: {
-//         printer: {
-//           select: { id: true, name: true, connectionType: true },
-//         },
-//       },
-//     });
+apiRouter.get('/print/jobs', authMiddleware, tenantMiddleware, async (req: AuthRequest & TenantRequest, res) => {
+  try {
+    const jobs = await prisma.printJob.findMany({
+      where: { restaurantId: req.restaurant!.id },
+      orderBy: { createdAt: 'desc' },
+      take: 20,
+      include: {
+        printer: {
+          select: { id: true, name: true, connectionType: true },
+        },
+      },
+    });
 
-//     res.json(jobs);
-//   } catch (error) {
-//     console.error('Error listing print jobs:', error);
-//     res.status(500).json({ error: 'Erro ao listar fila de impressão.' });
-//   }
-// });
+    res.json(jobs);
+  } catch (error) {
+    console.error('Error listing print jobs:', error);
+    res.status(500).json({ error: 'Erro ao listar fila de impressão.' });
+  }
+});
 
-// TODO: Rotas de agente de impressoras suspensas até que tabelas printDevice e printJob sejam criadas
-/*
 app.get('/api/print/agent/jobs/next', async (req, res) => {
   try {
     const device = await getPrintDeviceFromAgentToken(req);
@@ -5086,10 +5118,7 @@ app.post('/api/print-events', authMiddleware, tenantMiddleware, async (req: Auth
     res.status(500).json({ error: 'Erro ao registrar evento de impressão.' });
   }
 });
-*/
 
-// TODO: Configurar rotas de print-events
-/*
 app.get('/api/print-events/summary', authMiddleware, tenantMiddleware, async (req: AuthRequest & TenantRequest, res) => {
   try {
     const subjectType = String(req.query.subjectType || '').trim();
@@ -5150,7 +5179,7 @@ app.get('/api/print-events/summary', authMiddleware, tenantMiddleware, async (re
     res.status(500).json({ error: 'Erro ao buscar resumo de impressões.' });
   }
 });
-*/
+
 
 app.get('/api/cashier/sessions/:id/report', authMiddleware, async (req: AuthRequest, res) => {
   if (!ensureCashierPermission(req, res, CASHIER_OPERATION_ROLES, 'emitir relatório de caixa')) {

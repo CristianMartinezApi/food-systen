@@ -31,6 +31,7 @@ import { sendToWhatsApp } from "../../../../shared/utils/whatsapp";
 import { SAAS_SUPPORT_PHONE } from "../../../../core/config/support";
 import ChangePassword from "../../components/ChangePassword";
 import PixSettings from "../../components/PixSettings";
+import PrinterSettings from "../../components/PrinterSettings";
 import TeamSettings from "../../components/TeamSettings";
 import { compressImageFileToDataUrl } from "../../../../shared/utils/image";
 import { uploadImageAsset } from "../../../../core/services/assets";
@@ -927,6 +928,9 @@ export default function SettingsPage() {
 
                         {/* Configuração PIX */}
                         <PixSettings />
+
+                        {/* Configuração da Impressora 80mm */}
+                        <PrinterSettings />
                     </div>
                 </div>
             </div>

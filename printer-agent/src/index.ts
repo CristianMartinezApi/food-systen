@@ -201,7 +201,7 @@ function renderOrderTicket(payload: any, width: number) {
       for (const line of wrapText(`Obs item: ${item.observations}`, width - 2)) lines.push(`  ${line}`);
     }
 
-    lines.push(`  Total item: ${formatCurrency(Number(item.totalPrice || 0))}`);
+    lines.push(stripAccents(`  Total item: ${formatCurrency(Number(item.totalPrice || 0))}`));
     lines.push(separator(width));
   }
 

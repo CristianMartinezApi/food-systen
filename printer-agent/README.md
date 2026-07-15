@@ -12,9 +12,7 @@ Agente local para consumir jobs de impressão térmica do Food System.
   - `CASH_CLOSING_REPORT`
   - `TEST_TICKET`
 
-## Uso
-
-### Instalação na máquina da loja
+## Instalação na máquina da loja
 
 1. Entre na pasta do agente.
 
@@ -55,16 +53,46 @@ npm run build
 npm start
 ```
 
-### Se a impressora for USB
+## Rodando como Serviço do Windows (recomendado para lojas)
 
-1. Rode o diagnóstico de USB.
+Deixar um terminal aberto o tempo todo não é uma opção realista numa loja — se alguém fechar a janela ou reiniciar o PC, a impressão para. Para isso, o agente pode ser instalado como um **Serviço do Windows**: roda em segundo plano, sem janela nem ícone visível, e inicia sozinho toda vez que o computador liga.
+
+### Instalação (mais fácil — duplo clique)
+
+1. Complete os passos 1 a 4 da seção acima (instale dependências e preencha o `.env`).
+2. Dê duplo clique em **`instalar-servico.bat`**.
+3. O Windows vai pedir permissão de Administrador (UAC) — clique em **Sim**.
+4. O script instala as dependências, compila e registra o serviço automaticamente.
+
+Pronto. O serviço `FoodSystemPrinterAgent` já está rodando e vai iniciar sozinho em todo boot do Windows. Não é preciso deixar nada aberto.
+
+### Instalação (via terminal, para quem preferir)
 
 ```bash
-npm run list-usb
+npm install
+npm run build
+npm run install-service
 ```
 
-2. Pegue o `vendor` e o `product` do dispositivo correto.
-3. Preencha `Vendor ID` e `Product ID` no painel de configuração da impressora 80mm.
+> Precisa rodar o PowerShell/CMD **como Administrador** para instalar o serviço.
+
+### Verificando se o serviço está rodando
+
+Abra o **Gerenciador de Tarefas** → aba **Serviços**, ou rode no PowerShell:
+
+```powershell
+Get-Service FoodSystemPrinterAgent
+```
+
+Os logs do serviço ficam na pasta `daemon/` dentro de `printer-agent` (arquivos `.log` gerados pelo `node-windows`).
+
+### Removendo o serviço
+
+Dê duplo clique em **`desinstalar-servico.bat`**, ou rode:
+
+```bash
+npm run uninstall-service
+```
 
 ### Se quiser homologar sem impressora
 
