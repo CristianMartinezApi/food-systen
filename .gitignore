@@ -41,12 +41,7 @@ backups/
 *.sql
 *.dump
 
-# VS Code
-.vscode/*
-!.vscode/extensions.json
-!.vscode/settings.json
-
-# Editors
+# VS Code / Editors
 .vscode/*
 !.vscode/extensions.json
 !.vscode/settings.json
