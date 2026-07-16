@@ -1740,7 +1740,7 @@ export default function CashierPage({
                                                     <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-emerald-600/60">Nenhuma venda registrada nesta sessão ainda.</p>
                                                 </div>
                                             ) : (
-                                                <div className={cn("grid grid-cols-1 gap-2 overflow-auto pr-2 custom-scrollbar", isSidebar ? "max-h-[300px]" : "max-h-[400px]")}>
+                                                <div className={cn("grid grid-cols-1 gap-2 overflow-auto pr-2 custom-scrollbar", isSidebar ? "max-h-75" : "max-h-100")}>
                                                     {orders.map((order) => (
                                                         <div key={order.id} className={cn("rounded-xl border border-slate-100 bg-white hover:border-emerald-200 transition-colors shadow-sm", isSidebar ? "p-2" : "p-3")}>
                                                             <div className="flex items-center justify-between gap-3">
@@ -2115,7 +2115,7 @@ export default function CashierPage({
 
             {/* Modal informativo: pedidos anteriores incluídos automaticamente */}
             {preOpeningModalOpen && (
-                <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-950/60 backdrop-blur-sm p-4">
+                <div className="fixed inset-0 z-200 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm p-4">
                     <div className="w-full max-w-md rounded-3xl bg-white shadow-2xl p-6 space-y-5">
 
                         <div className="flex items-start gap-4">
@@ -2168,7 +2168,7 @@ export default function CashierPage({
 
             {/* Modal de Pagamento Unificado */}
             {paymentModalOrder && (
-                <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-in fade-in duration-200">
+                <div className="fixed inset-0 z-300 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-in fade-in duration-200">
                     <div className="relative w-full max-w-md bg-white rounded-[2.5rem] shadow-2xl overflow-hidden border border-slate-100 flex flex-col animate-in zoom-in-95 duration-200">
                         <div className="p-8 pb-4 flex items-center justify-between">
                             <div>

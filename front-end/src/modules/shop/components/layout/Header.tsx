@@ -121,7 +121,7 @@ export function Header({ onOpenMenu, settings, searchTerm, onSearchChange }: Hea
                     <span className="text-white">{storeNameMain}</span>
                     {storeNameAccent ? <span className="text-primary ml-1">{storeNameAccent}</span> : null}
                   </h1>
-                  <p className="flex md:hidden text-[8px] font-body font-bold text-slate-300 tracking-wide mt-1 items-center gap-1.5 max-w-[160px] truncate">
+                  <p className="flex md:hidden text-[8px] font-body font-bold text-slate-300 tracking-wide mt-1 items-center gap-1.5 max-w-40 truncate">
                     <span className={cn("w-1.5 h-1.5 rounded-full shadow-[0_0_8px_rgba(0,0,0,0.5)]", settings?.isOpen ? "bg-emerald-500 animate-pulse" : "bg-rose-500")} />
                     {mobileStatusLabel}
                   </p>
