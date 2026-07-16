@@ -53,7 +53,9 @@ export function Header({ onOpenMenu, settings, searchTerm, onSearchChange }: Hea
   const storeNameAccent = storeNameParts.length > 1
     ? storeNameParts[storeNameParts.length - 1]
     : "";
-  const nextOpeningLabel = getNextOpeningLabel(settings?.operatingHours);
+  const nextOpeningLabel = hasHydrated
+    ? getNextOpeningLabel(settings?.operatingHours)
+    : "Sem próximos horários";
   const closedStatusLabel = nextOpeningLabel === "Sem próximos horários"
     ? "Fechada · Sem próximo horário"
     : `Fechada agora · Abre ${nextOpeningLabel}`;
@@ -172,7 +174,7 @@ export function Header({ onOpenMenu, settings, searchTerm, onSearchChange }: Hea
         </div>
       </header>
 
-      {typeof document !== "undefined" ? createPortal(cartButton, document.body) : null}
+      {hasHydrated ? createPortal(cartButton, document.body) : null}
 
       <CartSidebar isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />
       <AddressModal isOpen={isAddressModalOpen} onClose={() => setIsAddressModalOpen(false)} />

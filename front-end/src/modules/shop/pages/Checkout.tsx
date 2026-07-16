@@ -137,7 +137,12 @@ export default function Checkout() {
   const minOrderValue = settings?.minOrderValue || 0;
   const isPixAvailable = Boolean(settings?.pixEnabled);
   const isBelowMinimum = subtotal < minOrderValue;
-  const isOpenNow = isRestaurantOpenNow(settings?.operatingHours);
+  const isOpenNow = hasHydrated
+    ? isRestaurantOpenNow(settings?.operatingHours)
+    : Boolean(settings?.isOpen);
+  const nextOpeningLabel = hasHydrated
+    ? getNextOpeningLabel(settings?.operatingHours)
+    : "Sem próximos horários";
   const estimatedDeliveryMinutes = settings?.deliveryEtaMinutes || 35;
   const maxPlausibleChangeFor = Math.ceil(total) + CHANGE_MAX_EXTRA;
   const nextValidChangeNote = (() => {
@@ -444,9 +449,9 @@ export default function Checkout() {
     if (!isOpenNow) {
       toast.error(
         `Loja fechada no momento. ${
-          getNextOpeningLabel(settings?.operatingHours) === "Sem próximos horários"
+          nextOpeningLabel === "Sem próximos horários"
             ? "Sem previsão de abertura."
-            : `Abre ${getNextOpeningLabel(settings?.operatingHours)}.`
+            : `Abre ${nextOpeningLabel}.`
         }`
       );
       return;
@@ -647,9 +652,9 @@ export default function Checkout() {
           <div className="checkout-summary mb-10 rounded-xl md:rounded-2xl border border-rose-100 bg-rose-50/70 p-5 text-rose-700">
             <p className="text-label font-body font-bold">Loja fechada no momento</p>
             <p className="text-[11px] font-body font-medium mt-1">
-              {getNextOpeningLabel(settings?.operatingHours) === "Sem próximos horários"
+              {nextOpeningLabel === "Sem próximos horários"
                 ? "Sem horário de abertura disponível."
-                : `Abre ${getNextOpeningLabel(settings?.operatingHours)}`}
+                : `Abre ${nextOpeningLabel}`}
             </p>
           </div>
         )}
