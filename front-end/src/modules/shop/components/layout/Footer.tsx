@@ -17,6 +17,7 @@ import { cn } from "../../../../shared/utils";
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import { getNextOpeningLabel, getOperatingHoursSummary } from "../../../../shared/utils/schedule";
+import { useHasHydrated } from "../../../../core/hooks/useHasHydrated";
 
 type SocialLink = {
   label: string;
@@ -74,8 +75,15 @@ function buildStoreMapUrl(settings?: any) {
 export function Footer({ settings }: FooterProps) {
   const currentYear = new Date().getFullYear();
   const [slug, setSlug] = useState<string>("");
+  const hasHydrated = useHasHydrated();
   const contactSocial = settings?.contact?.social;
   const storeMapUrl = buildStoreMapUrl(settings);
+  const operatingHoursSummary = hasHydrated
+    ? getOperatingHoursSummary(settings?.operatingHours)
+    : "Carregando horário";
+  const nextOpeningLabel = hasHydrated
+    ? getNextOpeningLabel(settings?.operatingHours)
+    : "Sem próximos horários";
 
   const socialLinks: SocialLink[] = [
     {
@@ -225,7 +233,7 @@ export function Footer({ settings }: FooterProps) {
                 </div>
                 <div className="space-y-1 min-w-0">
                   <p className="text-[9px] md:text-[10px] font-black text-slate-500 uppercase tracking-widest leading-none">Aberto das</p>
-                  <p className="text-base md:text-lg font-black text-white uppercase tracking-tighter truncate">{getOperatingHoursSummary(settings?.operatingHours)}</p>
+                  <p className="text-base md:text-lg font-black text-white uppercase tracking-tighter truncate">{operatingHoursSummary}</p>
                 </div>
               </div>
               <div className="pt-3 md:pt-6 border-t border-white/5 flex items-center gap-2 md:gap-3">
@@ -233,9 +241,9 @@ export function Footer({ settings }: FooterProps) {
                 <span className={cn("text-[9px] md:text-[10px] font-black uppercase tracking-[0.15em] md:tracking-[0.2em] truncate", settings?.isOpen ? "text-emerald-500" : "text-rose-500")}>
                   {settings?.isOpen
                     ? "Estamos abertos"
-                    : getNextOpeningLabel(settings?.operatingHours) === "Sem próximos horários"
+                    : nextOpeningLabel === "Sem próximos horários"
                       ? "Fechados · Sem horário disponível"
-                      : `Fechados · Abre ${getNextOpeningLabel(settings?.operatingHours)}`}
+                      : `Fechados · Abre ${nextOpeningLabel}`}
                 </span>
               </div>
             </div>

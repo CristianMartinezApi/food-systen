@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { X, Home, ShoppingBag, Utensils, Phone, MapPin, Clock, Star, Compass, History } from "lucide-react";
 import { getNextOpeningLabel, getOperatingHoursSummary } from "../../../../shared/utils/schedule";
 import { useLocationStore } from "../../../../core/stores/useLocationStore";
+import { useHasHydrated } from "../../../../core/hooks/useHasHydrated";
 import { AddressModal } from "../modals/AddressModal";
 import { useEffect, useState } from "react";
 import { cn } from "../../../../shared/utils";
@@ -20,12 +21,18 @@ interface NavSidebarProps {
 }
 
 export function NavSidebar({ isOpen, onClose, categories, settings, activeCategory, onCategorySelect }: NavSidebarProps) {
+  const hasHydrated = useHasHydrated();
   const { address } = useLocationStore() as any;
   const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
   const [slug, setSlug] = useState<string>("");
   const storeName = settings?.storeName || "Food System";
   const storeDesignation = storeName.toUpperCase();
-  const nextOpeningLabel = getNextOpeningLabel(settings?.operatingHours);
+  const nextOpeningLabel = hasHydrated
+    ? getNextOpeningLabel(settings?.operatingHours)
+    : "Sem próximos horários";
+  const operatingHoursSummary = hasHydrated
+    ? getOperatingHoursSummary(settings?.operatingHours)
+    : "Carregando horário";
   const statusTone = settings?.isOpen ? 'text-emerald-500' : 'text-rose-500';
   const statusDot = settings?.isOpen ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]' : 'bg-rose-500';
   const statusTitle = settings?.isOpen ? 'LOJA ABERTA' : 'LOJA FECHADA';
@@ -124,7 +131,7 @@ export function NavSidebar({ isOpen, onClose, categories, settings, activeCatego
                 </button>
 
                 <p className="pl-12 md:pl-13 text-[9px] md:text-[10px] font-medium text-slate-300 uppercase tracking-[0.18em] leading-relaxed">
-                  {getOperatingHoursSummary(settings?.operatingHours)}
+                  {operatingHoursSummary}
                 </p>
               </div>
             </div>
