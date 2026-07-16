@@ -91,7 +91,7 @@ export function NavSidebar({ isOpen, onClose, categories, settings, activeCatego
 
                   <div className="min-w-0">
                     <p className="text-[9px] md:text-[10px] font-black text-slate-300 uppercase tracking-[0.22em] mb-1">Restaurante</p>
-                    <h2 className="text-heading-3 md:text-heading-1 font-display font-bold text-white tracking-tighter uppercase leading-none truncate">
+                    <h2 className="notranslate text-heading-3 md:text-heading-1 font-display font-bold text-white tracking-tighter uppercase leading-none truncate" translate="no">
                       {storeDesignation}
                     </h2>
                     <div className={cn("mt-3 flex items-start gap-2", statusTone)}>

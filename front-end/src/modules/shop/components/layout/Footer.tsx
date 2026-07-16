@@ -124,7 +124,7 @@ export function Footer({ settings }: FooterProps) {
                 <Utensils className="text-primary size-5 md:size-8" />
               </div>
               <div className="min-w-0">
-                <h3 className="text-heading-3 md:text-heading-2 font-display font-bold text-white tracking-tight leading-none uppercase truncate">
+                <h3 className="notranslate text-heading-3 md:text-heading-2 font-display font-bold text-white tracking-tight leading-none uppercase truncate" translate="no">
                   {settings?.storeName?.split(' ')[0] || "FOOD"}<span className="text-primary">{settings?.storeName?.split(' ')[1] || "SYSTEM"}</span>
                 </h3>
                 <p className="text-[10px] md:text-label font-body font-medium text-slate-500 uppercase tracking-[0.2em] md:tracking-[0.3em] mt-1 md:mt-2">ALTA GASTRONOMIA</p>
@@ -252,7 +252,7 @@ export function Footer({ settings }: FooterProps) {
 
         {/* Bottom Bar */}
         <div className="pt-5 md:pt-12 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-3 md:gap-8">
-          <p className="text-[8px] md:text-[10px] font-black text-slate-600 uppercase tracking-[0.4em] md:tracking-[0.5em] text-center md:text-left">
+          <p className="notranslate text-[8px] md:text-[10px] font-black text-slate-600 uppercase tracking-[0.4em] md:tracking-[0.5em] text-center md:text-left" translate="no">
             © {currentYear} {settings?.storeName || 'FOOD SYSTEM'}. TODOS OS DIREITOS RESERVADOS.
           </p>
           <p className="text-[8px] md:text-[11px] text-slate-500 text-center">
