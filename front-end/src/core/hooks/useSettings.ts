@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react';
+﻿import { useState, useEffect, useRef } from 'react';
 import { api } from '../config/api';
 import { socket } from '../config/socket';
 import { getTenantSlug } from '../../shared/utils/tenant';
@@ -64,12 +64,40 @@ function getUserRoleFromStorage() {
   }
 }
 
+function createSettingsSignature(data: any) {
+  if (!data) return '';
+
+  try {
+    return JSON.stringify(data);
+  } catch {
+    return '';
+  }
+}
+
 export function useSettings() {
   const [settings, setSettings] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<boolean>(false);
   const [slug, setSlug] = useState<string>('');
   const [isSuperAdmin, setIsSuperAdmin] = useState<boolean>(false);
+  const lastSettingsSignatureRef = useRef<string>('');
+
+  const applySettings = (incoming: any) => {
+    const normalized = normalizeSettingsPayload(incoming);
+    const nextSignature = createSettingsSignature(normalized);
+
+    if (nextSignature && nextSignature === lastSettingsSignatureRef.current) {
+      return;
+    }
+
+    lastSettingsSignatureRef.current = nextSignature;
+    setSettings(normalized);
+
+    if (normalized?.primaryColor) {
+      document.documentElement.style.setProperty('--color-primary', normalized.primaryColor);
+      document.documentElement.style.setProperty('--color-primary-foreground', '#ffffff');
+    }
+  };
 
   useEffect(() => {
     setSlug(getTenantSlug());
@@ -86,11 +114,7 @@ export function useSettings() {
       const cached = settingsCache.get(slug);
       if (cached && (Date.now() - cached.loadedAt) < SETTINGS_CACHE_TTL_MS) {
         setError(false);
-        setSettings(cached.data);
-        if (cached.data?.primaryColor) {
-          document.documentElement.style.setProperty('--color-primary', cached.data.primaryColor);
-          document.documentElement.style.setProperty('--color-primary-foreground', '#ffffff');
-        }
+        applySettings(cached.data);
         setIsLoading(false);
         return;
       }
@@ -104,11 +128,7 @@ export function useSettings() {
         return;
       }
 
-      setSettings(data);
-      if (data.primaryColor) {
-        document.documentElement.style.setProperty('--color-primary', data.primaryColor);
-        document.documentElement.style.setProperty('--color-primary-foreground', '#ffffff');
-      }
+      applySettings(data);
     } catch (error) {
       console.error('Falha ao buscar configurações:', error);
       setError(true);
@@ -132,10 +152,7 @@ export function useSettings() {
         data: normalizedSettings,
         loadedAt: Date.now(),
       });
-      setSettings(normalizedSettings);
-      if (normalizedSettings.primaryColor) {
-        document.documentElement.style.setProperty('--color-primary', normalizedSettings.primaryColor);
-      }
+      applySettings(normalizedSettings);
     });
 
     return () => {
@@ -151,11 +168,7 @@ export function useSettings() {
         const data = await fetchSettingsSnapshot(slug);
         if (!data) return;
 
-        setSettings(data);
-        if (data.primaryColor) {
-          document.documentElement.style.setProperty('--color-primary', data.primaryColor);
-          document.documentElement.style.setProperty('--color-primary-foreground', '#ffffff');
-        }
+        applySettings(data);
       } catch {
         // Mantém último snapshot válido em caso de falha transitória.
       }
@@ -167,7 +180,7 @@ export function useSettings() {
   const updateSettings = async (newSettings: any) => {
     try {
       const updated = await api.patch('/settings', newSettings);
-      setSettings(updated);
+      applySettings(updated);
       return updated;
     } catch (error) {
       console.error('Falha ao atualizar configurações:', error);

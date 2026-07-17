@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { api } from "../../../core/config/api";
-import { Zap, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
+import { Zap, CheckCircle2, AlertCircle, Loader2, Eye, EyeOff } from "lucide-react";
 import { cn } from "../../../shared/utils";
 import toast from "react-hot-toast";
 
@@ -16,11 +16,26 @@ export default function PixSettings() {
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
     const [isPixApiAvailable, setIsPixApiAvailable] = useState(true);
+    const [showStatusPixKey, setShowStatusPixKey] = useState(false);
+    const [showInputPixKey, setShowInputPixKey] = useState(true);
 
     const [form, setForm] = useState({
         pixKey: "",
         pixEnabled: false,
     });
+    const [initialForm, setInitialForm] = useState({
+        pixKey: "",
+        pixEnabled: false,
+    });
+
+    const normalizePixKey = (value: string) => value.trim();
+
+    const maskPixKey = (value?: string | null) => {
+        const source = String(value || "").trim();
+        if (!source) return "";
+        if (source.length <= 6) return "*".repeat(source.length);
+        return `${source.slice(0, 3)}${"*".repeat(Math.max(4, source.length - 6))}${source.slice(-3)}`;
+    };
 
     useEffect(() => {
         api
@@ -28,7 +43,11 @@ export default function PixSettings() {
             .then((res) => {
                 setStatus(res);
                 setForm({
-                    pixKey: res.pixKey || "",
+                    pixKey: "",
+                    pixEnabled: res.pixEnabled || false,
+                });
+                setInitialForm({
+                    pixKey: "",
                     pixEnabled: res.pixEnabled || false,
                 });
                 setIsPixApiAvailable(true);
@@ -41,6 +60,7 @@ export default function PixSettings() {
                     setIsPixApiAvailable(false);
                     setStatus({ pixEnabled: false, pixKey: null });
                     setForm({ pixKey: "", pixEnabled: false });
+                    setInitialForm({ pixKey: "", pixEnabled: false });
                     return;
                 }
 
@@ -59,16 +79,22 @@ export default function PixSettings() {
             toast.error("Informe sua chave PIX quando ativado");
             return;
         }
+
         setIsSaving(true);
         try {
             await api.put("/pix/settings", {
                 pixKey: form.pixKey.trim(),
                 pixEnabled: form.pixEnabled,
             });
-            setStatus({
+            const next = {
+                pixKey: form.pixKey.trim(),
                 pixEnabled: form.pixEnabled,
-                pixKey: form.pixKey,
+            };
+            setStatus({
+                pixEnabled: next.pixEnabled,
+                pixKey: next.pixKey,
             });
+            setInitialForm(next);
             toast.success("Configurações PIX salvas com sucesso!");
         } catch (err: any) {
             toast.error(err.message || "Erro ao salvar");
@@ -86,9 +112,10 @@ export default function PixSettings() {
     }
 
     const isConfigured = status?.pixEnabled && status?.pixKey;
+    const isDirty = normalizePixKey(form.pixKey) !== normalizePixKey(initialForm.pixKey) || form.pixEnabled !== initialForm.pixEnabled;
 
     return (
-        <section className="bg-white rounded-[2.5rem] border border-slate-100 p-8 md:p-10 shadow-sm">
+        <section className="settings-panel settings-panel--pix bg-white rounded-[2.5rem] border border-slate-100 p-8 md:p-10 shadow-sm">
             {/* Header */}
             <div className="flex items-center gap-4 mb-8">
                 <div className="w-12 h-12 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center shrink-0">
@@ -119,11 +146,19 @@ export default function PixSettings() {
             {isConfigured && (
                 <div className="mb-8 bg-emerald-50 border border-emerald-100 rounded-2xl p-4 text-sm text-emerald-700">
                     <p>
-                        <span className="font-bold">Chave PIX ativa:</span> {status?.pixKey}
+                        <span className="font-bold">Chave PIX ativa:</span> {showStatusPixKey ? status?.pixKey : maskPixKey(status?.pixKey)}
                     </p>
                     <p className="text-xs text-emerald-600 mt-1">
                         Clientes podem pagar seus pedidos escaneando um QR Code gerado automaticamente.
                     </p>
+                    <button
+                        type="button"
+                        onClick={() => setShowStatusPixKey((prev) => !prev)}
+                        className="mt-3 inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-emerald-700"
+                    >
+                        {showStatusPixKey ? <EyeOff size={13} /> : <Eye size={13} />}
+                        {showStatusPixKey ? "Ocultar chave" : "Mostrar chave"}
+                    </button>
                 </div>
             )}
 
@@ -147,6 +182,21 @@ export default function PixSettings() {
 
             {/* Formulário */}
             <div className="space-y-5">
+                <div className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 md:flex-row md:items-center md:justify-between">
+                    <p className="text-xs text-slate-600 leading-relaxed">
+                        <strong>Dica:</strong> confira a chave antes de salvar. As alteracoes ficam pendentes ate clicar em salvar.
+                    </p>
+                    {isDirty && (
+                        <button
+                            type="button"
+                            onClick={() => setForm({ ...initialForm })}
+                            className="h-11 rounded-xl px-4 text-xs font-bold uppercase tracking-widest transition-all inline-flex items-center justify-center gap-2 bg-white text-slate-700 border border-slate-300 hover:bg-slate-100"
+                        >
+                            Descartar alteracoes
+                        </button>
+                    )}
+                </div>
+
                 {/* Toggle PIX */}
                 <div className="flex items-center justify-between bg-slate-50 rounded-2xl px-5 py-4 border border-slate-100">
                     <div>
@@ -156,6 +206,7 @@ export default function PixSettings() {
                         </p>
                     </div>
                     <button
+                        type="button"
                         onClick={() => setForm((f) => ({ ...f, pixEnabled: !f.pixEnabled }))}
                         className={cn(
                             "w-12 h-6 rounded-full transition-all duration-300 relative shrink-0",
@@ -177,13 +228,24 @@ export default function PixSettings() {
                         <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">
                             Sua Chave PIX *
                         </label>
-                        <input
-                            type="text"
-                            value={form.pixKey}
-                            onChange={(e) => setForm((f) => ({ ...f, pixKey: e.target.value }))}
-                            placeholder="CPF, CNPJ, e-mail, celular ou chave aleatória"
-                            className="w-full h-12 px-4 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/30 transition-all"
-                        />
+                        <div className="relative">
+                            <input
+                                type={showInputPixKey ? "text" : "password"}
+                                value={form.pixKey}
+                                onChange={(e) => setForm((f) => ({ ...f, pixKey: e.target.value }))}
+                                placeholder="CPF, CNPJ, e-mail, celular ou chave aleatoria"
+                                className="w-full h-12 pl-4 pr-11 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/30 transition-all"
+                            />
+                            <button
+                                type="button"
+                                onClick={() => setShowInputPixKey((prev) => !prev)}
+                                className="absolute inset-y-0 right-0 inline-flex w-10 items-center justify-center text-slate-500 hover:text-slate-700"
+                                aria-label={showInputPixKey ? "Ocultar chave PIX" : "Mostrar chave PIX"}
+                                title={showInputPixKey ? "Ocultar chave" : "Mostrar chave"}
+                            >
+                                {showInputPixKey ? <EyeOff size={16} /> : <Eye size={16} />}
+                            </button>
+                        </div>
                         <p className="text-xs text-slate-400">
                             Informe uma das suas chaves PIX. Pagamentos serão recebidos nesta chave.
                         </p>
@@ -193,7 +255,7 @@ export default function PixSettings() {
                 {/* Salvar */}
                 <button
                     onClick={handleSave}
-                    disabled={isSaving || !isPixApiAvailable}
+                    disabled={isSaving || !isPixApiAvailable || !isDirty}
                     className="w-full h-12 bg-slate-950 text-white rounded-xl font-bold text-sm uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-black transition-all disabled:opacity-50"
                 >
                     {isSaving ? (

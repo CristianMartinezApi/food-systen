@@ -122,7 +122,7 @@ export default function ChangePassword() {
 
   if (!showForm) {
     return (
-      <div className="rounded-3xl bg-linear-to-br from-slate-50 to-slate-100 border border-slate-200 p-6 md:p-8">
+      <div className="settings-panel settings-panel--security rounded-3xl bg-linear-to-br from-slate-50 to-slate-100 border border-slate-200 p-6 md:p-8">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center">
@@ -149,7 +149,7 @@ export default function ChangePassword() {
   const allRequirementsMet = passwordRequirements.every((req) => req.met);
 
   return (
-    <div className="rounded-3xl bg-white border border-slate-200 p-6 md:p-8 shadow-sm">
+    <div className="settings-panel settings-panel--security rounded-3xl bg-white border border-slate-200 p-6 md:p-8 shadow-sm">
       <div className="flex items-center justify-between mb-6">
         <div>
           <h3 className="font-black text-slate-900 uppercase tracking-tight text-lg">Alterar Senha</h3>

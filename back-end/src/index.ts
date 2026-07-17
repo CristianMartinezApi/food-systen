@@ -247,6 +247,7 @@ const CASH_COUNTED_ORDER_STATUSES: OrderStatus[] = ['OPEN', 'CONFIRMED', 'PREPAR
 const HIGHLIGHTED_ORDER_STATUSES: OrderStatus[] = ['DELIVERED', 'PAID', 'RETIRED' as OrderStatus];
 const CASHIER_OPERATION_ROLES = new Set(['SUPER_ADMIN', 'OWNER', 'MANAGER', 'CASHIER', 'EMPLOYEE']);
 const CASHIER_OPEN_CLOSE_ROLES = new Set(['SUPER_ADMIN', 'OWNER', 'MANAGER', 'CASHIER']);
+const SENSITIVE_SETTINGS_ROLES = new Set(['SUPER_ADMIN', 'OWNER', 'MANAGER']);
 
 const publicStoreCache = new Map<string, { expiresAt: number; payload: unknown }>();
 
@@ -378,6 +379,19 @@ function ensureCashierPermission(
   console.log(`[PermissionCheck] User: ${req.userId}, Role: ${req.userRole}, Action: ${actionLabel}, Allowed: ${Array.from(allowedRoles).join(',')}`);
   if (!req.userRole || !allowedRoles.has(req.userRole)) {
     console.error(`[PermissionCheck] Denied: ${req.userRole} lacks permission for ${actionLabel}`);
+    res.status(403).json({ error: `Sem permissão para ${actionLabel}.` });
+    return false;
+  }
+
+  return true;
+}
+
+function ensureSensitiveSettingsPermission(
+  req: AuthRequest,
+  res: express.Response,
+  actionLabel: string
+): boolean {
+  if (!req.userRole || !SENSITIVE_SETTINGS_ROLES.has(req.userRole)) {
     res.status(403).json({ error: `Sem permissão para ${actionLabel}.` });
     return false;
   }
@@ -4763,6 +4777,10 @@ apiRouter.get('/print/settings', authMiddleware, tenantMiddleware, async (req: A
   }
 });
 apiRouter.put('/print/settings', authMiddleware, tenantMiddleware, async (req: AuthRequest & TenantRequest, res) => {
+  if (!ensureSensitiveSettingsPermission(req, res, 'alterar configurações de impressão')) {
+    return;
+  }
+
   try {
     const restaurantId = req.restaurant!.id;
     const name = String(req.body?.name || '').trim();
@@ -4869,6 +4887,10 @@ apiRouter.put('/print/settings', authMiddleware, tenantMiddleware, async (req: A
 });
 
 apiRouter.post('/print/settings/test', authMiddleware, tenantMiddleware, async (req: AuthRequest & TenantRequest, res) => {
+  if (!ensureSensitiveSettingsPermission(req, res, 'executar teste de impressão')) {
+    return;
+  }
+
   try {
     const restaurantId = req.restaurant!.id;
     const device = await getPrimaryPrintDevice(restaurantId);
@@ -5673,6 +5695,10 @@ httpServer.listen(PORT, '0.0.0.0', () => {
 
 // Salvar chave PIX do lojista (fluxo manual, sem webhook)
 apiRouter.put('/pix/settings', authMiddleware, tenantMiddleware, async (req: AuthRequest & TenantRequest, res) => {
+  if (!ensureSensitiveSettingsPermission(req, res, 'alterar configurações PIX')) {
+    return;
+  }
+
   try {
     const { pixKey, pixEnabled } = req.body;
 
@@ -5702,6 +5728,11 @@ apiRouter.put('/pix/settings', authMiddleware, tenantMiddleware, async (req: Aut
         pixKey: pixEnabled ? (pixKey ?? null) : null,
         pixInstructions: pixEnabled && pixKey ? `Escaneie o QR code ou use a chave: ${pixKey}` : null,
       },
+    });
+
+    await createAudit(req, 'update_pix_settings', 'restaurant', req.restaurant!.id, {
+      pixEnabled: Boolean(pixEnabled),
+      hasPixKey: Boolean(pixKey),
     });
 
     res.json({ ok: true });

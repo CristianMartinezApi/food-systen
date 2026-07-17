@@ -121,7 +121,7 @@
         transparent 34%
       ),
       linear-gradient(180deg, #f8fafc 0%, #eef2f7 44%, #e9eef5 100%);
-    background-attachment: fixed;
+    background-attachment: scroll;
   }
 }
 
@@ -156,9 +156,9 @@
         rgba(14, 165, 233, 0.1),
         transparent 28%
       );
-    backdrop-filter: blur(28px) saturate(150%);
+    backdrop-filter: blur(14px) saturate(130%);
     box-shadow:
-      0 28px 80px rgba(15, 23, 42, 0.1),
+      0 16px 42px rgba(15, 23, 42, 0.08),
       inset 0 1px 0 rgba(255, 255, 255, 0.75);
   }
 
@@ -182,9 +182,8 @@
         rgba(255, 255, 255, 0.35),
         transparent 48%
       );
-    filter: blur(56px);
+    filter: blur(32px);
     opacity: 0.95;
-    background-attachment: fixed;
     pointer-events: none;
   }
 
@@ -208,5 +207,46 @@
   .system-hero-band > * {
     position: relative;
     z-index: 1;
+  }
+
+  .settings-workspace {
+    position: relative;
+    padding: 0.75rem;
+    border-radius: 1.5rem;
+    background: linear-gradient(
+      180deg,
+      rgba(241, 245, 249, 0.9) 0%,
+      rgba(236, 240, 245, 0.85) 100%
+    );
+    border: 1px solid rgba(226, 232, 240, 0.9);
+  }
+
+  .settings-workspace .settings-hero {
+    border-radius: 1.5rem;
+  }
+
+  .settings-workspace .settings-panel {
+    border-radius: 1.25rem;
+  }
+
+  .settings-panel {
+    position: relative;
+    overflow: visible;
+    border-color: rgba(203, 213, 225, 0.95);
+    box-shadow:
+      0 8px 18px rgba(15, 23, 42, 0.06),
+      inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  }
+
+  @media (max-width: 768px) {
+    .settings-workspace {
+      padding: 0.45rem;
+      border-radius: 1rem;
+    }
+
+    .settings-workspace .settings-hero,
+    .settings-workspace .settings-panel {
+      border-radius: 1rem;
+    }
   }
 }

@@ -50,10 +50,12 @@ export default function SettingsPage() {
     const { settings, updateSettings } = useSettings();
     const [formData, setFormData] = useState<any>(null);
     const [isSaving, setIsSaving] = useState(false);
+    const [savedSnapshot, setSavedSnapshot] = useState<string>("");
     const fileInputRef = useRef<HTMLInputElement>(null);
     const bannerFileInputRef = useRef<HTMLInputElement>(null);
     const rootRef = useRef<HTMLDivElement>(null);
     const hasAnimatedRef = useRef(false);
+    const hasInitializedFormRef = useRef(false);
     const openSupportChat = () => {
         sendToWhatsApp(
             SAAS_SUPPORT_PHONE,
@@ -62,6 +64,40 @@ export default function SettingsPage() {
             )
         );
     };
+
+    const createSettingsSnapshot = (data: any) => {
+        if (!data) return "";
+
+        return JSON.stringify({
+            storeName: data.storeName || "",
+            phone: data.phone || "",
+            corporateName: data.corporateName || "",
+            cnpj: data.cnpj || "",
+            logo: data.logo || "",
+            primaryColor: data.primaryColor || "",
+            bio: data.bio || "",
+            bannerImage: data.bannerImage || "",
+            bannerBadge: data.bannerBadge || "",
+            bannerTitleLine1: data.bannerTitleLine1 || "",
+            bannerTitleLine2: data.bannerTitleLine2 || "",
+            bannerDescription: data.bannerDescription || "",
+            bannerCtaLabel: data.bannerCtaLabel || "",
+            address: data.address || "",
+            latitude: data.latitude ?? null,
+            longitude: data.longitude ?? null,
+            deliveryRadius: Number(data.deliveryRadius || 0),
+            deliveryFee: String(data.deliveryFee ?? ""),
+            deliveryEtaMinutes: Number(data.deliveryEtaMinutes || 35),
+            minOrderValue: String(data.minOrderValue ?? ""),
+            cashDifferenceNoteThreshold: String(data.cashDifferenceNoteThreshold ?? ""),
+            tableCount: Number(data.tableCount || 0),
+            instagram: data.instagram || "",
+            facebook: data.facebook || "",
+            operatingHours: normalizeOperatingHours(data.operatingHours || createDefaultOperatingHours()),
+        });
+    };
+
+    const hasUnsavedChanges = Boolean(formData) && Boolean(savedSnapshot) && createSettingsSnapshot(formData) !== savedSnapshot;
 
     // Autocomplete Hook
     const {
@@ -88,16 +124,75 @@ export default function SettingsPage() {
     }, [init]);
 
     useEffect(() => {
-        if (settings && !formData) {
-            setFormData({
-                ...settings,
-                operatingHours: normalizeOperatingHours(settings.operatingHours || createDefaultOperatingHours()),
-                deliveryEtaMinutes: settings.deliveryEtaMinutes || 35,
-                cashDifferenceNoteThreshold: settings.cashDifferenceNoteThreshold ?? 5,
-            });
-            setValue(settings.address || "", false);
-        }
-    }, [settings, setValue, formData]);
+        if (!settings || hasInitializedFormRef.current) return;
+
+        const initialFormData = {
+            ...settings,
+            operatingHours: normalizeOperatingHours(settings.operatingHours || createDefaultOperatingHours()),
+            deliveryEtaMinutes: settings.deliveryEtaMinutes || 35,
+            cashDifferenceNoteThreshold: settings.cashDifferenceNoteThreshold ?? 5,
+        };
+
+        setFormData(initialFormData);
+        setSavedSnapshot(createSettingsSnapshot(initialFormData));
+        setValue(settings.address || "", false);
+        hasInitializedFormRef.current = true;
+    }, [settings, setValue]);
+
+    useEffect(() => {
+        if (!hasUnsavedChanges) return;
+
+        const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+            event.preventDefault();
+            event.returnValue = "";
+        };
+
+        window.addEventListener("beforeunload", handleBeforeUnload);
+        return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+    }, [hasUnsavedChanges]);
+
+    useEffect(() => {
+        if (!hasUnsavedChanges) return;
+
+        const handleDocumentNavigation = (event: MouseEvent) => {
+            if (event.defaultPrevented) return;
+            if (event.button !== 0) return;
+            if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+
+            const target = event.target as HTMLElement | null;
+            const link = target?.closest("a[href]") as HTMLAnchorElement | null;
+            if (!link) return;
+            if (link.target === "_blank") return;
+
+            const href = link.getAttribute("href");
+            if (!href || href.startsWith("#") || href.startsWith("mailto:") || href.startsWith("tel:")) return;
+
+            let destination: URL;
+            try {
+                destination = new URL(link.href, window.location.href);
+            } catch {
+                return;
+            }
+
+            const currentPath = `${window.location.pathname}${window.location.search}`;
+            const destinationPath = `${destination.pathname}${destination.search}`;
+
+            // Ignora links para a mesma rota (ex.: apenas hash).
+            if (destinationPath === currentPath) return;
+
+            const shouldLeave = window.confirm("Você tem alterações não salvas. Deseja sair sem salvar?");
+            if (!shouldLeave) {
+                event.preventDefault();
+                event.stopPropagation();
+                return;
+            }
+
+            setSavedSnapshot(createSettingsSnapshot(formData));
+        };
+
+        document.addEventListener("click", handleDocumentNavigation, true);
+        return () => document.removeEventListener("click", handleDocumentNavigation, true);
+    }, [hasUnsavedChanges, formData]);
 
     useEffect(() => {
         if (!settings || !rootRef.current || hasAnimatedRef.current) return;
@@ -227,6 +322,12 @@ export default function SettingsPage() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+
+        if (!hasUnsavedChanges) {
+            toast("Não há alterações pendentes para salvar.");
+            return;
+        }
+
         setIsSaving(true);
         try {
             const dataToSave = {
@@ -237,6 +338,7 @@ export default function SettingsPage() {
             };
             console.log("Enviando dados:", dataToSave);
             await updateSettings(dataToSave);
+            setSavedSnapshot(createSettingsSnapshot(formData));
             toast.success("Configurações atualizadas com sucesso!");
         } catch (error) {
             console.error("Erro ao salvar:", error);
@@ -310,36 +412,34 @@ export default function SettingsPage() {
     };
 
     return (
-        <div ref={rootRef}>
+        <div ref={rootRef} className="settings-workspace pb-28 md:pb-32">
             <div className="settings-hero system-hero-band flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8 sm:mb-12 p-4 sm:p-6 md:p-8 lg:p-10">
                     <div>
                         <h1 className="text-2xl sm:text-3xl md:text-heading-1 font-display font-bold text-slate-950 uppercase tracking-tight">Arquitetura de Marca</h1>
                         <p className="text-[12px] sm:text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em] mt-2">Defina a identidade visual e os parâmetros operacionais do seu ecossistema.</p>
                     </div>
-                    <button
-                        onClick={handleSubmit}
-                        disabled={isSaving}
-                        className="h-10 sm:h-12 md:h-16 px-4 sm:px-6 md:px-10 bg-slate-950 text-white rounded-2xl font-body font-bold text-[11px] sm:text-label uppercase tracking-[0.06em] flex items-center gap-2 sm:gap-3 shadow-2xl shadow-slate-950/20 hover:bg-primary transition-all active:scale-95 disabled:opacity-50"
-                    >
-                        {isSaving ? <Loader2 className="animate-spin" /> : <Save size={20} />}
-                        SALVAR DIRETRIZES
-                    </button>
+                    <div className="rounded-xl border border-slate-200 bg-white/80 px-4 py-2 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">
+                        {hasUnsavedChanges ? "Você tem alterações pendentes" : "Tudo salvo"}
+                    </div>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 md:gap-10">
+                <div className="grid grid-cols-1 2xl:grid-cols-3 gap-4 sm:gap-6 md:gap-10">
                     {/* Coluna Principal - Informações */}
-                    <div className="lg:col-span-2 space-y-4 sm:space-y-6 md:space-y-10">
+                    <div className="2xl:col-span-2 space-y-4 sm:space-y-6 md:space-y-10">
                         {/* Gestão de Equipe */}
                         <div className="settings-panel">
                             <TeamSettings />
                         </div>
 
-                        <section className="settings-panel bg-white rounded-2xl sm:rounded-[3rem] border border-slate-50 p-4 sm:p-6 md:p-10 shadow-sm relative overflow-hidden">
+                        <section id="settings-brand" className="settings-panel settings-panel--brand bg-white rounded-2xl sm:rounded-[3rem] border border-slate-50 p-4 sm:p-6 md:p-10 shadow-sm relative overflow-hidden">
                             <div className="flex items-center gap-3 sm:gap-4 mb-6 sm:mb-10">
                                 <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-400">
                                     <Store size={22} />
                                 </div>
-                                <h3 className="text-xl sm:text-heading-3 font-display font-bold text-slate-950 uppercase tracking-tight">Identidade Corporativa</h3>
+                                <div>
+                                    <h3 className="text-xl sm:text-heading-3 font-display font-bold text-slate-950 uppercase tracking-tight">Identidade Corporativa</h3>
+                                    <p className="text-xs text-slate-500 mt-1">Defina os dados base da loja e como a marca aparece para o cliente.</p>
+                                </div>
                             </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 md:gap-10">
@@ -477,12 +577,15 @@ export default function SettingsPage() {
                             </div>
                         </section>
 
-                        <section className="settings-panel bg-white rounded-2xl sm:rounded-[3rem] border border-slate-50 p-4 sm:p-6 md:p-10 shadow-sm relative overflow-hidden">
+                        <section id="settings-banner" className="settings-panel settings-panel--banner bg-white rounded-2xl sm:rounded-[3rem] border border-slate-50 p-4 sm:p-6 md:p-10 shadow-sm relative overflow-hidden">
                             <div className="flex items-center gap-3 sm:gap-4 mb-6 sm:mb-10">
                                 <div className="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center text-primary">
                                     <ImagePlus size={22} />
                                 </div>
-                                <h3 className="text-xl sm:text-heading-3 font-display font-bold text-slate-950 uppercase tracking-tight">Banner da Loja</h3>
+                                <div>
+                                    <h3 className="text-xl sm:text-heading-3 font-display font-bold text-slate-950 uppercase tracking-tight">Banner da Loja</h3>
+                                    <p className="text-xs text-slate-500 mt-1">Personalize a vitrine principal com imagem, frases e CTA.</p>
+                                </div>
                             </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 md:gap-10">
@@ -575,12 +678,15 @@ export default function SettingsPage() {
                             </div>
                         </section>
 
-                        <section className="bg-white rounded-2xl sm:rounded-[2.5rem] border border-slate-100 p-4 sm:p-6 md:p-10 shadow-sm">
+                        <section id="settings-location" className="settings-panel settings-panel--location bg-white rounded-2xl sm:rounded-[2.5rem] border border-slate-100 p-4 sm:p-6 md:p-10 shadow-sm">
                             <div className="flex items-center gap-3 mb-8">
                                 <div className="w-10 h-10 bg-orange-500/10 rounded-xl flex items-center justify-center text-orange-500">
                                     <MapPin size={20} />
                                 </div>
-                                <h3 className="font-black text-xl text-slate-900 uppercase tracking-tighter">Localização</h3>
+                                <div>
+                                    <h3 className="font-black text-xl text-slate-900 uppercase tracking-tighter">Localização</h3>
+                                    <p className="text-xs text-slate-500 mt-1">Informe endereço e mapa para cálculo correto de entrega.</p>
+                                </div>
                             </div>
 
                             <div className="grid grid-cols-1 gap-6">
@@ -683,12 +789,15 @@ export default function SettingsPage() {
                             </div>
                         </section>
 
-                        <section className="bg-white rounded-2xl sm:rounded-[2.5rem] border border-slate-100 p-4 sm:p-6 md:p-10 shadow-sm">
+                        <section id="settings-delivery" className="settings-panel settings-panel--delivery bg-white rounded-2xl sm:rounded-[2.5rem] border border-slate-100 p-4 sm:p-6 md:p-10 shadow-sm">
                             <div className="flex items-center gap-3 mb-8">
                                 <div className="w-10 h-10 bg-emerald-500/10 rounded-xl flex items-center justify-center text-emerald-500">
                                     <Truck size={20} />
                                 </div>
-                                <h3 className="font-black text-xl text-slate-900 uppercase tracking-tighter">Entrega e Valores</h3>
+                                <div>
+                                    <h3 className="font-black text-xl text-slate-900 uppercase tracking-tighter">Entrega e Valores</h3>
+                                    <p className="text-xs text-slate-500 mt-1">Configure taxas, tempo estimado e regras financeiras da operação.</p>
+                                </div>
                             </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -751,12 +860,15 @@ export default function SettingsPage() {
                                 </div>
                             </section>
 
-                            <section className="bg-white rounded-2xl sm:rounded-[2.5rem] border border-slate-100 p-4 sm:p-6 md:p-10 shadow-sm">
+                            <section id="settings-hours" className="settings-panel settings-panel--hours bg-white rounded-2xl sm:rounded-[2.5rem] border border-slate-100 p-4 sm:p-6 md:p-10 shadow-sm">
                                 <div className="flex items-center gap-3 mb-8">
                                     <div className="w-10 h-10 bg-blue-500/10 rounded-xl flex items-center justify-center text-blue-500">
                                         <Clock size={20} />
                                     </div>
-                                    <h3 className="font-black text-xl text-slate-900 uppercase tracking-tighter">Funcionamento</h3>
+                                    <div>
+                                        <h3 className="font-black text-xl text-slate-900 uppercase tracking-tighter">Funcionamento</h3>
+                                        <p className="text-xs text-slate-500 mt-1">Defina horários e status automático de abertura da loja.</p>
+                                    </div>
                                 </div>
 
                                 <div className="space-y-6">
@@ -862,12 +974,15 @@ export default function SettingsPage() {
                             </div>
                         </section>
 
-                        <section className="bg-white rounded-2xl sm:rounded-[2.5rem] border border-slate-100 p-4 sm:p-6 md:p-10 shadow-sm">
+                        <section id="settings-social" className="settings-panel settings-panel--social bg-white rounded-2xl sm:rounded-[2.5rem] border border-slate-100 p-4 sm:p-6 md:p-10 shadow-sm">
                             <div className="flex items-center gap-3 mb-6 sm:mb-8">
                                 <div className="w-10 h-10 bg-pink-500/10 rounded-xl flex items-center justify-center text-pink-500">
                                     <Globe size={20} />
                                 </div>
-                                <h3 className="font-black text-xl text-slate-900 uppercase tracking-tighter">Redes Sociais</h3>
+                                <div>
+                                    <h3 className="font-black text-xl text-slate-900 uppercase tracking-tighter">Redes Sociais</h3>
+                                    <p className="text-xs text-slate-500 mt-1">Conecte canais oficiais para aumentar confiança e conversão.</p>
+                                </div>
                             </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
@@ -901,7 +1016,7 @@ export default function SettingsPage() {
 
                     {/* Coluna Sidebar */}
                     <div className="space-y-4 sm:space-y-8">
-                        <div className="bg-white rounded-2xl sm:rounded-[2.5rem] border border-slate-100 p-4 sm:p-6 md:p-8 shadow-sm text-center">
+                        <div className="settings-panel settings-panel--support bg-white rounded-2xl sm:rounded-[2.5rem] border border-slate-100 p-4 sm:p-6 md:p-8 shadow-sm text-center">
                             <div className="w-20 h-20 bg-emerald-50 text-emerald-500 rounded-3xl flex items-center justify-center mx-auto mb-6">
                                 <CheckCircle2 size={40} />
                             </div>
@@ -927,10 +1042,32 @@ export default function SettingsPage() {
                         <ChangePassword />
 
                         {/* Configuração PIX */}
-                        <PixSettings />
+                        <div id="settings-payments">
+                            <PixSettings />
+                        </div>
+                    </div>
+                </div>
 
-                        {/* Configuração da Impressora 80mm */}
-                        <PrinterSettings />
+                {/* Configuração da Impressora 80mm */}
+                <div id="settings-printer" className="mt-4 sm:mt-6 md:mt-10 settings-panel">
+                    <PrinterSettings />
+                </div>
+
+                <div className="sticky bottom-3 md:bottom-4 z-40 mt-6">
+                    <div className="rounded-2xl border border-slate-200 bg-white/95 backdrop-blur-md shadow-xl px-3 py-3 sm:px-4 sm:py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                        <p className={cn("text-xs font-semibold", hasUnsavedChanges ? "text-amber-700" : "text-slate-600") }>
+                            {hasUnsavedChanges
+                                ? "Há alterações não salvas. Clique em salvar para publicar no sistema."
+                                : "Sem alterações pendentes. Tudo sincronizado."}
+                        </p>
+                        <button
+                            onClick={handleSubmit}
+                            disabled={isSaving || !hasUnsavedChanges}
+                            className="h-11 sm:h-12 px-5 sm:px-7 bg-slate-950 text-white rounded-xl font-body font-bold text-[11px] sm:text-xs uppercase tracking-[0.08em] flex items-center justify-center gap-2 hover:bg-black transition-all active:scale-95 disabled:opacity-50"
+                        >
+                            {isSaving ? <Loader2 className="animate-spin" /> : <Save size={18} />}
+                            {isSaving ? "Salvando..." : "Salvar alterações"}
+                        </button>
                     </div>
                 </div>
             </div>
