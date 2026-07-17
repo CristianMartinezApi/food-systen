@@ -605,6 +605,23 @@ const PRINT_TEMPLATES = new Set(['ORDER_TICKET', 'CASH_CLOSING_REPORT', 'TEST_TI
 const PRINT_MODES = new Set(['THERMAL', 'A4']);
 const ACTIVE_PRINT_JOB_STATUSES = new Set(['PENDING', 'PROCESSING']);
 
+function isPrintInfrastructureMissingError(error: any) {
+  const code = String(error?.code || '').toUpperCase();
+  const message = String(error?.message || '').toLowerCase();
+
+  // P2021: table does not exist | P2022: column does not exist
+  if (code === 'P2021' || code === 'P2022') {
+    return true;
+  }
+
+  return (
+    message.includes('print_devices') ||
+    message.includes('print_jobs') ||
+    message.includes('autoprintorders') ||
+    message.includes('relation') && (message.includes('print_') || message.includes('printdevice') || message.includes('printjob'))
+  );
+}
+
 function normalizePrintTemplate(value: string): string | null {
   const normalized = value.trim().toUpperCase();
   if (normalized === 'ORDER_TICKET' || normalized === 'CASH_CLOSING_REPORT' || normalized === 'TEST_TICKET') {
@@ -4733,6 +4750,14 @@ apiRouter.get('/print/settings', authMiddleware, tenantMiddleware, async (req: A
       recentJobs,
     });
   } catch (error) {
+    if (isPrintInfrastructureMissingError(error)) {
+      return res.json({
+        device: null,
+        pendingJobs: 0,
+        recentJobs: [],
+      });
+    }
+
     console.error('Error loading print settings:', error);
     res.status(500).json({ error: 'Erro ao carregar configurações de impressão.' });
   }
@@ -4832,6 +4857,12 @@ apiRouter.put('/print/settings', authMiddleware, tenantMiddleware, async (req: A
       autoPrintOrders: device.autoPrintOrders,
     });
   } catch (error) {
+    if (isPrintInfrastructureMissingError(error)) {
+      return res.status(503).json({
+        error: 'Infraestrutura de impressão indisponível neste ambiente. Rode as migrations de impressão.',
+      });
+    }
+
     console.error('Error saving print settings:', error);
     res.status(500).json({ error: 'Erro ao salvar configurações de impressão.' });
   }
@@ -4883,6 +4914,12 @@ apiRouter.post('/print/settings/test', authMiddleware, tenantMiddleware, async (
       printerId: device.id,
     });
   } catch (error) {
+    if (isPrintInfrastructureMissingError(error)) {
+      return res.status(503).json({
+        error: 'Infraestrutura de impressão indisponível neste ambiente. Rode as migrations de impressão.',
+      });
+    }
+
     console.error('Error queueing print test:', error);
     res.status(500).json({ error: 'Erro ao enfileirar teste de impressão.' });
   }

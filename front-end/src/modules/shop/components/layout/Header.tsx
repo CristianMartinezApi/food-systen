@@ -12,7 +12,7 @@ import { cn } from "../../../../shared/utils";
 import Link from "next/link";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { getNextOpeningLabel } from "../../../../shared/utils/schedule";
+import { getNextOpeningLabel, isRestaurantOpenNow } from "../../../../shared/utils/schedule";
 
 interface HeaderProps {
   onOpenMenu?: () => void;
@@ -53,14 +53,17 @@ export function Header({ onOpenMenu, settings, searchTerm, onSearchChange }: Hea
   const storeNameAccent = storeNameParts.length > 1
     ? storeNameParts[storeNameParts.length - 1]
     : "";
-  const nextOpeningLabel = hasHydrated
+  const isOpenNow = typeof settings?.isOpen === "boolean"
+    ? settings.isOpen
+    : (hasHydrated ? isRestaurantOpenNow(settings?.operatingHours) : false);
+  const nextOpeningLabel = settings?.nextOpeningLabel || (hasHydrated
     ? getNextOpeningLabel(settings?.operatingHours)
-    : "Sem próximos horários";
+    : "Sem próximos horários");
   const closedStatusLabel = nextOpeningLabel === "Sem próximos horários"
     ? "Fechada · Sem próximo horário"
     : `Fechada agora · Abre ${nextOpeningLabel}`;
-  const desktopStatusLabel = settings?.isOpen ? "Aberta · Aceitando pedidos" : closedStatusLabel;
-  const mobileStatusLabel = settings?.isOpen
+  const desktopStatusLabel = isOpenNow ? "Aberta · Aceitando pedidos" : closedStatusLabel;
+  const mobileStatusLabel = isOpenNow
     ? "Aberta"
     : nextOpeningLabel === "Sem próximos horários"
       ? "Fechada"
@@ -122,11 +125,11 @@ export function Header({ onOpenMenu, settings, searchTerm, onSearchChange }: Hea
                     {storeNameAccent ? <span className="text-primary ml-1">{storeNameAccent}</span> : null}
                   </h1>
                   <p className="flex md:hidden text-[8px] font-body font-bold text-slate-300 tracking-wide mt-1 items-center gap-1.5 max-w-40 truncate">
-                    <span className={cn("w-1.5 h-1.5 rounded-full shadow-[0_0_8px_rgba(0,0,0,0.5)]", settings?.isOpen ? "bg-emerald-500 animate-pulse" : "bg-rose-500")} />
+                    <span className={cn("w-1.5 h-1.5 rounded-full shadow-[0_0_8px_rgba(0,0,0,0.5)]", isOpenNow ? "bg-emerald-500 animate-pulse" : "bg-rose-500")} />
                     {mobileStatusLabel}
                   </p>
                   <p className="hidden md:flex text-[10px] font-body font-medium text-slate-300 tracking-wide mt-1 items-center gap-1.5 whitespace-nowrap">
-                    <span className={cn("w-2 h-2 rounded-full shadow-[0_0_10px_rgba(0,0,0,0.5)]", settings?.isOpen ? "bg-emerald-500 animate-pulse" : "bg-rose-500")} />
+                    <span className={cn("w-2 h-2 rounded-full shadow-[0_0_10px_rgba(0,0,0,0.5)]", isOpenNow ? "bg-emerald-500 animate-pulse" : "bg-rose-500")} />
                     {desktopStatusLabel}
                   </p>
                 </div>

@@ -137,12 +137,12 @@ export default function Checkout() {
   const minOrderValue = settings?.minOrderValue || 0;
   const isPixAvailable = Boolean(settings?.pixEnabled);
   const isBelowMinimum = subtotal < minOrderValue;
-  const isOpenNow = hasHydrated
-    ? isRestaurantOpenNow(settings?.operatingHours)
-    : Boolean(settings?.isOpen);
-  const nextOpeningLabel = hasHydrated
+  const isOpenNow = typeof settings?.isOpen === "boolean"
+    ? settings.isOpen
+    : (hasHydrated ? isRestaurantOpenNow(settings?.operatingHours) : false);
+  const nextOpeningLabel = settings?.nextOpeningLabel || (hasHydrated
     ? getNextOpeningLabel(settings?.operatingHours)
-    : "Sem próximos horários";
+    : "Sem próximos horários");
   const estimatedDeliveryMinutes = settings?.deliveryEtaMinutes || 35;
   const maxPlausibleChangeFor = Math.ceil(total) + CHANGE_MAX_EXTRA;
   const nextValidChangeNote = (() => {

@@ -16,7 +16,7 @@ import { getTenantSlug } from "../../../../shared/utils/tenant";
 import { cn } from "../../../../shared/utils";
 import Link from "next/link";
 import { useState, useEffect } from "react";
-import { getNextOpeningLabel, getOperatingHoursSummary } from "../../../../shared/utils/schedule";
+import { getNextOpeningLabel, getOperatingHoursSummary, isRestaurantOpenNow } from "../../../../shared/utils/schedule";
 import { useHasHydrated } from "../../../../core/hooks/useHasHydrated";
 
 type SocialLink = {
@@ -81,9 +81,12 @@ export function Footer({ settings }: FooterProps) {
   const operatingHoursSummary = hasHydrated
     ? getOperatingHoursSummary(settings?.operatingHours)
     : "Carregando horário";
-  const nextOpeningLabel = hasHydrated
+  const isOpenNow = typeof settings?.isOpen === "boolean"
+    ? settings.isOpen
+    : (hasHydrated ? isRestaurantOpenNow(settings?.operatingHours) : false);
+  const nextOpeningLabel = settings?.nextOpeningLabel || (hasHydrated
     ? getNextOpeningLabel(settings?.operatingHours)
-    : "Sem próximos horários";
+    : "Sem próximos horários");
 
   const socialLinks: SocialLink[] = [
     {
@@ -237,9 +240,9 @@ export function Footer({ settings }: FooterProps) {
                 </div>
               </div>
               <div className="pt-3 md:pt-6 border-t border-white/5 flex items-center gap-2 md:gap-3">
-                <div className={cn("w-2 h-2 rounded-full shadow-[0_0_10px] shrink-0", settings?.isOpen ? "bg-emerald-500 shadow-emerald-500 animate-pulse" : "bg-rose-500 shadow-rose-500")} />
-                <span className={cn("text-[9px] md:text-[10px] font-black uppercase tracking-[0.15em] md:tracking-[0.2em] truncate", settings?.isOpen ? "text-emerald-500" : "text-rose-500")}>
-                  {settings?.isOpen
+                <div className={cn("w-2 h-2 rounded-full shadow-[0_0_10px] shrink-0", isOpenNow ? "bg-emerald-500 shadow-emerald-500 animate-pulse" : "bg-rose-500 shadow-rose-500")} />
+                <span className={cn("text-[9px] md:text-[10px] font-black uppercase tracking-[0.15em] md:tracking-[0.2em] truncate", isOpenNow ? "text-emerald-500" : "text-rose-500")}>
+                  {isOpenNow
                     ? "Estamos abertos"
                     : nextOpeningLabel === "Sem próximos horários"
                       ? "Fechados · Sem horário disponível"

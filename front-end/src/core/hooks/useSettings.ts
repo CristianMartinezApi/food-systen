@@ -14,7 +14,9 @@ function normalizeSettingsPayload(data: any) {
   return {
     ...data,
     operatingHours: normalizeOperatingHours(data.operatingHours || createDefaultOperatingHours()),
-    isOpen: isRestaurantOpenNow(data.operatingHours),
+    // Prioriza o status calculado no backend (fuso do servidor/restaurante).
+    // O fallback local existe apenas para payloads legados sem o campo isOpen.
+    isOpen: typeof data.isOpen === 'boolean' ? data.isOpen : isRestaurantOpenNow(data.operatingHours),
     deliveryEtaMinutes: data.deliveryEtaMinutes || 35,
   };
 }
@@ -142,18 +144,25 @@ export function useSettings() {
   }, [slug, isSuperAdmin]);
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      setSettings((current: any) => {
-        if (!current) return current;
-        return {
-          ...current,
-          isOpen: isRestaurantOpenNow(current.operatingHours),
-        };
-      });
+    if (!slug || isSuperAdmin) return;
+
+    const interval = setInterval(async () => {
+      try {
+        const data = await fetchSettingsSnapshot(slug);
+        if (!data) return;
+
+        setSettings(data);
+        if (data.primaryColor) {
+          document.documentElement.style.setProperty('--color-primary', data.primaryColor);
+          document.documentElement.style.setProperty('--color-primary-foreground', '#ffffff');
+        }
+      } catch {
+        // Mantém último snapshot válido em caso de falha transitória.
+      }
     }, 60000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [slug, isSuperAdmin]);
 
   const updateSettings = async (newSettings: any) => {
     try {
