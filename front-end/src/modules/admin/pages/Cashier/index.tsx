@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, useRef } from "react";
-import { Wallet, Receipt, ArrowDownCircle, ArrowUpCircle, ShieldCheck, Loader2, Archive, PlusCircle, MinusCircle, Scale, Printer, ShoppingCart, X, CreditCard, CheckCircle2 } from "lucide-react";
+import { Wallet, Receipt, ArrowDownCircle, ArrowUpCircle, ShieldCheck, Loader2, Archive, PlusCircle, MinusCircle, Scale, Printer, ShoppingCart, X, CreditCard, CheckCircle2, AlertTriangle } from "lucide-react";
 import { api } from "../../../../core/config/api";
 import { formatCurrency, normalizeMoneyInput, parseMoneyInput, formatMoneyInputRealtime, cn } from "../../../../shared/utils";
 import toast from "react-hot-toast";
@@ -195,6 +195,7 @@ export default function CashierPage({
     const [openedSessionId, setOpenedSessionId] = useState<number | null>(null);
     const [absorbingPreOrders, setAbsorbingPreOrders] = useState(false);
     const [paymentModalOrder, setPaymentModalOrder] = useState<SessionOrder | null>(null);
+    const [forceCloseModal, setForceCloseModal] = useState<{ open: boolean; count: number }>({ open: false, count: 0 });
     const [homologationChecklist, setHomologationChecklist] = useState<Record<string, boolean>>(
         () => Object.fromEntries(HOMOLOGATION_STEPS.map((step) => [step.id, false])) as Record<string, boolean>
     );
@@ -762,6 +763,7 @@ export default function CashierPage({
                 informedCardAmount: cardParsed,
                 informedPixAmount: pixParsed,
                 notes: closingNotes || null,
+                forceClose: false,
             });
             toast.success("Caixa fechado com sucesso");
             markHomologationSteps(["close"]);
@@ -770,6 +772,39 @@ export default function CashierPage({
             setInformedPixAmount("");
             setClosingNotes("");
             setCloseSessionConfirmOpen(false);
+            await loadCashier(1);
+        } catch (error: any) {
+            if (error?.requiresForce && error?.openOrdersCount) {
+                setCloseSessionConfirmOpen(false);
+                setForceCloseModal({ open: true, count: error.openOrdersCount });
+            } else {
+                toast.error(error.message || "Erro ao fechar caixa");
+            }
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
+    const handleForceCloseSession = async () => {
+        const parsed = parseMoneyInput(closingAmount);
+        const cardParsed = parseMoneyInput(informedCardAmount || 0);
+        const pixParsed = parseMoneyInput(informedPixAmount || 0);
+        try {
+            setSubmitting(true);
+            await api.post("/cashier/session/close", {
+                closingAmount: parsed,
+                informedCardAmount: cardParsed,
+                informedPixAmount: pixParsed,
+                notes: closingNotes || null,
+                forceClose: true,
+            });
+            toast.success("Caixa fechado (forçado) com sucesso");
+            markHomologationSteps(["close"]);
+            setClosingAmount("");
+            setInformedCardAmount("");
+            setInformedPixAmount("");
+            setClosingNotes("");
+            setForceCloseModal({ open: false, count: 0 });
             await loadCashier(1);
         } catch (error: any) {
             toast.error(error.message || "Erro ao fechar caixa");
@@ -1817,103 +1852,192 @@ export default function CashierPage({
 
                                 {operationTab === "CASH_OPERATION" && (
                                     <>
-                                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                                            <select
-                                                value={movementType}
-                                                onChange={(e) => setMovementType(e.target.value as any)}
-                                                className="h-12 rounded-2xl border border-slate-200 px-4 outline-none"
+                                        {/* Seletor de tipo */}
+                                        <div className="grid grid-cols-3 gap-2">
+                                            <button
+                                                type="button"
+                                                onClick={() => { setMovementType("SUPPLY"); setMovementReason(""); }}
+                                                className={cn(
+                                                    "h-11 rounded-2xl border text-[10px] font-black uppercase tracking-[0.12em] flex items-center justify-center gap-1.5 transition-all",
+                                                    movementType === "SUPPLY"
+                                                        ? "border-emerald-500 bg-emerald-500 text-white shadow-lg shadow-emerald-200"
+                                                        : "border-slate-200 bg-white text-slate-500 hover:border-emerald-200 hover:text-emerald-600"
+                                                )}
                                             >
-                                                <option value="SUPPLY">Suprimento</option>
-                                                <option value="WITHDRAWAL">Sangria</option>
-                                                <option value="ADJUSTMENT">Ajuste</option>
-                                            </select>
+                                                <PlusCircle size={13} /> Suprimento
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => setMovementType("WITHDRAWAL")}
+                                                className={cn(
+                                                    "h-11 rounded-2xl border text-[10px] font-black uppercase tracking-[0.12em] flex items-center justify-center gap-1.5 transition-all",
+                                                    movementType === "WITHDRAWAL"
+                                                        ? "border-rose-500 bg-rose-500 text-white shadow-lg shadow-rose-200"
+                                                        : "border-slate-200 bg-white text-slate-500 hover:border-rose-200 hover:text-rose-600"
+                                                )}
+                                            >
+                                                <MinusCircle size={13} /> Sangria
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => setMovementType("ADJUSTMENT")}
+                                                className={cn(
+                                                    "h-11 rounded-2xl border text-[10px] font-black uppercase tracking-[0.12em] flex items-center justify-center gap-1.5 transition-all",
+                                                    movementType === "ADJUSTMENT"
+                                                        ? "border-blue-500 bg-blue-500 text-white shadow-lg shadow-blue-200"
+                                                        : "border-slate-200 bg-white text-slate-500 hover:border-blue-200 hover:text-blue-600"
+                                                )}
+                                            >
+                                                <Scale size={13} /> Ajuste
+                                            </button>
+                                        </div>
+
+                                        {/* Form colorido por tipo */}
+                                        <div className={cn(
+                                            "rounded-2xl border p-4 space-y-3 transition-all",
+                                            movementType === "SUPPLY" ? "border-emerald-100 bg-emerald-50/40" :
+                                            movementType === "WITHDRAWAL" ? "border-rose-100 bg-rose-50/40" :
+                                            "border-blue-100 bg-blue-50/40"
+                                        )}>
                                             <input
                                                 value={movementAmount}
                                                 onChange={(e) => setMovementAmount(formatMoneyInputRealtime(e.target.value))}
                                                 type="text"
                                                 inputMode="decimal"
-                                                placeholder="Valor"
-                                                className="h-12 rounded-2xl border border-slate-200 px-4 outline-none"
+                                                placeholder="Valor (R$)"
+                                                className={cn(
+                                                    "h-12 w-full rounded-2xl border bg-white px-4 outline-none font-bold text-slate-900 transition-all",
+                                                    movementType === "SUPPLY" ? "border-emerald-200" :
+                                                    movementType === "WITHDRAWAL" ? "border-rose-200" :
+                                                    "border-blue-200"
+                                                )}
                                             />
-                                            <input
-                                                value={movementReason}
-                                                onChange={(e) => setMovementReason(e.target.value)}
-                                                type="text"
-                                                placeholder={requiresMovementReason ? "Motivo (obrigatorio)" : "Motivo"}
-                                                className={`h-12 rounded-2xl border px-4 outline-none ${requiresMovementReason ? "border-amber-300 bg-amber-50/40" : "border-slate-200"}`}
-                                            />
+                                            {requiresMovementReason && (
+                                                <>
+                                                    <input
+                                                        value={movementReason}
+                                                        onChange={(e) => setMovementReason(e.target.value)}
+                                                        type="text"
+                                                        placeholder={movementType === "WITHDRAWAL" ? "Por que está saindo dinheiro do caixa?" : "Motivo do ajuste"}
+                                                        className={cn(
+                                                            "h-12 w-full rounded-2xl border bg-white px-4 outline-none transition-all",
+                                                            movementType === "WITHDRAWAL" ? "border-rose-200" : "border-blue-200"
+                                                        )}
+                                                    />
+                                                    {!movementReason.trim() && (
+                                                        <p className={cn(
+                                                            "text-[10px] font-bold uppercase tracking-[0.12em]",
+                                                            movementType === "WITHDRAWAL" ? "text-rose-500" : "text-blue-500"
+                                                        )}>
+                                                            {movementType === "WITHDRAWAL" ? "Justificativa obrigatória para sangria." : "Informe o motivo do ajuste."}
+                                                        </p>
+                                                    )}
+                                                </>
+                                            )}
                                         </div>
+
                                         <button
                                             disabled={submitting}
                                             onClick={handleCreateMovement}
-                                            className="h-12 px-6 rounded-2xl bg-slate-950 text-white text-[10px] font-black uppercase tracking-[0.2em]"
+                                            className={cn(
+                                                "h-12 px-6 rounded-2xl text-white text-[10px] font-black uppercase tracking-[0.2em] transition-colors disabled:opacity-50",
+                                                movementType === "SUPPLY" ? "bg-emerald-600 hover:bg-emerald-700" :
+                                                movementType === "WITHDRAWAL" ? "bg-rose-600 hover:bg-rose-700" :
+                                                "bg-blue-600 hover:bg-blue-700"
+                                            )}
                                         >
-                                            Registrar Movimento
+                                            {movementType === "SUPPLY" ? "Registrar Suprimento" :
+                                             movementType === "WITHDRAWAL" ? "Registrar Sangria" :
+                                             "Registrar Ajuste"}
                                         </button>
-                                        {requiresMovementReason && !movementReason.trim() && (
-                                            <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-amber-600">
-                                                Sangria e ajuste exigem justificativa.
-                                            </p>
-                                        )}
                                     </>
                                 )}
                             </div>
 
                             {operationTab === "CASH_OPERATION" && (
-                                <div className="mt-5 space-y-2 max-h-72 overflow-auto pr-2">
-                                    {movements.length === 0 && (
-                                        <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-3 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
-                                            Sem movimentos nesta sessão.
+                                <div className="mt-5 space-y-3">
+                                    {/* Totalizador */}
+                                    {movements.length > 0 && (
+                                        <div className="grid grid-cols-3 gap-2">
+                                            <div className="rounded-xl border border-emerald-100 bg-emerald-50 px-3 py-2 text-center">
+                                                <p className="text-[8px] font-black uppercase tracking-widest text-emerald-600">Suprimentos</p>
+                                                <p className="text-[11px] font-black text-emerald-800">
+                                                    {formatCurrency(movements.filter(m => m.type === "SUPPLY").reduce((s, m) => s + m.amount, 0))}
+                                                </p>
+                                            </div>
+                                            <div className="rounded-xl border border-rose-100 bg-rose-50 px-3 py-2 text-center">
+                                                <p className="text-[8px] font-black uppercase tracking-widest text-rose-600">Sangrias</p>
+                                                <p className="text-[11px] font-black text-rose-800">
+                                                    {formatCurrency(movements.filter(m => m.type === "WITHDRAWAL").reduce((s, m) => s + m.amount, 0))}
+                                                </p>
+                                            </div>
+                                            <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-center">
+                                                <p className="text-[8px] font-black uppercase tracking-widest text-slate-500">Saldo Mov.</p>
+                                                <p className={cn("text-[11px] font-black",
+                                                    movements.filter(m => m.type === "SUPPLY").reduce((s, m) => s + m.amount, 0) -
+                                                    movements.filter(m => m.type === "WITHDRAWAL").reduce((s, m) => s + m.amount, 0) >= 0
+                                                        ? "text-emerald-700" : "text-rose-700"
+                                                )}>
+                                                    {formatCurrency(
+                                                        movements.filter(m => m.type === "SUPPLY").reduce((s, m) => s + m.amount, 0) -
+                                                        movements.filter(m => m.type === "WITHDRAWAL").reduce((s, m) => s + m.amount, 0)
+                                                    )}
+                                                </p>
+                                            </div>
                                         </div>
                                     )}
-                                    {movements.map((movement) => (
-                                        <div key={movement.id} className={cn("rounded-xl border border-slate-100 bg-slate-50", isSidebar ? "px-3 py-2" : "px-4 py-3")}>
-                                            <div className="flex items-center justify-between gap-3">
-                                                <div className="flex items-center gap-2">
-                                                    {movement.type === "SUPPLY" && <PlusCircle size={isSidebar ? 12 : 16} className="text-emerald-600" />}
-                                                    {movement.type === "WITHDRAWAL" && <MinusCircle size={isSidebar ? 12 : 16} className="text-rose-600" />}
-                                                    {movement.type === "ADJUSTMENT" && <Scale size={isSidebar ? 12 : 16} className="text-blue-600" />}
-                                                    <span className={cn("font-black uppercase tracking-[0.2em] text-slate-600", isSidebar ? "text-[8px]" : "text-[10px]")}>
-                                                        {movementTypeLabel[movement.type]}
-                                                    </span>
-                                                </div>
-                                                <span className={cn("font-bold text-slate-900", isSidebar ? "text-[10px]" : "text-[11px]")}>{formatCurrency(movement.amount)}</span>
-                                            </div>
-                                            <p className={cn("mt-1 font-bold uppercase tracking-[0.12em] text-slate-400 truncate", isSidebar ? "text-[7px]" : "text-[10px]")}>
-                                                {movement.reason || "Sem motivo"} • {new Date(movement.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                            </p>
-                                        </div>
-                                    ))}
 
-                                    {orders.length > 0 && (
-                                        <div className={cn("border-t border-slate-100", isSidebar ? "mt-3 pt-3" : "mt-4 pt-4")}>
-                                            <h3 className={cn("font-black uppercase tracking-[0.2em] text-slate-400 flex items-center gap-2", isSidebar ? "text-[8px] mb-2" : "text-[10px] mb-3")}>
-                                                <ShoppingCart size={isSidebar ? 12 : 14} /> Vendas Recentes
-                                            </h3>
-                                            <div className="space-y-1.5">
-                                                {orders.slice(0, isSidebar ? 6 : 10).map((order) => (
-                                                    <div key={order.id} className={cn("rounded-xl border border-slate-50 bg-white shadow-sm", isSidebar ? "px-3 py-2" : "px-4 py-3")}>
-                                                        <div className="flex items-center justify-between">
-                                                            <div className="flex flex-col min-w-0">
-                                                                <span className={cn("font-black text-slate-900 truncate", isSidebar ? "text-[9px]" : "text-[10px]")}>
-                                                                    {order.customerName}
-                                                                </span>
-                                                                <span className={cn("font-bold text-slate-400 uppercase tracking-widest mt-0.5", isSidebar ? "text-[7px]" : "text-[8px]")}>
-                                                                    {new Date(order.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • {paymentLabels[order.paymentMethod as any] || order.paymentMethod}
-                                                                </span>
-                                                            </div>
-                                                            <span className={cn("font-black text-emerald-700 shrink-0", isSidebar ? "text-[10px]" : "text-[11px]")}>{formatCurrency(order.total)}</span>
-                                                        </div>
-                                                    </div>
-                                                ))}
-                                                {orders.length > 10 && (
-                                                    <p className="text-[9px] text-center font-bold text-slate-400 uppercase tracking-widest pt-1">
-                                                        + {orders.length - 10} outras vendas
-                                                    </p>
-                                                )}
+                                    {/* Lista de movimentos */}
+                                    <div className="space-y-2 max-h-72 overflow-auto pr-2 custom-scrollbar">
+                                        {movements.length === 0 ? (
+                                            <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-center">
+                                                <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">Sem movimentos nesta sessão.</p>
                                             </div>
-                                        </div>
-                                    )}
+                                        ) : (
+                                            movements.map((movement) => (
+                                                <div key={movement.id} className={cn(
+                                                    "rounded-xl border transition-all",
+                                                    isSidebar ? "px-3 py-2" : "px-4 py-3",
+                                                    movement.type === "SUPPLY" ? "border-emerald-100 bg-emerald-50" :
+                                                    movement.type === "WITHDRAWAL" ? "border-rose-100 bg-rose-50" :
+                                                    "border-blue-100 bg-blue-50"
+                                                )}>
+                                                    <div className="flex items-center justify-between gap-3">
+                                                        <div className="flex items-center gap-2">
+                                                            {movement.type === "SUPPLY" && <PlusCircle size={isSidebar ? 12 : 15} className="text-emerald-600" />}
+                                                            {movement.type === "WITHDRAWAL" && <MinusCircle size={isSidebar ? 12 : 15} className="text-rose-600" />}
+                                                            {movement.type === "ADJUSTMENT" && <Scale size={isSidebar ? 12 : 15} className="text-blue-600" />}
+                                                            <span className={cn(
+                                                                "font-black uppercase tracking-[0.2em]",
+                                                                isSidebar ? "text-[8px]" : "text-[10px]",
+                                                                movement.type === "SUPPLY" ? "text-emerald-700" :
+                                                                movement.type === "WITHDRAWAL" ? "text-rose-700" :
+                                                                "text-blue-700"
+                                                            )}>
+                                                                {movementTypeLabel[movement.type]}
+                                                            </span>
+                                                        </div>
+                                                        <span className={cn(
+                                                            "font-black",
+                                                            isSidebar ? "text-[10px]" : "text-[11px]",
+                                                            movement.type === "SUPPLY" ? "text-emerald-900" :
+                                                            movement.type === "WITHDRAWAL" ? "text-rose-900" :
+                                                            "text-blue-900"
+                                                        )}>{formatCurrency(movement.amount)}</span>
+                                                    </div>
+                                                    <p className={cn(
+                                                        "mt-1 font-bold uppercase tracking-[0.12em] truncate",
+                                                        isSidebar ? "text-[7px]" : "text-[10px]",
+                                                        movement.type === "SUPPLY" ? "text-emerald-500" :
+                                                        movement.type === "WITHDRAWAL" ? "text-rose-400" :
+                                                        "text-blue-400"
+                                                    )}>
+                                                        {movement.reason || "—"} • {new Date(movement.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                    </p>
+                                                </div>
+                                            ))
+                                        )}
+                                    </div>
                                 </div>
                             )}
                         </>
@@ -2155,6 +2279,43 @@ export default function CashierPage({
                     </div>
                 </div>
             </ConfirmActionModal>
+
+            {/* Modal: fechamento forçado com pedidos em aberto */}
+            {forceCloseModal.open && (
+                <div className="fixed inset-0 z-200 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm p-4">
+                    <div className="w-full max-w-md rounded-3xl bg-white shadow-2xl p-6 space-y-5">
+                        <div className="flex items-start gap-4">
+                            <div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-600 flex items-center justify-center shrink-0">
+                                <AlertTriangle size={22} />
+                            </div>
+                            <div>
+                                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-600">Atenção</p>
+                                <h3 className="mt-1 text-base font-black text-slate-950 uppercase tracking-tight">
+                                    {forceCloseModal.count} pedido{forceCloseModal.count > 1 ? "s" : ""} em andamento
+                                </h3>
+                                <p className="mt-1 text-sm text-slate-500">
+                                    Ainda há pedidos em aberto nesta sessão. Fechar agora pode deixar contas sem registro de pagamento. Deseja forçar o fechamento mesmo assim?
+                                </p>
+                            </div>
+                        </div>
+                        <div className="flex gap-3 pt-2">
+                            <button
+                                onClick={() => setForceCloseModal({ open: false, count: 0 })}
+                                className="flex-1 h-11 rounded-2xl border border-slate-200 bg-slate-50 text-slate-700 text-[10px] font-black uppercase tracking-[0.15em] hover:bg-slate-100 transition-colors"
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                disabled={submitting}
+                                onClick={handleForceCloseSession}
+                                className="flex-1 h-11 rounded-2xl bg-rose-600 text-white text-[10px] font-black uppercase tracking-[0.15em] hover:bg-rose-700 transition-colors disabled:opacity-50"
+                            >
+                                Fechar mesmo assim
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Modal informativo: pedidos anteriores incluídos automaticamente */}
             {preOpeningModalOpen && (

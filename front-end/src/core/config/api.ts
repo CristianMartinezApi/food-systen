@@ -75,7 +75,11 @@ const handleError = async (response: Response, endpoint: string) => {
     throw new Error(message);
   }
 
-  throw new Error(await parseErrorMessage(response, 'Erro na requisição'));
+  // Para outros erros, preservar campos extras da resposta (ex: openOrdersCount, requiresForce)
+  const errorData = await response.json().catch(() => ({}));
+  const err = new Error(errorData.error || 'Erro na requisição') as any;
+  Object.assign(err, errorData);
+  throw err;
 };
 
 export const api = {

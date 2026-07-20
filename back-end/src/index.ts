@@ -246,6 +246,7 @@ const PUBLIC_STORE_CACHE_TTL_MS = Math.min(60000, Math.max(5000, Number(process.
 const CASH_COUNTED_ORDER_STATUSES: OrderStatus[] = ['OPEN', 'CONFIRMED', 'PREPARING', 'READY', 'DELIVERED', 'PAID', 'RETIRED' as OrderStatus];
 const HIGHLIGHTED_ORDER_STATUSES: OrderStatus[] = ['DELIVERED', 'PAID', 'RETIRED' as OrderStatus];
 const CASHIER_OPERATION_ROLES = new Set(['SUPER_ADMIN', 'OWNER', 'MANAGER', 'CASHIER', 'EMPLOYEE']);
+const CASHIER_MOVEMENT_ROLES = new Set(['SUPER_ADMIN', 'OWNER', 'MANAGER', 'CASHIER']); // EMPLOYEE não pode registrar sangria/suprimento
 const CASHIER_OPEN_CLOSE_ROLES = new Set(['SUPER_ADMIN', 'OWNER', 'MANAGER', 'CASHIER']);
 const SENSITIVE_SETTINGS_ROLES = new Set(['SUPER_ADMIN', 'OWNER', 'MANAGER']);
 
@@ -324,6 +325,7 @@ const ORDER_STATUS_FLOW_BY_MODE: Record<OrderMode, Record<string, string[]>> = {
     CONFIRMED: ['PREPARING', 'CANCELLED'],
     PREPARING: ['OUT_FOR_DELIVERY', 'CANCELLED'],
     OUT_FOR_DELIVERY: ['DELIVERED', 'CANCELLED'],
+    DELIVERED: ['PAID', 'CANCELLED'], // confirmação de recebimento (ex: dinheiro na entrega)
   },
   PICKUP: {
     PENDING: ['CONFIRMED', 'CANCELLED', 'PAID'],
@@ -341,7 +343,7 @@ const ORDER_STATUS_FLOW_BY_MODE: Record<OrderMode, Record<string, string[]>> = {
     PREPARING: ['DELIVERED', 'CANCELLED', 'PAID', 'READY'],
     READY: ['DELIVERED', 'PAID', 'CANCELLED'],
     DELIVERED: ['PAID', 'CANCELLED'],
-    PAID: ['DELIVERED'],
+    PAID: ['CANCELLED'], // removido ciclo PAID -> DELIVERED sem sentido
   },
 };
 
@@ -4151,7 +4153,7 @@ app.post('/api/cashier/session/open', authMiddleware, async (req: AuthRequest, r
 });
 
 app.post('/api/cashier/movements', authMiddleware, async (req: AuthRequest, res) => {
-  if (!ensureCashierPermission(req, res, CASHIER_OPERATION_ROLES, 'registrar movimentos de caixa')) {
+  if (!ensureCashierPermission(req, res, CASHIER_MOVEMENT_ROLES, 'registrar movimentos de caixa')) {
     return;
   }
 
@@ -4490,17 +4492,22 @@ app.post('/api/cashier/session/close', authMiddleware, async (req: AuthRequest, 
       return res.status(409).json({ error: 'Nenhuma sessão de caixa aberta.' });
     }
 
-    // Bloquear fechamento se houver pedidos em aberto
+    const forceClose = Boolean(req.body?.forceClose);
+
+    // Verificar pedidos em andamento vinculados a esta sessão (exceto PENDING = não confirmado ainda)
     const activeOrdersCount = await prisma.order.count({
       where: {
         restaurantId: req.restaurantId,
-        status: { in: ['PENDING', 'OPEN', 'CONFIRMED', 'PREPARING', 'READY', 'OUT_FOR_DELIVERY'] },
+        cashSessionId: activeSession.id,
+        status: { in: ['OPEN', 'CONFIRMED', 'PREPARING', 'READY', 'OUT_FOR_DELIVERY'] },
       },
     });
 
-    if (activeOrdersCount > 0) {
-      return res.status(400).json({
-        error: `Não é possível fechar o caixa. Existem ${activeOrdersCount} conta(s) em aberto (Mesa ou Balcão). Finalize todos os pagamentos antes de fechar o turno.`,
+    if (activeOrdersCount > 0 && !forceClose) {
+      return res.status(409).json({
+        error: `Há ${activeOrdersCount} pedido(s) em andamento nesta sessão. Finalize-os antes de fechar o caixa.`,
+        openOrdersCount: activeOrdersCount,
+        requiresForce: true,
       });
     }
 
