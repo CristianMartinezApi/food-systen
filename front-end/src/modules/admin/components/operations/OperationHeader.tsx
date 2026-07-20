@@ -29,9 +29,9 @@ export function OperationHeader({
           <div className="flex items-center gap-3">
             <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${isOpen ? "bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.4)]" : "bg-slate-300"}`} />
             <div className="hidden sm:block">
-              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 leading-none">Status da Operação</p>
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 leading-none">Turno em Andamento</p>
               <p className="text-xs font-black text-slate-950 uppercase mt-0.5">
-                {sessionLoading ? "Sincronizando..." : isOpen ? "Caixa em Aberto" : "Caixa Fechado"}
+                {sessionLoading ? "Sincronizando..." : isOpen ? "Sessão Ativa" : "Caixa Fechado"}
               </p>
             </div>
           </div>

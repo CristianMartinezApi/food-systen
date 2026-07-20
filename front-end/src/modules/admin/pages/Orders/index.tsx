@@ -145,7 +145,7 @@ export default function OrdersPage({ isCompact = false, onOrdersChange }: { isCo
 
         if (order.status === "READY") {
             return {
-                label: "Marcar Entregue no Balcao",
+                label: "Marcar Entregue no Balcão",
                 nextStatus: "RETIRED",
                 className: "h-9 px-4 bg-emerald-500 text-white rounded-lg font-body font-bold text-[10px] uppercase tracking-widest shadow-md shadow-emerald-500/20 hover:bg-emerald-600 transition-all active:scale-95 flex-1"
             };
@@ -837,8 +837,8 @@ export default function OrdersPage({ isCompact = false, onOrdersChange }: { isCo
             <div className={cn("flex flex-col gap-4 mb-4", !isCompact && "orders-hero lg:flex-row lg:items-end justify-between sm:mb-10 md:mb-12 lg:mb-14")}>
                 {!isCompact && (
                     <div>
-                        <h1 className="text-2xl sm:text-3xl md:text-heading-1 font-display font-bold text-slate-950 uppercase tracking-tight">Expedicao</h1>
-                        <p className="text-[12px] sm:text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em] mt-2">Gestao logistica e acompanhamento de fluxo em tempo real.</p>
+                        <h1 className="text-2xl sm:text-3xl md:text-heading-1 font-display font-bold text-slate-950 uppercase tracking-tight">Expedição</h1>
+                        <p className="text-[12px] sm:text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em] mt-2">Gestão logística e acompanhamento de fluxo em tempo real.</p>
                     </div>
                 )}
 

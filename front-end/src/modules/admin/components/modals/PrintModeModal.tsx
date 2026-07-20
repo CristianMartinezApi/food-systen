@@ -32,9 +32,9 @@ export function PrintModeModal({
     return (
         <div className="fixed inset-0 z-50 bg-slate-950/40 backdrop-blur-[1px] flex items-center justify-center p-4" onClick={onClose}>
             <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
-                <h3 className="text-sm font-display font-bold text-slate-950 uppercase tracking-[0.08em]">Formato de Impressao</h3>
+                <h3 className="text-sm font-display font-bold text-slate-950 uppercase tracking-[0.08em]">Formato de Impressão</h3>
                 <p className="mt-2 text-[11px] font-medium text-slate-500">Escolha como deseja imprimir {targetLabel}.</p>
-                <p className="mt-1 text-[10px] font-medium text-slate-400">A escolha fica salva para as proximas impressoes.</p>
+                <p className="mt-1 text-[10px] font-medium text-slate-400">A escolha fica salva para as próximas impressões.</p>
 
                 <div className="mt-4 grid grid-cols-2 gap-2">
                     <button

@@ -80,8 +80,8 @@ export default function ProductsPage() {
     <div ref={rootRef} className="p-4 sm:p-6 md:p-8">
       <div className="products-hero flex flex-col md:flex-row md:items-end justify-between gap-4 sm:gap-6 md:gap-8 mb-8 sm:mb-12">
           <div>
-            <h1 className="text-2xl sm:text-3xl md:text-heading-1 font-display font-bold text-slate-950 uppercase tracking-tight">Inventário</h1>
-            <p className="text-[12px] sm:text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em] mt-2">Curadoria e gestão estratégica do seu catálogo gastronômico.</p>
+            <h1 className="text-2xl sm:text-3xl md:text-heading-1 font-display font-bold text-slate-950 uppercase tracking-tight">Produtos</h1>
+            <p className="text-[12px] sm:text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em] mt-2">Gerencie os itens do cardápio, preços e disponibilidade.</p>
           </div>
           <button 
             onClick={() => {

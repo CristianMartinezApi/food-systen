@@ -82,10 +82,10 @@ export default function OperationsPage() {
             <AlertTriangle size={18} className="text-amber-600 shrink-0 mt-0.5" />
             <div>
               <p className="text-sm font-black text-amber-800 uppercase tracking-tight leading-tight">
-                Fluxo de caixa não interrompido
+                Sessão de Caixa Fechada
               </p>
               <p className="text-xs text-amber-700 mt-1 opacity-80">
-                O registro de vendas diretas está desabilitado. Pedidos online continuam chegando normalmente.
+                Abra uma sessão para registrar vendas diretas. Pedidos online continuam chegando normalmente.
               </p>
             </div>
           </div>
@@ -105,7 +105,7 @@ export default function OperationsPage() {
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-slate-900 shadow-[0_0_0_4px_rgba(15,23,42,0.06)]" />
               <h2 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-900">
-                Fluxo de Expedicao
+                Expedição de Pedidos
               </h2>
             </div>
           </div>
@@ -128,7 +128,7 @@ export default function OperationsPage() {
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-slate-900 shadow-[0_0_0_4px_rgba(15,23,42,0.06)]" />
               <h2 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-900">
-                Painel Financeiro
+                Painel de Caixa
               </h2>
             </div>
           </div>

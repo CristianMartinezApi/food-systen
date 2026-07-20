@@ -89,11 +89,11 @@ type DirectSalePaymentMethod = "CASH" | "PIX" | "CARD" | "DEBIT" | "CREDIT" | "O
 type CashierOperationTab = "CASH_OPERATION" | "DIRECT_SALES";
 
 const HOMOLOGATION_STEPS = [
-    { id: "open", label: "Abrir sessao de caixa com valor inicial" },
+    { id: "open", label: "Abrir sessão de caixa com valor inicial" },
     { id: "cashSale", label: "Registrar venda direta em dinheiro com troco" },
     { id: "pixCardSale", label: "Registrar venda direta em PIX ou cartao" },
     { id: "movement", label: "Registrar ao menos 1 movimento (sangria/suprimento/ajuste)" },
-    { id: "close", label: "Fechar caixa com validacao de divergencia" },
+    { id: "close", label: "Fechar caixa com validação de divergência" },
 ];
 
 export default function CashierPage({ 
@@ -487,7 +487,7 @@ export default function CashierPage({
 
         const product = directSaleProducts.find((item) => item.id === productId);
         if (!product) {
-            toast.error("Produto nao encontrado");
+            toast.error("Produto não encontrado");
             return;
         }
 
@@ -971,7 +971,7 @@ export default function CashierPage({
 
             const printWindow = window.open("", "_blank", "width=900,height=700");
             if (!printWindow) {
-                toast.error("Nao foi possivel abrir a janela de impressao");
+                toast.error("Não foi possível abrir a janela de impressão");
                 return;
             }
             printWindow.document.write(html);
@@ -985,7 +985,7 @@ export default function CashierPage({
                 printMode: mode,
             }).catch(() => null);
         } catch (error: any) {
-            toast.error(error.message || "Erro ao gerar relatorio de impressao");
+            toast.error(error.message || "Erro ao gerar relatório de impressão");
         }
     };
 
@@ -1059,12 +1059,12 @@ export default function CashierPage({
     };
 
     const cards = useMemo(() => {
-        const statusLabel = session ? `Aberto #${session.id}` : "Nao iniciado";
+        const statusLabel = session ? `Aberto #${session.id}` : "Fechado";
         return [
-            { label: "Sessao de Caixa", value: statusLabel, icon: Wallet },
-            { label: "Movimentos", value: String(totals.movementsCount || 0), icon: Receipt },
-            { label: "Suprimentos", value: formatCurrency(totals.supplies || 0), icon: ArrowDownCircle },
-            { label: "Sangrias", value: formatCurrency(totals.withdrawals || 0), icon: ArrowUpCircle },
+            { label: "Sessão de Caixa", value: statusLabel, icon: Wallet, color: session ? "emerald" : "slate" },
+            { label: "Movimentos", value: String(totals.movementsCount || 0), icon: Receipt, color: "blue" },
+            { label: "Suprimentos", value: formatCurrency(totals.supplies || 0), icon: ArrowDownCircle, color: "emerald" },
+            { label: "Sangrias", value: formatCurrency(totals.withdrawals || 0), icon: ArrowUpCircle, color: "rose" },
         ];
     }, [session, totals]);
 
@@ -1087,29 +1087,72 @@ export default function CashierPage({
             <div className={cn("flex flex-col gap-4 mb-4", !isSidebar && "cashier-hero lg:flex-row lg:items-end justify-between sm:mb-10 md:mb-12 lg:mb-14")}>
                 {!isSidebar && (
                     <div>
-                        <h1 className="text-2xl sm:text-3xl md:text-heading-1 font-display font-bold text-slate-950 uppercase tracking-tight">Fluxo de Caixa</h1>
-                        <p className="text-[12px] sm:text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em] mt-2">Gestão financeira, PDV e controle de turnos em tempo real.</p>
+                        <h1 className="text-2xl sm:text-3xl md:text-heading-1 font-display font-bold text-slate-950 uppercase tracking-tight">Sessão de Caixa</h1>
+                        <p className="text-[12px] sm:text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em] mt-2">Abertura, fechamento, sangrias, suprimentos e histórico de sessões.</p>
 
-                        <div className="mt-4 flex flex-wrap items-center gap-2">
-                            <span className="inline-flex items-center rounded-full px-3 py-1 text-[10px] font-body font-bold uppercase tracking-[0.08em] border border-slate-200 bg-slate-100 text-slate-600">
-                                {isHomologated ? "Terminal Homologado" : "Aguardando Homologação"}
-                            </span>
-                        </div>
+                        {isHomologated && (
+                            <div className="mt-4 flex flex-wrap items-center gap-2">
+                                <span className="inline-flex items-center rounded-full px-3 py-1 text-[10px] font-body font-bold uppercase tracking-[0.08em] border border-emerald-200 bg-emerald-50 text-emerald-700">
+                                    Terminal Homologado
+                                </span>
+                            </div>
+                        )}
                     </div>
                 )}
             </div>
 
             <section className={cn("grid gap-2", isSidebar ? "grid-cols-2" : "sm:grid-cols-2 xl:grid-cols-4")}>
-                {cards.map((card) => (
-                    <article key={card.label} className={cn("rounded-2xl border border-slate-100 bg-white shadow-sm", isSidebar ? "p-3" : "p-4")}>
+                {cards.map((card: any) => (
+                    <article key={card.label} className={cn(
+                        "rounded-2xl border shadow-sm",
+                        isSidebar ? "p-3" : "p-4",
+                        card.color === "emerald" ? "border-emerald-100 bg-emerald-50" :
+                        card.color === "rose" ? "border-rose-100 bg-rose-50" :
+                        card.color === "blue" ? "border-blue-100 bg-blue-50" :
+                        "border-slate-100 bg-white"
+                    )}>
                         <div className="flex items-center justify-between">
-                            <p className="text-[8px] font-black uppercase tracking-[0.2em] text-slate-400">{card.label}</p>
-                            <card.icon size={12} className="text-slate-900" />
+                            <p className={cn(
+                                "text-[8px] font-black uppercase tracking-[0.2em]",
+                                card.color === "emerald" ? "text-emerald-600" :
+                                card.color === "rose" ? "text-rose-500" :
+                                card.color === "blue" ? "text-blue-600" :
+                                "text-slate-400"
+                            )}>{card.label}</p>
+                            <card.icon size={12} className={
+                                card.color === "emerald" ? "text-emerald-600" :
+                                card.color === "rose" ? "text-rose-500" :
+                                card.color === "blue" ? "text-blue-600" :
+                                "text-slate-500"
+                            } />
                         </div>
-                        <p className={cn("mt-1 font-black text-slate-950 uppercase tracking-tight", isSidebar ? "text-xs" : "text-base")}>{card.value}</p>
+                        <p className={cn(
+                            "mt-1 font-black uppercase tracking-tight",
+                            isSidebar ? "text-xs" : "text-base",
+                            card.color === "emerald" ? "text-emerald-900" :
+                            card.color === "rose" ? "text-rose-700" :
+                            card.color === "blue" ? "text-blue-900" :
+                            "text-slate-950"
+                        )}>{card.value}</p>
                     </article>
                 ))}
             </section>
+
+            {!isSidebar && (session ? (
+                <section className="rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-3 flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                        <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.6)]" />
+                        <span className="text-[11px] font-black uppercase tracking-[0.15em] text-emerald-800">Caixa Aberto — Sessão #{session.id}</span>
+                        <span className="hidden sm:inline text-[10px] font-bold text-emerald-600 uppercase">• Aberto às {new Date(session.openedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                    </div>
+                    <span className="text-[10px] font-bold text-emerald-700 uppercase tracking-widest shrink-0">{session.openedBy?.name || 'Sistema'}</span>
+                </section>
+            ) : (
+                <section className="rounded-2xl border border-amber-200 bg-amber-50 px-5 py-3 flex items-center gap-3">
+                    <div className="w-2.5 h-2.5 rounded-full bg-amber-500" />
+                    <span className="text-[11px] font-black uppercase tracking-[0.15em] text-amber-800">Caixa Fechado — Abra uma sessão para iniciar a operação</span>
+                </section>
+            ))}
 
             <section className="rounded-2xl border border-slate-100 bg-white p-1.5 shadow-sm">
                 <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
@@ -1130,10 +1173,10 @@ export default function CashierPage({
                         className={cn(
                             "relative rounded-xl border font-black uppercase tracking-[0.16em] transition-colors",
                             isSidebar ? "h-9 text-[9px]" : "h-11 text-[11px]",
-                            operationTab === "DIRECT_SALES" ? "border-emerald-600 bg-emerald-600 text-white" : "border-slate-200 bg-white text-slate-500 hover:bg-slate-50"
+                            operationTab === "DIRECT_SALES" ? "border-slate-900 bg-slate-900 text-white" : "border-slate-200 bg-white text-slate-500 hover:bg-slate-50"
                         )}
                     >
-                        Venda Direta no Balcao
+                        Venda Direta / PDV
                         {pendingOrders.length > 0 && (
                             <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] text-white animate-bounce shadow-lg ring-2 ring-white">
                                 {pendingOrders.length}
@@ -1187,9 +1230,9 @@ export default function CashierPage({
                                         <p className="text-[8px] font-black uppercase tracking-[0.2em] text-emerald-600">Faturamento</p>
                                         <p className={cn("font-bold text-emerald-700", isSidebar ? "text-xs" : "text-sm")}>{formatCurrency(totals.sales || 0)}</p>
                                     </div>
-                                    <div className={cn("rounded-xl border border-violet-100 bg-violet-50", isSidebar ? "p-3" : "p-4")}>
-                                        <p className="text-[8px] font-black uppercase tracking-[0.2em] text-violet-600">Dinheiro</p>
-                                        <p className={cn("font-bold text-violet-700", isSidebar ? "text-xs" : "text-sm")}>{formatCurrency(totals.cashSales || 0)}</p>
+                                    <div className={cn("rounded-xl border border-blue-100 bg-blue-50", isSidebar ? "p-3" : "p-4")}>
+                                        <p className="text-[8px] font-black uppercase tracking-[0.2em] text-blue-600">Dinheiro</p>
+                                        <p className={cn("font-bold text-blue-700", isSidebar ? "text-xs" : "text-sm")}>{formatCurrency(totals.cashSales || 0)}</p>
                                     </div>
                                     <div className={cn("rounded-xl border border-blue-100 bg-blue-50", isSidebar ? "p-3" : "p-4")}>
                                         <p className="text-[8px] font-black uppercase tracking-[0.2em] text-blue-600">Esperado</p>
@@ -1338,9 +1381,9 @@ export default function CashierPage({
                                     <button
                                         disabled={submitting}
                                         onClick={requestCloseSession}
-                                        className="flex-1 h-11 px-4 rounded-2xl bg-slate-100 text-slate-700 text-[10px] font-black uppercase tracking-[0.2em] hover:bg-slate-200 transition-colors border border-slate-200"
+                                        className="flex-1 h-11 px-4 rounded-2xl bg-rose-600 text-white text-[10px] font-black uppercase tracking-[0.2em] hover:bg-rose-700 transition-colors"
                                     >
-                                        ⚠️ Fechar Caixa
+                                        Fechar Caixa
                                     </button>
                                 </div>
                             </div>
@@ -1358,7 +1401,7 @@ export default function CashierPage({
                                 {operationTab === "DIRECT_SALES" && (
                                     <div className={cn("rounded-2xl border border-emerald-100 bg-linear-to-br from-emerald-50 to-white space-y-4", isSidebar ? "p-3" : "p-5")}>
                                         <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between">
-                                            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-700">Balcao</p>
+                                            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-700">Balcão</p>
                                             <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[8px] font-black uppercase tracking-[0.12em] ${isDirectSaleCash ? "border border-emerald-200 bg-emerald-100 text-emerald-800" : "border border-sky-200 bg-sky-100 text-sky-800"}`}>
                                                 {isDirectSaleCash ? "Caixa fisico" : "Faturamento"}
                                             </span>
@@ -1820,7 +1863,7 @@ export default function CashierPage({
                                 <div className="mt-5 space-y-2 max-h-72 overflow-auto pr-2">
                                     {movements.length === 0 && (
                                         <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-3 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
-                                            Sem movimentos nesta sessao.
+                                            Sem movimentos nesta sessão.
                                         </div>
                                     )}
                                     {movements.map((movement) => (
@@ -1877,8 +1920,8 @@ export default function CashierPage({
                     ) : (
                         <div className="mt-5 rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-3 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
                             {operationTab === "DIRECT_SALES"
-                                ? "Abra uma sessao para registrar venda direta no balcao."
-                                : "Abra uma sessao para registrar sangria e suprimento."}
+                                ? "Abra uma sessão para registrar venda direta no balcão."
+                                : "Abra uma sessão para registrar sangria e suprimento."}
                         </div>
                     )}
                 </article>
@@ -1957,13 +2000,13 @@ export default function CashierPage({
                     <div className="mt-5 space-y-2">
                         {history.length === 0 && (
                             <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-3 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
-                                Nenhuma sessao registrada ainda.
+                                Nenhuma sessão registrada ainda.
                             </div>
                         )}
                         {history.map((item) => (
                             <div key={item.id} className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                                 <div>
-                                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-600">Sessao #{item.id} • {item.status === "OPEN" ? "Aberta" : "Fechada"}</p>
+                                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-600">Sessão #{item.id} • {item.status === "OPEN" ? "Aberta" : "Fechada"}</p>
                                     <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">Abertura: {new Date(item.openedAt).toLocaleString()} {item.openedBy?.name ? `• ${item.openedBy.name}` : ""}</p>
                                     {printSummaryBySessionId[item.id] && (
                                         <>
@@ -2049,7 +2092,7 @@ export default function CashierPage({
 
             <PrintModeModal
                 isOpen={Boolean(printSessionId)}
-                targetLabel={printSessionId ? `o fechamento da sessao #${printSessionId}` : "o fechamento"}
+                targetLabel={printSessionId ? `o fechamento da sessão #${printSessionId}` : "o fechamento"}
                 selectedMode={printMode}
                 onSelectMode={setPrintMode}
                 onClose={() => setPrintSessionId(null)}
@@ -2059,7 +2102,7 @@ export default function CashierPage({
             <ConfirmActionModal
                 isOpen={closeSessionConfirmOpen}
                 title="Confirmar Fechamento"
-                description={`Deseja realmente fechar o caixa com o valor informado? Esta acao encerra a sessao atual.${hasRelevantClosingDifference ? " A divergencia informada sera registrada com justificativa." : ""}`}
+                description={`Deseja realmente fechar o caixa com o valor informado? Esta ação encerra a sessão atual.${hasRelevantClosingDifference ? " A divergência informada será registrada com justificativa." : ""}`}
                 confirmLabel="Fechar Caixa"
                 cancelLabel="Cancelar"
                 onConfirm={async () => {

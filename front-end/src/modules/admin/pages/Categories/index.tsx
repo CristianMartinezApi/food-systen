@@ -64,8 +64,8 @@ export default function CategoriesPage() {
     <div ref={rootRef}>
       <div className="categories-hero flex flex-col md:flex-row md:items-end justify-between gap-8 mb-12">
         <div>
-          <h1 className="text-heading-1 font-display font-bold text-slate-950 uppercase tracking-tight">Arquitetura</h1>
-          <p className="text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em] mt-2">Organize seu ecossistema gastronômico em seções lógicas.</p>
+          <h1 className="text-heading-1 font-display font-bold text-slate-950 uppercase tracking-tight">Categorias</h1>
+          <p className="text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em] mt-2">Organize os grupos do cardápio para facilitar a navegação dos clientes.</p>
         </div>
         <button 
           onClick={() => {

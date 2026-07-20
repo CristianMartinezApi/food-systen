@@ -415,8 +415,8 @@ export default function SettingsPage() {
         <div ref={rootRef} className="settings-workspace pb-28 md:pb-32">
             <div className="settings-hero system-hero-band flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8 sm:mb-12 p-4 sm:p-6 md:p-8 lg:p-10">
                     <div>
-                        <h1 className="text-2xl sm:text-3xl md:text-heading-1 font-display font-bold text-slate-950 uppercase tracking-tight">Arquitetura de Marca</h1>
-                        <p className="text-[12px] sm:text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em] mt-2">Defina a identidade visual e os parâmetros operacionais do seu ecossistema.</p>
+                        <h1 className="text-2xl sm:text-3xl md:text-heading-1 font-display font-bold text-slate-950 uppercase tracking-tight">Configurações da Loja</h1>
+                        <p className="text-[12px] sm:text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em] mt-2">Identidade visual, dados da loja e parâmetros de operação.</p>
                     </div>
                     <div className="rounded-xl border border-slate-200 bg-white/80 px-4 py-2 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">
                         {hasUnsavedChanges ? "Você tem alterações pendentes" : "Tudo salvo"}

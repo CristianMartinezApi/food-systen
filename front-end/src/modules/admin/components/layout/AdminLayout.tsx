@@ -221,13 +221,13 @@ export function AdminLayout({ children }: AdminLayoutProps) {
 
   let menuItems = [
     { icon: LayoutDashboard, label: "Painel", path: "/admin" },
-    { icon: Utensils, label: "Garçom", path: "/admin/garcom" },
-    { icon: ShieldCheck, label: "Operação", path: "/admin/operacao" },
-    { icon: Wallet, label: "Caixa", path: "/admin/caixa" },
+    { icon: ShieldCheck, label: "Turno", path: "/admin/operacao" },
     { icon: Grid3X3, label: "Mesas", path: "/admin/tables" },
+    { icon: Utensils, label: "Garçom", path: "/admin/garcom" },
+    { icon: Wallet, label: "Sessão de Caixa", path: "/admin/caixa" },
     { icon: ShoppingBag, label: "Pedidos", path: "/admin/orders" },
-    { icon: Package, label: "Produtos", path: "/admin/products" },
     { icon: Tags, label: "Categorias", path: "/admin/categories" },
+    { icon: Package, label: "Produtos", path: "/admin/products" },
     { icon: Settings, label: "Configurações", path: "/admin/settings" },
   ];
 
@@ -241,9 +241,9 @@ export function AdminLayout({ children }: AdminLayoutProps) {
   // Restrict menu for CASHIER
   if (userRole === 'CASHIER') {
     menuItems = [
-      { icon: Wallet, label: "Caixa", path: "/admin/caixa" },
-      { icon: Utensils, label: "Garçom", path: "/admin/garcom" },
       { icon: Grid3X3, label: "Mesas", path: "/admin/tables" },
+      { icon: Utensils, label: "Garçom", path: "/admin/garcom" },
+      { icon: Wallet, label: "Sessão de Caixa", path: "/admin/caixa" },
       { icon: ShoppingBag, label: "Pedidos", path: "/admin/orders" },
     ];
   }
@@ -254,8 +254,8 @@ export function AdminLayout({ children }: AdminLayoutProps) {
       { icon: LayoutDashboard, label: "Painel", path: "/admin" },
       { icon: Users, label: "Clientes", path: "/admin/clients" },
       { icon: CreditCard, label: "Planos", path: "/admin/plans" },
-      { icon: ExternalLink, label: "Auditoria", path: "/admin/audit" },
       { icon: Settings, label: "Provisionamento", path: "/admin/provisioning" },
+      { icon: ExternalLink, label: "Auditoria", path: "/admin/audit" },
     ];
   }
 
@@ -414,7 +414,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
           <div className="flex items-center gap-3 lg:gap-4">
             <div className="hidden md:flex items-center gap-3 bg-emerald-50 px-5 py-2.5 rounded-xl border border-emerald-100/50">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
-              <span className="text-label font-body font-bold text-emerald-600 uppercase tracking-[0.08em]">Marketplace Online</span>
+              <span className="text-label font-body font-bold text-emerald-600 uppercase tracking-[0.08em]">Loja Online</span>
             </div>
 
             <div ref={noticesRef} className="relative">
