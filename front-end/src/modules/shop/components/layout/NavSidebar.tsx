@@ -27,9 +27,10 @@ export function NavSidebar({ isOpen, onClose, categories, settings, activeCatego
   const [slug, setSlug] = useState<string>("");
   const storeName = settings?.storeName || "Food System";
   const storeDesignation = storeName.toUpperCase();
-  const isOpenNow = typeof settings?.isOpen === "boolean"
+  const isOpenNow = (typeof settings?.isOpen === "boolean"
     ? settings.isOpen
-    : (hasHydrated ? isRestaurantOpenNow(settings?.operatingHours) : false);
+    : (hasHydrated ? isRestaurantOpenNow(settings?.operatingHours) : false))
+    && settings?.hasCashierSession !== false;
   const nextOpeningLabel = settings?.nextOpeningLabel || (hasHydrated
     ? getNextOpeningLabel(settings?.operatingHours)
     : "Sem próximos horários");
@@ -41,9 +42,11 @@ export function NavSidebar({ isOpen, onClose, categories, settings, activeCatego
   const statusTitle = isOpenNow ? 'LOJA ABERTA' : 'LOJA FECHADA';
   const statusDetail = isOpenNow
     ? `HOJE ${getOperatingHoursSummary(settings?.operatingHours).toUpperCase()}`
-    : nextOpeningLabel === 'Sem próximos horários'
-      ? 'SEM PRÓXIMO HORÁRIO'
-      : `ABRE ${nextOpeningLabel.toUpperCase()}`;
+    : settings?.isOpen && settings?.hasCashierSession === false
+      ? 'AGUARDANDO ABERTURA DO CAIXA'
+      : nextOpeningLabel === 'Sem próximos horários'
+        ? 'SEM PRÓXIMO HORÁRIO'
+        : `ABRE ${nextOpeningLabel.toUpperCase()}`;
 
   useEffect(() => {
     setSlug(getTenantSlug());

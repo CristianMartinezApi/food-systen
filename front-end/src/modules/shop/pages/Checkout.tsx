@@ -137,9 +137,10 @@ export default function Checkout() {
   const minOrderValue = settings?.minOrderValue || 0;
   const isPixAvailable = Boolean(settings?.pixEnabled);
   const isBelowMinimum = subtotal < minOrderValue;
-  const isOpenNow = typeof settings?.isOpen === "boolean"
+  const isOpenNow = (typeof settings?.isOpen === "boolean"
     ? settings.isOpen
-    : (hasHydrated ? isRestaurantOpenNow(settings?.operatingHours) : false);
+    : (hasHydrated ? isRestaurantOpenNow(settings?.operatingHours) : false))
+    && settings?.hasCashierSession !== false;
   const nextOpeningLabel = settings?.nextOpeningLabel || (hasHydrated
     ? getNextOpeningLabel(settings?.operatingHours)
     : "Sem próximos horários");
@@ -447,12 +448,15 @@ export default function Checkout() {
 
   const handleFinishOrder = async () => {
     if (!isOpenNow) {
+      const isCashierClosed = settings?.isOpen && settings?.hasCashierSession === false;
       toast.error(
-        `Loja fechada no momento. ${
-          nextOpeningLabel === "Sem próximos horários"
-            ? "Sem previsão de abertura."
-            : `Abre ${nextOpeningLabel}.`
-        }`
+        isCashierClosed
+          ? "O restaurante ainda não abriu o caixa para este turno. Tente novamente em instantes."
+          : `Loja fechada no momento. ${
+              nextOpeningLabel === "Sem próximos horários"
+                ? "Sem previsão de abertura."
+                : `Abre ${nextOpeningLabel}.`
+            }`
       );
       return;
     }

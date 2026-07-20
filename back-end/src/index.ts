@@ -2985,7 +2985,15 @@ app.get('/api/settings', async (req: TenantRequest, res) => {
     operatingHours: normalizeOperatingHours(plainSettings.operatingHours),
     isOpen: isRestaurantOpenNow(plainSettings.operatingHours),
     nextOpeningLabel: getNextOpeningLabel(plainSettings.operatingHours),
+    hasCashierSession: false, // será sobrescrito abaixo
   };
+
+  // Verificar se há sessão de caixa ativa (não cacheado junto com o restante)
+  const activeCashierSession = await prisma.cashSession.findFirst({
+    where: { restaurantId: req.restaurantId, status: 'OPEN' },
+    select: { id: true },
+  }).catch(() => null);
+  responsePayload.hasCashierSession = Boolean(activeCashierSession);
 
   writePublicStoreCache('settings', req.restaurantId, responsePayload);
   res.json(responsePayload);
@@ -3060,6 +3068,11 @@ app.patch('/api/settings', authMiddleware, async (req: AuthRequest, res) => {
 
     const { restaurant, ...plainSettings } = settings;
     invalidatePublicStoreCache(req.restaurantId);
+
+    // Re-agendar lembretes se o horário de funcionamento foi atualizado
+    if (operatingHours && req.restaurant?.slug) {
+      scheduleOpeningReminders(req.restaurantId!, req.restaurant.slug, operatingHours);
+    }
 
     io.emit(`settings_updated_${req.restaurant?.slug}`, {
       ...plainSettings,
@@ -3563,6 +3576,43 @@ app.post('/api/orders', async (req: TenantRequest, res) => {
       return res.status(403).json({
         error: 'Restaurante fechado no momento.',
         nextOpeningLabel: getNextOpeningLabel(settings.operatingHours)
+      });
+    }
+
+    // Bloquear pedido se não há sessão de caixa ativa
+    const activeCashierSession = await prisma.cashSession.findFirst({
+      where: { restaurantId: req.restaurantId!, status: 'OPEN' },
+      select: { id: true },
+    });
+
+    if (!activeCashierSession) {
+      const slug = req.restaurant?.slug;
+      console.warn(`[OrderBlocked] Caixa fechado: restaurantId=${req.restaurantId}, slug=${slug}`);
+      // Notificar o admin em tempo real via socket
+      if (slug) {
+        io.emit(`cashier_needed_${slug}`, {
+          customerName: customerName || 'Cliente',
+          phone: phone || null,
+          timestamp: new Date().toISOString(),
+        });
+      }
+      return res.status(403).json({
+        error: 'A loja está temporariamente indisponível para novos pedidos. Tente novamente em instantes.',
+        code: 'CASHIER_CLOSED',
+      });
+    }
+
+    // Exige sessão de caixa ativa — garante que 100% das vendas entram no financeiro
+    const activeCashSession = await prisma.cashSession.findFirst({
+      where: { restaurantId: req.restaurantId!, status: 'OPEN' },
+      select: { id: true },
+    });
+
+    if (!activeCashSession) {
+      console.warn(`[OrderBlocked] Sem sessão de caixa ativa: restaurantId=${req.restaurantId}`);
+      return res.status(503).json({
+        error: 'Caixa não iniciado. O restaurante ainda não abriu a sessão de caixa para este turno.',
+        cashierClosed: true,
       });
     }
 
@@ -5725,9 +5775,94 @@ app.patch('/api/restaurant/pix-config', authMiddleware, tenantMiddleware, async 
   }
 });
 
+// ─── LEMBRETES DE ABERTURA DE CAIXA ──────────────────────────────────────────
+// Agenda um timer preciso para 10 minutos antes de cada abertura configurada.
+// Muito mais eficiente que polling: dispara exatamente na hora certa.
+const openingReminderTimers = new Map<number, NodeJS.Timeout[]>();
+
+async function scheduleOpeningReminders(restaurantId: number, slug: string, rawHours: any) {
+  // Cancelar timers anteriores deste restaurante
+  const prev = openingReminderTimers.get(restaurantId) || [];
+  prev.forEach(t => clearTimeout(t));
+
+  const DAY_MAP = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sab'] as const;
+  const hours = normalizeOperatingHours(rawHours);
+  const now = new Date();
+  const timers: NodeJS.Timeout[] = [];
+
+  // Percorre os próximos 8 dias (cobre a semana completa)
+  for (let d = 0; d <= 8; d++) {
+    const target = new Date(now);
+    target.setDate(target.getDate() + d);
+
+    const dayKey = DAY_MAP[target.getDay()];
+    const day = hours[dayKey];
+    if (!day?.enabled) continue;
+
+    for (const shift of (day.shifts || [])) {
+      const parts = String(shift.open || '').split(':').map(Number);
+      if (parts.length < 2 || isNaN(parts[0]) || isNaN(parts[1])) continue;
+      const [h, m] = parts;
+
+      const openAt = new Date(target);
+      openAt.setHours(h, m, 0, 0);
+
+      const reminderAt = new Date(openAt.getTime() - 10 * 60 * 1000);
+      const msUntil = reminderAt.getTime() - now.getTime();
+      if (msUntil <= 0) continue; // já passou hoje
+
+      const timer = setTimeout(async () => {
+        try {
+          const active = await prisma.cashSession.findFirst({
+            where: { restaurantId, status: 'OPEN' },
+            select: { id: true },
+          });
+          if (!active) {
+            io.emit(`cashier_reminder_${slug}`, {
+              opensAt: shift.open,
+              message: `Sua loja abre às ${shift.open}! Abra a Sessão de Caixa para ativar os pedidos online.`,
+            });
+            console.log(`[Reminder] Loja "${slug}" abre às ${shift.open} — caixa ainda fechado. Notificação enviada.`);
+          }
+        } catch { /* falha silenciosa */ }
+        // Re-agendar para a semana seguinte após disparar
+        try {
+          const r = await prisma.restaurant.findFirst({
+            where: { id: restaurantId },
+            include: { settings: true },
+          });
+          if (r?.settings?.operatingHours && r.slug) {
+            scheduleOpeningReminders(restaurantId, r.slug, r.settings.operatingHours);
+          }
+        } catch { /* falha silenciosa */ }
+      }, msUntil);
+
+      timers.push(timer);
+    }
+  }
+
+  openingReminderTimers.set(restaurantId, timers);
+  if (timers.length > 0) {
+    console.log(`[Reminder] ${timers.length} lembrete(s) agendado(s) para loja "${slug}"`);
+  }
+}
+
 httpServer.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 API com PostgreSQL rodando em http://0.0.0.0:${PORT}`);
   scheduleAuditRetentionCleanup();
+
+  // Agendar lembretes de abertura de caixa para todos os restaurantes ativos
+  prisma.restaurant.findMany({
+    where: { isActive: true },
+    include: { settings: true },
+  }).then(restaurants => {
+    for (const r of restaurants) {
+      if (r.settings?.operatingHours && r.slug) {
+        scheduleOpeningReminders(r.id, r.slug, r.settings.operatingHours);
+      }
+    }
+    console.log(`✅ Lembretes de abertura agendados para ${restaurants.length} restaurante(s)`);
+  }).catch(console.error);
 });
 
 // ─── PIX ROUTES ──────────────────────────────────────────────────────────────

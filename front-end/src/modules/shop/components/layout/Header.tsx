@@ -53,21 +53,26 @@ export function Header({ onOpenMenu, settings, searchTerm, onSearchChange }: Hea
   const storeNameAccent = storeNameParts.length > 1
     ? storeNameParts[storeNameParts.length - 1]
     : "";
-  const isOpenNow = typeof settings?.isOpen === "boolean"
+  const isOpenNow = (typeof settings?.isOpen === "boolean"
     ? settings.isOpen
-    : (hasHydrated ? isRestaurantOpenNow(settings?.operatingHours) : false);
+    : (hasHydrated ? isRestaurantOpenNow(settings?.operatingHours) : false))
+    && settings?.hasCashierSession !== false;
   const nextOpeningLabel = settings?.nextOpeningLabel || (hasHydrated
     ? getNextOpeningLabel(settings?.operatingHours)
     : "Sem próximos horários");
-  const closedStatusLabel = nextOpeningLabel === "Sem próximos horários"
-    ? "Fechada · Sem próximo horário"
-    : `Fechada agora · Abre ${nextOpeningLabel}`;
+  const closedStatusLabel = settings?.isOpen && settings?.hasCashierSession === false
+    ? "Aguardando abertura do caixa"
+    : nextOpeningLabel === "Sem próximos horários"
+      ? "Fechada · Sem próximo horário"
+      : `Fechada agora · Abre ${nextOpeningLabel}`;
   const desktopStatusLabel = isOpenNow ? "Aberta · Aceitando pedidos" : closedStatusLabel;
   const mobileStatusLabel = isOpenNow
     ? "Aberta"
-    : nextOpeningLabel === "Sem próximos horários"
-      ? "Fechada"
-      : `Abre ${nextOpeningLabel}`;
+    : settings?.isOpen && settings?.hasCashierSession === false
+      ? "Aguardando caixa"
+      : nextOpeningLabel === "Sem próximos horários"
+        ? "Fechada"
+        : `Abre ${nextOpeningLabel}`;
 
   const cartButton = (
     <button

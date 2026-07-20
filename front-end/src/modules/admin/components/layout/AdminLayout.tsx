@@ -27,6 +27,7 @@ import { api } from "../../../../core/config/api";
 import { socket } from "../../../../core/config/socket";
 import { useState, useEffect, useMemo, useRef } from "react";
 import packageJson from "../../../../../package.json";
+import toast from "react-hot-toast";
 
 type PendingUserNotice = {
   id: number;
@@ -94,14 +95,37 @@ export function AdminLayout({ children }: AdminLayoutProps) {
   }, []);
 
   useEffect(() => {
-    if (!userRole) return;
+    if (!userRole || !slug) return;
 
     socket.connect();
 
+    const cashierNeededEvent = `cashier_needed_${slug}`;
+    socket.on(cashierNeededEvent, (data: { customerName?: string }) => {
+      toast.error(
+        `⚠️ ${data?.customerName || 'Cliente'} tentou fazer um pedido — abra a Sessão de Caixa!`,
+        { duration: 10000, id: 'cashier-needed' }
+      );
+    });
+
+    const cashierReminderEvent = `cashier_reminder_${slug}`;
+    socket.on(cashierReminderEvent, (data: { opensAt?: string; message?: string }) => {
+      toast(
+        data?.message || `Sua loja abre em breve! Abra a Sessão de Caixa.`,
+        {
+          icon: '🕐',
+          duration: 30000,
+          id: 'cashier-reminder',
+          style: { background: '#1e293b', color: '#fff', fontWeight: 'bold' },
+        }
+      );
+    });
+
     return () => {
+      socket.off(cashierNeededEvent);
+      socket.off(cashierReminderEvent);
       socket.disconnect();
     };
-  }, [userRole]);
+  }, [userRole, slug]);
 
   useEffect(() => {
     if (userRole !== 'SUPER_ADMIN') {

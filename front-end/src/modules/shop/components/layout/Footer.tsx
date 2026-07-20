@@ -81,9 +81,10 @@ export function Footer({ settings }: FooterProps) {
   const operatingHoursSummary = hasHydrated
     ? getOperatingHoursSummary(settings?.operatingHours)
     : "Carregando horário";
-  const isOpenNow = typeof settings?.isOpen === "boolean"
+  const isOpenNow = (typeof settings?.isOpen === "boolean"
     ? settings.isOpen
-    : (hasHydrated ? isRestaurantOpenNow(settings?.operatingHours) : false);
+    : (hasHydrated ? isRestaurantOpenNow(settings?.operatingHours) : false))
+    && settings?.hasCashierSession !== false;
   const nextOpeningLabel = settings?.nextOpeningLabel || (hasHydrated
     ? getNextOpeningLabel(settings?.operatingHours)
     : "Sem próximos horários");
