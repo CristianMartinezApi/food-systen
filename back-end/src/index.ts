@@ -15,6 +15,7 @@ import { promises as fs } from 'fs';
 import path from 'path';
 import { getNextOpeningLabel, isRestaurantOpenNow, normalizeOperatingHours } from './utils/hours';
 import { validateGuidedSelections } from './utils/guided-assembly';
+import { sendEmail, getCashierReminderEmail, getCashierNeededEmail } from './utils/sendEmail';
 
 dotenv.config();
 
@@ -3588,6 +3589,7 @@ app.post('/api/orders', async (req: TenantRequest, res) => {
     if (!activeCashierSession) {
       const slug = req.restaurant?.slug;
       console.warn(`[OrderBlocked] Caixa fechado: restaurantId=${req.restaurantId}, slug=${slug}`);
+      
       // Notificar o admin em tempo real via socket
       if (slug) {
         io.emit(`cashier_needed_${slug}`, {
@@ -3595,7 +3597,34 @@ app.post('/api/orders', async (req: TenantRequest, res) => {
           phone: phone || null,
           timestamp: new Date().toISOString(),
         });
+
+        // Enviar email para os owners
+        try {
+          const restaurant = await prisma.restaurant.findUnique({
+            where: { id: req.restaurantId! },
+            include: {
+              users: {
+                where: { role: 'OWNER' },
+                select: { email: true },
+              },
+            },
+          });
+
+          if (restaurant?.users && restaurant.users.length > 0) {
+            const emailHtml = getCashierNeededEmail(restaurant.name);
+            for (const user of restaurant.users) {
+              sendEmail({
+                to: user.email,
+                subject: `⚠️ Cliente Tentou Fazer Pedido - ${restaurant.name}`,
+                html: emailHtml,
+              }).catch(err => console.error(`Email erro para ${user.email}:`, err));
+            }
+          }
+        } catch (err) {
+          console.error('Erro ao enviar email de cashier_needed:', err);
+        }
       }
+      
       return res.status(403).json({
         error: 'A loja está temporariamente indisponível para novos pedidos. Tente novamente em instantes.',
         code: 'CASHIER_CLOSED',
@@ -5818,11 +5847,35 @@ async function scheduleOpeningReminders(restaurantId: number, slug: string, rawH
             select: { id: true },
           });
           if (!active) {
+            // Buscar restaurante e seus owners
+            const restaurant = await prisma.restaurant.findUnique({
+              where: { id: restaurantId },
+              include: {
+                users: {
+                  where: { role: 'OWNER' },
+                  select: { email: true },
+                },
+              },
+            });
+
+            // Emitir socket
             io.emit(`cashier_reminder_${slug}`, {
               opensAt: shift.open,
               message: `Sua loja abre às ${shift.open}! Abra a Sessão de Caixa para ativar os pedidos online.`,
             });
             console.log(`[Reminder] Loja "${slug}" abre às ${shift.open} — caixa ainda fechado. Notificação enviada.`);
+
+            // Enviar email para todos os owners
+            if (restaurant?.users && restaurant.users.length > 0) {
+              const emailHtml = getCashierReminderEmail(restaurant.name, shift.open);
+              for (const user of restaurant.users) {
+                sendEmail({
+                  to: user.email,
+                  subject: `🕐 Lembrete: Abra seu Caixa! - ${restaurant.name}`,
+                  html: emailHtml,
+                }).catch(err => console.error(`Email erro para ${user.email}:`, err));
+              }
+            }
           }
         } catch { /* falha silenciosa */ }
         // Re-agendar para a semana seguinte após disparar
