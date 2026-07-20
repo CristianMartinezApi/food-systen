@@ -4122,10 +4122,31 @@ app.post('/api/cashier/session/open', authMiddleware, async (req: AuthRequest, r
       notes,
     });
 
-    // Verificar pedidos pendentes criados antes da abertura desta sessão
+    // Absorver automaticamente pedidos órfãos (cashSessionId=null) das últimas 24h
+    // Garante que pedidos online chegados sem caixa aberto entrem no financeiro da sessão
+    const cutoff24h = new Date(session.openedAt.getTime() - 24 * 60 * 60 * 1000);
+    const absorbedCount = await prisma.order.updateMany({
+      where: {
+        restaurantId: req.restaurantId!,
+        cashSessionId: null,
+        status: { in: ['PENDING', 'OPEN', 'CONFIRMED', 'PREPARING', 'READY', 'OUT_FOR_DELIVERY', 'DELIVERED'] },
+        createdAt: { gte: cutoff24h, lt: session.openedAt },
+      },
+      data: { cashSessionId: session.id },
+    });
+
+    if (absorbedCount.count > 0) {
+      await createAudit(req, 'absorb_orphan_orders', 'cash_session', session.id, {
+        absorbedCount: absorbedCount.count,
+        cutoff: cutoff24h.toISOString(),
+      });
+    }
+
+    // Verificar pedidos pendentes criados antes da abertura desta sessão (para exibição informativa)
     const preOpeningOrders = await prisma.order.findMany({
       where: {
         restaurantId: req.restaurantId!,
+        cashSessionId: session.id,
         status: { in: ['PENDING', 'PREPARING'] },
         createdAt: { lt: session.openedAt },
       },
@@ -4679,6 +4700,17 @@ app.patch('/api/cashier/sessions/:id/count-from', authMiddleware, async (req: Au
       where: { id: sessionId },
       data: { countFromDate },
       include: { openedBy: { select: { id: true, name: true, email: true } } },
+    });
+
+    // Vincular pedidos órfãos do período ao cashSessionId desta sessão
+    await prisma.order.updateMany({
+      where: {
+        restaurantId: req.restaurantId!,
+        cashSessionId: null,
+        status: { in: ['PENDING', 'OPEN', 'CONFIRMED', 'PREPARING', 'READY', 'OUT_FOR_DELIVERY', 'DELIVERED', 'PAID', 'RETIRED'] },
+        createdAt: { gte: countFromDate, lt: session.openedAt },
+      },
+      data: { cashSessionId: sessionId },
     });
 
     await createAudit(req, 'set_count_from_date', 'cash_session', sessionId, {
