@@ -294,8 +294,8 @@ export function AdminLayout({ children }: AdminLayoutProps) {
   const storeUrl = typeof window !== 'undefined' ? `${window.location.origin}/${slug}` : '';
 
   return (
-    <div className="min-h-screen bg-[#FDFDFD] flex">
-      {/* Sidebar Modernizada - Nível Visual Premium */}
+    <div className="min-h-screen bg-slate-50 flex">
+      {/* Sidebar administrativa com visual discreto */}
       <AnimatePresence>
         {isSidebarOpen && (
           <motion.div
@@ -303,41 +303,41 @@ export function AdminLayout({ children }: AdminLayoutProps) {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={() => setIsSidebarOpen(false)}
-            className="fixed inset-0 bg-slate-950/60 backdrop-blur-md z-60 lg:hidden"
+            className="fixed inset-0 bg-slate-950/45 backdrop-blur-sm z-60 lg:hidden"
           />
         )}
       </AnimatePresence>
 
       <aside className={cn(
-        "fixed inset-y-0 left-0 w-80 bg-white border-r border-slate-100 flex flex-col h-screen overflow-y-auto z-70 transition-transform duration-500 lg:sticky lg:translate-x-0 lg:z-50 shadow-[4px_0_24px_rgba(0,0,0,0.02)]",
+        "fixed inset-y-0 left-0 w-72 bg-white border-r border-slate-200 flex flex-col h-screen overflow-y-auto z-70 transition-transform duration-300 lg:sticky lg:translate-x-0 lg:z-50",
         isSidebarOpen ? "translate-x-0" : "-translate-x-full"
       )}>
-        <div className="p-10 pb-12 flex items-center justify-between">
-          <div className="flex items-center gap-4">
+        <div className="px-6 py-6 flex items-center justify-between border-b border-slate-200">
+          <div className="flex items-center gap-3 min-w-0">
             {settings?.logo ? (
-              <img src={settings.logo} alt="Logo" className="w-12 h-12 rounded-[1.25rem] object-cover shadow-2xl shadow-slate-200" />
+              <img src={settings.logo} alt="Logo" className="w-10 h-10 rounded-lg object-cover border border-slate-200" />
             ) : (
-              <div className="w-12 h-12 bg-slate-950 rounded-[1.25rem] flex items-center justify-center shadow-lg shadow-slate-950/20">
-                <Utensils className="text-white" size={24} />
+              <div className="w-10 h-10 bg-slate-900 rounded-lg flex items-center justify-center">
+                <Utensils className="text-white" size={18} />
               </div>
             )}
-            <div className="flex flex-col">
-              <span className="text-heading-3 font-display font-bold tracking-tight text-slate-950 uppercase leading-none">
+            <div className="flex flex-col min-w-0">
+              <span className="text-sm font-semibold text-slate-900 truncate leading-none">
                 {settings?.storeName?.split(' ')[0] || "Food"}
               </span>
-              <span className="text-label font-body font-medium text-slate-400 uppercase tracking-widest mt-1">SISTEMA</span>
+              <span className="text-xs font-medium text-slate-500 mt-1">Painel administrativo</span>
             </div>
           </div>
 
           <button
             onClick={() => setIsSidebarOpen(false)}
-            className="lg:hidden w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400 active:scale-95 transition-all"
+            className="lg:hidden w-9 h-9 rounded-md border border-slate-200 bg-white flex items-center justify-center text-slate-500 active:scale-95 transition-all"
           >
-            <ChevronRight size={20} className="rotate-180" />
+            <ChevronRight size={16} className="rotate-180" />
           </button>
         </div>
 
-        <nav className="flex-1 px-6 space-y-2">
+        <nav className="flex-1 px-4 py-4 space-y-1.5">
           {menuItems.map((item) => {
             const isActive = pathname === item.path;
             return (
@@ -345,21 +345,21 @@ export function AdminLayout({ children }: AdminLayoutProps) {
                 key={item.path}
                 href={item.path}
                 className={cn(
-                  "flex items-center justify-between px-4 sm:px-6 h-12 sm:h-14 lg:h-16 rounded-[1.25rem] transition-all group font-body font-bold text-[11px] sm:text-label uppercase tracking-[0.08em]",
+                  "flex items-center justify-between px-3 sm:px-4 h-11 rounded-lg transition-colors group text-sm font-medium",
                   isActive
-                    ? "bg-slate-950 text-white shadow-2xl shadow-slate-950/20"
-                    : "text-slate-400 hover:bg-slate-50 hover:text-slate-950"
+                    ? "bg-slate-100 text-slate-950 border border-slate-200"
+                    : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
                 )}
               >
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-3">
                   <item.icon size={20} className={cn(
                     "transition-colors",
-                    isActive ? "text-primary" : "text-slate-200 group-hover:text-primary"
+                    isActive ? "text-slate-700" : "text-slate-400 group-hover:text-slate-700"
                   )} />
                   <span>{item.label}</span>
                 </div>
                 {isActive && (
-                  <motion.div layoutId="nav-active-dot" className="w-1.5 h-1.5 rounded-full bg-primary shadow-[0_0_8px_var(--color-primary)]" />
+                  <motion.div layoutId="nav-active-dot" className="w-1.5 h-1.5 rounded-full bg-slate-500" />
                 )}
               </Link>
             );
@@ -368,38 +368,38 @@ export function AdminLayout({ children }: AdminLayoutProps) {
 
         {/* Ver Loja */}
         {userRole !== 'SUPER_ADMIN' && (
-          <div className="px-8 mb-4">
+          <div className="px-4 mb-4">
             <a
               href={storeUrl}
               target="_blank"
               rel="noreferrer"
-              className="flex items-center justify-center gap-3 w-full h-12 sm:h-14 bg-white border border-slate-100 text-slate-400 rounded-2xl text-[11px] sm:text-label font-body font-bold uppercase tracking-[0.06em] hover:bg-slate-50 hover:border-primary/20 hover:text-primary transition-all shadow-sm"
+              className="flex items-center justify-center gap-2 w-full h-10 bg-white border border-slate-200 text-slate-600 rounded-lg text-sm font-medium hover:bg-slate-100 hover:text-slate-900 transition-colors"
             >
               Acessar Vitrine <ExternalLink size={14} />
             </a>
           </div>
         )}
 
-        <div className="p-8 border-t border-slate-50">
-          <div className="bg-slate-50 rounded-4xl p-5 flex items-center gap-4 mb-6 border border-slate-100 shadow-inner">
-            <div className="w-12 h-12 rounded-2xl bg-white border border-slate-200 flex items-center justify-center shadow-sm shrink-0">
-              <User size={22} className="text-slate-900" />
+        <div className="p-4 border-t border-slate-200">
+          <div className="bg-slate-50 rounded-lg px-3 py-3 flex items-center gap-3 mb-3 border border-slate-200">
+            <div className="w-10 h-10 rounded-md bg-white border border-slate-200 flex items-center justify-center shrink-0">
+              <User size={18} className="text-slate-700" />
             </div>
             <div className="truncate flex-1">
-              <p className="text-body-strong font-display font-bold text-slate-950 truncate uppercase tracking-tight leading-none mb-1">
+              <p className="text-sm font-semibold text-slate-900 truncate leading-none mb-1">
                 {userName || "Operador"}
               </p>
               <div className="flex items-center gap-1.5 min-w-0">
                 <span className={cn(
-                  "px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-widest leading-none",
-                  userRole === "SUPER_ADMIN" ? "bg-slate-950 text-white" :
+                  "px-1.5 py-0.5 rounded text-[10px] font-semibold leading-none",
+                  userRole === "SUPER_ADMIN" ? "bg-slate-900 text-white" :
                   userRole === "OWNER" ? "bg-emerald-100 text-emerald-800" :
                   userRole === "MANAGER" ? "bg-amber-100 text-amber-800" :
                   "bg-slate-100 text-slate-600"
                 )}>
                   {roleLabels[userRole] || userRole}
                 </span>
-                <p className="text-[10px] font-body font-medium text-slate-400 tracking-[0.06em] truncate uppercase">
+                <p className="text-[11px] font-medium text-slate-500 truncate">
                   {settings?.storeName || 'Food System'}
                 </p>
               </div>
@@ -407,59 +407,59 @@ export function AdminLayout({ children }: AdminLayoutProps) {
           </div>
           <button
             onClick={handleLogout}
-            className="flex items-center gap-4 w-full px-4 sm:px-6 h-12 sm:h-14 rounded-2xl text-slate-400 hover:text-rose-500 hover:bg-rose-50 transition-all font-body font-bold text-[11px] sm:text-label uppercase tracking-[0.06em]"
+            className="flex items-center gap-3 w-full px-3 h-10 rounded-lg text-slate-600 hover:text-rose-600 hover:bg-rose-50 transition-colors text-sm font-medium"
           >
-            <LogOut size={20} />
+            <LogOut size={16} />
             <span>Encerrar Sessão</span>
           </button>
         </div>
       </aside>
 
       {/* Main Content Area */}
-      <main className="flex-1 flex flex-col min-h-0 overflow-hidden bg-[#FDFDFD]">
-        {/* Header Superior Premium */}
-        <header className="h-20 lg:h-24 bg-white/80 backdrop-blur-md border-b border-slate-50 px-6 lg:px-12 flex items-center justify-between sticky top-0 z-40 shrink-0">
+      <main className="flex-1 flex flex-col min-h-0 overflow-hidden bg-slate-50">
+        {/* Header superior do sistema */}
+        <header className="h-16 lg:h-17 bg-white border-b border-slate-200 px-4 lg:px-8 flex items-center justify-between sticky top-0 z-40 shrink-0">
           <div className="flex items-center gap-4">
             <button
               onClick={() => setIsSidebarOpen(true)}
-              className="lg:hidden w-12 h-12 rounded-2xl bg-slate-950 flex items-center justify-center text-white shadow-xl active:scale-90 transition-all"
+              className="lg:hidden w-9 h-9 rounded-md border border-slate-200 bg-white flex items-center justify-center text-slate-700 active:scale-95 transition-all"
             >
-              <LayoutDashboard size={20} />
+              <LayoutDashboard size={16} />
             </button>
-            <div className="hidden sm:flex items-center gap-4">
-              <h2 className="text-label font-body font-medium text-slate-300 uppercase tracking-[0.06em]">Hub Administrativo</h2>
-              <ChevronRight size={14} className="text-slate-200" />
+            <div className="hidden sm:flex items-center gap-2">
+              <h2 className="text-xs font-medium text-slate-500">Administração</h2>
+              <ChevronRight size={12} className="text-slate-300" />
             </div>
-            <span className="text-body-strong font-body font-bold text-slate-950 uppercase tracking-tight">
+            <span className="text-sm font-semibold text-slate-900">
               {menuItems.find(m => m.path === pathname)?.label || "Visão Geral"}
             </span>
           </div>
 
           <div className="flex items-center gap-3 lg:gap-4">
-            <div className="hidden md:flex items-center gap-3 bg-emerald-50 px-5 py-2.5 rounded-xl border border-emerald-100/50">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
-              <span className="text-label font-body font-bold text-emerald-600 uppercase tracking-[0.08em]">Loja Online</span>
+            <div className="hidden md:flex items-center gap-2 bg-slate-100 px-3 py-2 rounded-md border border-slate-200">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+              <span className="text-xs font-medium text-slate-600">Loja online</span>
             </div>
 
             <div ref={noticesRef} className="relative">
               <button
                 onClick={openNotices}
-                className="flex items-center gap-3 h-12 px-4 lg:px-5 rounded-2xl bg-white border border-slate-100 hover:border-primary/20 transition-all group shadow-sm disabled:cursor-default"
+                className="flex items-center gap-2 h-10 px-3 rounded-md bg-white border border-slate-200 hover:bg-slate-100 transition-colors group disabled:cursor-default"
                 disabled={userRole !== 'SUPER_ADMIN'}
               >
-                <div className="relative w-10 h-10 rounded-2xl bg-slate-50 flex items-center justify-center">
-                  <Bell size={18} className="text-slate-300 group-hover:text-primary transition-colors" />
+                <div className="relative w-7 h-7 rounded-md bg-slate-100 flex items-center justify-center">
+                  <Bell size={15} className="text-slate-500 group-hover:text-slate-700 transition-colors" />
                   {pendingCount && pendingCount > 0 ? (
-                    <span className="absolute top-2 right-2 min-w-4 h-4 px-1 rounded-full bg-primary text-[10px] font-black leading-4 text-white border-2 border-white shadow-sm text-center">
+                    <span className="absolute -top-1 -right-1 min-w-4 h-4 px-1 rounded-full bg-slate-900 text-[10px] font-semibold leading-4 text-white border border-white text-center">
                       {pendingCount}
                     </span>
                   ) : (
-                    <span className="absolute top-2 right-2 w-2 h-2 bg-slate-200 rounded-full border-2 border-white shadow-sm" />
+                    <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-slate-300 rounded-full border border-white" />
                   )}
                 </div>
                 <div className="hidden sm:flex flex-col items-start leading-none">
-                  <span className="text-[10px] font-black text-slate-300 uppercase tracking-[0.24em]">Avisos</span>
-                  <span className="text-[11px] font-bold text-slate-950 uppercase tracking-[0.08em]">
+                  <span className="text-[10px] font-medium text-slate-500">Avisos</span>
+                  <span className="text-[11px] font-semibold text-slate-900">
                     {noticeSummary.label}
                   </span>
                 </div>
@@ -579,13 +579,13 @@ export function AdminLayout({ children }: AdminLayoutProps) {
               )}
             </div>
 
-            <button className="flex items-center gap-3 h-12 px-4 lg:px-5 rounded-2xl bg-slate-950 text-white shadow-2xl shadow-slate-950/20">
-              <div className="w-10 h-10 rounded-2xl bg-white/10 flex items-center justify-center text-primary shrink-0">
-                <User size={18} />
+            <button className="flex items-center gap-2 h-10 px-3 rounded-md bg-white border border-slate-200 text-slate-700">
+              <div className="w-7 h-7 rounded-md bg-slate-100 flex items-center justify-center text-slate-600 shrink-0">
+                <User size={14} />
               </div>
               <div className="hidden sm:flex flex-col items-start leading-none min-w-0">
-                <span className="text-[10px] font-black text-white/40 uppercase tracking-[0.24em]">Perfil</span>
-                <span className="text-[11px] font-bold text-white uppercase tracking-[0.08em] truncate max-w-40">{storeLabel}</span>
+                <span className="text-[10px] font-medium text-slate-500">Perfil</span>
+                <span className="text-[11px] font-semibold text-slate-900 truncate max-w-40">{storeLabel}</span>
               </div>
             </button>
           </div>
