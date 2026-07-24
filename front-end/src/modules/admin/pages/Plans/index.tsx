@@ -5,6 +5,7 @@ import { api } from "@/core/config/api";
 import { Loader2, Plus, CreditCard, Edit, Trash, Save, X } from "lucide-react";
 import toast from "react-hot-toast";
 import { formatCurrency, normalizeMoneyInput, parseMoneyInput, formatMoneyInputRealtime } from "@/shared/utils";
+import { AdminPageHeader } from "../../components/layout/AdminPageHeader";
 
 interface Plan {
   id: number;
@@ -123,26 +124,25 @@ export default function PlansPage() {
   }
 
   return (
-    <div className="p-8 space-y-8 max-w-7xl mx-auto">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-display font-bold text-slate-950 flex items-center gap-3">
-            <CreditCard className="text-slate-950" size={32} />
-            Gestão de Planos
-          </h1>
-          <p className="text-slate-500 mt-2">Configure os limites e preços dos planos do sistema.</p>
-        </div>
+    <div className="mx-auto max-w-7xl space-y-4">
+      <AdminPageHeader
+        eyebrow="Super Admin"
+        title="Gestão de planos"
+        description="Configure preços e limites comerciais disponíveis para as lojas."
+        status={<span className="rounded-md bg-slate-100 px-2 py-1 text-xs font-medium text-slate-600">{plans.length} planos</span>}
+        actions={
         <button
           onClick={() => setIsCreating(true)}
-          className="flex items-center gap-2 bg-slate-950 text-white px-6 py-3 rounded-2xl hover:bg-slate-900 transition-all font-bold uppercase tracking-wider text-xs"
+          className="inline-flex h-10 items-center gap-2 rounded-lg bg-slate-950 px-4 text-xs font-semibold text-white hover:bg-primary"
         >
-          <Plus size={18} />
-          Novo Plano
+          <Plus size={16} />
+          Novo plano
         </button>
-      </div>
+        }
+      />
 
       {isCreating && (
-        <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm animate-in fade-in slide-in-from-top-4 duration-300">
+        <div className="animate-in fade-in slide-in-from-top-4 rounded-xl border border-slate-200 bg-white p-5 shadow-sm duration-300">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl font-bold font-display">Criar Novo Plano</h2>
             <button onClick={() => setIsCreating(false)} className="text-slate-400 hover:text-slate-600">

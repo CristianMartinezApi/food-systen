@@ -25,7 +25,6 @@ import {
 import { useSettings } from "../../../../core/hooks/useSettings";
 import { cn, normalizeMoneyInput, parseMoneyInput, toMoneyInputValue, formatMoneyInputRealtime } from "../../../../shared/utils";
 import toast from "react-hot-toast";
-import { gsap } from "gsap";
 import { createDefaultOperatingHours, getNextOpeningLabel, isRestaurantOpenNow, normalizeOperatingHours } from "../../../../shared/utils/schedule";
 import { sendToWhatsApp } from "../../../../shared/utils/whatsapp";
 import { SAAS_SUPPORT_PHONE } from "../../../../core/config/support";
@@ -35,6 +34,7 @@ import PrinterSettings from "../../components/PrinterSettings";
 import TeamSettings from "../../components/TeamSettings";
 import { compressImageFileToDataUrl } from "../../../../shared/utils/image";
 import { uploadImageAsset } from "../../../../core/services/assets";
+import { AdminPageHeader } from "../../components/layout/AdminPageHeader";
 
 const DAY_OPTIONS = [
     { key: "seg", label: "Segunda" },
@@ -53,8 +53,6 @@ export default function SettingsPage() {
     const [savedSnapshot, setSavedSnapshot] = useState<string>("");
     const fileInputRef = useRef<HTMLInputElement>(null);
     const bannerFileInputRef = useRef<HTMLInputElement>(null);
-    const rootRef = useRef<HTMLDivElement>(null);
-    const hasAnimatedRef = useRef(false);
     const hasInitializedFormRef = useRef(false);
     const openSupportChat = () => {
         sendToWhatsApp(
@@ -128,6 +126,21 @@ export default function SettingsPage() {
 
         const initialFormData = {
             ...settings,
+            storeName: settings.storeName || "",
+            phone: settings.phone || "",
+            corporateName: settings.corporateName || "",
+            cnpj: settings.cnpj || "",
+            primaryColor: settings.primaryColor || "#ef4444",
+            bio: settings.bio || "",
+            bannerBadge: settings.bannerBadge || "",
+            bannerTitleLine1: settings.bannerTitleLine1 || "",
+            bannerTitleLine2: settings.bannerTitleLine2 || "",
+            bannerDescription: settings.bannerDescription || "",
+            bannerCtaLabel: settings.bannerCtaLabel || "",
+            address: settings.address || "",
+            deliveryRadius: settings.deliveryRadius ?? 5,
+            instagram: settings.instagram || "",
+            facebook: settings.facebook || "",
             operatingHours: normalizeOperatingHours(settings.operatingHours || createDefaultOperatingHours()),
             deliveryEtaMinutes: settings.deliveryEtaMinutes || 35,
             cashDifferenceNoteThreshold: settings.cashDifferenceNoteThreshold ?? 5,
@@ -193,20 +206,6 @@ export default function SettingsPage() {
         document.addEventListener("click", handleDocumentNavigation, true);
         return () => document.removeEventListener("click", handleDocumentNavigation, true);
     }, [hasUnsavedChanges, formData]);
-
-    useEffect(() => {
-        if (!settings || !rootRef.current || hasAnimatedRef.current) return;
-
-        const ctx = gsap.context(() => {
-            const tl = gsap.timeline({ defaults: { ease: "power3.out" } });
-            tl.from(".settings-hero", { y: -18, opacity: 0, duration: 0.7 })
-                .from(".settings-panel", { y: 24, opacity: 0, duration: 0.8, stagger: 0.08 }, "-=0.25");
-        }, rootRef);
-
-        hasAnimatedRef.current = true;
-
-        return () => ctx.revert();
-    }, [settings]);
 
     const handleManualAddressChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const val = e.target.value;
@@ -286,7 +285,7 @@ export default function SettingsPage() {
                     console.warn('Falha ao enviar logo para storage, usando base64:', uploadError);
                 }
 
-                setFormData({ ...formData, logo: logoValue });
+                setFormData((current: any) => ({ ...current, logo: logoValue }));
             } catch (error) {
                 console.error("Erro ao processar logo:", error);
                 toast.error("Não foi possível processar a logo.");
@@ -312,7 +311,7 @@ export default function SettingsPage() {
                     console.warn('Falha ao enviar banner para storage, usando base64:', uploadError);
                 }
 
-                setFormData({ ...formData, bannerImage: bannerValue });
+                setFormData((current: any) => ({ ...current, bannerImage: bannerValue }));
             } catch (error) {
                 console.error("Erro ao processar banner:", error);
                 toast.error("Não foi possível processar a imagem do banner.");
@@ -340,9 +339,10 @@ export default function SettingsPage() {
             await updateSettings(dataToSave);
             setSavedSnapshot(createSettingsSnapshot(formData));
             toast.success("Configurações atualizadas com sucesso!");
-        } catch (error) {
+        } catch (error: any) {
             console.error("Erro ao salvar:", error);
-            toast.error("Erro ao salvar configurações.");
+            const details = Array.isArray(error?.details) ? error.details.join(" ") : "";
+            toast.error(details || error?.message || "Erro ao salvar configurações.");
         } finally {
             setIsSaving(false);
         }
@@ -412,20 +412,26 @@ export default function SettingsPage() {
     };
 
     return (
-        <div ref={rootRef} className="settings-workspace pb-28 md:pb-32">
-            <div className="settings-hero system-hero-band flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8 sm:mb-12 p-4 sm:p-6 md:p-8 lg:p-10">
-                    <div>
-                        <h1 className="text-2xl sm:text-3xl md:text-heading-1 font-display font-bold text-slate-950 uppercase tracking-tight">Configurações da Loja</h1>
-                        <p className="text-[12px] sm:text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em] mt-2">Identidade visual, dados da loja e parâmetros de operação.</p>
-                    </div>
-                    <div className="rounded-xl border border-slate-200 bg-white/80 px-4 py-2 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">
-                        {hasUnsavedChanges ? "Você tem alterações pendentes" : "Tudo salvo"}
-                    </div>
-                </div>
+        <div className="settings-workspace pb-28 md:pb-32">
+            <div className="settings-hero mb-4">
+                <AdminPageHeader
+                    eyebrow="Administração"
+                    title="Configurações da loja"
+                    description="Identidade, operação, equipe, pagamentos e integrações."
+                    status={
+                        <span className={cn(
+                            "rounded-md px-2 py-1 text-xs font-medium",
+                            hasUnsavedChanges ? "bg-amber-50 text-amber-700" : "bg-emerald-50 text-emerald-700"
+                        )}>
+                            {hasUnsavedChanges ? "Alterações pendentes" : "Tudo salvo"}
+                        </span>
+                    }
+                />
+            </div>
 
-                <div className="grid grid-cols-1 2xl:grid-cols-3 gap-4 sm:gap-6 md:gap-10">
+                <div className="grid grid-cols-1 gap-4 sm:gap-6 2xl:grid-cols-3">
                     {/* Coluna Principal - Informações */}
-                    <div className="2xl:col-span-2 space-y-4 sm:space-y-6 md:space-y-10">
+                    <div className="space-y-4 sm:space-y-6 2xl:col-span-2">
                         {/* Gestão de Equipe */}
                         <div className="settings-panel">
                             <TeamSettings />
@@ -505,7 +511,7 @@ export default function SettingsPage() {
                                 <div className="space-y-3">
                                     <label className="text-[12px] sm:text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em] ml-1">Designação da Loja</label>
                                     <input
-                                        value={formData.storeName}
+                                        value={formData.storeName || ""}
                                         onChange={(e) => setFormData({ ...formData, storeName: e.target.value })}
                                         className="w-full h-10 sm:h-12 md:h-16 px-4 sm:px-6 bg-slate-50 border-transparent focus:bg-white focus:ring-2 focus:ring-slate-950/5 rounded-2xl transition-all font-body font-bold text-slate-950 text-[12px] sm:text-label uppercase tracking-widest outline-none"
                                     />
@@ -516,7 +522,7 @@ export default function SettingsPage() {
                                     <div className="relative">
                                         <Phone className="absolute left-4 sm:left-6 top-1/2 -translate-y-1/2 text-slate-300" size={16} />
                                         <input
-                                            value={formData.phone}
+                                            value={formData.phone || ""}
                                             onChange={handlePhoneChange}
                                             placeholder="(11) 99999-9999"
                                             className="w-full h-10 sm:h-12 md:h-16 pl-12 sm:pl-16 pr-4 sm:pr-6 bg-slate-50 border-transparent focus:bg-white focus:ring-2 focus:ring-slate-950/5 rounded-2xl transition-all font-body font-bold text-slate-950 text-[12px] sm:text-label uppercase tracking-widest outline-none"
@@ -550,7 +556,7 @@ export default function SettingsPage() {
                                         <div className="flex-1 h-16 bg-slate-50 rounded-2xl flex items-center px-6 gap-4">
                                             <div className="w-8 h-8 rounded-xl shadow-lg border-2 border-white" style={{ backgroundColor: formData.primaryColor }} />
                                             <input
-                                                value={formData.primaryColor}
+                                                value={formData.primaryColor || "#ef4444"}
                                                 onChange={(e) => setFormData({ ...formData, primaryColor: e.target.value })}
                                                 className="bg-transparent font-mono font-medium text-slate-950 uppercase outline-none w-full tracking-widest"
                                             />
@@ -558,7 +564,7 @@ export default function SettingsPage() {
                                         <div className="relative overflow-hidden w-16 h-16 rounded-2xl shadow-xl flex items-center justify-center">
                                             <input
                                                 type="color"
-                                                value={formData.primaryColor}
+                                                value={formData.primaryColor || "#ef4444"}
                                                 onChange={(e) => setFormData({ ...formData, primaryColor: e.target.value })}
                                                 className="absolute inset-0 w-[150%] h-[150%] -translate-x-4 -translate-y-4 cursor-pointer border-none p-0 bg-transparent"
                                             />
@@ -693,7 +699,7 @@ export default function SettingsPage() {
                                 <div className="space-y-2 relative">
                                     <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Endereço Completo</label>
                                     <input
-                                        value={value}
+                                        value={value || ""}
                                         onChange={(e) => {
                                             setValue(e.target.value);
                                             setFormData((prev: any) => ({ ...prev, address: e.target.value }));
@@ -731,7 +737,7 @@ export default function SettingsPage() {
                                             <Navigation className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
                                             <input
                                                 type="number"
-                                                value={formData.deliveryRadius}
+                                                value={formData.deliveryRadius ?? 5}
                                                 onChange={(e) => setFormData({ ...formData, deliveryRadius: Number(e.target.value) })}
                                                 className="w-full h-10 sm:h-12 md:h-14 pl-11 sm:pl-14 pr-4 sm:pr-5 bg-slate-50 border-2 border-transparent focus:border-primary/20 focus:bg-white rounded-2xl transition-all font-bold text-slate-700 outline-none"
                                             />
@@ -938,14 +944,14 @@ export default function SettingsPage() {
                                                         <div key={shiftIndex} className="flex flex-col md:flex-row md:items-center gap-3">
                                                             <input
                                                                 type="time"
-                                                                value={shift.open}
+                                                                value={shift.open || ""}
                                                                 onChange={(e) => updateShift(day.key, shiftIndex, "open", e.target.value)}
                                                                 className="h-10 px-3 bg-white border border-slate-100 rounded-lg text-xs font-bold outline-none"
                                                             />
                                                             <span className="text-slate-300 font-black">às</span>
                                                             <input
                                                                 type="time"
-                                                                value={shift.close}
+                                                                value={shift.close || ""}
                                                                 onChange={(e) => updateShift(day.key, shiftIndex, "close", e.target.value)}
                                                                 className="h-10 px-3 bg-white border border-slate-100 rounded-lg text-xs font-bold outline-none"
                                                             />

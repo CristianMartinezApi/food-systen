@@ -209,11 +209,11 @@ export default function TeamSettings() {
                         className="absolute inset-0 bg-slate-950/40 backdrop-blur-sm"
                         onClick={() => setShowAddModal(false)}
                     />
-                    <div className="relative bg-white w-full max-w-lg rounded-[2.5rem] shadow-2xl overflow-hidden p-8 md:p-10">
-                        <div className="flex items-center justify-between mb-8">
+                    <div className="relative w-full max-w-lg overflow-hidden rounded-xl border border-slate-200 bg-white p-5 shadow-2xl">
+                        <div className="mb-5 flex items-center justify-between">
                             <div>
-                                <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight">Novo Colaborador</h3>
-                                <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-1">Preencha os dados de acesso</p>
+                                <h3 className="text-lg font-semibold text-slate-950">Novo colaborador</h3>
+                                <p className="mt-1 text-sm text-slate-500">Preencha os dados de acesso.</p>
                             </div>
                         </div>
 
@@ -284,14 +284,14 @@ export default function TeamSettings() {
                                 <button
                                     type="button"
                                     onClick={() => setShowAddModal(false)}
-                                    className="flex-1 h-14 bg-slate-100 text-slate-400 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-200 transition-all"
+                                    className="h-10 flex-1 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-600 hover:bg-slate-100"
                                 >
                                     CANCELAR
                                 </button>
                                 <button
                                     type="submit"
                                     disabled={isSubmitting}
-                                    className="flex-2 h-14 bg-slate-950 text-white rounded-2xl font-black text-10px uppercase tracking-widest shadow-xl shadow-slate-900/20 hover:bg-indigo-600 transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center"
+                                    className="flex h-10 flex-2 items-center justify-center rounded-lg bg-slate-950 px-4 text-xs font-semibold text-white hover:bg-indigo-600 disabled:opacity-50"
                                 >
                                     {isSubmitting ? <Loader2 className="animate-spin" /> : "CRIAR ACESSO AGORA"}
                                 </button>

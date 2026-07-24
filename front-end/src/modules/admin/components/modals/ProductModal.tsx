@@ -428,28 +428,28 @@ export function ProductModal({ isOpen, onClose, onSave, product }: ProductModalP
         onClick={onClose}
       />
 
-      <div className="relative w-full max-w-2xl bg-white rounded-[3rem] shadow-2xl overflow-hidden">
-        <div className="flex items-center justify-between p-8 border-b border-slate-100">
-          <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tighter">
+      <div className="relative w-full max-w-3xl overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl">
+        <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
+          <h2 className="text-lg font-semibold text-slate-950">
             {product ? "Editar Produto" : "Novo Produto"}
           </h2>
           <button
             onClick={onClose}
-            className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-all"
+            className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50"
           >
             <X size={24} />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-8 overflow-y-auto max-h-[70vh]">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <form onSubmit={handleSubmit} className="max-h-[72vh] overflow-y-auto p-5">
+          <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
             {/* Upload de Imagem */}
             <div className="md:col-span-2">
               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-2 block">Imagem do Produto</label>
               <div className="flex items-center gap-6">
                 <div
                   onClick={() => fileInputRef.current?.click()}
-                  className="relative w-40 h-40 bg-slate-50 rounded-[2.5rem] border-2 border-dashed border-slate-200 flex flex-col items-center justify-center cursor-pointer hover:border-primary/40 hover:bg-primary/2 transition-all group overflow-hidden"
+                  className="group relative flex h-32 w-32 cursor-pointer flex-col items-center justify-center overflow-hidden rounded-xl border border-dashed border-slate-300 bg-slate-50 transition hover:border-primary/40"
                 >
                   {formData.image ? (
                     <>
@@ -889,18 +889,18 @@ export function ProductModal({ isOpen, onClose, onSave, product }: ProductModalP
           </div>
         </form>
 
-        <div className="p-8 bg-slate-50 flex gap-4">
+        <div className="flex gap-3 border-t border-slate-200 bg-slate-50 px-5 py-4">
           <button
             type="button"
             onClick={onClose}
-            className="flex-1 h-14 rounded-2xl font-black text-slate-400 hover:bg-slate-100 transition-all uppercase tracking-widest text-xs"
+            className="h-10 flex-1 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-600 hover:bg-slate-100"
           >
             Cancelar
           </button>
           <button
             onClick={handleSubmit}
             disabled={isSaving}
-            className="flex-2 h-14 bg-primary text-white rounded-2xl font-black flex items-center justify-center gap-3 shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 uppercase tracking-widest text-xs"
+            className="flex h-10 flex-2 items-center justify-center gap-2 rounded-lg bg-primary text-xs font-semibold text-white transition hover:bg-primary/90 disabled:opacity-50"
           >
             {isSaving ? <Loader2 className="animate-spin" /> : <Save size={20} />}
             {product ? "Salvar Alterações" : "Cadastrar Produto"}

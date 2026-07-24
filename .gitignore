@@ -10,6 +10,8 @@ dist/
 dist-ssr/
 build/
 coverage/
+*.tsbuildinfo
+back-end/uploads/
 
 # Cache
 .cache/
@@ -39,6 +41,7 @@ temp/
 # Backups
 backups/
 *.sql
+!back-end/prisma/migrations/**/migration.sql
 *.dump
 
 # VS Code / Editors

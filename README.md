@@ -118,6 +118,11 @@ docker compose up -d
 # Backend API: http://localhost:8000
 ```
 
+O Compose local executa frontend e backend em modo de desenvolvimento. Alterações
+em `front-end/app`, `front-end/src`, `front-end/public` e `back-end/src` são
+recarregadas automaticamente, sem reconstruir os containers. Reconstrua somente
+quando alterar dependências, Dockerfiles ou arquivos de configuração não montados.
+
 ### Em Desenvolvimento Local
 
 ```bash

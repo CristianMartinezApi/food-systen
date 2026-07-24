@@ -1,6 +1,6 @@
 "use client";
 
-import { ShoppingBag, TrendingUp, DollarSign, Clock, RefreshCw, Volume2, VolumeX, Printer } from "lucide-react";
+import { ShoppingBag, RefreshCw, Volume2, VolumeX } from "lucide-react";
 import { formatCurrency } from "../../../../shared/utils";
 
 interface OperationHeaderProps {
@@ -23,14 +23,14 @@ export function OperationHeader({
   activeOrderCount
 }: OperationHeaderProps) {
   return (
-    <header className="sticky top-0 z-30 rounded-2xl border border-slate-100 bg-white/80 backdrop-blur-md shadow-sm px-4 py-2 lg:px-6">
+    <header className="sticky top-0 z-30 rounded-xl border border-slate-200 bg-white/95 px-4 py-3 shadow-sm backdrop-blur-md lg:px-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-4 min-w-0">
           <div className="flex items-center gap-3">
             <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${isOpen ? "bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.4)]" : "bg-slate-300"}`} />
             <div className="hidden sm:block">
-              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 leading-none">Turno em Andamento</p>
-              <p className="text-xs font-black text-slate-950 uppercase mt-0.5">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400 leading-none">Operação do dia</p>
+              <p className="mt-1 text-sm font-semibold text-slate-950">
                 {sessionLoading ? "Sincronizando..." : isOpen ? "Sessão Ativa" : "Caixa Fechado"}
               </p>
             </div>
@@ -54,7 +54,7 @@ export function OperationHeader({
 
         <div className="flex items-center gap-2">
           {activeOrderCount > 0 && (
-            <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-rose-50 border border-rose-100 animate-bounce">
+            <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-rose-50 border border-rose-200">
               <ShoppingBag size={12} className="text-rose-600" />
               <span className="text-[10px] font-black text-rose-700 uppercase">{activeOrderCount} Novos</span>
             </div>
@@ -62,7 +62,7 @@ export function OperationHeader({
 
           <button
             onClick={onToggleMute}
-            className={`h-9 px-3 rounded-xl border transition-all flex items-center gap-2 ${
+            className={`h-9 px-3 rounded-lg border transition-all flex items-center gap-2 ${
               isMuted
                 ? "bg-rose-50 border-rose-100 text-rose-600"
                 : "bg-slate-50 border-slate-100 text-slate-600 hover:bg-slate-100"
@@ -75,7 +75,7 @@ export function OperationHeader({
 
           <button
             onClick={onRefresh}
-            className="h-9 w-9 rounded-xl border border-slate-100 bg-slate-50 text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors flex items-center justify-center shrink-0"
+            className="h-9 w-9 rounded-lg border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-700 transition-colors flex items-center justify-center shrink-0"
             title="Atualizar painel"
           >
             <RefreshCw size={14} className={sessionLoading ? "animate-spin" : ""} />

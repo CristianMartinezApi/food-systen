@@ -3,21 +3,25 @@ services:
   frontend:
     build:
       context: ../front-end
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.dev
       args:
         NEXT_PUBLIC_API_URL: ${DEPLOY_NEXT_PUBLIC_API_URL:-http://localhost:8001/api}
         NEXT_PUBLIC_SOCKET_URL: ${DEPLOY_NEXT_PUBLIC_SOCKET_URL:-http://localhost:8001}
+    command: npm run dev -- -H 0.0.0.0
     ports:
       - "3001:3000"
     volumes:
       - ../front-end/src:/app/src
       - ../front-end/app:/app/app
       - ../front-end/public:/app/public
+      - frontend_next_cache:/app/.next
     depends_on:
       - backend
     networks:
       - food-network
     environment:
+      - NODE_ENV=development
+      - WATCHPACK_POLLING=true
       - NEXT_PUBLIC_API_URL=${DEPLOY_NEXT_PUBLIC_API_URL:-http://localhost:8001/api}
       - NEXT_PUBLIC_SOCKET_URL=${DEPLOY_NEXT_PUBLIC_SOCKET_URL:-http://localhost:8001}
 
@@ -39,6 +43,8 @@ services:
       - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
       - JWT_SECRET=${JWT_SECRET}
       - RESEND_API_KEY=${RESEND_API_KEY}
+      - EMAIL_FROM=${EMAIL_FROM:-FoodSystem <noreply@foodsystem.app.br>}
+      - FRONTEND_URL=${DEPLOY_FRONTEND_URL:-http://localhost:3001}
       - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-http://localhost:3001,http://127.0.0.1:3001,http://localhost:3000,http://127.0.0.1:3000}
       - INITIAL_ADMIN_PASSWORD=${INITIAL_ADMIN_PASSWORD}
       - INITIAL_SUPERADMIN_PASSWORD=${INITIAL_SUPERADMIN_PASSWORD}
@@ -72,3 +78,4 @@ networks:
 volumes:
   postgres_data:
     name: food-systen_postgres_data
+  frontend_next_cache:

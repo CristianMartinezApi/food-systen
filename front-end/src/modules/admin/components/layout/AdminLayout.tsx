@@ -49,6 +49,26 @@ interface AdminLayoutProps {
   children: ReactNode;
 }
 
+const STORE_ADMIN_ROUTES = [
+  "/admin",
+  "/admin/operacao",
+  "/admin/tables",
+  "/admin/garcom",
+  "/admin/caixa",
+  "/admin/orders",
+  "/admin/categories",
+  "/admin/products",
+  "/admin/settings",
+];
+
+const SUPER_ADMIN_ROUTES = [
+  "/admin",
+  "/admin/clients",
+  "/admin/plans",
+  "/admin/provisioning",
+  "/admin/audit",
+];
+
 export function AdminLayout({ children }: AdminLayoutProps) {
   const pathname = usePathname();
   const router = useRouter();
@@ -57,6 +77,13 @@ export function AdminLayout({ children }: AdminLayoutProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [userRole, setUserRole] = useState<string>("");
   const [userName, setUserName] = useState<string>("");
+  const [userEmail, setUserEmail] = useState("");
+  const [emailVerified, setEmailVerified] = useState(true);
+  const [verificationSending, setVerificationSending] = useState(false);
+  const [editingEmail, setEditingEmail] = useState(false);
+  const [newEmail, setNewEmail] = useState("");
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [emailSaving, setEmailSaving] = useState(false);
   const [pendingCount, setPendingCount] = useState<number | null>(null);
   const [isNoticesOpen, setIsNoticesOpen] = useState(false);
   const [pendingUsers, setPendingUsers] = useState<PendingUserNotice[]>([]);
@@ -71,6 +98,8 @@ export function AdminLayout({ children }: AdminLayoutProps) {
   const noticesRef = useRef<HTMLDivElement>(null);
   const storeLabel = settings?.storeName || "Master Admin";
   const appVersion = `v${packageJson.version}`;
+  const isStoreAdmin = ['OWNER', 'MANAGER'].includes(userRole);
+  const hasEmailNotice = isStoreAdmin && !emailVerified;
   const footerBadgeLabel = useMemo(() => {
     const name = (settings?.storeName || "Food System").trim();
     const tokens = name.split(/\s+/).filter(Boolean).slice(0, 2);
@@ -87,12 +116,90 @@ export function AdminLayout({ children }: AdminLayoutProps) {
         const parsedUser = JSON.parse(userData);
         setUserRole(parsedUser.role || "");
         setUserName(parsedUser.name || "");
+        setUserEmail(parsedUser.email || "");
+        setNewEmail(parsedUser.email || "");
+        setEmailVerified(Boolean(parsedUser.emailVerifiedAt));
       } catch {
         setUserRole("");
         setUserName("");
       }
     }
   }, []);
+
+  useEffect(() => {
+    if (!userRole) return;
+
+    const routes = userRole === "SUPER_ADMIN" ? SUPER_ADMIN_ROUTES : STORE_ADMIN_ROUTES;
+    let cancelled = false;
+    const timers: number[] = [];
+
+    const prefetchRoutes = () => {
+      routes
+        .filter((route) => route !== pathname)
+        .forEach((route, index) => {
+          const timer = window.setTimeout(() => {
+            if (!cancelled) router.prefetch(route);
+          }, index * 120);
+          timers.push(timer);
+        });
+    };
+
+    const idleWindow = window as Window & {
+      requestIdleCallback?: (callback: () => void, options?: { timeout: number }) => number;
+      cancelIdleCallback?: (id: number) => void;
+    };
+    const idleId = idleWindow.requestIdleCallback?.(prefetchRoutes, { timeout: 1200 });
+    if (idleId === undefined) {
+      timers.push(window.setTimeout(prefetchRoutes, 250));
+    }
+
+    return () => {
+      cancelled = true;
+      timers.forEach(window.clearTimeout);
+      if (idleId !== undefined) idleWindow.cancelIdleCallback?.(idleId);
+    };
+  }, [pathname, router, userRole]);
+
+  const requestEmailVerification = async () => {
+    try {
+      setVerificationSending(true);
+      const response = await api.post('/users/me/email-verification/request', {});
+      toast.success(response.message);
+    } catch (error: any) {
+      toast.error(error.message || 'Não foi possível enviar a confirmação');
+    } finally {
+      setVerificationSending(false);
+    }
+  };
+
+  const updateMyEmail = async (event: React.FormEvent) => {
+    event.preventDefault();
+    try {
+      setEmailSaving(true);
+      const response = await api.patch('/users/me/email', {
+        email: newEmail,
+        currentPassword,
+      });
+      setUserEmail(response.email);
+      setNewEmail(response.email);
+      setEmailVerified(Boolean(response.emailVerifiedAt));
+      setCurrentPassword("");
+      setEditingEmail(false);
+
+      const stored = localStorage.getItem("@FoodSystem:user");
+      if (stored) {
+        const user = JSON.parse(stored);
+        user.email = response.email;
+        user.emailVerifiedAt = response.emailVerifiedAt;
+        localStorage.setItem("@FoodSystem:user", JSON.stringify(user));
+      }
+      toast.success(response.message || 'E-mail atualizado');
+    } catch (error: any) {
+      toast.error(error.message || 'Não foi possível alterar o e-mail');
+    } finally {
+      setEmailSaving(false);
+    }
+  };
 
   useEffect(() => {
     if (!userRole || !slug) return;
@@ -176,7 +283,9 @@ export function AdminLayout({ children }: AdminLayoutProps) {
     const total = (pendingUsers.length || 0) + (pendingRestaurants.length || 0);
 
     if (userRole !== 'SUPER_ADMIN') {
-      return { label: 'Sem alertas', count: 0 };
+      return hasEmailNotice
+        ? { label: '1 pendência', count: 1 }
+        : { label: 'Sem alertas', count: 0 };
     }
 
     if (noticesLoading) {
@@ -195,10 +304,13 @@ export function AdminLayout({ children }: AdminLayoutProps) {
       label: `${pendingCount} pendência${pendingCount > 1 ? 's' : ''}`,
       count: total,
     };
-  }, [userRole, noticesLoading, pendingCount, pendingUsers.length, pendingRestaurants.length]);
+  }, [userRole, hasEmailNotice, noticesLoading, pendingCount, pendingUsers.length, pendingRestaurants.length]);
 
   const openNotices = async () => {
-    if (userRole !== 'SUPER_ADMIN') return;
+    if (userRole !== 'SUPER_ADMIN') {
+      if (isStoreAdmin) setIsNoticesOpen((current) => !current);
+      return;
+    }
 
     setIsNoticesOpen((current) => !current);
 
@@ -445,13 +557,13 @@ export function AdminLayout({ children }: AdminLayoutProps) {
               <button
                 onClick={openNotices}
                 className="flex items-center gap-2 h-10 px-3 rounded-md bg-white border border-slate-200 hover:bg-slate-100 transition-colors group disabled:cursor-default"
-                disabled={userRole !== 'SUPER_ADMIN'}
+                disabled={userRole !== 'SUPER_ADMIN' && !isStoreAdmin}
               >
                 <div className="relative w-7 h-7 rounded-md bg-slate-100 flex items-center justify-center">
                   <Bell size={15} className="text-slate-500 group-hover:text-slate-700 transition-colors" />
-                  {pendingCount && pendingCount > 0 ? (
+                  {noticeSummary.count > 0 ? (
                     <span className="absolute -top-1 -right-1 min-w-4 h-4 px-1 rounded-full bg-slate-900 text-[10px] font-semibold leading-4 text-white border border-white text-center">
-                      {pendingCount}
+                      {noticeSummary.count}
                     </span>
                   ) : (
                     <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-slate-300 rounded-full border border-white" />
@@ -464,6 +576,50 @@ export function AdminLayout({ children }: AdminLayoutProps) {
                   </span>
                 </div>
               </button>
+
+              {isNoticesOpen && isStoreAdmin && (
+                <div className="absolute right-0 top-14 z-50 w-[min(92vw,30rem)] overflow-hidden rounded-3xl border border-slate-100 bg-white shadow-[0_28px_80px_rgba(15,23,42,0.18)]">
+                  <div className="border-b border-slate-100 px-5 py-4">
+                    <p className="text-[10px] font-black uppercase tracking-[0.24em] text-slate-400">Avisos da conta</p>
+                    <h3 className="mt-1 text-sm font-black uppercase tracking-tight text-slate-950">Pendências que exigem ação</h3>
+                  </div>
+                  <div className="p-4">
+                    {hasEmailNotice ? (
+                      <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-amber-950">
+                        <p className="font-bold">Confirme seu e-mail</p>
+                        <p className="mt-1 text-sm text-amber-800">
+                          O link será enviado para <strong>{userEmail || 'e-mail não informado'}</strong>.
+                        </p>
+                        <div className="mt-4 flex flex-wrap gap-2">
+                          <button type="button" onClick={() => setEditingEmail((value) => !value)} className="rounded-xl border border-amber-900 px-3 py-2 text-xs font-bold">
+                            {editingEmail ? 'Cancelar' : 'Corrigir e-mail'}
+                          </button>
+                          <button type="button" disabled={verificationSending || !userEmail} onClick={requestEmailVerification} className="rounded-xl bg-amber-900 px-3 py-2 text-xs font-bold text-white disabled:opacity-60">
+                            {verificationSending ? 'Enviando...' : 'Enviar confirmação'}
+                          </button>
+                        </div>
+                        {editingEmail && (
+                          <form onSubmit={updateMyEmail} className="mt-4 space-y-3 border-t border-amber-200 pt-4">
+                            <label className="block text-xs font-bold">E-mail correto
+                              <input type="email" required autoComplete="email" value={newEmail} onChange={(event) => setNewEmail(event.target.value)} className="mt-1 h-10 w-full rounded-xl border border-amber-200 bg-white px-3 text-sm outline-none" />
+                            </label>
+                            <label className="block text-xs font-bold">Senha atual
+                              <input type="password" required autoComplete="current-password" value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} className="mt-1 h-10 w-full rounded-xl border border-amber-200 bg-white px-3 text-sm outline-none" />
+                            </label>
+                            <button type="submit" disabled={emailSaving} className="h-10 w-full rounded-xl bg-slate-950 px-4 text-sm font-bold text-white disabled:opacity-60">
+                              {emailSaving ? 'Salvando...' : 'Salvar e-mail'}
+                            </button>
+                          </form>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="rounded-2xl border border-emerald-100 bg-emerald-50 p-4 text-sm font-medium text-emerald-700">
+                        Nenhuma pendência aberta no momento.
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
 
               {isNoticesOpen && userRole === 'SUPER_ADMIN' && (
                 <div className="absolute right-0 top-14 z-50 w-[min(92vw,28rem)] rounded-3xl border border-slate-100 bg-white shadow-[0_28px_80px_rgba(15,23,42,0.18)] overflow-hidden">

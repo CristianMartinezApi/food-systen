@@ -29,7 +29,7 @@ export const createDefaultOperatingHours = (): OperatingHours =>
 
 const normalizeTime = (value: unknown, fallback: string) => {
   if (typeof value !== "string") return fallback;
-  return /^\d{2}:\d{2}$/.test(value) ? value : fallback;
+  return /^([01]\d|2[0-3]):[0-5]\d$/.test(value) ? value : fallback;
 };
 
 const normalizeShift = (shift: any): OperatingShift => ({
@@ -54,7 +54,8 @@ export const normalizeOperatingHours = (value: any): OperatingHours => {
     if (Array.isArray(raw.shifts)) {
       const shifts = raw.shifts
         .map(normalizeShift)
-        .filter((shift: OperatingShift) => shift.open && shift.close);
+        .filter((shift: OperatingShift) => shift.open && shift.close)
+        .sort((a: OperatingShift, b: OperatingShift) => toMinutes(a.open) - toMinutes(b.open));
 
       normalized[day] = {
         enabled: raw.enabled !== false,
@@ -83,6 +84,52 @@ const toMinutes = (time: string) => {
 };
 
 const dayKeyFor = (date: Date) => DAY_KEYS[date.getDay() as number];
+
+export const validateOperatingHours = (value: any): { valid: boolean; errors: string[] } => {
+  const errors: string[] = [];
+  if (!value || typeof value !== "object") {
+    return { valid: false, errors: ["Horários de funcionamento são obrigatórios."] };
+  }
+
+  DAY_KEYS.forEach((day) => {
+    const raw = value[day];
+    if (!raw || typeof raw !== "object" || !Array.isArray(raw.shifts)) {
+      errors.push(`${day}: configuração ausente.`);
+      return;
+    }
+    if (raw.enabled === false) return;
+    if (raw.shifts.length === 0) {
+      errors.push(`${day}: adicione ao menos um turno ou marque o dia como fechado.`);
+      return;
+    }
+
+    const intervals: Array<{ start: number; end: number }> = [];
+    raw.shifts.forEach((shift: any, index: number) => {
+      if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(String(shift?.open || "")) ||
+          !/^([01]\d|2[0-3]):[0-5]\d$/.test(String(shift?.close || ""))) {
+        errors.push(`${day}, turno ${index + 1}: horário inválido.`);
+        return;
+      }
+      const start = toMinutes(shift.open);
+      const rawEnd = toMinutes(shift.close);
+      if (start === rawEnd) {
+        errors.push(`${day}, turno ${index + 1}: abertura e fechamento não podem ser iguais.`);
+        return;
+      }
+      intervals.push({ start, end: rawEnd <= start ? rawEnd + 1440 : rawEnd });
+    });
+
+    intervals.sort((a, b) => a.start - b.start);
+    for (let index = 1; index < intervals.length; index += 1) {
+      if (intervals[index].start < intervals[index - 1].end) {
+        errors.push(`${day}: existem turnos sobrepostos.`);
+        break;
+      }
+    }
+  });
+
+  return { valid: errors.length === 0, errors };
+};
 
 const isShiftActive = (currentMinutes: number, shift: OperatingShift) => {
   const open = toMinutes(shift.open);

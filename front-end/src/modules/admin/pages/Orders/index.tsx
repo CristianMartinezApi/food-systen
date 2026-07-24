@@ -16,7 +16,7 @@ import { formatDistanceToNow } from "date-fns";
 import toast from "react-hot-toast";
 import { ptBR } from "date-fns/locale";
 import { motion, AnimatePresence } from "framer-motion";
-import { gsap } from "gsap";
+import { AdminPageHeader } from "../../components/layout/AdminPageHeader";
 import { PrintModeModal, type PrintMode } from "../../components/modals/PrintModeModal";
 import { ConfirmActionModal } from "../../components/modals/ConfirmActionModal";
 
@@ -25,7 +25,6 @@ const DIRECT_PRINT_ACCEPTED_ORDERS_KEY = "@FoodSystem:directPrintAcceptedOrders"
 const ENABLE_PRINT_EVENT_SUMMARY = process.env.NEXT_PUBLIC_ENABLE_PRINT_EVENT_SUMMARY === "true";
 
 export default function OrdersPage({ isCompact = false, onOrdersChange }: { isCompact?: boolean; onOrdersChange?: (orders: any[]) => void }) {
-    gsap.config({ nullTargetWarn: false });
 
     const [orders, setOrders] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -49,7 +48,6 @@ export default function OrdersPage({ isCompact = false, onOrdersChange }: { isCo
     const originalTitleRef = useRef<string>("Pedidos");
     const titleBlinkIntervalRef = useRef<number | null>(null);
     const titleBlinkTimeoutRef = useRef<number | null>(null);
-    const rootRef = useRef<HTMLDivElement>(null);
 
     const getOrderMode = (order: any): "DELIVERY" | "PICKUP" | "DINE_IN" => {
         const type = order?.address?.type;
@@ -817,32 +815,21 @@ export default function OrdersPage({ isCompact = false, onOrdersChange }: { isCo
         };
     }, []);
 
-    useEffect(() => {
-        if (isLoading || !rootRef.current) return;
-
-        const ctx = gsap.context(() => {
-            const tl = gsap.timeline({ defaults: { ease: "power3.out" } });
-            tl.from(".orders-hero", { y: -18, opacity: 0, duration: 0.7 }).from(
-                ".orders-filters",
-                { y: 20, opacity: 0, duration: 0.7 },
-                "-=0.2"
-            );
-        }, rootRef);
-
-        return () => ctx.revert();
-    }, [isLoading, orders.length, statusFilter]);
-
     return (
-        <div ref={rootRef} className={cn("space-y-4", !isCompact && "min-h-screen bg-slate-50/50 p-4 sm:p-6 md:p-8 lg:p-10 xl:p-12 max-w-full")}>
-            <div className={cn("flex flex-col gap-4 mb-4", !isCompact && "orders-hero lg:flex-row lg:items-end justify-between sm:mb-10 md:mb-12 lg:mb-14")}>
+        <div className={cn("space-y-4", !isCompact && "min-h-screen max-w-full")}>
+            {!isCompact && (
+                <AdminPageHeader
+                    eyebrow="Operação"
+                    title="Pedidos"
+                    description="Fila de atendimento, produção e expedição em tempo real."
+                />
+            )}
+            <div className={cn("flex flex-col gap-4", !isCompact && "orders-hero lg:flex-row lg:items-center lg:justify-end")}>
                 {!isCompact && (
-                    <div>
-                        <h1 className="text-2xl sm:text-3xl md:text-heading-1 font-display font-bold text-slate-950 uppercase tracking-tight">Expedição</h1>
-                        <p className="text-[12px] sm:text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em] mt-2">Gestão logística e acompanhamento de fluxo em tempo real.</p>
-                    </div>
+                    <span className="sr-only">Filtros de pedidos</span>
                 )}
 
-                <div className={cn("flex flex-wrap items-center gap-2", !isCompact && "orders-filters bg-white p-2 rounded-2xl sm:rounded-3xl border border-slate-100 shadow-sm")}>
+                <div className={cn("flex flex-wrap items-center gap-2", !isCompact && "orders-filters w-full bg-white p-2 rounded-xl border border-slate-200 shadow-sm")}>
                     <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1">
                         {[
                             { id: "ALL", label: "Tudo" },

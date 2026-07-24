@@ -36,7 +36,7 @@ services:
       context: ../back-end
       dockerfile: Dockerfile
 
-    command: sh -c "npx prisma migrate deploy && npm start"
+    command: npm start
 
     restart: unless-stopped
 
@@ -53,6 +53,8 @@ services:
       - JWT_SECRET=${JWT_SECRET}
 
       - RESEND_API_KEY=${RESEND_API_KEY}
+
+      - EMAIL_FROM=${EMAIL_FROM}
 
       - FRONTEND_URL=${FRONTEND_URL}
 

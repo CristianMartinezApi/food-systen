@@ -2,6 +2,7 @@
 import { api } from '../config/api';
 import { socket } from '../config/socket';
 import { getTenantSlug } from '../../shared/utils/tenant';
+import { normalizeAssetUrl } from '../../shared/utils';
 import { createDefaultOperatingHours, isRestaurantOpenNow, normalizeOperatingHours } from '../../shared/utils/schedule';
 
 const SETTINGS_CACHE_TTL_MS = 30_000;
@@ -13,6 +14,8 @@ function normalizeSettingsPayload(data: any) {
 
   return {
     ...data,
+    logo: normalizeAssetUrl(data.logo),
+    bannerImage: normalizeAssetUrl(data.bannerImage),
     operatingHours: normalizeOperatingHours(data.operatingHours || createDefaultOperatingHours()),
     // Prioriza o status calculado no backend (fuso do servidor/restaurante).
     // O fallback local existe apenas para payloads legados sem o campo isOpen.

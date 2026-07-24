@@ -29,7 +29,7 @@ export const createDefaultOperatingHours = (): OperatingHours =>
 
 const normalizeTime = (value: unknown, fallback: string) => {
   if (typeof value !== "string") return fallback;
-  return /^\d{2}:\d{2}$/.test(value) ? value : fallback;
+  return /^([01]\d|2[0-3]):[0-5]\d$/.test(value) ? value : fallback;
 };
 
 const normalizeShift = (shift: any): OperatingShift => ({
@@ -54,7 +54,8 @@ export const normalizeOperatingHours = (value: any): OperatingHours => {
     if (Array.isArray(raw.shifts)) {
       const shifts = raw.shifts
         .map(normalizeShift)
-        .filter((shift: OperatingShift) => shift.open && shift.close);
+        .filter((shift: OperatingShift) => shift.open && shift.close)
+        .sort((a: OperatingShift, b: OperatingShift) => toMinutes(a.open) - toMinutes(b.open));
 
       normalized[day] = {
         enabled: raw.enabled !== false,

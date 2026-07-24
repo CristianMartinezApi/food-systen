@@ -3,9 +3,10 @@
 import React, { useEffect, useState } from "react";
 import { api } from "../../../../core/config/api";
 import { formatCurrency, cn } from "../../../../shared/utils";
-import { LayoutDashboard, Users, Clock, ShoppingBag, Receipt, ArrowRight, Grid3X3 } from "lucide-react";
+import { LayoutDashboard, Clock, ArrowRight } from "lucide-react";
 import toast from "react-hot-toast";
 import { useRouter } from "next/navigation";
+import { AdminPageHeader } from "../../components/layout/AdminPageHeader";
 
 export default function TablesPage() {
     const [tables, setTables] = useState<any[]>([]);
@@ -34,16 +35,16 @@ export default function TablesPage() {
 
     return (
         <div className="space-y-6 sm:space-y-8 animate-in fade-in duration-500">
-            <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div>
-                    <h1 className="text-3xl sm:text-4xl font-black text-slate-900 uppercase tracking-tighter">
-                        Gestão de <span className="text-primary">Mesas</span>
-                    </h1>
-                    <p className="text-slate-500 font-bold uppercase text-[10px] tracking-widest mt-1 flex items-center gap-2">
-                        <Grid3X3 size={14} className="text-primary" /> {occupiedCount} de {tables.length} mesas ocupadas
-                    </p>
-                </div>
-            </header>
+            <AdminPageHeader
+                eyebrow="Atendimento"
+                title="Gestão de mesas"
+                description="Acompanhe a ocupação e acesse rapidamente as contas em atendimento."
+                status={
+                    <span className="rounded-md bg-amber-50 px-2 py-1 text-xs font-medium text-amber-700">
+                        {occupiedCount} de {tables.length} ocupadas
+                    </span>
+                }
+            />
 
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
                 {tables.map((table) => {
@@ -57,10 +58,10 @@ export default function TablesPage() {
                                 router.push(`/admin/caixa?table=${table.tableNumber}`);
                             }}
                             className={cn(
-                                "relative group flex flex-col p-4 rounded-[2rem] border-2 transition-all duration-300 text-left overflow-hidden h-48",
+                                "relative group flex h-40 flex-col overflow-hidden rounded-xl border p-4 text-left shadow-sm transition",
                                 table.isOccupied 
-                                    ? "bg-amber-50 border-amber-200 shadow-lg shadow-amber-200/20" 
-                                    : "bg-white border-slate-100 hover:border-emerald-200 hover:shadow-xl hover:shadow-emerald-500/10"
+                                    ? "bg-amber-50 border-amber-200"
+                                    : "bg-white border-slate-200 hover:border-emerald-300 hover:shadow-md"
                             )}
                         >
                             <div className="flex justify-between items-start mb-auto">
@@ -115,7 +116,7 @@ export default function TablesPage() {
             </div>
             
             {tables.length === 0 && !loading && (
-                <div className="flex flex-col items-center justify-center py-20 bg-slate-50 rounded-[3rem] border-2 border-dashed border-slate-200">
+                <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-slate-300 bg-white py-16">
                     <LayoutDashboard size={48} className="text-slate-300 mb-4" />
                     <p className="text-slate-500 font-bold uppercase text-xs">Nenhuma mesa configurada</p>
                     <button 

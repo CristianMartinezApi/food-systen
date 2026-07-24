@@ -15,8 +15,8 @@ import { api } from "../../../../core/config/api";
 import { formatCurrency, cn, normalizeAssetUrl } from "../../../../shared/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { ProductModal } from "../../components/modals/ProductModal";
-import { gsap } from "gsap";
 import { clampDiscountPercent, getProductDiscountedPrice, hasProductDiscount } from "../../../../shared/utils/product";
+import { AdminPageHeader, SystemPanel } from "../../components/layout/AdminPageHeader";
 
 export default function ProductsPage() {
   const [products, setProducts] = useState<any[]>([]);
@@ -24,8 +24,6 @@ export default function ProductsPage() {
   const [search, setSearch] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
-  const rootRef = useRef<HTMLDivElement>(null);
-  const hasAnimatedRef = useRef(false);
 
   const filteredProducts = products.filter(p => 
     p.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -53,19 +51,6 @@ export default function ProductsPage() {
     fetchProducts();
   }, []);
 
-  useEffect(() => {
-    if (isLoading || !rootRef.current || hasAnimatedRef.current) return;
-    hasAnimatedRef.current = true;
-
-    const ctx = gsap.context(() => {
-      const tl = gsap.timeline({ defaults: { ease: "power3.out" } });
-      tl.from(".products-hero", { y: -18, opacity: 0, duration: 0.7 })
-        .from(".products-filters", { y: 24, opacity: 0, duration: 0.8 }, "-=0.25");
-    }, rootRef);
-
-    return () => ctx.revert();
-  }, [isLoading]);
-
   const handleDelete = async (id: number) => {
     if (!confirm("Tem certeza que deseja excluir este produto?")) return;
     try {
@@ -77,38 +62,42 @@ export default function ProductsPage() {
   };
 
   return (
-    <div ref={rootRef} className="p-4 sm:p-6 md:p-8">
-      <div className="products-hero flex flex-col md:flex-row md:items-end justify-between gap-4 sm:gap-6 md:gap-8 mb-8 sm:mb-12">
-          <div>
-            <h1 className="text-2xl sm:text-3xl md:text-heading-1 font-display font-bold text-slate-950 uppercase tracking-tight">Produtos</h1>
-            <p className="text-[12px] sm:text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em] mt-2">Gerencie os itens do cardápio, preços e disponibilidade.</p>
-          </div>
+    <div className="space-y-4">
+      <div className="products-hero">
+        <AdminPageHeader
+          eyebrow="Cardápio"
+          title="Produtos"
+          description="Gerencie itens, preços, estoque e disponibilidade."
+          status={<span className="rounded-md bg-slate-100 px-2 py-1 text-xs font-medium text-slate-600">{products.length} cadastrados</span>}
+          actions={
           <button 
             onClick={() => {
               setSelectedProduct(null);
               setIsModalOpen(true);
             }}
-            className="h-10 sm:h-12 md:h-16 px-4 sm:px-6 md:px-10 bg-slate-950 text-white rounded-2xl font-body font-bold text-[11px] sm:text-label uppercase tracking-[0.06em] flex items-center justify-center gap-2 sm:gap-3 shadow-2xl shadow-slate-950/20 hover:bg-primary transition-all whitespace-nowrap active:scale-95 w-full sm:w-auto"
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-slate-950 px-4 text-xs font-semibold text-white transition-colors hover:bg-primary"
           >
-             <Plus size={20} /> NOVO PRODUTO
+             <Plus size={16} /> Novo produto
           </button>
-        </div>
+          }
+        />
+      </div>
 
         {/* Filtros e Busca Moderno */}
-        <div className="products-filters bg-white p-4 sm:p-6 rounded-2xl sm:rounded-[3rem] border border-slate-50 shadow-sm flex flex-col md:flex-row gap-3 sm:gap-6 mb-8 sm:mb-12">
+        <SystemPanel className="products-filters flex flex-col gap-3 p-3 md:flex-row">
           <div className="relative flex-1">
-            <Search className="absolute left-4 sm:left-6 top-1/2 -translate-y-1/2 text-slate-300" size={16} />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
             <input 
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Buscar por nome ou categoria..."
-              className="w-full h-10 sm:h-12 md:h-16 pl-11 sm:pl-14 md:pl-16 pr-4 sm:pr-6 bg-slate-50 border-transparent rounded-2xl sm:rounded-3xl focus:bg-white focus:ring-2 focus:ring-slate-950/5 transition-all font-body font-medium text-slate-600 text-[12px] sm:text-label uppercase tracking-[0.04em]"
+              className="h-10 w-full rounded-lg border border-slate-200 bg-slate-50 pl-10 pr-4 text-sm text-slate-700 outline-none transition focus:border-slate-400 focus:bg-white"
             />
           </div>
-          <button className="h-10 sm:h-12 md:h-16 px-4 sm:px-6 md:px-8 rounded-2xl sm:rounded-3xl border border-slate-100 text-[11px] sm:text-label font-body font-bold text-slate-400 uppercase tracking-[0.06em] flex items-center justify-center gap-2 sm:gap-3 hover:bg-slate-50 transition-all">
-            <Filter size={16} /> Filtragem
+          <button className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-slate-200 px-4 text-xs font-semibold text-slate-600 hover:bg-slate-50">
+            <Filter size={15} /> Filtros
           </button>
-        </div>
+        </SystemPanel>
 
         {/* Grid de Produtos Moderno */}
         {isLoading ? (
@@ -117,7 +106,7 @@ export default function ProductsPage() {
                <p className="text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em]">Sincronizando inventário...</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 sm:gap-6 md:gap-8">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
             <AnimatePresence mode="popLayout">
               {filteredProducts.map((product, idx) => (
                 (() => {
@@ -133,7 +122,7 @@ export default function ProductsPage() {
                   exit={{ opacity: 0, scale: 0.9 }}
                   transition={{ delay: idx * 0.05 }}
                   key={product.id || idx}
-                  className="product-card bg-white rounded-2xl sm:rounded-[3.5rem] border border-slate-50 overflow-hidden shadow-sm hover:shadow-2xl hover:shadow-slate-200/50 transition-all duration-700 group flex flex-col h-full"
+                  className="product-card group flex h-full flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition hover:border-slate-300 hover:shadow-md"
                 >
                   {/* Image Container with Actions */}
                   <div className="relative aspect-square overflow-hidden bg-slate-50 shrink-0">
@@ -185,7 +174,7 @@ export default function ProductsPage() {
                   </div>
 
                   {/* Product Info - Strategic Layout */}
-                  <div className="p-4 sm:p-6 md:p-10 flex-1 flex flex-col">
+                  <div className="flex flex-1 flex-col p-4 sm:p-5">
                     <div className="flex items-start justify-between mb-4">
                       <h3 className="text-base sm:text-lg md:text-xl font-display font-bold text-slate-950 uppercase tracking-tight leading-tight line-clamp-2 flex-1 pr-4">
                         {product.name}

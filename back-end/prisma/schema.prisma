@@ -77,6 +77,11 @@ model User {
   role         UserRole    @default(OWNER)
   isApproved   Boolean     @default(false)
   isActive     Boolean     @default(true)
+  emailVerifiedAt DateTime?
+  emailVerificationTokenHash String?
+  emailVerificationExpiresAt DateTime?
+  emailVerificationSentAt DateTime?
+  emailNotificationsEnabled Boolean @default(true)
   restaurantId Int?
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
@@ -90,6 +95,7 @@ model User {
   requestedPrintJobs PrintJob[] @relation("PrintJobRequestedBy")
 
   @@index([restaurantId])
+  @@index([emailVerificationTokenHash])
   @@map("users")
 }
 

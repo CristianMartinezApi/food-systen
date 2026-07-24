@@ -21,18 +21,14 @@ import { ptBR } from "date-fns/locale";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import toast from "react-hot-toast";
-import { gsap } from "gsap";
+import { AdminPageHeader, SystemPanel } from "../components/layout/AdminPageHeader";
 
 export default function Dashboard() {
-  // Desativar avisos de alvos nulos do GSAP
-  gsap.config({ nullTargetWarn: false });
-
   const [stats, setStats] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [slug, setSlug] = useState<string>("");
   const [dailySalesTarget, setDailySalesTarget] = useState<number>(5000);
   const [isEditingTarget, setIsEditingTarget] = useState(false);
-  const rootRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setSlug(getTenantSlug());
@@ -73,20 +69,6 @@ export default function Dashboard() {
     };
   }, []);
 
-  useEffect(() => {
-    if (isLoading || !rootRef.current) return;
-
-    const ctx = gsap.context(() => {
-      const tl = gsap.timeline({ defaults: { ease: "power3.out" } });
-      tl.from(".dashboard-hero", { y: -18, opacity: 0, duration: 0.7 })
-        .from(".dashboard-link-card", { y: 24, opacity: 0, duration: 0.8 }, "-=0.2")
-        .from(".dashboard-stat", { y: 18, opacity: 0, duration: 0.55, stagger: 0.08 }, "-=0.35")
-        .from(".dashboard-panel", { y: 24, opacity: 0, duration: 0.75, stagger: 0.1 }, "-=0.35");
-    }, rootRef);
-
-    return () => ctx.revert();
-  }, [isLoading, stats]);
-
   const formatPaymentMethodLabel = (value?: string) => {
     const normalized = String(value || "").toUpperCase();
     if (normalized === "PIX") return "PIX";
@@ -107,33 +89,34 @@ export default function Dashboard() {
   }
 
   return (
-    <div ref={rootRef}>
-      <div className="dashboard-hero system-hero-band mb-8 sm:mb-12 p-4 sm:p-6 md:p-10">
-        <p className="text-[10px] sm:text-label font-body font-bold text-primary uppercase tracking-[0.2em]">Hub Administrativo</p>
-        <h1 className="mt-1 text-2xl sm:text-3xl md:text-heading-1 font-display font-bold text-slate-950 uppercase tracking-tight leading-none">Painel operacional</h1>
-        <p className="text-[12px] sm:text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em] mt-2">Resumo de vendas, pedidos em aberto e atalhos para operação diária</p>
+    <div className="space-y-4">
+      <div className="dashboard-hero">
+        <AdminPageHeader
+          eyebrow="Operação da loja"
+          title="Painel operacional"
+          description="Resumo de vendas, pedidos em aberto e atalhos para a operação diária."
+          status={
+            <span className="rounded-md bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700">
+              Loja ativa
+            </span>
+          }
+        />
       </div>
 
-      {/* Card de Link da Loja - Super Visível */}
-      <div className="dashboard-link-card mb-8 sm:mb-12 bg-slate-950 rounded-2xl sm:rounded-[3rem] p-4 sm:p-6 md:p-10 text-white shadow-2xl shadow-slate-950/20 relative overflow-hidden group">
-        <div className="absolute top-0 right-0 p-4 sm:p-8 opacity-5 group-hover:scale-110 group-hover:rotate-12 transition-transform duration-1000">
-          <ExternalLink size={120} className="sm:hidden" />
-          <ExternalLink size={160} className="hidden sm:block" />
-        </div>
-
-        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6 sm:gap-10">
+      <div className="dashboard-link-card relative overflow-hidden rounded-xl border border-slate-800 bg-slate-950 p-4 text-white shadow-sm sm:p-5">
+        <div className="relative z-10 flex flex-col justify-between gap-4 lg:flex-row lg:items-center">
           <div>
-            <div className="flex items-center gap-3 mb-3 sm:mb-4">
+            <div className="mb-2 flex items-center gap-2">
               <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
-              <span className="text-[12px] sm:text-label font-body font-medium uppercase tracking-[0.06em] text-emerald-500">Operação Digital Ativa</span>
+              <span className="text-xs font-medium text-emerald-400">Operação digital ativa</span>
             </div>
-            <h2 className="text-xl sm:text-heading-2 font-display font-bold uppercase tracking-tight mb-2">Acesso à vitrine da loja</h2>
-            <p className="text-[12px] sm:text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em]">Copie e compartilhe o link público com seus clientes.</p>
+            <h2 className="text-base font-semibold">Vitrine pública da loja</h2>
+            <p className="mt-1 text-sm text-slate-400">Copie e compartilhe o endereço com seus clientes.</p>
           </div>
 
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4">
-            <div className="bg-white/5 backdrop-blur-3xl border border-white/10 px-4 sm:px-8 py-3 sm:py-5 rounded-2xl flex items-center gap-3 sm:gap-4 group/link cursor-pointer hover:bg-white/10 transition-all min-w-0">
-              <code className="text-primary font-mono font-medium text-sm sm:text-lg tracking-tighter break-all">
+          <div className="flex min-w-0 flex-col items-stretch gap-2 sm:flex-row sm:items-center">
+            <div className="flex min-w-0 items-center rounded-lg border border-white/10 bg-white/5 px-4 py-3">
+              <code className="break-all font-mono text-sm text-slate-200">
                 {storeUrl.replace('http://', '').replace('https://', '')}
               </code>
             </div>
@@ -143,7 +126,7 @@ export default function Dashboard() {
                 navigator.clipboard.writeText(storeUrl);
                 toast.success("Link copiado para a área de transferência!");
               }}
-              className="h-10 sm:h-12 md:h-16 px-4 sm:px-6 md:px-10 bg-white text-slate-950 rounded-full font-body font-bold text-[11px] sm:text-label uppercase tracking-[0.06em] hover:bg-primary hover:text-white transition-all shadow-xl active:scale-95 flex items-center justify-center gap-2 sm:gap-3 w-full sm:w-auto"
+              className="flex h-10 items-center justify-center gap-2 rounded-lg bg-white px-4 text-xs font-semibold text-slate-950 transition hover:bg-primary hover:text-white"
             >
               Copiar link
             </button>
@@ -151,7 +134,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 md:gap-8 mb-10 sm:mb-16">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         <StatCard
           title="Faturamento Bruto"
           value={formatCurrency(stats?.totalSales || 0)}
@@ -175,22 +158,22 @@ export default function Dashboard() {
         />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 md:gap-10">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         {/* Lista de Pedidos Modernizada */}
-        <div className="dashboard-panel lg:col-span-2 bg-white rounded-2xl sm:rounded-[3rem] border border-slate-50 p-4 sm:p-6 md:p-10 shadow-sm">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6 sm:mb-10">
+        <SystemPanel className="dashboard-panel p-4 sm:p-5 lg:col-span-2">
+          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h3 className="text-xl sm:text-heading-3 font-display font-bold text-slate-950 uppercase tracking-tight">Pedidos recentes</h3>
-              <p className="text-[12px] sm:text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em] mt-1">Últimas movimentações em tempo real</p>
+              <h3 className="text-base font-semibold text-slate-950">Pedidos recentes</h3>
+              <p className="mt-1 text-sm text-slate-500">Últimas movimentações em tempo real.</p>
             </div>
             <Link href="/admin/orders" className="text-[11px] sm:text-label font-body font-bold text-primary hover:bg-primary/5 px-4 sm:px-6 h-10 sm:h-auto sm:py-3 rounded-xl transition-all uppercase tracking-[0.06em] border-2 border-primary/10 inline-flex items-center justify-center w-full sm:w-auto">
               Abrir pedidos
             </Link>
           </div>
 
-          <div className="space-y-6">
+          <div className="space-y-2">
             {stats?.recentOrders?.length === 0 ? (
-              <div className="py-12 sm:py-24 text-center border-2 border-dashed border-slate-100 rounded-2xl sm:rounded-[2.5rem]">
+              <div className="rounded-lg border border-dashed border-slate-300 py-12 text-center">
                 <p className="text-[12px] sm:text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em]">Nenhum pedido recente registrado.</p>
               </div>
             ) : (
@@ -200,7 +183,7 @@ export default function Dashboard() {
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: idx * 0.1 }}
                   key={order.id}
-                  className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 sm:p-6 border border-slate-50 rounded-2xl sm:rounded-4xl hover:bg-slate-50/50 transition-all group cursor-pointer"
+                  className="group flex cursor-pointer flex-col gap-3 rounded-lg border border-slate-200 p-4 transition hover:bg-slate-50 sm:flex-row sm:items-center sm:justify-between"
                 >
                   <div className="flex items-center gap-3 sm:gap-6 min-w-0">
                     <div className="w-16 h-16 rounded-2xl bg-white border border-slate-100 flex items-center justify-center font-mono font-medium text-slate-300 group-hover:border-primary/20 group-hover:text-primary transition-all shadow-sm">
@@ -231,23 +214,23 @@ export default function Dashboard() {
               ))
             )}
           </div>
-        </div>
+        </SystemPanel>
 
         {/* Coluna da Direita (Metas e Popularidade) */}
-        <div className="space-y-10">
-          <div className="dashboard-panel bg-slate-950 rounded-[3rem] p-10 text-white shadow-2xl shadow-slate-950/20 relative overflow-hidden group">
+        <div className="space-y-4">
+          <div className="dashboard-panel group relative overflow-hidden rounded-xl border border-slate-800 bg-slate-950 p-5 text-white shadow-sm">
             <div className="pointer-events-none absolute top-0 right-0 p-4 opacity-5 group-hover:scale-110 transition-transform duration-1000">
               <Target size={160} />
             </div>
-            <div className="relative z-10 flex items-center justify-between mb-8">
+            <div className="relative z-10 mb-5 flex items-center justify-between">
               <div>
-                <h3 className="text-heading-3 font-display font-bold uppercase tracking-tight mb-1">Meta de vendas</h3>
-                <p className="text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em]">Use o botão editar para ajustar a meta diária</p>
+                <h3 className="mb-1 text-base font-semibold">Meta de vendas</h3>
+                <p className="text-xs text-slate-400">Ajuste a meta diária da operação.</p>
               </div>
               <button
                 type="button"
                 onClick={() => setIsEditingTarget((prev) => !prev)}
-                className="relative z-20 h-10 px-4 rounded-full border border-white/20 bg-white/5 text-[10px] font-black uppercase tracking-[0.2em] text-white hover:bg-white hover:text-slate-950 transition-all cursor-pointer active:scale-95"
+                className="relative z-20 h-9 cursor-pointer rounded-lg border border-white/20 bg-white/5 px-4 text-xs font-semibold text-white hover:bg-white hover:text-slate-950"
               >
                 {isEditingTarget ? "Pronto" : "Editar"}
               </button>
@@ -334,15 +317,15 @@ export default function Dashboard() {
             </div>
           </div>
 
-          <div className="dashboard-panel bg-white rounded-[3rem] border border-slate-50 p-10 shadow-sm overflow-hidden relative group">
-            <div className="mb-10 flex items-center justify-between">
+          <div className="dashboard-panel group relative overflow-hidden rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="mb-5 flex items-center justify-between">
               <div>
-                <h3 className="text-heading-3 font-display font-bold text-slate-950 uppercase tracking-tight">Produtos Top Vendas</h3>
-                <p className="mt-1 text-[12px] font-body font-medium text-slate-400 uppercase tracking-[0.06em]">Seus best-sellers do período</p>
+                <h3 className="text-base font-semibold text-slate-950">Produtos mais vendidos</h3>
+                <p className="mt-1 text-sm text-slate-500">Desempenho no período atual.</p>
               </div>
               <TrendingUp size={24} className="text-primary" />
             </div>
-            <div className="space-y-8">
+            <div className="space-y-4">
               {stats?.topProducts?.length === 0 ? (
                 <p className="text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em]">Aguardando dados de vendas...</p>
               ) : (
@@ -364,12 +347,12 @@ export default function Dashboard() {
         </div>
 
         {/* Coluna Lateral - Ações Rápidas */}
-        <div className="space-y-8">
+        <div className="space-y-4">
           {/* Ações Rápidas */}
           <div className="dashboard-panel space-y-3">
-            <div className="mb-6">
-              <h3 className="text-heading-3 font-display font-bold text-slate-950 uppercase tracking-tight">Gerenciamento Rápido</h3>
-              <p className="mt-1 text-[12px] font-body font-medium text-slate-400 uppercase tracking-[0.06em]">Acesso aos principais recursos operacionais</p>
+            <div className="mb-4">
+              <h3 className="text-base font-semibold text-slate-950">Ações rápidas</h3>
+              <p className="mt-1 text-sm text-slate-500">Acesse os principais recursos operacionais.</p>
             </div>
             <div className="grid grid-cols-1 gap-3">
               <QuickActionCard icon={Plus} label="Novo Produto" description="Adicionar item ao catálogo" path="/admin/products" color="bg-gradient-to-br from-emerald-50 to-emerald-100" iconColor="text-emerald-600" />
@@ -388,7 +371,7 @@ export default function Dashboard() {
 function QuickActionCard({ icon: Icon, label, description, path, color, iconColor }: any) {
   return (
     <Link href={path} className={cn(
-      "group relative overflow-hidden rounded-2xl p-4 transition-all duration-300 hover:shadow-lg active:scale-95 border border-slate-100",
+      "group relative overflow-hidden rounded-lg border border-slate-200 p-4 transition hover:border-slate-300 hover:shadow-sm",
       color
     )}>
       <div className="flex items-start gap-4">
@@ -403,7 +386,7 @@ function QuickActionCard({ icon: Icon, label, description, path, color, iconColo
           <ArrowUpRight size={18} />
         </div>
       </div>
-      <div className="absolute inset-0 bg-white opacity-0 group-hover:opacity-5 transition-opacity duration-300 rounded-2xl pointer-events-none" />
+      <div className="pointer-events-none absolute inset-0 rounded-lg bg-white opacity-0 transition-opacity group-hover:opacity-5" />
     </Link>
   );
 }
@@ -411,15 +394,14 @@ function QuickActionCard({ icon: Icon, label, description, path, color, iconColo
 function StatCard({ title, value, trend, icon: Icon, color }: any) {
   return (
     <motion.div
-      whileHover={{ y: -5 }}
-      className="bg-white p-6 rounded-4xl border border-slate-100 shadow-sm relative overflow-hidden group"
+      className="group relative overflow-hidden rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
     >
       <div className="absolute top-0 right-0 -mr-4 -mt-4 w-24 h-24 bg-slate-50 rounded-full opacity-50 group-hover:scale-125 transition-transform duration-500" />
 
       <div className="relative z-10">
-        <div className="flex items-center justify-between mb-6">
-          <div className={cn("w-12 h-12 rounded-full flex items-center justify-center text-white shadow-lg", color)}>
-            <Icon size={24} />
+        <div className="mb-4 flex items-center justify-between">
+          <div className={cn("flex h-9 w-9 items-center justify-center rounded-lg text-white", color)}>
+            <Icon size={18} />
           </div>
           <span className={cn(
             "text-[10px] font-black px-2 py-1 rounded-lg",
@@ -429,8 +411,8 @@ function StatCard({ title, value, trend, icon: Icon, color }: any) {
           </span>
         </div>
 
-        <p className="text-3xl font-black text-slate-900 tracking-tighter mb-1">{value}</p>
-        <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">{title}</p>
+        <p className="mb-1 text-2xl font-semibold tracking-tight text-slate-900">{value}</p>
+        <p className="text-xs font-medium text-slate-500">{title}</p>
       </div>
     </motion.div>
   );

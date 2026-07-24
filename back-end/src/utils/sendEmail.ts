@@ -18,17 +18,20 @@ interface EmailOptions {
 export async function sendEmail({ to, subject, html }: EmailOptions) {
   const resend = getResendClient();
   if (!resend) {
-    console.warn('RESEND_API_KEY not configured - email not sent');
-    return null;
+    throw new Error('RESEND_API_KEY não configurada');
   }
 
   try {
     const response = await resend.emails.send({
-      from: 'noreply@foodsystem.app.br',
+      from: process.env.EMAIL_FROM || 'FoodSystem <noreply@foodsystem.app.br>',
       to,
       subject,
       html,
     });
+
+    if (response.error) {
+      throw new Error(response.error.message);
+    }
 
     console.log(`Email sent to ${to}:`, response);
     return response;
@@ -36,6 +39,26 @@ export async function sendEmail({ to, subject, html }: EmailOptions) {
     console.error(`Failed to send email to ${to}:`, error);
     throw error;
   }
+}
+
+export function getEmailVerificationEmail(name: string, verificationUrl: string): string {
+  return `
+    <!DOCTYPE html>
+    <html lang="pt-BR">
+      <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+      <body style="margin:0;padding:24px;font-family:Arial,sans-serif;background:#f1f5f9;color:#0f172a">
+        <div style="max-width:560px;margin:auto;background:#fff;border-radius:16px;padding:32px">
+          <h1 style="margin-top:0">Confirme seu e-mail</h1>
+          <p>Olá, ${name}.</p>
+          <p>Confirme este endereço para receber os avisos operacionais da sua loja, incluindo o lembrete para abrir o caixa.</p>
+          <p style="text-align:center;margin:32px 0">
+            <a href="${verificationUrl}" style="background:#2563eb;color:#fff;padding:14px 24px;border-radius:8px;text-decoration:none;font-weight:bold">Confirmar e-mail</a>
+          </p>
+          <p style="font-size:13px;color:#64748b">Este link expira em 24 horas. Se você não solicitou a confirmação, ignore esta mensagem.</p>
+        </div>
+      </body>
+    </html>
+  `;
 }
 
 export function getCashierReminderEmail(restaurantName: string, openTime: string): string {

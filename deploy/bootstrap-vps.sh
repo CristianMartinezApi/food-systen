@@ -63,11 +63,8 @@ rm -f /etc/nginx/sites-enabled/default || true
 nginx -t
 systemctl reload nginx
 
-echo "Subindo containers..."
-docker compose -f docker-compose.vps.yml up -d --build
-
-echo "Aplicando migrations do Prisma..."
-docker compose -f docker-compose.vps.yml exec backend npx prisma migrate deploy
+echo "Validando, criando backup e subindo containers..."
+bash deploy/deploy.sh
 
 if certbot certificates | grep -q "${DOMAIN}"; then
   echo "Certificado HTTPS já existe para ${DOMAIN}."

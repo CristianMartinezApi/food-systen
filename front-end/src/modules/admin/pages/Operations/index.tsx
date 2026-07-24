@@ -63,7 +63,7 @@ export default function OperationsPage() {
   const isOpen = sessionSummary?.status === "OPEN";
 
   return (
-    <div className="min-h-screen bg-slate-50/30 p-4 sm:p-6 lg:p-8">
+    <div className="min-h-screen bg-slate-100/60 p-3 sm:p-4">
       <div className="space-y-4 max-w-[1600px] mx-auto">
         <OperationHeader
         isOpen={isOpen}
@@ -77,7 +77,7 @@ export default function OperationsPage() {
 
       {/* ── BANNER: CAIXA FECHADO ── */}
       {!sessionLoading && !isOpen && (
-        <div className="rounded-2xl border border-amber-200 bg-amber-50/50 px-5 py-4 flex items-center justify-between gap-4 backdrop-blur-sm">
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 flex items-center justify-between gap-4">
           <div className="flex items-start gap-3">
             <AlertTriangle size={18} className="text-amber-600 shrink-0 mt-0.5" />
             <div>
@@ -91,7 +91,7 @@ export default function OperationsPage() {
           </div>
           <button
             onClick={() => setMobileTab("CASHIER")}
-            className="hidden sm:block h-9 px-4 rounded-xl bg-amber-600 text-white text-[10px] font-black uppercase tracking-widest hover:bg-amber-700 transition-colors shrink-0"
+            className="hidden sm:block h-9 px-4 rounded-lg bg-amber-700 text-white text-xs font-semibold hover:bg-amber-800 transition-colors shrink-0"
           >
             Abrir Agora
           </button>
@@ -99,7 +99,7 @@ export default function OperationsPage() {
       )}
 
       {/* ── LAYOUT DESKTOP: COMANDO CENTRAL ── */}
-      <div className="hidden lg:grid lg:grid-cols-[68%_32%] gap-6 items-start">
+      <div className="hidden lg:grid lg:grid-cols-[minmax(0,1fr)_24rem] gap-4 items-start">
         <main className="space-y-4">
           <div className="flex items-center justify-between px-1">
             <div className="flex items-center gap-2">
@@ -109,8 +109,8 @@ export default function OperationsPage() {
               </h2>
             </div>
           </div>
-          <section className="rounded-3xl border border-slate-100 bg-white shadow-xl shadow-slate-200/40 overflow-hidden">
-            <div className="p-4 min-h-[700px]">
+          <section className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+            <div className="p-3 min-h-[700px]">
               <OrdersPage
                 key={`orders-${refreshKey}`}
                 isCompact={true}
@@ -132,7 +132,7 @@ export default function OperationsPage() {
               </h2>
             </div>
           </div>
-          <section className="rounded-3xl border border-slate-100 bg-white shadow-xl shadow-slate-200/40 overflow-hidden">
+          <section className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
             <div className="p-3 max-h-[calc(100vh-140px)] overflow-y-auto custom-scrollbar">
               <CashierPage
                 key={`cashier-${refreshKey}`}
@@ -160,11 +160,11 @@ export default function OperationsPage() {
 
       {/* ── LAYOUT MOBILE/TABLET: ABAS ── */}
       <div className="lg:hidden space-y-3">
-        <div className="grid grid-cols-2 gap-2 rounded-2xl border border-slate-100 bg-white p-1.5 shadow-sm">
+        <div className="grid grid-cols-2 gap-1 rounded-xl border border-slate-200 bg-white p-1 shadow-sm">
           <button
             type="button"
             onClick={() => setMobileTab("ORDERS")}
-            className={`h-10 rounded-xl text-[10px] font-black uppercase tracking-[0.14em] transition-colors flex items-center justify-center gap-2 ${
+            className={`h-10 rounded-lg text-xs font-semibold transition-colors flex items-center justify-center gap-2 ${
               mobileTab === "ORDERS"
                 ? "bg-slate-900 text-white"
                 : "text-slate-500 hover:bg-slate-50"
@@ -175,7 +175,7 @@ export default function OperationsPage() {
           <button
             type="button"
             onClick={() => setMobileTab("CASHIER")}
-            className={`h-10 rounded-xl text-[10px] font-black uppercase tracking-[0.14em] transition-colors flex items-center justify-center gap-2 ${
+            className={`h-10 rounded-lg text-xs font-semibold transition-colors flex items-center justify-center gap-2 ${
               mobileTab === "CASHIER"
                 ? "bg-slate-900 text-white"
                 : "text-slate-500 hover:bg-slate-50"
@@ -186,12 +186,12 @@ export default function OperationsPage() {
         </div>
 
         {mobileTab === "ORDERS" && (
-          <section className="rounded-2xl border border-slate-100 bg-white shadow-sm p-2">
+          <section className="rounded-xl border border-slate-200 bg-white shadow-sm p-2">
             <OrdersPage key={`orders-mobile-${refreshKey}`} />
           </section>
         )}
         {mobileTab === "CASHIER" && (
-          <section className="rounded-2xl border border-slate-100 bg-white shadow-sm p-2">
+          <section className="rounded-xl border border-slate-200 bg-white shadow-sm p-2">
             <CashierPage key={`cashier-mobile-${refreshKey}`} />
           </section>
         )}

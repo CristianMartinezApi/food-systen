@@ -13,11 +13,14 @@ import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import { promises as fs } from 'fs';
 import path from 'path';
-import { getNextOpeningLabel, isRestaurantOpenNow, normalizeOperatingHours } from './utils/hours';
+import { getNextOpeningLabel, isRestaurantOpenNow, normalizeOperatingHours, validateOperatingHours } from './utils/hours';
 import { validateGuidedSelections } from './utils/guided-assembly';
-import { sendEmail, getCashierReminderEmail, getCashierNeededEmail } from './utils/sendEmail';
+import { sendEmail, getCashierReminderEmail, getCashierNeededEmail, getEmailVerificationEmail } from './utils/sendEmail';
 
 dotenv.config();
+
+const normalizeEmail = (value: unknown) => String(value || '').trim().toLowerCase();
+const isValidEmail = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value) && value.length <= 254;
 
 // --- VALIDAÇÃO DE SEGURANÇA ---
 
@@ -590,6 +593,19 @@ const io = new Server(httpServer, {
 });
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
+
+app.get('/health/live', (_req, res) => {
+  res.json({ status: 'ok' });
+});
+
+app.get('/health/ready', async (_req, res) => {
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    res.json({ status: 'ready' });
+  } catch {
+    res.status(503).json({ status: 'unavailable' });
+  }
+});
 
 // Helper para criar entradas de auditoria (audit logs)
 async function createAudit(req: AuthRequest | any, action: string, subjectType: string, subjectId?: number | null, details?: any) {
@@ -1192,7 +1208,6 @@ const seedSettings = async () => {
     update: {
       isApproved: true,
       role: 'SUPER_ADMIN',
-      password: superAdminPassword,
     },
     create: {
       name: 'Super Admin',
@@ -1221,7 +1236,8 @@ app.post('/api/auth/register', async (req, res) => {
 
 app.post('/api/auth/login', async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { password } = req.body;
+    const email = normalizeEmail(req.body?.email);
     const user = await prisma.user.findUnique({
       where: { email },
       include: { restaurant: true }
@@ -1246,11 +1262,175 @@ app.post('/api/auth/login', async (req, res) => {
     );
 
     // Nunca expor hash de senha no payload de resposta.
-    const { password: _password, ...safeUser } = user;
+    const {
+      password: _password,
+      emailVerificationTokenHash: _emailVerificationTokenHash,
+      emailVerificationExpiresAt: _emailVerificationExpiresAt,
+      ...safeUser
+    } = user;
 
     res.json({ user: safeUser, token, restaurant: user.restaurant });
   } catch (error) {
     res.status(500).json({ error: 'Erro ao fazer login' });
+  }
+});
+
+// Confirma a posse do endereço antes de habilitá-lo para avisos operacionais.
+app.post('/api/auth/verify-email', async (req, res) => {
+  try {
+    const token = String(req.body?.token || '');
+    if (!/^[a-f0-9]{64}$/i.test(token)) {
+      return res.status(400).json({ error: 'Link de confirmação inválido' });
+    }
+
+    const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+    const user = await prisma.user.findFirst({
+      where: {
+        emailVerificationTokenHash: tokenHash,
+        emailVerificationExpiresAt: { gt: new Date() },
+      },
+      select: { id: true, email: true },
+    });
+
+    if (!user) {
+      return res.status(400).json({ error: 'Link inválido ou expirado. Solicite uma nova confirmação.' });
+    }
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        emailVerifiedAt: new Date(),
+        emailVerificationTokenHash: null,
+        emailVerificationExpiresAt: null,
+      },
+    });
+    await createAudit(undefined, 'email_verified', 'user', user.id, { email: user.email });
+    return res.json({ message: 'E-mail confirmado. Os avisos da loja estão habilitados.' });
+  } catch (error) {
+    console.error('Erro ao confirmar e-mail:', error);
+    return res.status(500).json({ error: 'Não foi possível confirmar o e-mail' });
+  }
+});
+
+app.post('/api/users/me/email-verification/request', authMiddleware, async (req: AuthRequest, res) => {
+  try {
+    if (!req.userId) return res.status(401).json({ error: 'Não autenticado' });
+
+    const user = await prisma.user.findUnique({
+      where: { id: req.userId },
+      select: {
+        id: true, name: true, email: true, role: true, isActive: true,
+        isApproved: true, emailVerifiedAt: true, emailVerificationSentAt: true,
+      },
+    });
+    if (!user || !user.isActive || !user.isApproved) {
+      return res.status(403).json({ error: 'Conta inativa ou ainda não aprovada' });
+    }
+    if (!['OWNER', 'MANAGER'].includes(user.role)) {
+      return res.status(403).json({ error: 'A confirmação para avisos está disponível aos administradores da loja' });
+    }
+    if (user.emailVerifiedAt) {
+      return res.json({ message: 'Este e-mail já está confirmado.', alreadyVerified: true });
+    }
+    const resendIntervalMs = 15 * 60_000;
+    if (user.emailVerificationSentAt && Date.now() - user.emailVerificationSentAt.getTime() < resendIntervalMs) {
+      const retryAfterSeconds = Math.ceil(
+        (resendIntervalMs - (Date.now() - user.emailVerificationSentAt.getTime())) / 1000
+      );
+      res.setHeader('Retry-After', String(retryAfterSeconds));
+      return res.status(429).json({
+        error: `Um link já foi enviado. Aguarde ${Math.ceil(retryAfterSeconds / 60)} minuto(s) para reenviar.`,
+        retryAfter: retryAfterSeconds,
+      });
+    }
+
+    const rawToken = crypto.randomBytes(32).toString('hex');
+    const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        emailVerificationTokenHash: tokenHash,
+        emailVerificationExpiresAt: expiresAt,
+        emailVerificationSentAt: new Date(),
+      },
+    });
+
+    const frontendUrl = (process.env.FRONTEND_URL || 'http://localhost:3000').replace(/\/$/, '');
+    const verificationUrl = `${frontendUrl}/verify-email?token=${rawToken}`;
+    await sendEmail({
+      to: user.email,
+      subject: 'Confirme seu e-mail para receber os avisos da loja',
+      html: getEmailVerificationEmail(user.name, verificationUrl),
+    });
+    await createAudit(req, 'email_verification_requested', 'user', user.id, { email: user.email });
+    return res.json({ message: 'Enviamos um link de confirmação válido por 24 horas.' });
+  } catch (error) {
+    console.error('Erro ao solicitar confirmação de e-mail:', error);
+    return res.status(502).json({ error: 'Não foi possível enviar o e-mail de confirmação' });
+  }
+});
+
+app.patch('/api/users/me/email', authMiddleware, async (req: AuthRequest, res) => {
+  try {
+    if (!req.userId) return res.status(401).json({ error: 'Não autenticado' });
+
+    const email = normalizeEmail(req.body?.email);
+    const currentPassword = String(req.body?.currentPassword || '');
+    if (!isValidEmail(email)) {
+      return res.status(400).json({ error: 'Informe um e-mail válido' });
+    }
+    if (!currentPassword) {
+      return res.status(400).json({ error: 'Informe sua senha atual' });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: req.userId },
+      select: { id: true, email: true, password: true, role: true, emailVerifiedAt: true },
+    });
+    if (!user || !(await bcrypt.compare(currentPassword, user.password))) {
+      return res.status(401).json({ error: 'Senha atual incorreta' });
+    }
+    if (!['OWNER', 'MANAGER'].includes(user.role)) {
+      return res.status(403).json({ error: 'A alteração está disponível aos administradores da loja' });
+    }
+    if (email === user.email.toLowerCase()) {
+      return res.json({ email: user.email, emailVerifiedAt: user.emailVerifiedAt, unchanged: true });
+    }
+
+    const existing = await prisma.user.findFirst({
+      where: { email, id: { not: user.id } },
+      select: { id: true },
+    });
+    if (existing) {
+      return res.status(409).json({ error: 'Este e-mail já está cadastrado' });
+    }
+
+    const updated = await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        email,
+        emailVerifiedAt: null,
+        emailVerificationTokenHash: null,
+        emailVerificationExpiresAt: null,
+        emailVerificationSentAt: null,
+      },
+      select: { email: true, emailVerifiedAt: true },
+    });
+    await createAudit(req, 'user_email_changed', 'user', user.id, {
+      previousEmail: user.email,
+      newEmail: email,
+    });
+    return res.json({
+      ...updated,
+      message: 'E-mail atualizado. Envie uma nova confirmação para este endereço.',
+    });
+  } catch (error: any) {
+    if (error?.code === 'P2002') {
+      return res.status(409).json({ error: 'Este e-mail já está cadastrado' });
+    }
+    console.error('Erro ao alterar e-mail:', error);
+    return res.status(500).json({ error: 'Não foi possível alterar o e-mail' });
   }
 });
 
@@ -1418,7 +1598,8 @@ app.get('/api/admin/users', authMiddleware, async (req: AuthRequest, res) => {
     take: perPage
   });
 
-  res.json({ data: users, total, page, perPage });
+  const safeUsers = users.map(({ password, emailVerificationTokenHash, emailVerificationExpiresAt, ...user }) => user);
+  res.json({ data: safeUsers, total, page, perPage });
 });
 
 // Export users as CSV (filtered)
@@ -1661,10 +1842,14 @@ app.post('/api/admin/users', authMiddleware, async (req: AuthRequest, res) => {
     return res.status(403).json({ error: 'Acesso restrito ao super admin' });
   }
 
-  const { name, email, password } = req.body;
+  const { name, password } = req.body;
+  const email = normalizeEmail(req.body?.email);
 
   if (!name || !email || !password) {
     return res.status(400).json({ error: 'Nome, email e senha são obrigatórios' });
+  }
+  if (!isValidEmail(email)) {
+    return res.status(400).json({ error: 'Informe um e-mail válido' });
   }
 
   const existingUser = await prisma.user.findUnique({ where: { email } });
@@ -1891,11 +2076,23 @@ app.patch('/api/admin/users/:id', authMiddleware, async (req: AuthRequest, res) 
   const { name, email, role, isApproved } = req.body;
 
   try {
+    const current = await prisma.user.findUnique({ where: { id: userId }, select: { email: true } });
+    const normalizedEmail = email ? normalizeEmail(email) : undefined;
+    if (normalizedEmail && !isValidEmail(normalizedEmail)) {
+      return res.status(400).json({ error: 'Informe um e-mail válido' });
+    }
+    const emailChanged = Boolean(current && normalizedEmail && normalizedEmail !== current.email.toLowerCase());
     const updated = await prisma.user.update({
       where: { id: userId },
       data: {
         ...(name ? { name } : {}),
-        ...(email ? { email } : {}),
+        ...(normalizedEmail ? { email: normalizedEmail } : {}),
+        ...(emailChanged ? {
+          emailVerifiedAt: null,
+          emailVerificationTokenHash: null,
+          emailVerificationExpiresAt: null,
+          emailVerificationSentAt: null,
+        } : {}),
         ...(role ? { role } : {}),
         ...(typeof isApproved === 'boolean' ? { isApproved } : {})
       }
@@ -3002,7 +3199,18 @@ app.get('/api/settings', async (req: TenantRequest, res) => {
 
 app.patch('/api/settings', authMiddleware, async (req: AuthRequest, res) => {
   try {
-    const { id, restaurantId, createdAt, updatedAt, nextOpeningLabel, isOpen, corporateName, cnpj, ...updateData } = req.body;
+    const {
+      id,
+      restaurantId,
+      createdAt,
+      updatedAt,
+      nextOpeningLabel,
+      isOpen,
+      hasCashierSession,
+      corporateName,
+      cnpj,
+      ...updateData
+    } = req.body;
     const {
       pixKeyType,
       whatsappNumber,
@@ -3010,11 +3218,45 @@ app.patch('/api/settings', authMiddleware, async (req: AuthRequest, res) => {
       restaurant: _ignoredRestaurant,
       ...settingsData
     } = updateData;
+    const hoursValidation = validateOperatingHours(updateData.operatingHours);
+    if (!hoursValidation.valid) {
+      return res.status(400).json({
+        error: 'Revise os horários de funcionamento.',
+        code: 'INVALID_OPERATING_HOURS',
+        details: hoursValidation.errors,
+      });
+    }
     const operatingHours = normalizeOperatingHours(updateData.operatingHours);
     const parsedDifferenceThreshold = Number(settingsData.cashDifferenceNoteThreshold);
     const cashDifferenceNoteThreshold = Number.isFinite(parsedDifferenceThreshold) && parsedDifferenceThreshold >= 0
       ? parsedDifferenceThreshold
       : DEFAULT_CASH_DIFFERENCE_NOTE_THRESHOLD;
+    const settingsUpdateData = {
+      storeName: String(settingsData.storeName || '').trim() || req.restaurant?.name || 'Minha Loja',
+      bio: settingsData.bio || null,
+      phone: settingsData.phone || null,
+      address: settingsData.address || null,
+      bannerBadge: settingsData.bannerBadge || null,
+      bannerTitleLine1: settingsData.bannerTitleLine1 || null,
+      bannerTitleLine2: settingsData.bannerTitleLine2 || null,
+      bannerDescription: settingsData.bannerDescription || null,
+      bannerCtaLabel: settingsData.bannerCtaLabel || null,
+      bannerImage: settingsData.bannerImage || null,
+      deliveryFee: Number(settingsData.deliveryFee) || 0,
+      minOrderValue: Number(settingsData.minOrderValue) || 0,
+      cashDifferenceNoteThreshold,
+      deliveryEtaMinutes: Number(settingsData.deliveryEtaMinutes) || 35,
+      tableCount: Math.max(0, Number(settingsData.tableCount) || 0),
+      primaryColor: String(settingsData.primaryColor || '#ef4444'),
+      logo: settingsData.logo || null,
+      instagram: settingsData.instagram || null,
+      facebook: settingsData.facebook || null,
+      latitude: settingsData.latitude == null ? null : Number(settingsData.latitude),
+      longitude: settingsData.longitude == null ? null : Number(settingsData.longitude),
+      deliveryRadius: settingsData.deliveryRadius == null ? 5 : Number(settingsData.deliveryRadius),
+      pixEnabled: Boolean(settingsData.pixEnabled),
+      pixKey: settingsData.pixKey || null,
+    };
     
     // Normalize CNPJ: remove non-digits and allow null/empty
     const cnpjString = String(cnpj || '').trim();
@@ -3050,11 +3292,9 @@ app.patch('/api/settings', authMiddleware, async (req: AuthRequest, res) => {
       return tx.settings.update({
         where: { restaurantId: req.restaurantId },
         data: {
-          ...settingsData,
-          cashDifferenceNoteThreshold,
+          ...settingsUpdateData,
           operatingHours,
           isOpen: isRestaurantOpenNow(operatingHours),
-          deliveryEtaMinutes: settingsData.deliveryEtaMinutes || 35,
         },
         include: {
           restaurant: {
@@ -3604,7 +3844,13 @@ app.post('/api/orders', async (req: TenantRequest, res) => {
             where: { id: req.restaurantId! },
             include: {
               users: {
-                where: { role: 'OWNER' },
+                where: {
+                  role: { in: ['OWNER', 'MANAGER'] },
+                  isActive: true,
+                  isApproved: true,
+                  emailVerifiedAt: { not: null },
+                  emailNotificationsEnabled: true,
+                },
                 select: { email: true },
               },
             },
@@ -4167,9 +4413,23 @@ app.post('/api/cashier/session/open', authMiddleware, async (req: AuthRequest, r
   try {
     const openingAmount = Number(req.body?.openingAmount);
     const notes = req.body?.notes ? String(req.body.notes) : null;
+    const confirmOutsideOperatingHours = req.body?.confirmOutsideOperatingHours === true;
 
     if (Number.isNaN(openingAmount) || openingAmount <= 0) {
       return res.status(400).json({ error: 'Valor de abertura inválido.' });
+    }
+
+    const settings = await prisma.settings.findUnique({
+      where: { restaurantId: req.restaurantId! },
+      select: { operatingHours: true },
+    });
+    if (settings && !isRestaurantOpenNow(settings.operatingHours) && !confirmOutsideOperatingHours) {
+      return res.status(409).json({
+        error: 'A loja está fora do horário de funcionamento. Confirme para abrir o caixa mesmo assim.',
+        code: 'OUTSIDE_OPERATING_HOURS',
+        requiresConfirmation: true,
+        nextOpeningLabel: getNextOpeningLabel(settings.operatingHours),
+      });
     }
 
     const existing = await prisma.cashSession.findFirst({
@@ -4199,7 +4459,9 @@ app.post('/api/cashier/session/open', authMiddleware, async (req: AuthRequest, r
     await createAudit(req, 'open_cash_session', 'cash_session', session.id, {
       openingAmount,
       notes,
+      outsideOperatingHours: settings ? !isRestaurantOpenNow(settings.operatingHours) : false,
     });
+    invalidatePublicStoreCache(req.restaurantId);
 
     // Absorver automaticamente pedidos órfãos (cashSessionId=null) das últimas 24h
     // Garante que pedidos online chegados sem caixa aberto entrem no financeiro da sessão
@@ -4737,6 +4999,7 @@ app.post('/api/cashier/session/close', authMiddleware, async (req: AuthRequest, 
       pixSales,
       notes,
     });
+    invalidatePublicStoreCache(req.restaurantId);
 
     res.json(session);
   } catch (error) {
@@ -5852,7 +6115,13 @@ async function scheduleOpeningReminders(restaurantId: number, slug: string, rawH
               where: { id: restaurantId },
               include: {
                 users: {
-                  where: { role: 'OWNER' },
+                  where: {
+                    role: { in: ['OWNER', 'MANAGER'] },
+                    isActive: true,
+                    isApproved: true,
+                    emailVerifiedAt: { not: null },
+                    emailNotificationsEnabled: true,
+                  },
                   select: { email: true },
                 },
               },

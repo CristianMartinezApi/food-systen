@@ -153,17 +153,17 @@ function AuditContent() {
 
   return (
     <div className="space-y-6 sm:space-y-8">
-      <div className="system-hero-band relative overflow-hidden rounded-2xl sm:rounded-[3.5rem] p-2">
+      <div className="system-hero-band relative overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(14,165,233,0.12),transparent_30%),linear-gradient(135deg,rgba(15,23,42,0.02),transparent_45%)]" />
-        <div className="relative p-4 sm:p-6 md:p-10 grid gap-4 sm:gap-6 md:gap-8 xl:grid-cols-[1.1fr_0.9fr] items-center">
+        <div className="relative grid items-center gap-4 p-4 sm:p-5 xl:grid-cols-[1.1fr_0.9fr]">
           <div>
             <p className="text-[10px] sm:text-label font-body font-bold text-primary uppercase tracking-[0.2em]">Auditoria</p>
-            <h1 className="mt-2 text-2xl sm:text-3xl md:text-heading-1 font-display font-bold text-slate-950 uppercase tracking-tight">Logs de ações administrativas</h1>
-            <p className="mt-2 max-w-2xl text-[12px] sm:text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em]">Acompanhe aprovações, edições e exclusões com um painel mais legível e orientado à operação.</p>
+            <h1 className="mt-1 text-xl font-semibold tracking-tight text-slate-950 sm:text-2xl">Logs de ações administrativas</h1>
+            <p className="mt-1 max-w-2xl text-sm text-slate-500">Acompanhe aprovações, edições e exclusões realizadas no sistema.</p>
           </div>
 
           <div className="grid gap-3 md:grid-cols-3">
-            <div className="rounded-2xl sm:rounded-[2.5rem] border border-slate-50 bg-white/95 p-4 sm:p-5 shadow-sm hover:shadow-2xl hover:shadow-slate-200/40 transition-all duration-500">
+            <div className="rounded-lg border border-slate-200 bg-white p-4">
               <div className="flex items-center justify-between">
                 <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Eventos</span>
                 <FileText size={16} className="text-primary" />
@@ -171,7 +171,7 @@ function AuditContent() {
               <div className="mt-3 text-xl sm:text-heading-2 font-mono font-bold text-slate-950 tracking-tighter">{actionCount}</div>
               <p className="text-[12px] sm:text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em]">na página atual</p>
             </div>
-            <div className="rounded-2xl sm:rounded-[2.5rem] border border-emerald-100 bg-emerald-50/80 p-4 sm:p-5 shadow-sm hover:shadow-2xl hover:shadow-emerald-200/40 transition-all duration-500">
+            <div className="rounded-lg border border-emerald-100 bg-emerald-50 p-4">
               <div className="flex items-center justify-between">
                 <span className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-500">Usuários</span>
                 <BadgeCheck size={16} className="text-emerald-600" />
@@ -179,7 +179,7 @@ function AuditContent() {
               <div className="mt-3 text-xl sm:text-heading-2 font-mono font-bold text-emerald-700 tracking-tighter">{userCount}</div>
               <p className="text-[12px] sm:text-label font-body font-medium text-emerald-700/80 uppercase tracking-[0.06em]">ações relacionadas</p>
             </div>
-            <div className="rounded-2xl sm:rounded-[2.5rem] border border-amber-100 bg-amber-50/80 p-4 sm:p-5 shadow-sm hover:shadow-2xl hover:shadow-amber-200/40 transition-all duration-500">
+            <div className="rounded-lg border border-amber-100 bg-amber-50 p-4">
               <div className="flex items-center justify-between">
                 <span className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-500">Impressões</span>
                 <ShieldAlert size={16} className="text-amber-600" />
@@ -192,7 +192,7 @@ function AuditContent() {
       </div>
 
       <div className="grid gap-4 sm:gap-6 xl:grid-cols-[0.9fr_1.1fr]">
-        <div className="rounded-2xl sm:rounded-[3rem] border border-slate-50 bg-white p-4 sm:p-6 md:p-8 shadow-sm">
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
           <div>
             <p className="text-[10px] sm:text-label font-body font-bold text-primary uppercase tracking-[0.2em]">Filtros</p>
             <h2 className="mt-1 text-xl sm:text-heading-2 font-display font-bold text-slate-950 uppercase tracking-tight">Refinar auditoria</h2>
@@ -266,7 +266,7 @@ function AuditContent() {
           )}
         </div>
 
-        <div className="rounded-2xl sm:rounded-[3rem] border border-slate-50 bg-white p-4 sm:p-6 md:p-8 shadow-sm">
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
           <div className="flex items-center justify-between gap-3">
             <div>
               <p className="text-[10px] sm:text-label font-body font-bold text-primary uppercase tracking-[0.2em]">Resultados</p>

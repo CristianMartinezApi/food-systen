@@ -8,6 +8,7 @@ import toast from "react-hot-toast";
 import { useSearchParams } from "next/navigation";
 import { PrintModeModal, type PrintMode } from "../../components/modals/PrintModeModal";
 import { ConfirmActionModal } from "../../components/modals/ConfirmActionModal";
+import { AdminPageHeader } from "../../components/layout/AdminPageHeader";
 
 const PRINT_MODE_STORAGE_KEY = "@FoodSystem:printMode";
 const DEFAULT_CASH_DIFFERENCE_NOTE_THRESHOLD = 5;
@@ -385,7 +386,24 @@ export default function CashierPage({
 
         try {
             setSubmitting(true);
-            const result = await api.post("/cashier/session/open", { openingAmount: parsed });
+            let result;
+            try {
+                result = await api.post("/cashier/session/open", { openingAmount: parsed });
+            } catch (error: any) {
+                if (error?.code !== "OUTSIDE_OPERATING_HOURS" || !error?.requiresConfirmation) {
+                    throw error;
+                }
+
+                const confirmed = window.confirm(
+                    `A loja está fora do horário de funcionamento${error.nextOpeningLabel ? ` e abre ${error.nextOpeningLabel}` : ""}. Deseja abrir o caixa mesmo assim?`
+                );
+                if (!confirmed) return;
+
+                result = await api.post("/cashier/session/open", {
+                    openingAmount: parsed,
+                    confirmOutsideOperatingHours: true,
+                });
+            }
             const sessionId = result.id;
             setOpenedSessionId(sessionId || null);
             setClosingAmount("");
@@ -1118,23 +1136,19 @@ export default function CashierPage({
     }
 
     return (
-        <div ref={rootRef} className={cn("space-y-4", !isSidebar && "min-h-screen bg-slate-50/50 p-4 sm:p-6 md:p-8 lg:p-10 xl:p-12 max-w-full")}>
-            <div className={cn("flex flex-col gap-4 mb-4", !isSidebar && "cashier-hero lg:flex-row lg:items-end justify-between sm:mb-10 md:mb-12 lg:mb-14")}>
-                {!isSidebar && (
-                    <div>
-                        <h1 className="text-2xl sm:text-3xl md:text-heading-1 font-display font-bold text-slate-950 uppercase tracking-tight">Sessão de Caixa</h1>
-                        <p className="text-[12px] sm:text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em] mt-2">Abertura, fechamento, sangrias, suprimentos e histórico de sessões.</p>
-
-                        {isHomologated && (
-                            <div className="mt-4 flex flex-wrap items-center gap-2">
-                                <span className="inline-flex items-center rounded-full px-3 py-1 text-[10px] font-body font-bold uppercase tracking-[0.08em] border border-emerald-200 bg-emerald-50 text-emerald-700">
-                                    Terminal Homologado
-                                </span>
-                            </div>
-                        )}
-                    </div>
-                )}
-            </div>
+        <div ref={rootRef} className={cn("space-y-4", !isSidebar && "min-h-screen max-w-full")}>
+            {!isSidebar && (
+                <AdminPageHeader
+                    eyebrow="Financeiro operacional"
+                    title="Sessão de caixa"
+                    description="Abertura, fechamento, movimentos e histórico das sessões."
+                    status={isHomologated ? (
+                        <span className="inline-flex items-center rounded-md border border-emerald-200 bg-emerald-50 px-2 py-1 text-[10px] font-semibold text-emerald-700">
+                            Terminal homologado
+                        </span>
+                    ) : undefined}
+                />
+            )}
 
             <section className={cn("grid gap-2", isSidebar ? "grid-cols-2" : "sm:grid-cols-2 xl:grid-cols-4")}>
                 {cards.map((card: any) => (

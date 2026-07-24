@@ -66,26 +66,37 @@ export const normalizeAssetUrl = (value: string | null | undefined) => {
   const raw = String(value).trim();
   if (!raw) return "";
 
+  const withApiOrigin = (pathname: string) => {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "";
+    try {
+      return apiUrl.startsWith("http")
+        ? `${new URL(apiUrl).origin}${pathname}`
+        : pathname;
+    } catch {
+      return pathname;
+    }
+  };
+
   if (raw.startsWith('/uploads/')) {
-    return `/api${raw}`;
+    return withApiOrigin(`/api${raw}`);
   }
 
   if (raw.startsWith('/api/uploads/')) {
-    return raw;
+    return withApiOrigin(raw);
   }
 
   if (raw.startsWith('uploads/')) {
-    return `/api/${raw}`;
+    return withApiOrigin(`/api/${raw}`);
   }
 
   if (raw.startsWith('http://') || raw.startsWith('https://')) {
     try {
       const parsed = new URL(raw);
       if (parsed.pathname.startsWith('/api/uploads/')) {
-        return `${parsed.pathname}${parsed.search}`;
+        return `${parsed.origin}${parsed.pathname}${parsed.search}`;
       }
       if (parsed.pathname.startsWith('/uploads/')) {
-        return `/api${parsed.pathname}${parsed.search}`;
+        return `${parsed.origin}/api${parsed.pathname}${parsed.search}`;
       }
     } catch {
       return raw;

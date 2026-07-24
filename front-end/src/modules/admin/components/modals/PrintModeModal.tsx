@@ -31,16 +31,16 @@ export function PrintModeModal({
 
     return (
         <div className="fixed inset-0 z-50 bg-slate-950/40 backdrop-blur-[1px] flex items-center justify-center p-4" onClick={onClose}>
-            <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
-                <h3 className="text-sm font-display font-bold text-slate-950 uppercase tracking-[0.08em]">Formato de Impressão</h3>
-                <p className="mt-2 text-[11px] font-medium text-slate-500">Escolha como deseja imprimir {targetLabel}.</p>
+            <div className="w-full max-w-md rounded-xl border border-slate-200 bg-white p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+                <h3 className="text-base font-semibold text-slate-950">Formato de impressão</h3>
+                <p className="mt-2 text-sm text-slate-500">Escolha como deseja imprimir {targetLabel}.</p>
                 <p className="mt-1 text-[10px] font-medium text-slate-400">A escolha fica salva para as próximas impressões.</p>
 
                 <div className="mt-4 grid grid-cols-2 gap-2">
                     <button
                         onClick={() => onSelectMode("THERMAL")}
                         className={cn(
-                            "h-11 rounded-2xl border text-[10px] font-black uppercase tracking-[0.12em] transition-all",
+                            "h-11 rounded-lg border text-xs font-semibold transition-all",
                             selectedMode === "THERMAL" ? "border-slate-900 bg-slate-900 text-white" : "border-slate-200 bg-white text-slate-500"
                         )}
                     >
@@ -49,7 +49,7 @@ export function PrintModeModal({
                     <button
                         onClick={() => onSelectMode("A4")}
                         className={cn(
-                            "h-11 rounded-2xl border text-[10px] font-black uppercase tracking-[0.12em] transition-all",
+                            "h-11 rounded-lg border text-xs font-semibold transition-all",
                             selectedMode === "A4" ? "border-slate-900 bg-slate-900 text-white" : "border-slate-200 bg-white text-slate-500"
                         )}
                     >

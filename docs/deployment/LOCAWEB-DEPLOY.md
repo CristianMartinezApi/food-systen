@@ -101,11 +101,9 @@ JWT_SECRET=GERE_UM_SECRET_ALEATORIO_32_CHARS
 # PIX (modo manual)
 # Sem credenciais de gateway e sem webhook.
 
-# Email (opcional)
-SMTP_HOST=smtp.seu-provedor.com
-SMTP_PORT=587
-SMTP_USER=seu-email@seu-dominio.com
-SMTP_PASS=sua-senha
+# Email e avisos operacionais (Resend)
+RESEND_API_KEY=re_sua_chave
+EMAIL_FROM=FoodSystem <noreply@seu-dominio-verificado.com>
 
 # Redis (opcional, para cache)
 REDIS_URL=redis://redis:6379

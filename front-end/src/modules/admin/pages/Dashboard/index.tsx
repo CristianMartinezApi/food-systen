@@ -240,21 +240,21 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6 sm:space-y-8">
-      <div className="system-hero-band relative overflow-hidden rounded-2xl sm:rounded-[3.5rem] p-2">
+      <div className="system-hero-band relative overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(14,165,233,0.12),transparent_30%),linear-gradient(135deg,rgba(15,23,42,0.02),transparent_45%)]" />
-        <div className="relative p-4 sm:p-6 md:p-10 grid gap-4 sm:gap-6 xl:grid-cols-[1.1fr_0.9fr] items-center">
+        <div className="relative grid items-center gap-4 p-4 sm:p-5 xl:grid-cols-[1.1fr_0.9fr]">
           <div>
             <p className="text-[10px] sm:text-label font-body font-bold text-primary uppercase tracking-[0.2em]">Super Admin</p>
-            <h1 className="mt-1 text-2xl sm:text-3xl md:text-heading-1 font-display font-bold text-slate-950 uppercase tracking-tight">Painel executivo</h1>
-            <p className="mt-2 text-[12px] sm:text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em]">Visão rápida de risco operacional, crescimento e ações críticas.</p>
+            <h1 className="mt-1 text-xl font-semibold tracking-tight text-slate-950 sm:text-2xl">Painel executivo</h1>
+            <p className="mt-1 text-sm text-slate-500">Visão rápida de risco operacional, crescimento e ações críticas.</p>
             {errorText && <p className="mt-3 text-[11px] font-bold uppercase tracking-[0.12em] text-rose-600">{errorText}</p>}
           </div>
 
           <div className="grid gap-2 sm:gap-3 sm:grid-cols-2">
-            <button onClick={() => openPage("/admin/clients")} className="h-10 sm:h-12 md:h-14 rounded-full bg-slate-950 px-4 sm:px-5 text-[10px] font-black uppercase tracking-[0.2em] text-white">Gerenciar clientes</button>
-            <button onClick={() => openPage("/admin/provisioning?hasRetry=1")} className="h-10 sm:h-12 md:h-14 rounded-full border border-amber-200 bg-amber-50 px-4 sm:px-5 text-[10px] font-black uppercase tracking-[0.2em] text-amber-700">Provisioning com retry</button>
-            <button onClick={() => openPage("/admin/audit?subjectType=restaurant")} className="h-10 sm:h-12 md:h-14 rounded-full border border-slate-200 bg-white px-4 sm:px-5 text-[10px] font-black uppercase tracking-[0.2em] text-slate-600">Auditoria de lojas</button>
-            <button onClick={() => openPage("/admin/clients?view=inconsistencies")} className="h-10 sm:h-12 md:h-14 rounded-full border border-slate-200 bg-white px-4 sm:px-5 text-[10px] font-black uppercase tracking-[0.2em] text-slate-600">Resolver inconsistências</button>
+            <button onClick={() => openPage("/admin/clients")} className="h-10 rounded-lg bg-slate-950 px-4 text-xs font-semibold text-white">Gerenciar clientes</button>
+            <button onClick={() => openPage("/admin/provisioning?hasRetry=1")} className="h-10 rounded-lg border border-amber-200 bg-amber-50 px-4 text-xs font-semibold text-amber-700">Provisioning com retry</button>
+            <button onClick={() => openPage("/admin/audit?subjectType=restaurant")} className="h-10 rounded-lg border border-slate-200 bg-white px-4 text-xs font-semibold text-slate-600">Auditoria de lojas</button>
+            <button onClick={() => openPage("/admin/clients?view=inconsistencies")} className="h-10 rounded-lg border border-slate-200 bg-white px-4 text-xs font-semibold text-slate-600">Resolver inconsistências</button>
           </div>
 
           <div className="sm:col-span-2 xl:col-span-1">

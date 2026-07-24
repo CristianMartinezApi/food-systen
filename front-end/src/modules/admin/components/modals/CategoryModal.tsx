@@ -106,20 +106,20 @@ export function CategoryModal({ isOpen, onClose, onSave, category }: CategoryMod
         onClick={onClose}
       />
       
-      <div className="relative w-full max-w-lg max-h-[calc(100vh-2rem)] bg-white rounded-[3rem] shadow-2xl overflow-hidden flex flex-col">
-        <div className="flex shrink-0 items-center justify-between p-8 border-b border-slate-100">
-            <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tighter">
+      <div className="relative flex max-h-[calc(100vh-2rem)] w-full max-w-lg flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl">
+        <div className="flex shrink-0 items-center justify-between border-b border-slate-200 px-5 py-4">
+            <h2 className="text-lg font-semibold text-slate-950">
                 {category ? "Editar Categoria" : "Nova Categoria"}
             </h2>
             <button 
                 onClick={onClose}
-                className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-all"
+                className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50"
             >
                 <X size={24} />
             </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="flex-1 min-h-0 overflow-y-auto p-8 space-y-6">
+        <form onSubmit={handleSubmit} className="min-h-0 flex-1 space-y-5 overflow-y-auto p-5">
             <div className="space-y-2">
                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Nome da Categoria</label>
                 <input 
@@ -229,18 +229,18 @@ export function CategoryModal({ isOpen, onClose, onSave, category }: CategoryMod
             </div>
         </form>
 
-        <div className="shrink-0 p-8 bg-slate-50 flex gap-4">
+        <div className="flex shrink-0 gap-3 border-t border-slate-200 bg-slate-50 px-5 py-4">
             <button 
                 type="button"
                 onClick={onClose}
-                className="flex-1 h-14 rounded-2xl font-black text-slate-400 hover:bg-slate-100 transition-all uppercase tracking-widest text-xs"
+                className="h-10 flex-1 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-600 hover:bg-slate-100"
             >
                 Cancelar
             </button>
             <button 
                 onClick={handleSubmit}
                 disabled={isSaving}
-                className="flex-2 h-14 bg-primary text-white rounded-2xl font-black flex items-center justify-center gap-3 shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 uppercase tracking-widest text-xs"
+                className="flex h-10 flex-2 items-center justify-center gap-2 rounded-lg bg-primary text-xs font-semibold text-white transition hover:bg-primary/90 disabled:opacity-50"
             >
                 {isSaving ? <Loader2 className="animate-spin" /> : <Save size={20} />}
                 {category ? "Salvar Alterações" : "Criar Categoria"}

@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { api } from "@/core/config/api";
 import { Loader2, Plus, Shield, Trash, Search, Users, Store, BadgeCheck, CirclePause, Sparkles, Filter, FileSearch, Workflow, RefreshCcw, Eye, EyeOff, WandSparkles } from "lucide-react";
 import toast from "react-hot-toast";
-import { gsap } from "gsap";
 import AdminResetPassword from "../../components/AdminResetPassword";
 
 interface AdminUser {
@@ -75,8 +74,6 @@ export default function ClientsPage() {
   const [formData, setFormData] = useState({ name: "", email: "", password: "" });
   const [createdCredentials, setCreatedCredentials] = useState<{ open: boolean; name?: string; email?: string; password?: string }>({ open: false });
   const [showCreatePassword, setShowCreatePassword] = useState(false);
-  const rootRef = useRef<HTMLDivElement>(null);
-  const hasAnimatedRef = useRef(false);
 
   const approvedUsers = users.filter((user) => user.isApproved).length;
   const activeUsers = users.filter((user) => user.isActive !== false).length;
@@ -197,21 +194,6 @@ export default function ClientsPage() {
       loadPlans();
     }
   }, [userRole]);
-
-  useEffect(() => {
-    if (!rootRef.current || hasAnimatedRef.current) return;
-    hasAnimatedRef.current = true;
-
-    const ctx = gsap.context(() => {
-      const timeline = gsap.timeline({ defaults: { ease: "power3.out" } });
-      timeline
-        .from(".clients-hero", { y: -18, opacity: 0, duration: 0.7 })
-        .from(".clients-panel", { y: 24, opacity: 0, duration: 0.75 }, "-=0.25")
-        .from(".clients-card", { y: 20, opacity: 0, duration: 0.65, stagger: 0.06 }, "-=0.2");
-    }, rootRef);
-
-    return () => ctx.revert();
-  }, []);
 
   useEffect(() => {
     if (userRole !== 'SUPER_ADMIN') return;
@@ -532,58 +514,58 @@ export default function ClientsPage() {
   }
 
   return (
-    <div ref={rootRef} className="space-y-8">
+    <div className="space-y-8">
       {confirmState.open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="bg-white rounded-2xl p-4 sm:p-6 w-full max-w-xs sm:max-w-md">
+          <div className="w-full max-w-xs rounded-xl border border-slate-200 bg-white p-4 sm:max-w-md sm:p-5">
             <h3 className="font-bold text-lg">{confirmState.title}</h3>
             <p className="text-[13px] sm:text-sm text-slate-600 mt-2">{confirmState.message}</p>
             <div className="mt-4 flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
-              <button onClick={() => setConfirmState({ open: false })} className="px-3 py-2 border rounded-full text-[13px] sm:text-sm">Cancelar</button>
-              <button onClick={async () => { setConfirmState((s) => ({ ...s, open: false })); try { if (confirmState.onConfirm) await confirmState.onConfirm(); } catch (e) { console.error(e); } }} className="px-3 py-2 bg-primary text-white rounded-full text-[13px] sm:text-sm">Confirmar</button>
+              <button onClick={() => setConfirmState({ open: false })} className="rounded-lg border px-3 py-2 text-[13px] sm:text-sm">Cancelar</button>
+              <button onClick={async () => { setConfirmState((s) => ({ ...s, open: false })); try { if (confirmState.onConfirm) await confirmState.onConfirm(); } catch (e) { console.error(e); } }} className="rounded-lg bg-primary px-3 py-2 text-[13px] text-white sm:text-sm">Confirmar</button>
             </div>
           </div>
         </div>
       )}
       {createdCredentials.open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-xs sm:max-w-sm md:max-w-lg rounded-2xl sm:rounded-3xl border border-slate-200 bg-white p-4 sm:p-6 shadow-2xl">
+          <div className="w-full max-w-xs rounded-xl border border-slate-200 bg-white p-4 shadow-2xl sm:max-w-sm sm:p-5 md:max-w-lg">
             <p className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-600">Cadastro concluído</p>
             <h3 className="mt-1 text-lg sm:text-xl font-black text-slate-950">Credenciais iniciais do cliente</h3>
-            <div className="mt-4 space-y-2 rounded-2xl border border-slate-100 bg-slate-50 p-3 sm:p-4 text-[13px] sm:text-sm text-slate-700">
+            <div className="mt-4 space-y-2 rounded-lg border border-slate-200 bg-slate-50 p-3 text-[13px] text-slate-700 sm:p-4 sm:text-sm">
               <p><strong>Cliente:</strong> {createdCredentials.name || '-'}</p>
               <p><strong>Email:</strong> {createdCredentials.email || '-'}</p>
               <p><strong>Senha:</strong> {createdCredentials.password || '-'}</p>
             </div>
             <div className="mt-4 flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
-              <button onClick={copyCreatedCredentials} className="rounded-full border border-slate-200 bg-white px-4 py-2 text-[13px] sm:text-sm font-bold text-slate-600">Copiar tudo</button>
-              <button onClick={() => setCreatedCredentials({ open: false })} className="rounded-full bg-slate-950 px-4 py-2 text-[13px] sm:text-sm font-bold text-white">Fechar</button>
+              <button onClick={copyCreatedCredentials} className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-[13px] font-semibold text-slate-600 sm:text-sm">Copiar tudo</button>
+              <button onClick={() => setCreatedCredentials({ open: false })} className="rounded-lg bg-slate-950 px-4 py-2 text-[13px] font-semibold text-white sm:text-sm">Fechar</button>
             </div>
           </div>
         </div>
       )}
-      <div className="clients-hero system-hero-band relative overflow-hidden rounded-2xl sm:rounded-[3.5rem] p-2 sm:p-4 md:p-8">
+      <div className="clients-hero system-hero-band relative overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(249,115,22,0.12),transparent_30%),linear-gradient(135deg,rgba(15,23,42,0.02),transparent_45%)]" />
-        <div className="relative p-4 sm:p-6 md:p-10 flex flex-col gap-4 sm:gap-6 md:gap-8">
+        <div className="relative flex flex-col gap-4 p-4 sm:p-5">
           <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
             <div>
               <p className="text-[10px] sm:text-label font-body font-bold text-primary uppercase tracking-[0.2em]">Hub Administrativo</p>
-              <h1 className="text-2xl sm:text-3xl md:text-heading-1 font-display font-bold text-slate-950 uppercase tracking-tight">Clientes e Liberações</h1>
-              <p className="mt-2 max-w-2xl text-[12px] sm:text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em]">Curadoria de acessos, aprovações e estado operacional das lojas.</p>
+              <h1 className="text-xl font-semibold tracking-tight text-slate-950 sm:text-2xl">Clientes e liberações</h1>
+              <p className="mt-1 max-w-2xl text-sm text-slate-500">Gerencie acessos, aprovações e o estado operacional das lojas.</p>
             </div>
             <button
               onClick={() => {
                 setViewMode('users');
                 setTimeout(() => document.getElementById('create-client')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
               }}
-              className="h-10 sm:h-12 md:h-16 px-4 sm:px-6 md:px-10 bg-slate-950 text-white rounded-full font-body font-bold text-[11px] sm:text-label uppercase tracking-[0.06em] flex items-center justify-center gap-2 sm:gap-3 shadow-2xl shadow-slate-950/20 hover:bg-primary transition-all whitespace-nowrap active:scale-95 w-full sm:w-auto"
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-slate-950 px-4 text-xs font-semibold text-white transition-colors hover:bg-primary"
             >
               <Sparkles size={20} /> Novo cliente
             </button>
           </div>
 
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-            <div className="clients-card rounded-2xl sm:rounded-[2.5rem] border border-slate-50 bg-white/95 p-4 sm:p-5 shadow-sm hover:shadow-2xl hover:shadow-slate-200/40 transition-all duration-500">
+            <div className="clients-card rounded-lg border border-slate-200 bg-white p-4">
               <div className="flex items-center justify-between">
                 <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Clientes</span>
                 <Users size={16} className="text-primary" />
@@ -591,7 +573,7 @@ export default function ClientsPage() {
               <div className="mt-3 text-xl sm:text-heading-2 font-mono font-bold text-slate-950 tracking-tighter">{total}</div>
               <p className="text-[12px] sm:text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em]">cadastros encontrados</p>
             </div>
-            <div className="clients-card rounded-2xl sm:rounded-[2.5rem] border border-emerald-100 bg-emerald-50/80 p-4 sm:p-5 shadow-sm hover:shadow-2xl hover:shadow-emerald-200/40 transition-all duration-500">
+            <div className="clients-card rounded-lg border border-emerald-100 bg-emerald-50 p-4">
               <div className="flex items-center justify-between">
                 <span className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-500">Liberados</span>
                 <BadgeCheck size={16} className="text-emerald-600" />
@@ -599,7 +581,7 @@ export default function ClientsPage() {
               <div className="mt-3 text-xl sm:text-heading-2 font-mono font-bold text-emerald-700 tracking-tighter">{approvedUsers}</div>
               <p className="text-[12px] sm:text-label font-body font-medium text-emerald-700/80 uppercase tracking-[0.06em]">contas aprovadas</p>
             </div>
-            <div className="clients-card rounded-2xl sm:rounded-[2.5rem] border border-amber-100 bg-amber-50/80 p-4 sm:p-5 shadow-sm hover:shadow-2xl hover:shadow-amber-200/40 transition-all duration-500">
+            <div className="clients-card rounded-lg border border-amber-100 bg-amber-50 p-4">
               <div className="flex items-center justify-between">
                 <span className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-500">Pendentes</span>
                 <CirclePause size={16} className="text-amber-600" />
@@ -607,7 +589,7 @@ export default function ClientsPage() {
               <div className="mt-3 text-xl sm:text-heading-2 font-mono font-bold text-amber-700 tracking-tighter">{total - approvedUsers}</div>
               <p className="text-[12px] sm:text-label font-body font-medium text-amber-700/80 uppercase tracking-[0.06em]">aguardando liberação</p>
             </div>
-            <div className="clients-card rounded-2xl sm:rounded-[2.5rem] border border-slate-200 bg-slate-50 p-4 sm:p-5 shadow-sm hover:shadow-2xl hover:shadow-slate-200/40 transition-all duration-500">
+            <div className="clients-card rounded-lg border border-slate-200 bg-slate-50 p-4">
               <div className="flex items-center justify-between">
                 <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Lojas</span>
                 <Store size={16} className="text-slate-600" />
@@ -619,44 +601,44 @@ export default function ClientsPage() {
         </div>
       </div>
 
-      <div className="clients-panel rounded-2xl sm:rounded-[3rem] border border-slate-50 bg-white p-4 sm:p-6 shadow-sm">
+      <div className="clients-panel rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex items-center gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             <button
               onClick={() => setViewMode('users')}
-              className={`shrink-0 rounded-full px-3 sm:px-5 py-2 sm:py-2.5 text-[10px] font-black uppercase tracking-[0.2em] transition ${viewMode === 'users' ? 'bg-slate-950 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+              className={`shrink-0 rounded-lg px-4 py-2 text-xs font-semibold transition ${viewMode === 'users' ? 'bg-slate-950 text-white' : 'text-slate-600 hover:bg-slate-100'}`}
             >
               Usuários
             </button>
             <button
               onClick={() => setViewMode('stores')}
-              className={`shrink-0 rounded-full px-3 sm:px-5 py-2 sm:py-2.5 text-[10px] font-black uppercase tracking-[0.2em] transition ${viewMode === 'stores' ? 'bg-slate-950 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+              className={`shrink-0 rounded-lg px-4 py-2 text-xs font-semibold transition ${viewMode === 'stores' ? 'bg-slate-950 text-white' : 'text-slate-600 hover:bg-slate-100'}`}
             >
               Lojas
             </button>
             <button
               onClick={() => setViewMode('inconsistencies')}
-              className={`shrink-0 rounded-full px-3 sm:px-5 py-2 sm:py-2.5 text-[10px] font-black uppercase tracking-[0.2em] transition ${viewMode === 'inconsistencies' ? 'bg-slate-950 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+              className={`shrink-0 rounded-lg px-4 py-2 text-xs font-semibold transition ${viewMode === 'inconsistencies' ? 'bg-slate-950 text-white' : 'text-slate-600 hover:bg-slate-100'}`}
             >
               Inconsistências
             </button>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            <span className="rounded-full bg-amber-50 px-4 py-2 text-[10px] font-black uppercase tracking-[0.2em] text-amber-700">Usuários sem loja: {usersWithoutRestaurant}</span>
-            <span className="rounded-full bg-rose-50 px-4 py-2 text-[10px] font-black uppercase tracking-[0.2em] text-rose-700">Usuários em loja inativa: {usersLinkedToInactiveStore}</span>
-            <span className="rounded-full bg-sky-50 px-4 py-2 text-[10px] font-black uppercase tracking-[0.2em] text-sky-700">Lojas sem cliente: {storesWithoutClient}</span>
+            <span className="rounded-md bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-700">Sem loja: {usersWithoutRestaurant}</span>
+            <span className="rounded-md bg-rose-50 px-3 py-1.5 text-xs font-medium text-rose-700">Em loja inativa: {usersLinkedToInactiveStore}</span>
+            <span className="rounded-md bg-sky-50 px-3 py-1.5 text-xs font-medium text-sky-700">Lojas sem cliente: {storesWithoutClient}</span>
           </div>
         </div>
       </div>
 
       {viewMode === 'users' && (
       <div className="grid gap-4 sm:gap-6 xl:grid-cols-[0.92fr_1.08fr] items-start">
-        <form id="create-client" onSubmit={handleCreateUser} className="clients-panel rounded-2xl sm:rounded-[3rem] border border-slate-50 bg-white p-4 sm:p-6 md:p-8 shadow-sm space-y-4 sm:space-y-6 md:sticky md:top-6">
+        <form id="create-client" onSubmit={handleCreateUser} className="clients-panel space-y-5 rounded-xl border border-slate-200 bg-white p-5 shadow-sm md:sticky md:top-6">
           <div>
             <p className="text-[10px] sm:text-label font-body font-bold text-primary uppercase tracking-[0.2em]">Novo cliente</p>
-            <h2 className="mt-1 text-xl sm:text-heading-2 font-display font-bold text-slate-950 uppercase tracking-tight">Criar acesso</h2>
-            <p className="text-[12px] sm:text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em]">Cadastro rápido com senha assistida e validação antes da liberação.</p>
+            <h2 className="mt-1 text-lg font-semibold text-slate-950">Criar acesso</h2>
+            <p className="text-sm text-slate-500">Cadastro com senha assistida e validação antes da liberação.</p>
           </div>
 
           <div className="grid gap-4">
@@ -667,7 +649,7 @@ export default function ClientsPage() {
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 placeholder="Ex: João Silva"
-                className="h-10 sm:h-12 md:h-14 w-full px-4 sm:px-5 rounded-2xl border border-slate-100 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-slate-950/5 transition-all font-body font-medium text-[13px] sm:text-sm tracking-[0.02em] outline-none"
+                className="h-11 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 text-sm outline-none transition focus:border-slate-400 focus:bg-white"
               />
               {formData.name.length > 0 && !isCreateNameValid && (
                 <p className="mt-2 text-[11px] font-bold uppercase tracking-[0.12em] text-rose-600">Nome mínimo de 3 caracteres</p>
@@ -682,7 +664,7 @@ export default function ClientsPage() {
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                 placeholder="email@cliente.com"
-                className="h-10 sm:h-12 md:h-14 w-full px-4 sm:px-5 rounded-2xl border border-slate-100 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-slate-950/5 transition-all font-body font-medium text-[13px] sm:text-sm tracking-[0.02em] outline-none"
+                className="h-11 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 text-sm outline-none transition focus:border-slate-400 focus:bg-white"
               />
               {formData.email.length > 0 && !isCreateEmailValid && (
                 <p className="mt-2 text-[11px] font-bold uppercase tracking-[0.12em] text-rose-600">Formato de email inválido</p>
@@ -696,21 +678,21 @@ export default function ClientsPage() {
                   <button
                     type="button"
                     onClick={copyGeneratedPassword}
-                    className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.18em] text-slate-600"
+                    className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-3 py-1.5 text-[10px] font-semibold text-slate-600"
                   >
                     Copiar
                   </button>
                   <button
                     type="button"
                     onClick={generateStrongPassword}
-                    className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.18em] text-slate-600"
+                    className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-3 py-1.5 text-[10px] font-semibold text-slate-600"
                   >
                     <WandSparkles size={12} /> Gerar forte
                   </button>
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 rounded-2xl border border-slate-100 bg-slate-50 px-3">
+              <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3">
                 <input
                   required
                   type={showCreatePassword ? "text" : "password"}
@@ -730,11 +712,11 @@ export default function ClientsPage() {
               </div>
 
               <div className="mt-3 flex flex-wrap items-center gap-2">
-                <span className={`rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.18em] ${createPasswordChecks.minLength ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>8+ chars</span>
-                <span className={`rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.18em] ${createPasswordChecks.hasUpper ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>Maiúscula</span>
-                <span className={`rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.18em] ${createPasswordChecks.hasLower ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>Minúscula</span>
-                <span className={`rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.18em] ${createPasswordChecks.hasNumber ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>Número</span>
-                <span className={`rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.18em] ${createPasswordChecks.hasSpecial ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>Especial</span>
+                <span className={`rounded-md px-2.5 py-1 text-[10px] font-semibold ${createPasswordChecks.minLength ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>8+ chars</span>
+                <span className={`rounded-md px-2.5 py-1 text-[10px] font-semibold ${createPasswordChecks.hasUpper ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>Maiúscula</span>
+                <span className={`rounded-md px-2.5 py-1 text-[10px] font-semibold ${createPasswordChecks.hasLower ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>Minúscula</span>
+                <span className={`rounded-md px-2.5 py-1 text-[10px] font-semibold ${createPasswordChecks.hasNumber ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>Número</span>
+                <span className={`rounded-md px-2.5 py-1 text-[10px] font-semibold ${createPasswordChecks.hasSpecial ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>Especial</span>
               </div>
 
               <p className="mt-2 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500">
@@ -746,27 +728,27 @@ export default function ClientsPage() {
             </div>
           </div>
 
-          <button type="submit" disabled={!canSubmitCreateClient} className="h-10 sm:h-12 md:h-14 w-full px-4 sm:px-6 md:px-10 bg-slate-950 text-white rounded-full font-body font-bold text-[11px] sm:text-label uppercase tracking-[0.06em] flex items-center justify-center gap-2 sm:gap-3 shadow-2xl shadow-slate-950/20 hover:bg-primary transition-all active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed">
+          <button type="submit" disabled={!canSubmitCreateClient} className="flex h-10 w-full items-center justify-center gap-2 rounded-lg bg-slate-950 px-4 text-xs font-semibold text-white hover:bg-primary disabled:cursor-not-allowed disabled:opacity-60">
             {isSaving ? <Loader2 className="animate-spin" /> : <><Plus size={14} /> Cadastrar cliente</>}
           </button>
         </form>
 
-        <div className="clients-panel rounded-2xl sm:rounded-[3rem] border border-slate-50 bg-white p-4 sm:p-6 md:p-8 shadow-sm">
+        <div className="clients-panel rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
           <div className="flex flex-col gap-4">
             <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="text-[10px] sm:text-label font-body font-bold text-primary uppercase tracking-[0.2em]">Clientes</p>
-                <h2 className="text-xl sm:text-heading-2 font-display font-bold text-slate-950 uppercase tracking-tight">Base de acessos</h2>
+                <h2 className="text-lg font-semibold text-slate-950">Base de acessos</h2>
               </div>
-              <div className="rounded-2xl bg-slate-50 px-3 sm:px-4 py-2 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">{selected.length} selecionado(s)</div>
+              <div className="rounded-md bg-slate-50 px-3 py-2 text-xs font-medium text-slate-500">{selected.length} selecionado(s)</div>
             </div>
 
             <div className="grid gap-2 sm:gap-3 md:gap-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-[1.2fr_0.7fr_0.7fr_0.5fr_0.5fr_auto_auto] clients-filters">
-              <div className="flex h-10 sm:h-12 md:h-16 items-center gap-2 rounded-2xl sm:rounded-3xl border border-slate-100 bg-slate-50 px-3 sm:px-5 focus-within:border-primary focus-within:bg-white transition-all shadow-inner shadow-slate-50/80 sm:col-span-2 xl:col-span-1">
+              <div className="flex h-10 items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 focus-within:border-primary focus-within:bg-white sm:col-span-2 xl:col-span-1">
                 <Search size={18} className="text-slate-300" />
                 <input placeholder="Buscar nome ou email" value={search} onChange={(e) => setSearch(e.target.value)} className="h-full w-full bg-transparent outline-none font-body font-medium text-slate-600 text-[12px] sm:text-label uppercase tracking-[0.04em]" />
               </div>
-              <div className="flex h-10 sm:h-12 md:h-16 items-center gap-2 rounded-2xl sm:rounded-3xl border border-slate-100 bg-slate-50 px-3 sm:px-5 shadow-inner shadow-slate-50/80">
+              <div className="flex h-10 items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3">
                 <Filter size={18} className="text-slate-300" />
                 <select value={filter} onChange={(e) => setFilter(e.target.value as any)} className="h-full w-full bg-transparent outline-none font-body font-medium text-slate-600 text-[12px] sm:text-label uppercase tracking-[0.04em]">
                   <option value="all">Todos</option>
@@ -774,7 +756,7 @@ export default function ClientsPage() {
                   <option value="approved">Liberado</option>
                 </select>
               </div>
-              <div className="flex h-10 sm:h-12 md:h-16 items-center gap-2 rounded-2xl sm:rounded-3xl border border-slate-100 bg-slate-50 px-3 sm:px-5 shadow-inner shadow-slate-50/80">
+              <div className="flex h-10 items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3">
                 <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Ordem</label>
                 <select value={userSort} onChange={(e) => setUserSort(e.target.value as 'recent' | 'name_asc' | 'pending_first')} className="h-full w-full bg-transparent outline-none font-body font-medium text-slate-600 text-[12px] sm:text-label uppercase tracking-[0.04em]">
                   <option value="recent">Mais recentes</option>
@@ -782,8 +764,8 @@ export default function ClientsPage() {
                   <option value="pending_first">Pendentes primeiro</option>
                 </select>
               </div>
-              <button onClick={() => loadUsers(1, perPage)} className="h-10 sm:h-12 md:h-16 px-4 sm:px-6 rounded-full border border-slate-100 bg-white text-[11px] sm:text-label font-body font-bold text-slate-400 uppercase tracking-[0.06em] transition hover:bg-slate-50 shadow-sm">Buscar</button>
-              <button onClick={() => { setSearch(''); setFilter('all'); loadUsers(1, perPage); }} className="h-10 sm:h-12 md:h-16 px-4 sm:px-6 rounded-full border border-slate-100 bg-white text-[11px] sm:text-label font-body font-bold text-slate-400 uppercase tracking-[0.06em] transition hover:bg-slate-50 shadow-sm">Limpar</button>
+              <button onClick={() => loadUsers(1, perPage)} className="h-10 rounded-lg border border-slate-200 bg-white px-4 text-xs font-semibold text-slate-600 hover:bg-slate-50">Buscar</button>
+              <button onClick={() => { setSearch(''); setFilter('all'); loadUsers(1, perPage); }} className="h-10 rounded-lg border border-slate-200 bg-white px-4 text-xs font-semibold text-slate-600 hover:bg-slate-50">Limpar</button>
               <button
                 onClick={async () => {
                   try {
@@ -793,23 +775,23 @@ export default function ClientsPage() {
                     toast.error(error.message || "Erro ao exportar CSV");
                   }
                 }}
-                className="h-10 sm:h-12 md:h-16 px-4 sm:px-6 rounded-full bg-slate-950 text-white text-[11px] sm:text-label font-body font-bold uppercase tracking-[0.06em] transition hover:bg-primary shadow-xl shadow-slate-950/20"
+                className="h-10 rounded-lg bg-slate-950 px-4 text-xs font-semibold text-white hover:bg-primary"
               >
                 Exportar CSV
               </button>
             </div>
           </div>
 
-          <div className="mt-4 flex flex-wrap items-center gap-2 rounded-2xl sm:rounded-4xl bg-slate-50 p-3 sm:p-4 border border-slate-100">
-            <button onClick={selectAll} className="flex-1 sm:flex-none rounded-full border border-slate-100 bg-white px-4 py-2.5 sm:py-3 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">{selected.length === sortedUsers.length ? 'Desmarcar tudo' : 'Selecionar tudo'}</button>
-            <button onClick={() => handleBulkAction('approve')} className="flex-1 sm:flex-none rounded-full bg-primary px-4 py-2.5 sm:py-3 text-[10px] font-black uppercase tracking-[0.2em] text-white">Aprovar selecionados</button>
-            <button onClick={() => handleBulkAction('delete')} className="flex-1 sm:flex-none rounded-full bg-rose-600 px-4 py-2.5 sm:py-3 text-[10px] font-black uppercase tracking-[0.2em] text-white">Excluir selecionados</button>
+          <div className="mt-4 flex flex-wrap items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 p-3">
+            <button onClick={selectAll} className="flex-1 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-xs font-semibold text-slate-600 sm:flex-none">{selected.length === sortedUsers.length ? 'Desmarcar tudo' : 'Selecionar tudo'}</button>
+            <button onClick={() => handleBulkAction('approve')} className="flex-1 rounded-lg bg-primary px-4 py-2.5 text-xs font-semibold text-white sm:flex-none">Aprovar selecionados</button>
+            <button onClick={() => handleBulkAction('delete')} className="flex-1 rounded-lg bg-rose-600 px-4 py-2.5 text-xs font-semibold text-white sm:flex-none">Excluir selecionados</button>
           </div>
 
           {isLoading ? <div className="py-10 text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em]">Carregando...</div> : sortedUsers.length === 0 ? <div className="py-10 text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em]">Nenhum cliente</div> : (
             <div className="mt-4 space-y-4">
               {sortedUsers.map((u) => (
-                <div key={u.id} className="clients-card flex flex-col gap-4 rounded-2xl sm:rounded-[2.5rem] border border-slate-50 bg-white p-4 sm:p-5 shadow-sm hover:shadow-2xl hover:shadow-slate-200/50 transition-all duration-700 md:flex-row md:items-center md:justify-between group">
+                <div key={u.id} className="clients-card group flex flex-col gap-4 rounded-lg border border-slate-200 bg-white p-4 transition hover:border-slate-300 hover:shadow-sm md:flex-row md:items-center md:justify-between">
                   <div className="flex items-start gap-3">
                     <input type="checkbox" checked={selected.includes(u.id)} onChange={() => toggleSelect(u.id)} className="mt-1 h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary" />
                     <div>
@@ -821,17 +803,17 @@ export default function ClientsPage() {
                           : 'Sem loja vinculada'}
                       </div>
                       <div className="mt-3 flex flex-wrap items-center gap-2">
-                        <span className={`inline-flex items-center gap-2 rounded-2xl px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.2em] ${u.isApproved ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>{u.isApproved ? 'Liberado' : 'Pendente'}</span>
-                        <span className={`inline-flex items-center gap-2 rounded-2xl px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.2em] ${u.isActive ? 'bg-slate-50 text-slate-600' : 'bg-slate-100 text-slate-400'}`}>{u.isActive ? 'Ativo' : 'Pausado'}</span>
+                        <span className={`inline-flex items-center gap-2 rounded-md px-3 py-1.5 text-[10px] font-semibold ${u.isApproved ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>{u.isApproved ? 'Liberado' : 'Pendente'}</span>
+                        <span className={`inline-flex items-center gap-2 rounded-md px-3 py-1.5 text-[10px] font-semibold ${u.isActive ? 'bg-slate-50 text-slate-600' : 'bg-slate-100 text-slate-400'}`}>{u.isActive ? 'Ativo' : 'Pausado'}</span>
                       </div>
                     </div>
                   </div>
                   <div className="flex flex-wrap items-center gap-2 md:justify-end">
-                    <button disabled={u.isApproved} onClick={() => handleApprove(u.id)} className="flex-1 sm:flex-none rounded-full bg-slate-950 px-4 py-2.5 sm:py-3 text-[10px] font-black uppercase tracking-[0.2em] text-white disabled:cursor-not-allowed disabled:opacity-60">{u.isApproved ? 'Liberado' : 'Liberar'}</button>
+                    <button disabled={u.isApproved} onClick={() => handleApprove(u.id)} className="flex-1 rounded-lg bg-slate-950 px-4 py-2.5 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60 sm:flex-none">{u.isApproved ? 'Liberado' : 'Liberar'}</button>
                     {u.isActive ? (
-                      <button onClick={() => handlePauseUser(u.id)} className="flex-1 sm:flex-none rounded-full bg-amber-500 px-4 py-2.5 sm:py-3 text-[10px] font-black uppercase tracking-[0.2em] text-white">Pausar acesso</button>
+                      <button onClick={() => handlePauseUser(u.id)} className="flex-1 rounded-lg bg-amber-500 px-4 py-2.5 text-xs font-semibold text-white sm:flex-none">Pausar acesso</button>
                     ) : (
-                      <button onClick={() => handleActivateUser(u.id)} className="flex-1 sm:flex-none rounded-full bg-slate-900 px-4 py-2.5 sm:py-3 text-[10px] font-black uppercase tracking-[0.2em] text-white">Ativar acesso</button>
+                      <button onClick={() => handleActivateUser(u.id)} className="flex-1 rounded-lg bg-slate-900 px-4 py-2.5 text-xs font-semibold text-white sm:flex-none">Ativar acesso</button>
                     )}
                     <AdminResetPassword
                       userId={u.id}
@@ -839,8 +821,8 @@ export default function ClientsPage() {
                       userName={u.name}
                       onSuccess={() => loadUsers()}
                     />
-                    <button onClick={() => handleEditUser(u)} className="flex-1 sm:flex-none rounded-full border border-slate-100 bg-slate-50 px-4 py-2.5 sm:py-3 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Editar</button>
-                    <button onClick={() => handleDeleteUser(u.id)} className="flex-1 sm:flex-none rounded-full bg-rose-600 px-4 py-2.5 sm:py-3 text-[10px] font-black uppercase tracking-[0.2em] text-white">Excluir</button>
+                    <button onClick={() => handleEditUser(u)} className="flex-1 rounded-lg border border-slate-200 bg-slate-50 px-4 py-2.5 text-xs font-semibold text-slate-600 sm:flex-none">Editar</button>
+                    <button onClick={() => handleDeleteUser(u.id)} className="flex-1 rounded-lg bg-rose-600 px-4 py-2.5 text-xs font-semibold text-white sm:flex-none">Excluir</button>
                   </div>
                 </div>
               ))}
@@ -849,9 +831,9 @@ export default function ClientsPage() {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mt-4">
             <div className="text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em]">{total} resultado(s)</div>
             <div className="flex w-full sm:w-auto items-center justify-between sm:justify-start gap-2">
-              <button disabled={page <= 1} onClick={() => loadUsers(page - 1, perPage)} className="rounded-2xl border border-slate-100 bg-white px-4 py-2 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 disabled:opacity-50">Anterior</button>
-              <div className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-2 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Página {page}</div>
-              <button disabled={page * perPage >= total} onClick={() => loadUsers(page + 1, perPage)} className="rounded-2xl border border-slate-100 bg-white px-4 py-2 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 disabled:opacity-50">Próxima</button>
+              <button disabled={page <= 1} onClick={() => loadUsers(page - 1, perPage)} className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-600 disabled:opacity-50">Anterior</button>
+              <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-2 text-xs font-medium text-slate-600">Página {page}</div>
+              <button disabled={page * perPage >= total} onClick={() => loadUsers(page + 1, perPage)} className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-600 disabled:opacity-50">Próxima</button>
             </div>
           </div>
         </div>
@@ -860,14 +842,14 @@ export default function ClientsPage() {
 
       {viewMode === 'stores' && (
       <div>
-        <div className="clients-panel rounded-2xl sm:rounded-[3rem] border border-slate-50 bg-white p-4 sm:p-6 md:p-8 shadow-sm">
+        <div className="clients-panel rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
               <p className="text-[10px] sm:text-label font-body font-bold text-primary uppercase tracking-[0.2em]">Lojas cadastradas</p>
-              <h2 className="text-xl sm:text-heading-2 font-display font-bold text-slate-950 uppercase tracking-tight">Operação por status</h2>
+              <h2 className="text-lg font-semibold text-slate-950">Operação por status</h2>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              <div className="flex items-center gap-2 rounded-2xl sm:rounded-3xl border border-slate-100 bg-slate-50 px-3 sm:px-4 py-2 sm:py-3">
+              <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
                 <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Filtrar</label>
                 <select value={restaurantFilter} onChange={(e) => { setRestaurantFilter(e.target.value as any); loadRestaurants(e.target.value); }} className="bg-transparent text-[12px] sm:text-label font-body font-medium text-slate-600 uppercase tracking-[0.04em] outline-none">
                   <option value="all">Todos</option>
@@ -880,7 +862,7 @@ export default function ClientsPage() {
                   <option value="PENDING">PENDING</option>
                 </select>
               </div>
-              <div className="flex items-center gap-2 rounded-2xl sm:rounded-3xl border border-slate-100 bg-slate-50 px-3 sm:px-4 py-2 sm:py-3">
+              <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
                 <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Ordenar</label>
                 <select value={restaurantSort} onChange={(e) => setRestaurantSort(e.target.value as 'created_desc' | 'retry_desc')} className="bg-transparent text-[12px] sm:text-label font-body font-medium text-slate-600 uppercase tracking-[0.04em] outline-none">
                   <option value="created_desc">Mais novas</option>
@@ -893,7 +875,7 @@ export default function ClientsPage() {
             {isLoadingRestaurants ? (
               <div className="space-y-3">
                 {[0, 1].map((i) => (
-                  <div key={i} className="flex items-center justify-between rounded-[2.5rem] border border-slate-50 bg-slate-50 p-5 animate-pulse">
+                  <div key={i} className="flex animate-pulse items-center justify-between rounded-lg border border-slate-200 bg-slate-50 p-5">
                     <div className="w-2/3">
                       <div className="h-4 bg-slate-200 rounded w-1/3 mb-2" />
                       <div className="h-3 bg-slate-100 rounded w-1/2" />
@@ -921,20 +903,20 @@ export default function ClientsPage() {
                   ? linkedUsers.map((user: any) => user.email || user.name).join(', ')
                   : 'Sem cliente vinculado';
                 return (
-                  <div key={r.id} className="clients-card flex flex-col gap-4 rounded-2xl sm:rounded-[2.5rem] border border-slate-50 bg-white p-4 sm:p-5 shadow-sm hover:shadow-2xl hover:shadow-slate-200/50 transition-all duration-700 md:flex-row md:items-center md:justify-between group">
+                  <div key={r.id} className="clients-card group flex flex-col gap-4 rounded-lg border border-slate-200 bg-white p-4 transition hover:border-slate-300 hover:shadow-sm md:flex-row md:items-center md:justify-between">
                     <div>
                       <div className="text-body-strong font-display font-bold text-slate-950 uppercase tracking-tight leading-tight">{r.name}</div>
                       <div className="mt-2 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500 break-words">Cliente(s): {linkedUsersLabel}</div>
                       <div className="flex flex-wrap items-center gap-2 text-sm mt-3">
                         <span className="text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em]">{r.slug}</span>
-                        <span className="rounded-2xl px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.2em] bg-slate-100 text-slate-700">Plano: {r.plan?.name || 'Sem plano'}</span>
-                        <span title={r.isActive ? 'Loja ativa e operante' : 'Loja inativa'} aria-label={r.isActive ? 'Ativa' : 'Inativa'} className={`rounded-2xl px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.2em] ${r.isActive ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-500'}`}>{r.isActive ? 'Ativa' : 'Inativa'}</span>
-                        <span title={`Provisioning: ${prov}`} aria-label={`Provisioning ${prov}`} className={`rounded-2xl px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.2em] ${provClass}`}>{prov}</span>
+                        <span className="rounded-md bg-slate-100 px-3 py-1.5 text-[10px] font-semibold text-slate-700">Plano: {r.plan?.name || 'Sem plano'}</span>
+                        <span title={r.isActive ? 'Loja ativa e operante' : 'Loja inativa'} aria-label={r.isActive ? 'Ativa' : 'Inativa'} className={`rounded-md px-3 py-1.5 text-[10px] font-semibold ${r.isActive ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-500'}`}>{r.isActive ? 'Ativa' : 'Inativa'}</span>
+                        <span title={`Provisioning: ${prov}`} aria-label={`Provisioning ${prov}`} className={`rounded-md px-3 py-1.5 text-[10px] font-semibold ${provClass}`}>{prov}</span>
                         {r.lastRetryReason && (
                           <span
                             title={r.lastRetryAt ? `Ultimo retry em ${new Date(r.lastRetryAt).toLocaleString()}: ${r.lastRetryReason}` : `Ultimo retry: ${r.lastRetryReason}`}
                             aria-label="Loja com histórico de retry"
-                            className="rounded-2xl px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.2em] bg-amber-100 text-amber-700"
+                            className="rounded-md bg-amber-100 px-3 py-1.5 text-[10px] font-semibold text-amber-700"
                           >
                             Retry registrado
                           </span>
@@ -943,7 +925,7 @@ export default function ClientsPage() {
                         <select
                           value={r.planId || ''}
                           onChange={(e) => handleChangePlan(r.id, Number(e.target.value))}
-                          className="rounded-2xl bg-slate-900 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.2em] text-white outline-none border-none cursor-pointer"
+                          className="cursor-pointer rounded-md border-none bg-slate-900 px-3 py-1.5 text-[10px] font-semibold text-white outline-none"
                         >
                           <option value="">Sem plano</option>
                           {plans.map(p => (
@@ -954,13 +936,13 @@ export default function ClientsPage() {
 
                       {usage && (
                         <div className="mt-3 flex flex-wrap items-center gap-2">
-                          <span className={`rounded-2xl border px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.2em] ${usageClass}`}>
+                          <span className={`rounded-md border px-3 py-1.5 text-[10px] font-semibold ${usageClass}`}>
                             {usageLabel}
                           </span>
-                          <span className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.2em] text-slate-700">
+                          <span className="rounded-md border border-slate-200 bg-slate-50 px-3 py-1.5 text-[10px] font-semibold text-slate-700">
                             Produtos: {usage.productsUsed}/{usage.maxProducts || '-'} ({Math.round(usage.productUsagePercent || 0)}%)
                           </span>
-                          <span className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.2em] text-slate-700">
+                          <span className="rounded-md border border-slate-200 bg-slate-50 px-3 py-1.5 text-[10px] font-semibold text-slate-700">
                             Pedidos online/mês: {usage.monthlyOrdersUsed}/{usage.maxOrders || '-'} ({Math.round(usage.orderUsagePercent || 0)}%)
                           </span>
                         </div>
@@ -974,7 +956,7 @@ export default function ClientsPage() {
                           q.set("restaurant", r.slug || r.name || "");
                           router.push(`/admin/provisioning?${q.toString()}`);
                         }}
-                        className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-2.5 sm:py-3 text-[10px] font-black uppercase tracking-[0.2em] text-slate-600"
+                        className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-4 py-2.5 text-xs font-semibold text-slate-600"
                       >
                         <Workflow size={14} /> Provisioning
                       </button>
@@ -985,7 +967,7 @@ export default function ClientsPage() {
                           q.set("restaurant", r.slug || r.name || "");
                           router.push(`/admin/provisioning?${q.toString()}`);
                         }}
-                        className="inline-flex items-center gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-2.5 sm:py-3 text-[10px] font-black uppercase tracking-[0.2em] text-amber-700"
+                        className="inline-flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-2.5 text-xs font-semibold text-amber-700"
                       >
                         <RefreshCcw size={14} /> Com retry
                       </button>
@@ -996,16 +978,16 @@ export default function ClientsPage() {
                           q.set("search", r.slug || r.name || "");
                           router.push(`/admin/audit?${q.toString()}`);
                         }}
-                        className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-2.5 sm:py-3 text-[10px] font-black uppercase tracking-[0.2em] text-slate-600"
+                        className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-4 py-2.5 text-xs font-semibold text-slate-600"
                       >
                         <FileSearch size={14} /> Auditoria
                       </button>
                       {r.isActive ? (
-                        <button aria-label="Pausar loja" onClick={() => handlePauseRestaurant(r.id)} className="rounded-2xl bg-amber-500 px-4 py-2.5 sm:py-3 text-[10px] font-black uppercase tracking-[0.2em] text-white">Pausar</button>
+                        <button aria-label="Pausar loja" onClick={() => handlePauseRestaurant(r.id)} className="rounded-lg bg-amber-500 px-4 py-2.5 text-xs font-semibold text-white">Pausar</button>
                       ) : (
-                        <button aria-label="Ativar loja" onClick={() => handleApproveRestaurant(r.id)} className="rounded-2xl bg-slate-950 px-4 py-2.5 sm:py-3 text-[10px] font-black uppercase tracking-[0.2em] text-white">Ativar</button>
+                        <button aria-label="Ativar loja" onClick={() => handleApproveRestaurant(r.id)} className="rounded-lg bg-slate-950 px-4 py-2.5 text-xs font-semibold text-white">Ativar</button>
                       )}
-                      <button onClick={() => handleDeleteRestaurant(r.id)} className="inline-flex items-center gap-2 rounded-2xl bg-rose-600 px-4 py-2.5 sm:py-3 text-[10px] font-black uppercase tracking-[0.2em] text-white"><Trash size={14} />Excluir</button>
+                      <button onClick={() => handleDeleteRestaurant(r.id)} className="inline-flex items-center gap-2 rounded-lg bg-rose-600 px-4 py-2.5 text-xs font-semibold text-white"><Trash size={14} />Excluir</button>
                     </div>
                   </div>
                 );
@@ -1018,7 +1000,7 @@ export default function ClientsPage() {
 
       {viewMode === 'inconsistencies' && (
       <div className="grid gap-4 sm:gap-6 xl:grid-cols-2">
-        <div className="clients-panel rounded-2xl sm:rounded-[3rem] border border-rose-100 bg-white p-4 sm:p-6 md:p-8 shadow-sm">
+        <div className="clients-panel rounded-xl border border-rose-200 bg-white p-5 shadow-sm">
           <div className="flex items-center justify-between gap-3">
             <div>
               <p className="text-[10px] sm:text-label font-body font-bold text-rose-500 uppercase tracking-[0.2em]">Usuários</p>
@@ -1027,66 +1009,66 @@ export default function ClientsPage() {
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setInconsistencyScope('all')}
-                className={`rounded-full px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.2em] ${inconsistencyScope === 'all' ? 'bg-slate-950 text-white' : 'bg-slate-100 text-slate-600'}`}
+                className={`rounded-lg px-3 py-1.5 text-xs font-semibold ${inconsistencyScope === 'all' ? 'bg-slate-950 text-white' : 'bg-slate-100 text-slate-600'}`}
               >
                 Todas
               </button>
               <button
                 onClick={() => setInconsistencyScope('critical')}
-                className={`rounded-full px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.2em] ${inconsistencyScope === 'critical' ? 'bg-rose-600 text-white' : 'bg-rose-50 text-rose-700'}`}
+                className={`rounded-lg px-3 py-1.5 text-xs font-semibold ${inconsistencyScope === 'critical' ? 'bg-rose-600 text-white' : 'bg-rose-50 text-rose-700'}`}
               >
                 Críticas
               </button>
-              <span className="rounded-full bg-rose-50 px-4 py-2 text-[10px] font-black uppercase tracking-[0.2em] text-rose-700">{inconsistentUsers.length}</span>
+              <span className="rounded-md bg-rose-50 px-3 py-1.5 text-xs font-medium text-rose-700">{inconsistentUsers.length}</span>
             </div>
           </div>
           <div className="mt-4 space-y-2">
             {inconsistentUsers.length === 0 ? (
-              <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4 text-sm text-slate-500">Nenhuma inconsistência encontrada.</div>
+              <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">Nenhuma inconsistência encontrada.</div>
             ) : (
               inconsistentUsers.slice(0, 8).map((user) => (
-                <div key={user.id} className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
+                <div key={user.id} className="rounded-lg border border-slate-200 bg-slate-50 p-4">
                   <div className="text-sm font-bold text-slate-900">{user.name}</div>
                   <div className="text-xs text-slate-500">{user.email}</div>
                   <div className="mt-1 text-[11px] font-bold uppercase tracking-[0.12em] text-rose-700">{user.restaurant ? 'Loja vinculada inativa' : 'Sem loja vinculada'}</div>
                   <div className="mt-3 flex flex-wrap items-center gap-2">
                     {!user.isApproved && (
-                      <button onClick={() => handleApprove(user.id)} className="rounded-full bg-slate-950 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.2em] text-white">Liberar</button>
+                      <button onClick={() => handleApprove(user.id)} className="rounded-lg bg-slate-950 px-3 py-1.5 text-xs font-semibold text-white">Liberar</button>
                     )}
                     {user.isActive === false && (
-                      <button onClick={() => handleActivateUser(user.id)} className="rounded-full bg-emerald-600 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.2em] text-white">Ativar acesso</button>
+                      <button onClick={() => handleActivateUser(user.id)} className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white">Ativar acesso</button>
                     )}
                     {!user.restaurant && (
-                      <button onClick={() => setViewMode('users')} className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.2em] text-slate-600">Revisar vínculo</button>
+                      <button onClick={() => setViewMode('users')} className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600">Revisar vínculo</button>
                     )}
                   </div>
                 </div>
               ))
             )}
           </div>
-          <button onClick={() => setViewMode('users')} className="mt-4 rounded-full bg-slate-950 px-5 py-2 text-[10px] font-black uppercase tracking-[0.2em] text-white">Ir para usuários</button>
+          <button onClick={() => setViewMode('users')} className="mt-4 rounded-lg bg-slate-950 px-4 py-2 text-xs font-semibold text-white">Ir para usuários</button>
         </div>
 
-        <div className="clients-panel rounded-2xl sm:rounded-[3rem] border border-sky-100 bg-white p-4 sm:p-6 md:p-8 shadow-sm">
+        <div className="clients-panel rounded-xl border border-sky-200 bg-white p-5 shadow-sm">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-[10px] sm:text-label font-body font-bold text-sky-500 uppercase tracking-[0.2em]">Lojas</p>
               <h2 className="text-xl sm:text-heading-2 font-display font-bold text-slate-950 uppercase tracking-tight">Sem cliente responsável</h2>
             </div>
-            <span className="rounded-full bg-sky-50 px-4 py-2 text-[10px] font-black uppercase tracking-[0.2em] text-sky-700">{inconsistentStores.length}</span>
+            <span className="rounded-md bg-sky-50 px-3 py-1.5 text-xs font-medium text-sky-700">{inconsistentStores.length}</span>
           </div>
           <div className="mt-4 space-y-2">
             {inconsistentStores.length === 0 ? (
-              <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4 text-sm text-slate-500">Nenhuma inconsistência encontrada.</div>
+              <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">Nenhuma inconsistência encontrada.</div>
             ) : (
               inconsistentStores.slice(0, 8).map((store) => (
-                <div key={store.id} className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
+                <div key={store.id} className="rounded-lg border border-slate-200 bg-slate-50 p-4">
                   <div className="text-sm font-bold text-slate-900">{store.name}</div>
                   <div className="text-xs text-slate-500">{store.slug}</div>
                   <div className="mt-1 text-[11px] font-bold uppercase tracking-[0.12em] text-sky-700">Sem cliente vinculado</div>
                   <div className="mt-3 flex flex-wrap items-center gap-2">
                     {!store.isActive && (
-                      <button onClick={() => handleApproveRestaurant(store.id)} className="rounded-full bg-slate-950 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.2em] text-white">Ativar loja</button>
+                      <button onClick={() => handleApproveRestaurant(store.id)} className="rounded-lg bg-slate-950 px-3 py-1.5 text-xs font-semibold text-white">Ativar loja</button>
                     )}
                     <button
                       onClick={() => {
@@ -1095,7 +1077,7 @@ export default function ClientsPage() {
                         q.set('restaurant', store.slug || store.name || '');
                         router.push(`/admin/provisioning?${q.toString()}`);
                       }}
-                      className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.2em] text-slate-600"
+                      className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600"
                     >
                       Abrir provisioning
                     </button>
@@ -1104,7 +1086,7 @@ export default function ClientsPage() {
               ))
             )}
           </div>
-          <button onClick={() => setViewMode('stores')} className="mt-4 rounded-full bg-slate-950 px-5 py-2 text-[10px] font-black uppercase tracking-[0.2em] text-white">Ir para lojas</button>
+          <button onClick={() => setViewMode('stores')} className="mt-4 rounded-lg bg-slate-950 px-4 py-2 text-xs font-semibold text-white">Ir para lojas</button>
         </div>
       </div>
       )}

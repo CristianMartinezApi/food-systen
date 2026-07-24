@@ -187,13 +187,13 @@ export default function ProvisioningPanel() {
         </div>
       )}
 
-      <div className="system-hero-band relative overflow-hidden rounded-2xl sm:rounded-4xl p-2">
+      <div className="system-hero-band relative overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(34,197,94,0.12),transparent_30%),linear-gradient(135deg,rgba(15,23,42,0.02),transparent_45%)]" />
-        <div className="relative p-4 sm:p-6 md:p-8 grid gap-4 sm:gap-6 xl:grid-cols-[1.1fr_0.9fr] items-center">
+        <div className="relative grid items-center gap-4 p-4 sm:p-5 xl:grid-cols-[1.1fr_0.9fr]">
           <div>
             <p className="text-xs font-black uppercase tracking-[0.24em] text-primary">Provisionamento</p>
-            <h1 className="mt-2 text-2xl sm:text-3xl md:text-4xl font-black tracking-tight text-slate-950">Painel de provisionamento</h1>
-            <p className="mt-2 max-w-2xl text-[13px] sm:text-sm md:text-base text-slate-500">Acompanhe o estado de criação das lojas, revise logs e reenvie o processo sem sair do fluxo.</p>
+            <h1 className="mt-1 text-xl font-semibold tracking-tight text-slate-950 sm:text-2xl">Painel de provisionamento</h1>
+            <p className="mt-1 max-w-2xl text-sm text-slate-500">Acompanhe a criação das lojas, revise logs e reprocesse falhas.</p>
           </div>
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
             <div className="rounded-2xl border border-slate-200 bg-white/90 p-3 sm:p-4 shadow-sm">
@@ -232,7 +232,7 @@ export default function ProvisioningPanel() {
         </div>
       </div>
 
-      <div className="rounded-xl sm:rounded-[1.75rem] border border-slate-200 bg-white p-4 sm:p-6 shadow-[0_20px_50px_rgba(15,23,42,0.06)]">
+      <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <p className="text-xs font-black uppercase tracking-[0.2em] text-slate-400">Filtragem</p>

@@ -1,78 +1,53 @@
-#!/bin/bash
+#!/usr/bin/env bash
+set -euo pipefail
 
-# 🛡️ SCRIPT DE BACKUP AUTOMÁTICO
-# Use com: chmod +x backup.sh && ./backup.sh
-# Ou coloque em cron: 0 */6 * * * /home/food-systen/backup.sh
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+COMPOSE_FILE="${REPO_ROOT}/deploy/docker-compose.vps.yml"
+ENV_FILE="${REPO_ROOT}/.env"
+BACKUP_DIR="${BACKUP_DIR:-${REPO_ROOT}/backups}"
+RETENTION_DAYS="${BACKUP_RETENTION_DAYS:-30}"
 
-set -e
-
-BACKUP_DIR="/home/food-systen/backups"
-CONTAINER_NAME="food-systen-db-1"
-DB_USER="${POSTGRES_USER:-food_user}"
-DB_NAME="${POSTGRES_DB:-food_db}"
-RETENTION_DAYS=30
-
-# Cores para output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-NC='\033[0m'
-
-echo -e "${YELLOW}🛡️  INICIANDO BACKUP AUTOMÁTICO${NC}"
-
-# Criar diretório se não existir
-mkdir -p "$BACKUP_DIR"
-
-# Nome do backup com timestamp
-TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-BACKUP_FILE="$BACKUP_DIR/backup_${TIMESTAMP}.sql"
-BACKUP_GZ="${BACKUP_FILE}.gz"
-
-echo -e "${GREEN}📁 Diretório: $BACKUP_DIR${NC}"
-echo -e "${GREEN}📦 Arquivo: $BACKUP_GZ${NC}"
-
-# Executar pg_dump dentro do container
-echo -e "${YELLOW}⏳ Fazendo dump do banco de dados...${NC}"
-
-if docker compose -f docker-compose.prod.yml exec -T db pg_dump \
-  -U "$DB_USER" \
-  "$DB_NAME" > "$BACKUP_FILE"; then
-  
-  echo -e "${GREEN}✅ Dump criado com sucesso${NC}"
-  
-  # Comprimir para economizar espaço
-  echo -e "${YELLOW}⏳ Comprimindo backup...${NC}"
-  gzip "$BACKUP_FILE"
-  
-  BACKUP_SIZE=$(du -h "$BACKUP_GZ" | cut -f1)
-  echo -e "${GREEN}✅ Backup compactado: $BACKUP_SIZE${NC}"
-  
-else
-  echo -e "${RED}❌ ERRO ao fazer dump do banco de dados${NC}"
+if [[ ! -f "${ENV_FILE}" ]]; then
+  echo "Erro: ${ENV_FILE} não encontrado."
   exit 1
 fi
 
-# Remover backups antigos (>30 dias)
-echo -e "${YELLOW}🧹 Removendo backups antigos (> ${RETENTION_DAYS} dias)...${NC}"
+set -a
+# shellcheck disable=SC1090
+source <(sed $'1s/^\xEF\xBB\xBF//; s/\r$//' "${ENV_FILE}")
+set +a
 
-find "$BACKUP_DIR" -name "backup_*.sql.gz" -type f -mtime +"$RETENTION_DAYS" | while read -r old_backup; do
-  echo -e "${YELLOW}🗑️  Deletando: $old_backup${NC}"
-  rm -f "$old_backup"
-done
+: "${POSTGRES_USER:?POSTGRES_USER não definido}"
+: "${POSTGRES_DB:?POSTGRES_DB não definido}"
 
-echo -e "${GREEN}✅ Limpeza concluída${NC}"
+mkdir -p "${BACKUP_DIR}"
+chmod 700 "${BACKUP_DIR}"
 
-# Listar backups disponíveis
-echo -e "\n${GREEN}📋 Backups disponíveis:${NC}"
-ls -lh "$BACKUP_DIR" | tail -10
+if ! docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" ps --status running db | grep -q db; then
+  echo "Erro: o banco precisa estar em execução para criar o backup."
+  exit 1
+fi
 
-echo -e "\n${GREEN}✅ BACKUP CONCLUÍDO COM SUCESSO${NC}"
-echo -e "${YELLOW}💾 Arquivo: $BACKUP_GZ${NC}"
-echo -e "${YELLOW}📊 Tamanho: $BACKUP_SIZE${NC}"
-echo -e "${YELLOW}🕐 Timestamp: $TIMESTAMP${NC}"
+timestamp="$(date -u +%Y%m%dT%H%M%SZ)"
+backup_file="${BACKUP_DIR}/food-systen_${timestamp}.dump"
+temporary_file="${backup_file}.tmp"
 
-# Opcional: Enviar para cloud (Google Drive, AWS S3, etc)
-# gsutil cp "$BACKUP_GZ" gs://seu-bucket/backups/
-# aws s3 cp "$BACKUP_GZ" s3://seu-bucket/backups/
+echo "Criando backup PostgreSQL em ${backup_file}..."
+docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" exec -T db \
+  pg_dump --format=custom --no-owner --no-privileges \
+  --username "${POSTGRES_USER}" --dbname "${POSTGRES_DB}" > "${temporary_file}"
 
-exit 0
+if [[ ! -s "${temporary_file}" ]]; then
+  rm -f "${temporary_file}"
+  echo "Erro: o arquivo de backup ficou vazio."
+  exit 1
+fi
+
+mv "${temporary_file}" "${backup_file}"
+chmod 600 "${backup_file}"
+docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" exec -T db \
+  pg_restore --list < "${backup_file}" >/dev/null
+
+find "${BACKUP_DIR}" -type f -name 'food-systen_*.dump' -mtime "+${RETENTION_DAYS}" -delete
+
+echo "Backup criado e validado: ${backup_file}"
