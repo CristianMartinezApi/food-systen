@@ -13,9 +13,9 @@ import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import { promises as fs } from 'fs';
 import path from 'path';
-import { getNextOpeningLabel, isRestaurantOpenNow, normalizeOperatingHours, validateOperatingHours } from './utils/hours';
+import { getCashSessionDeadline, getNextOpeningLabel, isCashSessionExpired, isRestaurantOpenNow, normalizeOperatingHours, validateOperatingHours } from './utils/hours';
 import { validateGuidedSelections } from './utils/guided-assembly';
-import { sendEmail, getCashierReminderEmail, getCashierNeededEmail, getEmailVerificationEmail } from './utils/sendEmail';
+import { sendEmail, getCashierReminderEmail, getCashierNeededEmail, getEmailVerificationEmail, getExpiredCashSessionEmail } from './utils/sendEmail';
 import { calculateExpectedCash, canWithdrawCash } from './utils/cashier';
 
 dotenv.config();
@@ -3326,14 +3326,23 @@ app.get('/api/settings', async (req: TenantRequest, res) => {
     isOpen: isRestaurantOpenNow(plainSettings.operatingHours),
     nextOpeningLabel: getNextOpeningLabel(plainSettings.operatingHours),
     hasCashierSession: false, // será sobrescrito abaixo
+    cashierSessionExpired: false,
+    cashierSessionDeadline: null as string | null,
   };
 
   // Verificar se há sessão de caixa ativa (não cacheado junto com o restante)
   const activeCashierSession = await prisma.cashSession.findFirst({
     where: { restaurantId: req.restaurantId, status: 'OPEN' },
-    select: { id: true },
+    select: { id: true, openedAt: true },
   }).catch(() => null);
-  responsePayload.hasCashierSession = Boolean(activeCashierSession);
+  const cashierSessionExpired = Boolean(
+    activeCashierSession && isCashSessionExpired(plainSettings.operatingHours, activeCashierSession.openedAt)
+  );
+  responsePayload.hasCashierSession = Boolean(activeCashierSession) && !cashierSessionExpired;
+  responsePayload.cashierSessionExpired = cashierSessionExpired;
+  responsePayload.cashierSessionDeadline = activeCashierSession
+    ? getCashSessionDeadline(plainSettings.operatingHours, activeCashierSession.openedAt).toISOString()
+    : null;
 
   writePublicStoreCache('settings', req.restaurantId, responsePayload);
   res.json(responsePayload);
@@ -3999,7 +4008,7 @@ app.post('/api/orders', orderCreationLimiter, async (req: TenantRequest, res) =>
     // Bloquear pedido se não há sessão de caixa ativa
     const activeCashierSession = await prisma.cashSession.findFirst({
       where: { restaurantId: req.restaurantId!, status: 'OPEN' },
-      select: { id: true },
+      select: { id: true, openedAt: true },
     });
 
     if (!activeCashierSession) {
@@ -4050,6 +4059,15 @@ app.post('/api/orders', orderCreationLimiter, async (req: TenantRequest, res) =>
       return res.status(403).json({
         error: 'A loja está temporariamente indisponível para novos pedidos. Tente novamente em instantes.',
         code: 'CASHIER_CLOSED',
+      });
+    }
+
+    if (settings && isCashSessionExpired(settings.operatingHours, activeCashierSession.openedAt)) {
+      return res.status(409).json({
+        error: 'O caixa aberto pertence a um expediente encerrado. Regularize o fechamento antes de receber novos pedidos.',
+        code: 'CASH_SESSION_EXPIRED',
+        cashierSessionExpired: true,
+        deadline: getCashSessionDeadline(settings.operatingHours, activeCashierSession.openedAt).toISOString(),
       });
     }
 
@@ -4574,9 +4592,17 @@ app.get('/api/cashier/session', authMiddleware, async (req: AuthRequest, res) =>
     const creditSales = Number(creditSalesAgg._sum.total || 0);
     const pixSales = Number(pixSalesAgg._sum.total || 0);
     const expectedAmount = calculateExpectedCash({ openingAmount: activeSession.openingAmount, supplies, withdrawals, adjustments, cashSales });
+    const sessionSettings = await prisma.settings.findUnique({
+      where: { restaurantId: req.restaurantId! },
+      select: { operatingHours: true },
+    });
+    const expired = Boolean(sessionSettings && isCashSessionExpired(sessionSettings.operatingHours, activeSession.openedAt));
+    const deadline = sessionSettings
+      ? getCashSessionDeadline(sessionSettings.operatingHours, activeSession.openedAt).toISOString()
+      : null;
 
     return res.json({
-      session: activeSession,
+      session: { ...activeSession, expired, deadline },
       movements,
       orders: sessionOrders,
       totals: {
@@ -4745,6 +4771,17 @@ app.post('/api/cashier/movements', authMiddleware, async (req: AuthRequest, res)
 
     if (!activeSession) {
       return res.status(409).json({ error: 'Nenhuma sessão de caixa aberta.' });
+    }
+
+    const cashierSettings = await prisma.settings.findUnique({
+      where: { restaurantId: req.restaurantId! },
+      select: { operatingHours: true },
+    });
+    if (cashierSettings && isCashSessionExpired(cashierSettings.operatingHours, activeSession.openedAt)) {
+      return res.status(409).json({
+        error: 'Este caixa pertence a um expediente encerrado. Feche a sessão pendente antes de registrar novos movimentos.',
+        code: 'CASH_SESSION_EXPIRED',
+      });
     }
 
     if (type === 'WITHDRAWAL') {
@@ -4958,6 +4995,17 @@ app.post('/api/cashier/direct-sales', authMiddleware, async (req: AuthRequest, r
 
     if (!activeSession) {
       return res.status(409).json({ error: 'Abra o caixa antes de registrar venda direta.' });
+    }
+
+    const directSaleSettings = await prisma.settings.findUnique({
+      where: { restaurantId: req.restaurantId! },
+      select: { operatingHours: true },
+    });
+    if (directSaleSettings && isCashSessionExpired(directSaleSettings.operatingHours, activeSession.openedAt)) {
+      return res.status(409).json({
+        error: 'Este caixa pertence a um expediente encerrado. Regularize o fechamento antes de registrar novas vendas.',
+        code: 'CASH_SESSION_EXPIRED',
+      });
     }
 
     const order = await prisma.$transaction(async (tx) => {
@@ -5308,7 +5356,7 @@ app.post('/api/cashier/session/close', authMiddleware, async (req: AuthRequest, 
       }),
       prisma.settings.findUnique({
         where: { restaurantId: req.restaurantId! },
-        select: { cashDifferenceNoteThreshold: true },
+        select: { cashDifferenceNoteThreshold: true, operatingHours: true },
       }),
     ]);
 
@@ -5326,10 +5374,18 @@ app.post('/api/cashier/session/close', authMiddleware, async (req: AuthRequest, 
     );
     const expectedAmount = calculateExpectedCash({ openingAmount: activeSession.openingAmount, supplies, withdrawals, adjustments, cashSales });
     const differenceAmount = Number((closingAmount - expectedAmount).toFixed(2));
+    const expiredSession = Boolean(settings && isCashSessionExpired(settings.operatingHours, activeSession.openedAt));
 
     if (Math.abs(differenceAmount) >= differenceNoteThreshold && !notes?.trim()) {
       return res.status(400).json({
         error: `Justificativa obrigatória para divergência igual ou superior a ${differenceNoteThreshold.toFixed(2)}.`,
+      });
+    }
+
+    if (expiredSession && !notes?.trim()) {
+      return res.status(400).json({
+        error: 'Informe uma justificativa para regularizar o fechamento deste caixa de expediente anterior.',
+        code: 'EXPIRED_CASH_SESSION_NOTE_REQUIRED',
       });
     }
 
@@ -5359,6 +5415,7 @@ app.post('/api/cashier/session/close', authMiddleware, async (req: AuthRequest, 
       differenceAmount,
       informedCardAmount,
       informedPixAmount,
+      expiredSession,
       cashCountBreakdown,
       sales,
       cashSales,
@@ -6629,6 +6686,68 @@ app.patch('/api/restaurant/pix-config', authMiddleware, tenantMiddleware, async 
 // Muito mais eficiente que polling: dispara exatamente na hora certa.
 const openingReminderTimers = new Map<number, NodeJS.Timeout[]>();
 
+async function notifyExpiredCashSessions() {
+  try {
+    const sessions = await prisma.cashSession.findMany({
+      where: { status: 'OPEN' },
+      include: {
+        restaurant: {
+          include: {
+            settings: true,
+            users: {
+              where: {
+                role: { in: ['OWNER', 'MANAGER'] },
+                isActive: true,
+                isApproved: true,
+                emailVerifiedAt: { not: null },
+                emailNotificationsEnabled: true,
+              },
+              select: { email: true },
+            },
+          },
+        },
+      },
+    });
+
+    for (const session of sessions) {
+      const operatingHours = session.restaurant.settings?.operatingHours;
+      if (!operatingHours || !isCashSessionExpired(operatingHours, session.openedAt)) continue;
+
+      const alreadyNotified = await prisma.auditLog.findFirst({
+        where: {
+          action: 'cash_session_expired_alert',
+          subjectType: 'cash_session',
+          subjectId: session.id,
+        },
+        select: { id: true },
+      });
+      if (alreadyNotified) continue;
+
+      io.emit(`cashier_expired_${session.restaurant.slug}`, {
+        sessionId: session.id,
+        openedAt: session.openedAt.toISOString(),
+        deadline: getCashSessionDeadline(operatingHours, session.openedAt).toISOString(),
+        message: 'O caixa do expediente anterior precisa ser regularizado.',
+      });
+
+      const html = getExpiredCashSessionEmail(session.restaurant.name, session.id, session.openedAt);
+      await Promise.allSettled(session.restaurant.users.map((user) => sendEmail({
+        to: user.email,
+        subject: `⚠️ Caixa pendente de regularização - ${session.restaurant.name}`,
+        html,
+      })));
+
+      await createAudit(undefined, 'cash_session_expired_alert', 'cash_session', session.id, {
+        restaurantId: session.restaurantId,
+        deadline: getCashSessionDeadline(operatingHours, session.openedAt).toISOString(),
+        recipients: session.restaurant.users.length,
+      });
+    }
+  } catch (error) {
+    console.error('[CashSessionExpiry] Falha ao verificar caixas pendentes:', error);
+  }
+}
+
 async function scheduleOpeningReminders(restaurantId: number, slug: string, rawHours: any) {
   // Cancelar timers anteriores deste restaurante
   const prev = openingReminderTimers.get(restaurantId) || [];
@@ -6729,6 +6848,9 @@ async function scheduleOpeningReminders(restaurantId: number, slug: string, rawH
 httpServer.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 API com PostgreSQL rodando em http://0.0.0.0:${PORT}`);
   scheduleAuditRetentionCleanup();
+  notifyExpiredCashSessions();
+  const expiredCashSessionTimer = setInterval(notifyExpiredCashSessions, 15 * 60_000);
+  expiredCashSessionTimer.unref();
 
   // Agendar lembretes de abertura de caixa para todos os restaurantes ativos
   prisma.restaurant.findMany({

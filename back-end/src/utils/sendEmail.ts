@@ -184,3 +184,26 @@ export function getCashierNeededEmail(restaurantName: string): string {
     </html>
   `;
 }
+
+export function getExpiredCashSessionEmail(restaurantName: string, sessionId: number, openedAt: Date): string {
+  return `
+    <!DOCTYPE html>
+    <html lang="pt-BR">
+      <body style="margin:0;padding:24px;background:#f8fafc;font-family:Arial,sans-serif;color:#0f172a">
+        <div style="max-width:600px;margin:auto;background:#fff;border:1px solid #fcd34d;padding:28px">
+          <h1 style="font-size:22px;margin:0 0 16px;color:#b45309">Caixa pendente de regularização</h1>
+          <p>A sessão <strong>#${sessionId}</strong> de <strong>${restaurantName}</strong>, aberta em
+            <strong>${openedAt.toLocaleString('pt-BR')}</strong>, continuou aberta após o encerramento do expediente.</p>
+          <p>Novos pedidos e movimentos estão bloqueados para evitar que vendas de dias diferentes sejam misturadas.</p>
+          <p>Conte o caixa e faça o fechamento manual, informando uma justificativa para a regularização.</p>
+          <p style="margin-top:28px">
+            <a href="https://foodsystem.app.br/admin/caixa"
+              style="background:#b45309;color:#fff;padding:12px 20px;text-decoration:none;font-weight:bold">
+              Regularizar caixa
+            </a>
+          </p>
+        </div>
+      </body>
+    </html>
+  `;
+}

@@ -24,6 +24,7 @@ const actionLabels: Record<string, string> = {
   delete_user: "Excluir usuário",
   open_cash_session: "Abrir sessão de caixa",
   close_cash_session: "Fechar sessão de caixa",
+  cash_session_expired_alert: "Alerta de caixa pendente",
   create_cash_movement: "Criar movimento de caixa",
   create_direct_sale: "Criar venda direta",
   approve_user: "Aprovar usuário",

@@ -6,6 +6,8 @@ const {
   isRestaurantOpenNow,
   normalizeOperatingHours,
   validateOperatingHours,
+  getCashSessionDeadline,
+  isCashSessionExpired,
 } = require('../src/utils/hours');
 
 const fullWeek = (dayOverrides = {}) => {
@@ -53,4 +55,23 @@ test('rejeita horário inválido, igual e turnos sobrepostos', () => {
   assert.equal(validateOperatingHours(invalidTime).valid, false);
   assert.equal(validateOperatingHours(equalTime).valid, false);
   assert.equal(validateOperatingHours(overlap).valid, false);
+});
+
+test('vence o caixa após o último turno do dia mais a tolerância', () => {
+  const hours = fullWeek({ seg: { enabled: true, shifts: [
+    { open: '11:00', close: '14:00' },
+    { open: '18:00', close: '23:00' },
+  ] } });
+  const openedAt = new Date(2026, 6, 20, 10, 30);
+  assert.equal(getCashSessionDeadline(hours, openedAt).getTime(), new Date(2026, 6, 21, 0, 0).getTime());
+  assert.equal(isCashSessionExpired(hours, openedAt, new Date(2026, 6, 20, 23, 59)), false);
+  assert.equal(isCashSessionExpired(hours, openedAt, new Date(2026, 6, 21, 0, 0)), true);
+});
+
+test('respeita expediente que termina depois da meia-noite', () => {
+  const hours = fullWeek({ seg: { enabled: true, shifts: [{ open: '18:00', close: '02:00' }] } });
+  const openedAt = new Date(2026, 6, 20, 18, 0);
+  assert.equal(getCashSessionDeadline(hours, openedAt).getTime(), new Date(2026, 6, 21, 3, 0).getTime());
+  const openedAfterMidnight = new Date(2026, 6, 21, 1, 0);
+  assert.equal(getCashSessionDeadline(hours, openedAfterMidnight).getTime(), new Date(2026, 6, 21, 3, 0).getTime());
 });

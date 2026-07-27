@@ -38,6 +38,8 @@ type CashSession = {
     differenceAmount?: number | null;
     notes?: string | null;
     cashCountBreakdown?: Array<{ denomination: number; quantity: number; subtotal: number }> | null;
+    expired?: boolean;
+    deadline?: string | null;
 };
 
 type CashOperator = {
@@ -902,6 +904,11 @@ export default function CashierPage({
         }
 
         const differenceAmount = Number((parsed - (totals.expectedAmount || 0)).toFixed(2));
+        if (session?.expired && !closingNotes.trim()) {
+            toast.error("Informe uma justificativa para regularizar o caixa do expediente anterior.");
+            return;
+        }
+
         if (!isBlindClosing && Math.abs(differenceAmount) >= differenceNoteThreshold && !closingNotes.trim()) {
             toast.error(`Informe uma justificativa para divergencias a partir de ${formatCurrency(differenceNoteThreshold)}.`);
             return;
@@ -1225,10 +1232,10 @@ export default function CashierPage({
                                     <h1 className="text-lg font-semibold text-slate-950">Controle de caixa</h1>
                                     <span className={cn(
                                         "inline-flex items-center gap-1.5 rounded px-2 py-0.5 text-xs font-semibold",
-                                        session ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-600"
+                                        session?.expired ? "bg-amber-100 text-amber-800" : session ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-600"
                                     )}>
-                                        <span className={cn("h-1.5 w-1.5 rounded-full", session ? "bg-emerald-500" : "bg-slate-400")} />
-                                        {session ? `Aberto · sessão #${session.id}` : "Fechado"}
+                                        <span className={cn("h-1.5 w-1.5 rounded-full", session?.expired ? "bg-amber-500" : session ? "bg-emerald-500" : "bg-slate-400")} />
+                                        {session?.expired ? `Regularização · sessão #${session.id}` : session ? `Aberto · sessão #${session.id}` : "Fechado"}
                                     </span>
                                 </div>
                                 <p className="mt-0.5 truncate text-xs text-slate-500">
@@ -1262,6 +1269,25 @@ export default function CashierPage({
                         <div className="px-4 py-3">
                             <p className="text-xs text-slate-500">Sangrias</p>
                             <p className="mt-0.5 text-base font-semibold tabular-nums text-rose-700">{formatCurrency(totals.withdrawals || 0)}</p>
+                        </div>
+                    </div>
+                </section>
+            )}
+
+            {session?.expired && (
+                <section className="border border-amber-300 bg-amber-50 px-4 py-4 text-amber-950 shadow-sm">
+                    <div className="flex items-start gap-3">
+                        <AlertTriangle size={20} className="mt-0.5 shrink-0 text-amber-600" />
+                        <div>
+                            <h2 className="text-sm font-black uppercase tracking-wide">Caixa pendente do expediente anterior</h2>
+                            <p className="mt-1 text-xs leading-relaxed text-amber-800">
+                                Esta sessão ultrapassou o prazo operacional
+                                {session.deadline ? ` em ${new Date(session.deadline).toLocaleString()}` : ""}.
+                                Novos pedidos, vendas e movimentos estão bloqueados até a conferência e o fechamento manual.
+                            </p>
+                            <p className="mt-2 text-xs font-bold text-amber-900">
+                                Conte o caixa, informe os valores e registre uma justificativa para regularizar.
+                            </p>
                         </div>
                     </div>
                 </section>
@@ -1605,17 +1631,19 @@ export default function CashierPage({
                                     </div>
                                 )}
 
-                                {(isBlindClosing || absoluteClosingDifference >= differenceNoteThreshold) && (
+                                {(session?.expired || isBlindClosing || absoluteClosingDifference >= differenceNoteThreshold) && (
                                     <label className="block">
                                         <span className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-600">
-                                            {isBlindClosing ? "Observação do fechamento" : "Justificativa da divergência"}
+                                            {session?.expired ? "Justificativa da regularização" : isBlindClosing ? "Observação do fechamento" : "Justificativa da divergência"}
                                         </span>
                                         <textarea
                                             value={closingNotes}
                                             onChange={(e) => setClosingNotes(e.target.value)}
                                             rows={3}
                                             className="mt-2 w-full rounded-2xl border border-amber-200 bg-amber-50/40 px-4 py-3 outline-none resize-none"
-                                            placeholder={isBlindClosing
+                                            placeholder={session?.expired
+                                                ? "Explique por que o caixa permaneceu aberto após o expediente"
+                                                : isBlindClosing
                                                 ? "Informe ocorrências percebidas durante a conferência, se houver"
                                                 : `Explique a divergência encontrada no fechamento (a partir de ${formatCurrency(differenceNoteThreshold)})`}
                                         />

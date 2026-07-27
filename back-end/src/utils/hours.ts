@@ -211,3 +211,42 @@ export const getNextOpeningLabel = (value: any, date = new Date()) => {
 
   return "Sem próximos horários";
 };
+
+export const getCashSessionDeadline = (value: any, openedAt: Date, graceMinutes = 60, maximumHours = 20) => {
+  const operatingHours = normalizeOperatingHours(value);
+  const hardDeadline = new Date(openedAt.getTime() + maximumHours * 60 * 60 * 1000);
+  const openedDay = new Date(openedAt);
+  openedDay.setHours(0, 0, 0, 0);
+  const previousCandidates: Date[] = [];
+  const currentDayCandidates: Date[] = [];
+
+  const appendDeadlines = (dayDate: Date, target: Date[], onlyOvernight = false) => {
+    const day = operatingHours[dayKeyFor(dayDate)];
+    if (!day?.enabled) return;
+    for (const shift of day.shifts) {
+      const openMinutes = toMinutes(shift.open);
+      const closeMinutes = toMinutes(shift.close);
+      const overnight = closeMinutes <= openMinutes;
+      if (onlyOvernight && !overnight) continue;
+      const openAt = new Date(dayDate);
+      openAt.setHours(Math.floor(openMinutes / 60), openMinutes % 60, 0, 0);
+      const closeAt = new Date(dayDate);
+      closeAt.setHours(Math.floor(closeMinutes / 60), closeMinutes % 60, 0, 0);
+      if (overnight) closeAt.setDate(closeAt.getDate() + 1);
+      closeAt.setMinutes(closeAt.getMinutes() + graceMinutes);
+      if (closeAt > openedAt && (!onlyOvernight || openedAt >= openAt)) target.push(closeAt);
+    }
+  };
+
+  const previousDay = new Date(openedDay);
+  previousDay.setDate(previousDay.getDate() - 1);
+  appendDeadlines(previousDay, previousCandidates, true);
+  appendDeadlines(openedDay, currentDayCandidates);
+
+  const candidates = previousCandidates.length > 0 ? previousCandidates : currentDayCandidates;
+  const scheduledDeadline = candidates.sort((a, b) => b.getTime() - a.getTime())[0];
+  return scheduledDeadline && scheduledDeadline < hardDeadline ? scheduledDeadline : hardDeadline;
+};
+
+export const isCashSessionExpired = (value: any, openedAt: Date, now = new Date()) =>
+  now >= getCashSessionDeadline(value, openedAt);
