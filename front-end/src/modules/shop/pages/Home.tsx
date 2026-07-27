@@ -10,39 +10,32 @@ import { ProductCard } from "../components/product/ProductCard";
 import { HighlightProductCard } from "../components/product/HighlightProductCard";
 import { Button } from "../../../shared/components/ui/button";
 import { useSettings } from "../../../core/hooks/useSettings";
-import { Utensils, ArrowRight, Flame, RefreshCw, MessageCircle, Phone, AlertTriangle } from "lucide-react";
+import { Utensils, ArrowRight, Flame, RefreshCw, MessageCircle, Phone, AlertTriangle, WifiOff } from "lucide-react";
 import { cn } from "../../../shared/utils";
-import { AnimatePresence, motion } from "framer-motion";
 import { sendToWhatsApp } from "../../../shared/utils/whatsapp";
 
 export default function Home() {
-  const { products, categories, isLoading: productsLoading, error: productsError } = useProducts() as any;
+  const { products, categories, error: productsError, isStale: productsStale } = useProducts() as any;
   const { productIds: highlightProductIds } = useHighlights();
-  const { settings, isLoading: settingsLoading, error: settingsError } = useSettings();
+  const { settings, error: settingsError, isStale: settingsStale } = useSettings();
   const [activeCategory, setActiveCategory] = useState<number | "all">("all");
   const [isNavOpen, setIsNavOpen] = useState(false);
-  const [showSplash, setShowSplash] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-
-  // Efeito para controlar o Splash de forma estável (só sai, nunca volta)
-  useEffect(() => {
-    if (!settingsLoading && !productsLoading) {
-      const timer = setTimeout(() => {
-        setShowSplash(false);
-      }, 1500); // Tempo mínimo para a animação ser apreciada
-      return () => clearTimeout(timer);
-    }
-  }, [settingsLoading, productsLoading]);
+  const [isOnline, setIsOnline] = useState(true);
 
   useEffect(() => {
-    const maxWaitTimer = setTimeout(() => {
-      setShowSplash(false);
-    }, 8000);
-
-    return () => clearTimeout(maxWaitTimer);
+    const updateConnection = () => setIsOnline(navigator.onLine);
+    updateConnection();
+    window.addEventListener("online", updateConnection);
+    window.addEventListener("offline", updateConnection);
+    return () => {
+      window.removeEventListener("online", updateConnection);
+      window.removeEventListener("offline", updateConnection);
+    };
   }, []);
 
-  const hasStoreLoadError = !showSplash && (Boolean(settingsError) || Boolean(productsError));
+  const hasStoreLoadError = (Boolean(settingsError) && !settings) || (Boolean(productsError) && products.length === 0);
+  const isUsingSavedData = !isOnline || Boolean(productsStale) || Boolean(settingsStale);
   const supportPhone = settings?.phone || "";
 
   const handleContactStore = () => {
@@ -169,69 +162,7 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col selection:bg-primary selection:text-white overflow-x-hidden pb-20 md:pb-0">
-      <AnimatePresence>
-        {showSplash && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-100 bg-slate-950 flex items-center justify-center px-6"
-          >
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(245,158,11,0.16),transparent_34%),radial-gradient(circle_at_20%_90%,rgba(56,189,248,0.12),transparent_38%),linear-gradient(180deg,rgba(15,23,42,0.985),rgba(2,6,23,0.99))]" />
-
-            <motion.div
-              initial={{ opacity: 0, y: 18, scale: 0.97 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              transition={{ type: "spring", stiffness: 120, damping: 16, delay: 0.05 }}
-              className="relative z-10 flex flex-col items-center text-center max-w-lg"
-            >
-              <motion.div
-                initial={{ opacity: 0, scale: 0.9, y: 6 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                transition={{ type: "spring", stiffness: 180, damping: 14, delay: 0.12 }}
-                className="w-24 h-24 md:w-28 md:h-28 rounded-3xl bg-white/6 border border-white/0 backdrop-blur-xl flex items-center justify-center shadow-xl shadow-black/25 mb-7 p-1"
-              >
-                <img
-                  src="/foodsystem-icon-512.png"
-                  alt="Logo FoodSystem"
-                  className="w-full h-full object-contain rounded-[1.1rem]"
-                  loading="eager"
-                  decoding="async"
-                />
-              </motion.div>
-
-              <motion.h1
-                initial={{ opacity: 0, y: 14 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.45, delay: 0.18 }}
-                className="mt-3 text-5xl md:text-7xl font-display font-black text-white tracking-[0.02em] leading-[0.9] drop-shadow-2xl"
-              >
-                FoodSystem
-              </motion.h1>
-
-              <motion.p
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.45, delay: 0.28 }}
-                className="mt-4 text-[11px] md:text-sm font-medium uppercase tracking-[0.26em] text-slate-300 max-w-sm"
-              >
-                A maneira inteligente de pedir comida.
-              </motion.p>
-
-              <div className="mt-10 relative h-1 w-64 overflow-hidden rounded-full bg-white/10 border border-white/0">
-                <motion.div
-                  initial={{ x: "-60%" }}
-                  animate={{ x: "120%" }}
-                  transition={{ duration: 1.4, repeat: Infinity, ease: "easeInOut" }}
-                  className="absolute inset-y-0 left-0 w-1/2 rounded-full bg-linear-to-r from-transparent via-amber-400 to-transparent opacity-90"
-                />
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <div className={cn("flex flex-col flex-1 transition-opacity duration-700", showSplash ? "opacity-0" : "opacity-100")}>
+      <div className="flex flex-col flex-1">
         <div className="home-header">
           <Header
             settings={settings}
@@ -240,6 +171,13 @@ export default function Home() {
             onSearchChange={setSearchTerm}
           />
         </div>
+
+        {isUsingSavedData && (settings || products.length > 0) ? (
+          <div className="sticky top-0 z-40 flex items-center justify-center gap-2 border-b border-amber-200 bg-amber-50 px-4 py-2 text-center text-xs font-bold text-amber-900">
+            <WifiOff size={14} />
+            Conexão instável. Exibindo os últimos dados salvos.
+          </div>
+        ) : null}
 
         <NavSidebar
           isOpen={isNavOpen}

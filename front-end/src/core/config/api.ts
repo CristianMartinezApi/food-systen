@@ -43,6 +43,18 @@ const fetchWithTimeout = async (input: string, init?: RequestInit) => {
   }
 };
 
+const fetchReadableWithRetry = async (input: string, init?: RequestInit) => {
+  try {
+    return await fetchWithTimeout(input, init);
+  } catch (error) {
+    const isTransientNetworkFailure = error instanceof TypeError && navigator.onLine;
+    if (!isTransientNetworkFailure) throw error;
+
+    await new Promise((resolve) => window.setTimeout(resolve, 500));
+    return fetchWithTimeout(input, init);
+  }
+};
+
 // Redireciona para login e limpa sessão quando token expira
 const handleUnauthorized = () => {
   localStorage.removeItem('@FoodSystem:token');
@@ -84,7 +96,7 @@ const handleError = async (response: Response, endpoint: string) => {
 
 export const api = {
   get: async (endpoint: string) => {
-    const response = await fetchWithTimeout(`${API_URL}${endpoint}`, {
+    const response = await fetchReadableWithRetry(`${API_URL}${endpoint}`, {
       headers: getHeaders()
     });
     if (!response.ok) await handleError(response, endpoint);

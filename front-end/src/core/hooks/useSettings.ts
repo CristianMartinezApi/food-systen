@@ -6,8 +6,34 @@ import { normalizeAssetUrl } from '../../shared/utils';
 import { createDefaultOperatingHours, isRestaurantOpenNow, normalizeOperatingHours } from '../../shared/utils/schedule';
 
 const SETTINGS_CACHE_TTL_MS = 30_000;
+const SETTINGS_STORAGE_VERSION = 1;
 const settingsCache = new Map<string, { data: any; loadedAt: number }>();
 const inflightSettingsRequests = new Map<string, Promise<any>>();
+
+function getSettingsStorageKey(slug: string) {
+  return `@FoodSystem:settings:${SETTINGS_STORAGE_VERSION}:${slug}`;
+}
+
+function readStoredSettings(slug: string) {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = localStorage.getItem(getSettingsStorageKey(slug));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return parsed?.data ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+function storeSettings(slug: string, entry: { data: any; loadedAt: number }) {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(getSettingsStorageKey(slug), JSON.stringify(entry));
+  } catch {
+    // Cache opcional: armazenamento indisponível não bloqueia a loja.
+  }
+}
 
 function normalizeSettingsPayload(data: any) {
   if (!data) return data;
@@ -40,10 +66,12 @@ async function fetchSettingsSnapshot(slug: string) {
   const request = api.get('/settings')
     .then((data) => {
       const normalized = normalizeSettingsPayload(data);
-      settingsCache.set(slug, {
+      const entry = {
         data: normalized,
         loadedAt: Date.now(),
-      });
+      };
+      settingsCache.set(slug, entry);
+      storeSettings(slug, entry);
       return normalized;
     })
     .finally(() => {
@@ -81,6 +109,7 @@ export function useSettings() {
   const [settings, setSettings] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<boolean>(false);
+  const [isStale, setIsStale] = useState<boolean>(false);
   const [slug, setSlug] = useState<string>('');
   const [isSuperAdmin, setIsSuperAdmin] = useState<boolean>(false);
   const lastSettingsSignatureRef = useRef<string>('');
@@ -113,16 +142,17 @@ export function useSettings() {
       return;
     }
 
-    try {
-      const cached = settingsCache.get(slug);
-      if (cached && (Date.now() - cached.loadedAt) < SETTINGS_CACHE_TTL_MS) {
-        setError(false);
-        applySettings(cached.data);
-        setIsLoading(false);
-        return;
-      }
+    const cached = settingsCache.get(slug) || readStoredSettings(slug);
+    if (cached) {
+      settingsCache.set(slug, cached);
+      setError(false);
+      applySettings(cached.data);
+      setIsLoading(false);
+      setIsStale((Date.now() - cached.loadedAt) >= SETTINGS_CACHE_TTL_MS);
+    }
 
-      setIsLoading(true);
+    try {
+      if (!cached) setIsLoading(true);
       setError(false);
       const data = await fetchSettingsSnapshot(slug);
       
@@ -132,9 +162,11 @@ export function useSettings() {
       }
 
       applySettings(data);
+      setIsStale(false);
     } catch (error) {
       console.error('Falha ao buscar configurações:', error);
-      setError(true);
+      setIsStale(Boolean(cached));
+      setError(!cached);
     } finally {
       setIsLoading(false);
     }
@@ -151,11 +183,14 @@ export function useSettings() {
     const eventName = `settings_updated_${slug}`;
     socket.on(eventName, (newSettings) => {
       const normalizedSettings = normalizeSettingsPayload(newSettings);
-      settingsCache.set(slug, {
+      const entry = {
         data: normalizedSettings,
         loadedAt: Date.now(),
-      });
+      };
+      settingsCache.set(slug, entry);
+      storeSettings(slug, entry);
       applySettings(normalizedSettings);
+      setIsStale(false);
     });
 
     return () => {
@@ -191,5 +226,5 @@ export function useSettings() {
     }
   };
 
-  return { settings, isLoading, error, updateSettings };
+  return { settings, isLoading, error, isStale, updateSettings };
 }
