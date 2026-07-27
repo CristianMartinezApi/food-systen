@@ -3885,7 +3885,7 @@ app.get('/api/orders', authMiddleware, async (req: AuthRequest, res) => {
           
           // 3. Pedidos "Sobreviventes": criados antes, mas ainda ativos/pendentes
           { 
-            status: { in: ['PENDING', 'OPEN', 'CONFIRMED', 'PREPARING', 'READY', 'OUT_FOR_DELIVERY'] }
+            status: { in: ['PENDING', 'OPEN', 'CONFIRMED', 'PAID', 'PREPARING', 'READY', 'OUT_FOR_DELIVERY'] }
           }
         ]
       }
