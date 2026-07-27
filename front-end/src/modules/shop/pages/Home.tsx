@@ -15,9 +15,9 @@ import { cn } from "../../../shared/utils";
 import { sendToWhatsApp } from "../../../shared/utils/whatsapp";
 
 export default function Home() {
-  const { products, categories, error: productsError, isStale: productsStale } = useProducts() as any;
+  const { products, categories, isLoading: productsLoading, error: productsError, isStale: productsStale } = useProducts() as any;
   const { productIds: highlightProductIds } = useHighlights();
-  const { settings, error: settingsError, isStale: settingsStale } = useSettings();
+  const { settings, isLoading: settingsLoading, error: settingsError, isStale: settingsStale } = useSettings();
   const [activeCategory, setActiveCategory] = useState<number | "all">("all");
   const [isNavOpen, setIsNavOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -36,6 +36,9 @@ export default function Home() {
 
   const hasStoreLoadError = (Boolean(settingsError) && !settings) || (Boolean(productsError) && products.length === 0);
   const isUsingSavedData = !isOnline || Boolean(productsStale) || Boolean(settingsStale);
+  const isInitialStoreLoading =
+    (settingsLoading && !settings) ||
+    (productsLoading && products.length === 0);
   const supportPhone = settings?.phone || "";
 
   const handleContactStore = () => {
@@ -162,6 +165,32 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col selection:bg-primary selection:text-white overflow-x-hidden pb-20 md:pb-0">
+      {isInitialStoreLoading ? (
+        <div className="fixed inset-0 z-100 flex items-center justify-center bg-slate-950 px-6">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(245,158,11,0.16),transparent_34%),radial-gradient(circle_at_20%_90%,rgba(56,189,248,0.12),transparent_38%),linear-gradient(180deg,rgba(15,23,42,0.985),rgba(2,6,23,0.99))]" />
+          <div className="relative z-10 flex max-w-lg flex-col items-center text-center">
+            <div className="mb-7 h-24 w-24 animate-pulse rounded-3xl border border-white/10 bg-white/6 p-1 shadow-xl shadow-black/25 md:h-28 md:w-28">
+              <img
+                src="/foodsystem-icon-512.png"
+                alt="Logo FoodSystem"
+                className="h-full w-full rounded-[1.1rem] object-contain"
+                loading="eager"
+                decoding="async"
+              />
+            </div>
+            <h1 className="text-5xl font-display font-black leading-[0.9] tracking-[0.02em] text-white drop-shadow-2xl md:text-7xl">
+              FoodSystem
+            </h1>
+            <p className="mt-4 max-w-sm text-[11px] font-medium uppercase tracking-[0.26em] text-slate-300 md:text-sm">
+              Preparando o cardápio da loja
+            </p>
+            <div className="mt-8 h-1 w-48 overflow-hidden rounded-full bg-white/10">
+              <div className="h-full w-1/2 animate-pulse rounded-full bg-amber-400" />
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       <div className="flex flex-col flex-1">
         <div className="home-header">
           <Header
