@@ -253,7 +253,7 @@ export default function Home() {
         <main className="flex-1 container mx-auto px-4 md:px-6 pt-0 pb-6 md:pb-12 space-y-8 md:space-y-24">
           <section className="relative mt-0">
             <div className="relative left-1/2 w-dvw max-w-none -translate-x-1/2">
-              <div className="home-hero-art relative overflow-hidden shadow-[0_30px_80px_rgba(0,0,0,0.24)] min-h-[72vw] sm:min-h-80 md:min-h-150 flex items-center">
+              <div className="home-hero-art relative overflow-hidden shadow-[0_18px_42px_rgba(0,0,0,0.2)] md:shadow-[0_30px_80px_rgba(0,0,0,0.24)] min-h-[240px] sm:min-h-[280px] md:min-h-150 flex items-center">
                 <div className="absolute inset-0 z-0">
                   <img
                     src={heroImage}
@@ -265,7 +265,7 @@ export default function Home() {
                   <div className="absolute inset-0 bg-linear-to-b from-black/50 via-black/30 to-black/60 md:bg-none md:[background:linear-gradient(to_right,rgba(15,23,42,0.6),rgba(15,23,42,0.3),transparent)]" />
                 </div>
 
-                <div className="relative z-10 p-5 pt-16 sm:pt-20 md:pt-12 md:p-12 max-w-2xl space-y-2 md:space-y-5">
+                <div className="relative z-10 p-5 pt-16 md:pt-12 md:p-12 max-w-2xl space-y-2 md:space-y-5">
                   <div>
                     <div className="home-hero-badge inline-flex items-center mb-3 md:mb-6 ml-0.5 md:ml-1">
                       <div className="bg-primary/25 backdrop-blur-xl border border-primary/35 px-3 md:px-4 py-1 md:py-1.5 rounded-full inline-flex items-center gap-2 md:gap-2.5 shadow-lg shadow-primary/15">
@@ -276,18 +276,18 @@ export default function Home() {
 
                     <h1
                       style={{ fontWeight: 900 }}
-                      className="home-hero-title text-3xl sm:text-[40px] md:text-[52px] lg:text-[60px] font-display text-white leading-[0.92] md:leading-[0.88] tracking-tight uppercase mb-2 md:mb-4 drop-shadow-2xl max-w-xl"
+                      className="home-hero-title text-[28px] sm:text-[34px] md:text-[52px] lg:text-[60px] font-display text-white leading-[0.94] md:leading-[0.88] tracking-tight uppercase mb-2 md:mb-4 drop-shadow-2xl max-w-xl"
                     >
                       {heroTitleLine1} <br />
                       <span className="text-primary text-outline-white">{heroTitleLine2}</span>
                     </h1>
 
-                    <p className="home-hero-copy text-sm md:text-[15px] text-slate-200 font-medium max-w-lg leading-relaxed">
+                    <p className="home-hero-copy line-clamp-2 text-xs sm:text-sm md:text-[15px] text-slate-200 font-medium max-w-lg leading-relaxed">
                       {heroDescription}
                     </p>
                   </div>
 
-                  <div className="home-hero-actions flex flex-col sm:flex-row items-center gap-2 md:gap-6 pt-2 md:pt-4">
+                  <div className="home-hero-actions hidden md:flex flex-col sm:flex-row items-center gap-2 md:gap-6 pt-2 md:pt-4">
                     <Button
                       size="lg"
                       className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-white rounded-xl md:rounded-2xl px-4 md:px-10 h-12 md:h-16 text-[10px] md:text-sm font-black uppercase tracking-widest shadow-xl shadow-primary/20 group"
@@ -305,24 +305,19 @@ export default function Home() {
             </div>
           </section>
 
-          {highlightedProducts.length > 0 && (
-            <section className="space-y-5 md:space-y-8">
-              <div className="flex flex-col gap-2 md:gap-3">
-                <p className="text-[9px] md:text-[10px] uppercase tracking-[0.24em] text-primary font-black">Em alta na loja</p>
-                <div className="flex items-end justify-between gap-4">
-                  <div className="space-y-2">
-                    <h2 className="text-2xl md:text-heading-2 font-display font-bold text-slate-950 uppercase tracking-tight">Mais pedidos</h2>
-                    <p className="text-sm md:text-base text-slate-600 max-w-2xl">
-                      Uma seleção rápida dos pedidos que mais saem por aqui, sem competir com o cardápio completo.
-                    </p>
-                  </div>
+          {highlightedProducts.length > 0 && activeCategory === "all" && !searchTerm.trim() && (
+            <section className="space-y-3 md:space-y-8">
+              <div className="flex items-end justify-between gap-4">
+                <div>
+                  <p className="text-[9px] md:text-[10px] uppercase tracking-[0.18em] text-primary font-black">Escolhas rápidas</p>
+                  <h2 className="mt-1 text-lg md:text-heading-2 font-display font-bold text-slate-950 uppercase tracking-tight">Mais pedidos</h2>
                 </div>
-                <div className="h-1 md:h-1.5 w-24 bg-primary rounded-full" />
+                <span className="text-[10px] font-semibold text-slate-400 md:hidden">Deslize para ver</span>
               </div>
 
-              <div className="flex gap-3 overflow-x-auto pb-2 md:grid md:grid-cols-2 xl:grid-cols-3 md:gap-5 md:overflow-visible snap-x snap-mandatory no-scrollbar">
-                {highlightedProducts.map((product: any) => (
-                  <div key={product.id} className="min-w-[86vw] sm:min-w-[58vw] md:min-w-0 snap-start">
+              <div className="flex gap-2.5 overflow-x-auto pb-2 md:grid md:grid-cols-2 xl:grid-cols-3 md:gap-5 md:overflow-visible snap-x snap-mandatory no-scrollbar">
+                {highlightedProducts.slice(0, 4).map((product: any) => (
+                  <div key={product.id} className="min-w-[78vw] max-w-[340px] sm:min-w-[52vw] md:min-w-0 md:max-w-none snap-start">
                     <HighlightProductCard product={product} />
                   </div>
                 ))}
@@ -334,14 +329,14 @@ export default function Home() {
 
           <section id="menu-section" className="mt-4 md:mt-8">
             <div className="space-y-6 md:space-y-8">
-              <div className="flex flex-col xl:flex-row xl:items-end justify-between gap-4 md:gap-6">
+              <div className="contents xl:flex xl:items-end xl:justify-between xl:gap-6">
                 <div className="home-section-heading space-y-1 md:space-y-2 shrink-0">
                   <p className="text-[9px] md:text-[10px] uppercase tracking-[0.24em] text-primary font-black">Vitrine da casa</p>
                   <h2 className="text-2xl md:text-heading-2 font-display font-bold text-slate-950 uppercase tracking-tight">Nosso Cardápio</h2>
                   <div className="h-1 md:h-1.5 w-24 bg-primary rounded-full" />
                 </div>
 
-                <div className="flex items-center gap-3 md:gap-8 overflow-x-auto pb-1 xl:pb-0 no-scrollbar xl:justify-end -mx-2 px-2 md:mx-0 md:px-0 scroll-smooth w-auto max-w-full">
+                <div className="sticky top-[56px] z-40 flex items-center gap-3 overflow-x-auto border-y border-slate-200 bg-slate-50/95 py-1.5 pb-1 backdrop-blur no-scrollbar -mx-4 px-4 scroll-smooth w-auto max-w-[calc(100%+2rem)] md:static md:z-auto md:gap-8 md:border-0 md:bg-transparent md:py-0 md:pb-1 md:mx-0 md:px-0 md:max-w-full xl:pb-0 xl:justify-end">
                   <button
                     onClick={() => setActiveCategory("all")}
                     className={cn(
@@ -371,6 +366,11 @@ export default function Home() {
                   ))}
                 </div>
               </div>
+
+              <p className="text-[11px] font-semibold text-slate-500">
+                {filteredProducts.length} {filteredProducts.length === 1 ? "produto disponível" : "produtos disponíveis"}
+                {searchTerm ? ` para “${searchTerm}”` : ""}
+              </p>
 
               <div className="home-products-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-4 md:gap-8">
                 {filteredProducts.map((product: any) => (

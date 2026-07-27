@@ -1,5 +1,5 @@
 ﻿import { useState } from "react";
-import { Plus, Flame, Star, ShoppingCart } from "lucide-react";
+import { Plus } from "lucide-react";
 import { formatCurrency, cn } from "../../../../shared/utils";
 import { useCartStore } from "../../../../core/stores/useCartStore";
 import { motion } from "framer-motion";
@@ -47,11 +47,75 @@ export function ProductCard({ product }: ProductCardProps) {
 
   return (
     <>
+      <article
+        onClick={() => !isOutOfStock && setIsModalOpen(true)}
+        className={cn(
+          "flex min-h-32 overflow-hidden border border-slate-200 bg-white md:hidden",
+          isOutOfStock ? "cursor-not-allowed opacity-60 grayscale" : "cursor-pointer"
+        )}
+      >
+        <div className="relative w-30 shrink-0 bg-slate-100">
+          <img
+            src={product.image}
+            alt={product.name}
+            loading="lazy"
+            decoding="async"
+            className="h-full w-full object-cover"
+          />
+          {isPromotional && (
+            <span className="absolute left-2 top-2 bg-rose-600 px-2 py-1 text-[9px] font-black text-white">
+              -{discountPercent}%
+            </span>
+          )}
+          {isOutOfStock && (
+            <span className="absolute inset-x-0 bottom-0 bg-slate-950/85 px-2 py-1.5 text-center text-[9px] font-bold uppercase tracking-wider text-white">
+              Esgotado
+            </span>
+          )}
+        </div>
+
+        <div className="flex min-w-0 flex-1 flex-col justify-between gap-3 p-3">
+          <div>
+            <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">
+              {product.category?.name || "Cardápio"}
+            </p>
+            <h3 className="mt-1 line-clamp-2 text-sm font-black uppercase leading-tight text-slate-950">
+              {product.name}
+            </h3>
+            {product.description && (
+              <p className="mt-1.5 line-clamp-2 text-[11px] leading-relaxed text-slate-500">
+                {product.description}
+              </p>
+            )}
+          </div>
+
+          <div className="flex items-end justify-between gap-2">
+            <div className="min-w-0">
+              {isPromotional && (
+                <p className="text-[9px] text-slate-400 line-through">{formatCurrency(product.price)}</p>
+              )}
+              <p className="font-mono text-base font-bold tracking-tight text-slate-950">
+                {formatCurrency(isPromotional ? salePrice : product.price)}
+              </p>
+            </div>
+            <button
+              type="button"
+              disabled={isOutOfStock}
+              onClick={handleAddToCart}
+              aria-label={`Adicionar ${product.name}`}
+              className="grid size-10 shrink-0 place-items-center bg-slate-950 text-white disabled:bg-slate-300"
+            >
+              <Plus size={18} />
+            </button>
+          </div>
+        </div>
+      </article>
+
       <motion.div
         whileHover={!isOutOfStock ? { y: -12 } : {}}
         onClick={() => !isOutOfStock && setIsModalOpen(true)}
         className={cn(
-          "group bg-[#fff8ef] rounded-lg md:rounded-2xl border border-amber-100/70 p-2 md:p-4 shadow-[0_20px_40px_rgba(15,23,42,0.18)] transition-all duration-700 relative cursor-pointer overflow-hidden",
+          "group hidden bg-[#fff8ef] rounded-2xl border border-amber-100/70 p-4 shadow-[0_20px_40px_rgba(15,23,42,0.18)] transition-all duration-700 relative cursor-pointer overflow-hidden md:block",
           isOutOfStock ? "opacity-60 grayscale cursor-not-allowed" : "hover:shadow-[0_30px_56px_rgba(239,68,68,0.22)]"
         )}
       >
@@ -73,35 +137,12 @@ export function ProductCard({ product }: ProductCardProps) {
             </div>
           )}
 
-          {/* Badge Superior */}
-          <div className="absolute top-2 md:top-4 left-2 md:left-6 flex flex-col gap-1 md:gap-1.5">
-            <div className="bg-[#fff8ef]/95 backdrop-blur-xl px-2 md:px-3 py-1 rounded-xl md:rounded-2xl shadow-lg border border-amber-100 flex items-center gap-1 md:gap-1.5">
-              <Star size={10} className="text-primary fill-primary md:h-4 md:w-4" />
-              <span className="text-[8px] md:text-[9px] font-body font-medium text-slate-900 uppercase tracking-[0.06em]">Escolha Premium</span>
-            </div>
-            {!isPromotional && product.price > 40 && (
-              <div className="bg-slate-900/90 backdrop-blur-xl px-2 md:px-3 py-1 rounded-xl md:rounded-2xl shadow-lg flex items-center gap-1 md:gap-1.5 w-fit">
-                <Flame size={10} className="text-primary animate-pulse md:h-4 md:w-4" />
-                <span className="text-[8px] md:text-[9px] font-body font-medium text-white uppercase tracking-[0.06em]">Mais Vendido</span>
-              </div>
-            )}
+          <div className="absolute top-4 left-6 flex flex-col gap-1.5">
             {isPromotional && (
-              <div className="bg-rose-500/95 backdrop-blur-xl px-2 md:px-3 py-1 rounded-xl md:rounded-2xl shadow-lg flex items-center gap-1 md:gap-1.5 w-fit">
-                <span className="text-[8px] md:text-[9px] font-body font-black text-white uppercase tracking-[0.08em]">Promoção</span>
-                <span className="text-[8px] md:text-[9px] font-body font-bold text-white uppercase tracking-[0.08em]">-{discountPercent}%</span>
+              <div className="bg-rose-500/95 backdrop-blur-xl px-3 py-1 rounded-2xl shadow-lg flex items-center gap-1.5 w-fit">
+                <span className="text-[9px] font-body font-black text-white uppercase tracking-[0.08em]">Promoção</span>
+                <span className="text-[9px] font-body font-bold text-white uppercase tracking-[0.08em]">-{discountPercent}%</span>
               </div>
-            )}
-          </div>
-
-          {/* Badge de Preço Flutuante Estilo Luxury */}
-          <div className="absolute bottom-2 md:bottom-6 right-2 md:right-6 bg-slate-950 px-2 md:px-6 py-1 md:py-3 rounded-lg md:rounded-2xl shadow-2xl shadow-slate-950/40 border border-white/10 group-hover:bg-primary transition-all duration-500">
-            {isPromotional ? (
-              <div className="flex flex-col items-end gap-0.5">
-                <span className="text-[7px] md:text-[9px] uppercase tracking-[0.18em] text-white/60 line-through">{formatCurrency(product.price)}</span>
-                <span className="text-white font-mono text-[10px] md:text-numeric tracking-tighter">{formatCurrency(salePrice)}</span>
-              </div>
-            ) : (
-              <span className="text-white font-mono text-[10px] md:text-numeric tracking-tighter">{formatCurrency(product.price)}</span>
             )}
           </div>
         </div>
@@ -134,9 +175,6 @@ export function ProductCard({ product }: ProductCardProps) {
               className="bg-slate-950 text-white w-12 h-12 md:w-16 md:h-16 rounded-lg md:rounded-xl flex items-center justify-center hover:bg-primary transition-all duration-500 border border-slate-900 shadow-[0_10px_28px_rgba(15,23,42,0.35)] group/btn relative"
             >
               <Plus size={20} className="md:size-6 group-hover/btn:rotate-90 transition-transform duration-500" />
-              <div className="absolute -top-2 -right-2 w-5 h-5 md:w-6 md:h-6 bg-amber-400 rounded-full flex items-center justify-center scale-0 group-hover/btn:scale-100 transition-all shadow-lg shadow-amber-400/50">
-                <ShoppingCart size={10} className="text-white" />
-              </div>
             </motion.button>
           </div>
         </div>

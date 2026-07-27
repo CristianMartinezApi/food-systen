@@ -49,11 +49,11 @@ export function HighlightProductCard({ product }: HighlightProductCardProps) {
       <article
         onClick={() => !isOutOfStock && setIsModalOpen(true)}
         className={cn(
-          "group flex items-stretch gap-3 rounded-3xl border border-slate-200/80 bg-white/90 p-3 shadow-[0_14px_34px_rgba(15,23,42,0.08)] transition-all duration-300 backdrop-blur-sm",
+          "group flex items-stretch gap-2.5 rounded-lg border border-slate-200 bg-white p-2 shadow-sm transition-all duration-300 md:gap-3 md:rounded-3xl md:p-3 md:shadow-[0_14px_34px_rgba(15,23,42,0.08)] md:backdrop-blur-sm",
           isOutOfStock ? "cursor-not-allowed opacity-60 grayscale" : "cursor-pointer hover:-translate-y-1 hover:border-primary/25 hover:shadow-[0_20px_40px_rgba(239,68,68,0.12)]"
         )}
       >
-        <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-2xl bg-slate-100 sm:h-26 sm:w-26">
+        <div className="relative h-22 w-22 shrink-0 overflow-hidden rounded-md bg-slate-100 sm:h-26 sm:w-26 md:rounded-2xl">
           <img
             src={product.image}
             alt={product.name}
@@ -107,7 +107,7 @@ export function HighlightProductCard({ product }: HighlightProductCardProps) {
             <button
               type="button"
               onClick={handleQuickAdd}
-              className="inline-flex h-11 items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-3 text-[10px] font-black uppercase tracking-[0.18em] text-slate-700 transition-colors hover:border-primary/25 hover:bg-primary hover:text-white"
+              className="inline-flex h-9 items-center gap-1.5 border border-slate-300 bg-white px-2.5 text-[9px] font-bold uppercase tracking-[0.1em] text-slate-700 transition-colors hover:border-primary/25 hover:bg-primary hover:text-white md:h-11 md:gap-2 md:rounded-2xl md:px-3 md:text-[10px] md:font-black md:tracking-[0.18em]"
             >
               <Plus size={14} />
               Escolher
