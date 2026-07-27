@@ -7,6 +7,36 @@ interface GeneratePixQRCodeInput {
   recipientName?: string;   // Nome do recebedor
 }
 
+const hasRepeatedDigits = (value: string) => /^(\d)\1+$/.test(value);
+
+const isValidCpf = (value: string) => {
+  if (!/^\d{11}$/.test(value) || hasRepeatedDigits(value)) return false;
+  const calculateDigit = (length: number) => {
+    const sum = value.slice(0, length).split('').reduce(
+      (total, digit, index) => total + Number(digit) * (length + 1 - index),
+      0
+    );
+    const remainder = (sum * 10) % 11;
+    return remainder === 10 ? 0 : remainder;
+  };
+  return calculateDigit(9) === Number(value[9]) && calculateDigit(10) === Number(value[10]);
+};
+
+const isValidCnpj = (value: string) => {
+  if (!/^\d{14}$/.test(value) || hasRepeatedDigits(value)) return false;
+  const calculateDigit = (base: string, weights: number[]) => {
+    const sum = base.split('').reduce(
+      (total, digit, index) => total + Number(digit) * weights[index],
+      0
+    );
+    const remainder = sum % 11;
+    return remainder < 2 ? 0 : 11 - remainder;
+  };
+  const firstDigit = calculateDigit(value.slice(0, 12), [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]);
+  const secondDigit = calculateDigit(`${value.slice(0, 12)}${firstDigit}`, [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]);
+  return firstDigit === Number(value[12]) && secondDigit === Number(value[13]);
+};
+
 /**
  * Serviço para gerar QR Codes PIX dinâmicos
  * Gera strings PIX válidas conforme especificação EMV-QRCPS-STR do Banco Central
@@ -97,16 +127,14 @@ export class PixService {
    * Validar se a chave PIX está no formato correto
    */
   static validatePixKey(key: string, type: string): boolean {
-    const cpfRegex = /^\d{11}$/;
-    const cnpjRegex = /^\d{14}$/;
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     const randomRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
     switch (type) {
       case 'cpf':
-        return cpfRegex.test(key);
+        return isValidCpf(key);
       case 'cnpj':
-        return cnpjRegex.test(key);
+        return isValidCnpj(key);
       case 'email':
         return emailRegex.test(key);
       case 'phone':
