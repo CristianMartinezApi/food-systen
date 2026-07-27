@@ -1,8 +1,4 @@
 ﻿import { useState, useEffect, useRef } from "react";
-import usePlacesAutocomplete, {
-    getGeocode,
-    getLatLng,
-} from "use-places-autocomplete";
 import {
     Save,
     Loader2,
@@ -56,8 +52,6 @@ export default function SettingsPage() {
     const [formData, setFormData] = useState<any>(null);
     const [isSaving, setIsSaving] = useState(false);
     const [isGeocoding, setIsGeocoding] = useState(false);
-    const [mapsStatus, setMapsStatus] = useState<"loading" | "ready" | "error">("loading");
-    const [mapsError, setMapsError] = useState("");
     const [savedSnapshot, setSavedSnapshot] = useState<string>("");
     const fileInputRef = useRef<HTMLInputElement>(null);
     const bannerFileInputRef = useRef<HTMLInputElement>(null);
@@ -105,58 +99,6 @@ export default function SettingsPage() {
 
     const hasUnsavedChanges = Boolean(formData) && Boolean(savedSnapshot) && createSettingsSnapshot(formData) !== savedSnapshot;
 
-    // Autocomplete Hook
-    const {
-        value,
-        suggestions: { status, data },
-        setValue,
-        clearSuggestions,
-        init,
-    } = usePlacesAutocomplete({
-        requestOptions: {
-            /* Define search scope here */
-        },
-        debounce: 300,
-        defaultValue: settings?.address || "",
-        initOnMount: false,
-    });
-
-    useEffect(() => {
-        if (typeof window === "undefined") return;
-        const hasPlaces = () => Boolean((window as Window & { google?: any }).google?.maps?.places);
-        const handleLoaded = () => {
-            if (hasPlaces()) {
-                init();
-                setMapsStatus("ready");
-                setMapsError("");
-            } else {
-                setMapsStatus("error");
-                setMapsError("A biblioteca Places do Google Maps não está disponível.");
-            }
-        };
-        const handleError = (event: Event) => {
-            const detail = (event as CustomEvent<{ reason?: string }>).detail;
-            setMapsStatus("error");
-            setMapsError(detail?.reason || "Não foi possível carregar o Google Maps.");
-        };
-
-        window.addEventListener("google-maps-loaded", handleLoaded);
-        window.addEventListener("google-maps-error", handleError);
-        if (hasPlaces()) handleLoaded();
-        const timeout = window.setTimeout(() => {
-            if (!hasPlaces()) {
-                setMapsStatus("error");
-                setMapsError("O Google Maps demorou demais para responder.");
-            }
-        }, 12000);
-
-        return () => {
-            window.clearTimeout(timeout);
-            window.removeEventListener("google-maps-loaded", handleLoaded);
-            window.removeEventListener("google-maps-error", handleError);
-        };
-    }, [init]);
-
     useEffect(() => {
         if (!settings || hasInitializedFormRef.current) return;
 
@@ -184,9 +126,8 @@ export default function SettingsPage() {
 
         setFormData(initialFormData);
         setSavedSnapshot(createSettingsSnapshot(initialFormData));
-        setValue(settings.address || "", false);
         hasInitializedFormRef.current = true;
-    }, [settings, setValue]);
+    }, [settings]);
 
     useEffect(() => {
         if (!hasUnsavedChanges) return;
@@ -245,7 +186,6 @@ export default function SettingsPage() {
 
     const handleManualAddressChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const val = e.target.value;
-        setValue(val);
         setFormData((prev: any) => ({
             ...prev,
             address: val,
@@ -293,22 +233,26 @@ export default function SettingsPage() {
             toast.error("Informe o endereço da loja.");
             return false;
         }
-        if (mapsStatus !== "ready") {
-            toast.error(mapsError || "Google Maps indisponível. Verifique a configuração da API.");
-            return false;
-        }
-
         setIsGeocoding(true);
         try {
+            const request = fetch(
+                `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&countrycodes=br&q=${encodeURIComponent(address)}`,
+                { headers: { "Accept-Language": "pt-BR,pt;q=0.9" } }
+            ).then(async (response) => {
+                if (!response.ok) throw new Error(`Falha na consulta de localização (${response.status})`);
+                return response.json() as Promise<Array<{ lat: string; lon: string }>>;
+            });
             const results = await Promise.race([
-                getGeocode({ address }),
+                request,
                 new Promise<never>((_, reject) => window.setTimeout(
-                    () => reject(new Error("Tempo limite ao consultar o Google Maps")),
+                    () => reject(new Error("Tempo limite ao consultar o serviço de localização")),
                     10000
                 )),
             ]);
             if (!results[0]) throw new Error("Endereço não localizado");
-            const { lat, lng } = await getLatLng(results[0]);
+            const lat = Number(results[0].lat);
+            const lng = Number(results[0].lon);
+            if (!Number.isFinite(lat) || !Number.isFinite(lng)) throw new Error("Coordenadas inválidas");
 
             setFormData((prev: any) => ({
                 ...prev,
@@ -321,19 +265,12 @@ export default function SettingsPage() {
         } catch (error) {
             console.error("Erro ao obter coordenadas:", error);
             if (showFeedback) {
-                toast.error("Não foi possível validar o endereço no mapa. Confira a API do Google ou tente novamente.");
+                toast.error("Não foi possível localizar esse endereço. Informe rua, número, cidade e estado.");
             }
             return false;
         } finally {
             setIsGeocoding(false);
         }
-    };
-
-    const handleSelect = async (address: string) => {
-        setValue(address, false);
-        clearSuggestions();
-        setFormData((prev: any) => ({ ...prev, address }));
-        await validateAddressCoordinates(address, false);
     };
 
     const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -431,6 +368,11 @@ export default function SettingsPage() {
         Number.isFinite(Number(formData.latitude)) &&
         Number.isFinite(Number(formData.longitude)) &&
         !(Number(formData.latitude) === 0 && Number(formData.longitude) === 0);
+    const latitude = Number(formData.latitude);
+    const longitude = Number(formData.longitude);
+    const openStreetMapEmbedUrl = hasValidCoordinates
+        ? `https://www.openstreetmap.org/export/embed.html?bbox=${longitude - 0.01}%2C${latitude - 0.006}%2C${longitude + 0.01}%2C${latitude + 0.006}&layer=mapnik&marker=${latitude}%2C${longitude}`
+        : "";
     const setupChecks = [
         {
             label: "Identidade",
@@ -849,50 +791,14 @@ export default function SettingsPage() {
                             </div>
 
                             <div className="grid grid-cols-1 gap-6">
-                                {mapsStatus === "error" && (
-                                    <div className="flex flex-col gap-3 border border-amber-300 bg-amber-50 p-4 text-amber-900 sm:flex-row sm:items-center sm:justify-between">
-                                        <div>
-                                            <p className="text-xs font-black uppercase tracking-wide">Google Maps indisponível</p>
-                                            <p className="mt-1 text-xs text-amber-800">{mapsError}</p>
-                                        </div>
-                                        <button
-                                            type="button"
-                                            onClick={() => window.location.reload()}
-                                            className="ops-button shrink-0 border border-amber-300 bg-white text-amber-900"
-                                        >
-                                            Tentar novamente
-                                        </button>
-                                    </div>
-                                )}
                                 <div className="space-y-2 relative">
                                     <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Endereço Completo</label>
                                     <input
-                                        value={value || ""}
+                                        value={formData.address || ""}
                                         onChange={handleManualAddressChange}
                                         placeholder="Ex: Rua das Flores, 123 - Centro, São Paulo - SP"
                                         className="w-full h-14 px-5 bg-slate-50 border-2 border-transparent focus:border-primary/20 focus:bg-white rounded-2xl transition-all font-bold text-slate-700 outline-none"
                                     />
-
-                                    {/* Lista de Sugestões */}
-                                    {status === "OK" && (
-                                        <div className="absolute z-100 w-full mt-2 bg-white rounded-2xl shadow-2xl border border-slate-100 overflow-hidden animate-in fade-in zoom-in duration-200">
-                                            {data.map(({ place_id, description }) => (
-                                                <button
-                                                    key={place_id}
-                                                    onClick={() => handleSelect(description)}
-                                                    className="w-full px-5 py-4 text-left hover:bg-slate-50 flex items-center gap-3 transition-colors border-b border-slate-50 last:border-0"
-                                                >
-                                                    <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
-                                                        <MapPin size={16} />
-                                                    </div>
-                                                    <div className="flex flex-col">
-                                                        <span className="text-sm font-bold text-slate-700">{description.split(',')[0]}</span>
-                                                        <span className="text-[10px] font-medium text-slate-400">{description.split(',').slice(1).join(',')}</span>
-                                                    </div>
-                                                </button>
-                                            ))}
-                                        </div>
-                                    )}
 
                                     {formData.address && (
                                         <div className={cn(
@@ -916,12 +822,12 @@ export default function SettingsPage() {
                                             </div>
                                             <button
                                                 type="button"
-                                                disabled={isGeocoding || mapsStatus !== "ready"}
+                                                disabled={isGeocoding}
                                                 onClick={() => validateAddressCoordinates(String(formData.address || ""))}
                                                 className="ops-button shrink-0 border border-slate-300 bg-white text-slate-700 disabled:opacity-60"
                                             >
                                                 {isGeocoding ? <Loader2 size={15} className="animate-spin" /> : <MapPin size={15} />}
-                                                {mapsStatus === "error" ? "Mapa indisponível" : hasValidCoordinates ? "Atualizar mapa" : "Validar no mapa"}
+                                                {hasValidCoordinates ? "Atualizar mapa" : "Validar no mapa"}
                                             </button>
                                         </div>
                                     )}
@@ -943,7 +849,7 @@ export default function SettingsPage() {
                                     </div>
                                 </div>
 
-                                {formData.address ? (
+                                {hasValidCoordinates ? (
                                     <div className="mt-4 overflow-hidden rounded-4xl border-4 border-slate-50 shadow-inner group relative">
                                         <iframe
                                             width="100%"
@@ -951,13 +857,14 @@ export default function SettingsPage() {
                                             style={{ border: 0 }}
                                             loading="lazy"
                                             allowFullScreen
-                                            src={`https://maps.google.com/maps?q=${encodeURIComponent(formData.address)}&z=17&output=embed`}
+                                            title="Localização da loja no OpenStreetMap"
+                                            src={openStreetMapEmbedUrl}
                                         ></iframe>
                                         <div className="absolute top-4 left-4 right-4 flex justify-between items-start pointer-events-none">
                                             <div className="bg-white/90 backdrop-blur px-3 py-2 rounded-xl border border-slate-100 shadow-sm pointer-events-auto">
                                                 <p className="text-[10px] font-black text-slate-900 uppercase flex items-center gap-2">
                                                     <MapIcon size={12} className="text-primary" />
-                                                    Busca por Nome
+                                                    OpenStreetMap
                                                 </p>
                                             </div>
 

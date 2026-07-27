@@ -62,12 +62,7 @@ function buildStoreMapUrl(settings?: any) {
     !(latitude === 0 && longitude === 0);
 
   if (hasValidCoordinates) {
-    return `https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`;
-  }
-
-  const address = typeof settings?.address === "string" ? settings.address.trim() : "";
-  if (address) {
-    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
+    return `https://www.openstreetmap.org/?mlat=${latitude}&mlon=${longitude}#map=17/${latitude}/${longitude}`;
   }
 
   return null;
@@ -80,11 +75,8 @@ function buildStoreMapEmbedUrl(settings?: any) {
     Number.isFinite(latitude) &&
     Number.isFinite(longitude) &&
     !(latitude === 0 && longitude === 0);
-  const address = typeof settings?.address === "string" ? settings.address.trim() : "";
-  const query = hasValidCoordinates ? `${latitude},${longitude}` : address;
-
-  return query
-    ? `https://maps.google.com/maps?q=${encodeURIComponent(query)}&z=16&output=embed`
+  return hasValidCoordinates
+    ? `https://www.openstreetmap.org/export/embed.html?bbox=${longitude - 0.01}%2C${latitude - 0.006}%2C${longitude + 0.01}%2C${latitude + 0.006}&layer=mapnik&marker=${latitude}%2C${longitude}`
     : null;
 }
 
@@ -247,7 +239,7 @@ export function Footer({ settings: providedSettings }: FooterProps) {
                       rel="noreferrer noopener"
                       className="flex h-10 items-center justify-between border-t border-white/10 px-3 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-300 transition-colors hover:bg-white/5 hover:text-white"
                     >
-                      Ver rota no Google Maps <ArrowRight size={13} />
+                      Ver no OpenStreetMap <ArrowRight size={13} />
                     </a>
                   )}
                 </div>
