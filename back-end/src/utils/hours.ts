@@ -83,6 +83,16 @@ const toMinutes = (time: string) => {
   return hours * 60 + minutes;
 };
 
+const DAY_LABELS: Record<DayKey, string> = {
+  dom: "Domingo",
+  seg: "Segunda-feira",
+  ter: "Terça-feira",
+  qua: "Quarta-feira",
+  qui: "Quinta-feira",
+  sex: "Sexta-feira",
+  sab: "Sábado",
+};
+
 const dayKeyFor = (date: Date) => DAY_KEYS[date.getDay() as number];
 
 export const validateOperatingHours = (value: any): { valid: boolean; errors: string[] } => {
@@ -94,12 +104,12 @@ export const validateOperatingHours = (value: any): { valid: boolean; errors: st
   DAY_KEYS.forEach((day) => {
     const raw = value[day];
     if (!raw || typeof raw !== "object" || !Array.isArray(raw.shifts)) {
-      errors.push(`${day}: configuração ausente.`);
+      errors.push(`${DAY_LABELS[day]}: configuração ausente.`);
       return;
     }
     if (raw.enabled === false) return;
     if (raw.shifts.length === 0) {
-      errors.push(`${day}: adicione ao menos um turno ou marque o dia como fechado.`);
+      errors.push(`${DAY_LABELS[day]}: adicione ao menos um turno ou marque o dia como fechado.`);
       return;
     }
 
@@ -107,13 +117,13 @@ export const validateOperatingHours = (value: any): { valid: boolean; errors: st
     raw.shifts.forEach((shift: any, index: number) => {
       if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(String(shift?.open || "")) ||
           !/^([01]\d|2[0-3]):[0-5]\d$/.test(String(shift?.close || ""))) {
-        errors.push(`${day}, turno ${index + 1}: horário inválido.`);
+        errors.push(`${DAY_LABELS[day]}, turno ${index + 1}: horário inválido.`);
         return;
       }
       const start = toMinutes(shift.open);
       const rawEnd = toMinutes(shift.close);
       if (start === rawEnd) {
-        errors.push(`${day}, turno ${index + 1}: abertura e fechamento não podem ser iguais.`);
+        errors.push(`${DAY_LABELS[day]}, turno ${index + 1}: abertura e fechamento não podem ser iguais.`);
         return;
       }
       intervals.push({ start, end: rawEnd <= start ? rawEnd + 1440 : rawEnd });
@@ -122,7 +132,7 @@ export const validateOperatingHours = (value: any): { valid: boolean; errors: st
     intervals.sort((a, b) => a.start - b.start);
     for (let index = 1; index < intervals.length; index += 1) {
       if (intervals[index].start < intervals[index - 1].end) {
-        errors.push(`${day}: existem turnos sobrepostos.`);
+        errors.push(`${DAY_LABELS[day]}: existem turnos sobrepostos.`);
         break;
       }
     }

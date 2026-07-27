@@ -83,6 +83,63 @@ const toMinutes = (time: string) => {
   return hours * 60 + minutes;
 };
 
+const DAY_LABELS: Record<DayKey, string> = {
+  dom: "Domingo",
+  seg: "Segunda-feira",
+  ter: "Terça-feira",
+  qua: "Quarta-feira",
+  qui: "Quinta-feira",
+  sex: "Sexta-feira",
+  sab: "Sábado",
+};
+
+export const validateOperatingHours = (value: any): { valid: boolean; errors: string[] } => {
+  const errors: string[] = [];
+  if (!value || typeof value !== "object") {
+    return { valid: false, errors: ["Informe os horários de funcionamento."] };
+  }
+
+  DAY_KEYS.forEach((day) => {
+    const raw = value[day];
+    if (!raw || typeof raw !== "object" || !Array.isArray(raw.shifts)) {
+      errors.push(`${DAY_LABELS[day]}: configuração ausente.`);
+      return;
+    }
+    if (raw.enabled === false) return;
+    if (raw.shifts.length === 0) {
+      errors.push(`${DAY_LABELS[day]}: adicione um turno ou marque o dia como fechado.`);
+      return;
+    }
+
+    const intervals: Array<{ start: number; end: number }> = [];
+    raw.shifts.forEach((shift: any, index: number) => {
+      const open = String(shift?.open || "");
+      const close = String(shift?.close || "");
+      if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(open) || !/^([01]\d|2[0-3]):[0-5]\d$/.test(close)) {
+        errors.push(`${DAY_LABELS[day]}, turno ${index + 1}: informe horários válidos.`);
+        return;
+      }
+      const start = toMinutes(open);
+      const rawEnd = toMinutes(close);
+      if (start === rawEnd) {
+        errors.push(`${DAY_LABELS[day]}, turno ${index + 1}: abertura e fechamento não podem ser iguais.`);
+        return;
+      }
+      intervals.push({ start, end: rawEnd <= start ? rawEnd + 1440 : rawEnd });
+    });
+
+    intervals.sort((a, b) => a.start - b.start);
+    for (let index = 1; index < intervals.length; index += 1) {
+      if (intervals[index].start < intervals[index - 1].end) {
+        errors.push(`${DAY_LABELS[day]}: existem turnos sobrepostos.`);
+        break;
+      }
+    }
+  });
+
+  return { valid: errors.length === 0, errors };
+};
+
 const dayKeyFor = (date: Date) => DAY_KEYS[date.getDay() as number];
 
 const isShiftActive = (currentMinutes: number, shift: OperatingShift) => {

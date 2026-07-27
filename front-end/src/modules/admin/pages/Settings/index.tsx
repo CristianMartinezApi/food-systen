@@ -26,7 +26,7 @@ import {
 import { useSettings } from "../../../../core/hooks/useSettings";
 import { cn, normalizeMoneyInput, parseMoneyInput, toMoneyInputValue, formatMoneyInputRealtime } from "../../../../shared/utils";
 import toast from "react-hot-toast";
-import { createDefaultOperatingHours, getNextOpeningLabel, isRestaurantOpenNow, normalizeOperatingHours } from "../../../../shared/utils/schedule";
+import { createDefaultOperatingHours, getNextOpeningLabel, isRestaurantOpenNow, normalizeOperatingHours, validateOperatingHours } from "../../../../shared/utils/schedule";
 import { sendToWhatsApp } from "../../../../shared/utils/whatsapp";
 import { SAAS_SUPPORT_PHONE } from "../../../../core/config/support";
 import ChangePassword from "../../components/ChangePassword";
@@ -336,6 +336,13 @@ export default function SettingsPage() {
 
         if (!hasUnsavedChanges) {
             toast("Não há alterações pendentes para salvar.");
+            return;
+        }
+
+        const hoursValidation = validateOperatingHours(formData.operatingHours);
+        if (!hoursValidation.valid) {
+            toast.error(hoursValidation.errors[0]);
+            document.querySelector("#settings-hours")?.scrollIntoView({ behavior: "smooth", block: "start" });
             return;
         }
 
