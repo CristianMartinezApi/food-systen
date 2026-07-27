@@ -8,6 +8,7 @@ import { AdminLayout } from "../../../src/modules/admin/components/layout/AdminL
 export default function Layout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const [authorized, setAuthorized] = useState(false);
+  const mapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 
   useEffect(() => {
     const token = localStorage.getItem("@FoodSystem:token");
@@ -18,16 +19,43 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     }
   }, [router]);
 
+  useEffect(() => {
+    const mapsWindow = window as typeof window & { gm_authFailure?: () => void };
+    mapsWindow.gm_authFailure = () => {
+      window.dispatchEvent(new CustomEvent("google-maps-error", {
+        detail: { reason: "A chave do Google Maps não está autorizada ou a API não foi ativada." },
+      }));
+    };
+    return () => {
+      delete mapsWindow.gm_authFailure;
+    };
+  }, []);
+
   if (!authorized) {
     return null;
   }
 
   return (
     <>
-      <Script
-        src={`https://maps.googleapis.com/maps/api/js?key=AIzaSyCV4EcVeyozyk9VHH7XFhFuLXU4fS7Gjds&libraries=places&loading=async`}
-        strategy="afterInteractive"
-      />
+      {mapsApiKey ? (
+        <Script
+          id="google-maps-api"
+          src={`https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(mapsApiKey)}&libraries=places&loading=async`}
+          strategy="afterInteractive"
+          onLoad={() => window.dispatchEvent(new Event("google-maps-loaded"))}
+          onError={() => window.dispatchEvent(new CustomEvent("google-maps-error", {
+            detail: { reason: "Não foi possível carregar o Google Maps." },
+          }))}
+        />
+      ) : (
+        <Script
+          id="google-maps-missing-key"
+          strategy="afterInteractive"
+          dangerouslySetInnerHTML={{
+            __html: `window.dispatchEvent(new CustomEvent("google-maps-error",{detail:{reason:"Google Maps não configurado neste ambiente."}}));`,
+          }}
+        />
+      )}
       <AdminLayout>{children}</AdminLayout>
     </>
   );

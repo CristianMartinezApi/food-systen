@@ -18,7 +18,7 @@ set +a
 required=(
   DATABASE_URL POSTGRES_USER POSTGRES_PASSWORD POSTGRES_DB JWT_SECRET
   FRONTEND_URL NEXT_PUBLIC_API_URL NEXT_PUBLIC_SOCKET_URL ALLOWED_ORIGINS
-  RESEND_API_KEY EMAIL_FROM
+  NEXT_PUBLIC_GOOGLE_MAPS_API_KEY RESEND_API_KEY EMAIL_FROM
 )
 
 for variable in "${required[@]}"; do
@@ -27,6 +27,11 @@ for variable in "${required[@]}"; do
     exit 1
   fi
 done
+
+if [[ "${NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}" == *"adicione_sua_chave"* ]]; then
+  echo "Erro: NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ainda usa o valor de exemplo."
+  exit 1
+fi
 
 if [[ "${JWT_SECRET}" == *"Gere"* || ${#JWT_SECRET} -lt 32 ]]; then
   echo "Erro: JWT_SECRET deve ser aleatório e ter pelo menos 32 caracteres."

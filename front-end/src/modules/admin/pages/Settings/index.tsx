@@ -56,6 +56,8 @@ export default function SettingsPage() {
     const [formData, setFormData] = useState<any>(null);
     const [isSaving, setIsSaving] = useState(false);
     const [isGeocoding, setIsGeocoding] = useState(false);
+    const [mapsStatus, setMapsStatus] = useState<"loading" | "ready" | "error">("loading");
+    const [mapsError, setMapsError] = useState("");
     const [savedSnapshot, setSavedSnapshot] = useState<string>("");
     const fileInputRef = useRef<HTMLInputElement>(null);
     const bannerFileInputRef = useRef<HTMLInputElement>(null);
@@ -121,10 +123,38 @@ export default function SettingsPage() {
 
     useEffect(() => {
         if (typeof window === "undefined") return;
-        const hasPlaces = Boolean((window as Window & { google?: any }).google?.maps?.places);
-        if (hasPlaces) {
-            init();
-        }
+        const hasPlaces = () => Boolean((window as Window & { google?: any }).google?.maps?.places);
+        const handleLoaded = () => {
+            if (hasPlaces()) {
+                init();
+                setMapsStatus("ready");
+                setMapsError("");
+            } else {
+                setMapsStatus("error");
+                setMapsError("A biblioteca Places do Google Maps não está disponível.");
+            }
+        };
+        const handleError = (event: Event) => {
+            const detail = (event as CustomEvent<{ reason?: string }>).detail;
+            setMapsStatus("error");
+            setMapsError(detail?.reason || "Não foi possível carregar o Google Maps.");
+        };
+
+        window.addEventListener("google-maps-loaded", handleLoaded);
+        window.addEventListener("google-maps-error", handleError);
+        if (hasPlaces()) handleLoaded();
+        const timeout = window.setTimeout(() => {
+            if (!hasPlaces()) {
+                setMapsStatus("error");
+                setMapsError("O Google Maps demorou demais para responder.");
+            }
+        }, 12000);
+
+        return () => {
+            window.clearTimeout(timeout);
+            window.removeEventListener("google-maps-loaded", handleLoaded);
+            window.removeEventListener("google-maps-error", handleError);
+        };
     }, [init]);
 
     useEffect(() => {
@@ -263,10 +293,20 @@ export default function SettingsPage() {
             toast.error("Informe o endereço da loja.");
             return false;
         }
+        if (mapsStatus !== "ready") {
+            toast.error(mapsError || "Google Maps indisponível. Verifique a configuração da API.");
+            return false;
+        }
 
         setIsGeocoding(true);
         try {
-            const results = await getGeocode({ address });
+            const results = await Promise.race([
+                getGeocode({ address }),
+                new Promise<never>((_, reject) => window.setTimeout(
+                    () => reject(new Error("Tempo limite ao consultar o Google Maps")),
+                    10000
+                )),
+            ]);
             if (!results[0]) throw new Error("Endereço não localizado");
             const { lat, lng } = await getLatLng(results[0]);
 
@@ -281,7 +321,7 @@ export default function SettingsPage() {
         } catch (error) {
             console.error("Erro ao obter coordenadas:", error);
             if (showFeedback) {
-                toast.error("Não foi possível validar o endereço no mapa. Selecione uma sugestão da busca.");
+                toast.error("Não foi possível validar o endereço no mapa. Confira a API do Google ou tente novamente.");
             }
             return false;
         } finally {
@@ -809,6 +849,21 @@ export default function SettingsPage() {
                             </div>
 
                             <div className="grid grid-cols-1 gap-6">
+                                {mapsStatus === "error" && (
+                                    <div className="flex flex-col gap-3 border border-amber-300 bg-amber-50 p-4 text-amber-900 sm:flex-row sm:items-center sm:justify-between">
+                                        <div>
+                                            <p className="text-xs font-black uppercase tracking-wide">Google Maps indisponível</p>
+                                            <p className="mt-1 text-xs text-amber-800">{mapsError}</p>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => window.location.reload()}
+                                            className="ops-button shrink-0 border border-amber-300 bg-white text-amber-900"
+                                        >
+                                            Tentar novamente
+                                        </button>
+                                    </div>
+                                )}
                                 <div className="space-y-2 relative">
                                     <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Endereço Completo</label>
                                     <input
@@ -861,12 +916,12 @@ export default function SettingsPage() {
                                             </div>
                                             <button
                                                 type="button"
-                                                disabled={isGeocoding}
+                                                disabled={isGeocoding || mapsStatus !== "ready"}
                                                 onClick={() => validateAddressCoordinates(String(formData.address || ""))}
                                                 className="ops-button shrink-0 border border-slate-300 bg-white text-slate-700 disabled:opacity-60"
                                             >
                                                 {isGeocoding ? <Loader2 size={15} className="animate-spin" /> : <MapPin size={15} />}
-                                                {hasValidCoordinates ? "Atualizar mapa" : "Validar no mapa"}
+                                                {mapsStatus === "error" ? "Mapa indisponível" : hasValidCoordinates ? "Atualizar mapa" : "Validar no mapa"}
                                             </button>
                                         </div>
                                     )}
