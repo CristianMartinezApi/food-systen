@@ -190,8 +190,8 @@ export function Header({ onOpenMenu, settings, searchTerm, onSearchChange }: Hea
         className={cn(
           "fixed inset-x-0 top-0 z-50 transition-all duration-500 border-b",
           isScrolled
-            ? "py-2 sm:py-2.5 md:py-4 bg-slate-800/95 border-slate-700 backdrop-blur-md shadow-[0_12px_30px_rgba(2,6,23,0.32)]"
-            : "py-2.5 sm:py-3 md:py-5 bg-slate-800/98 border-slate-700 shadow-[0_10px_24px_rgba(2,6,23,0.28)]"
+            ? "py-2 md:py-4 bg-slate-900/98 md:bg-slate-800/95 border-slate-700 backdrop-blur-md shadow-[0_6px_18px_rgba(2,6,23,0.22)] md:shadow-[0_12px_30px_rgba(2,6,23,0.32)]"
+            : "py-2 md:py-5 bg-slate-900 md:bg-slate-800/98 border-slate-700 shadow-[0_4px_14px_rgba(2,6,23,0.2)] md:shadow-[0_10px_24px_rgba(2,6,23,0.28)]"
         )}
       >
         <div className="w-full px-3 md:px-5 lg:px-7 xl:px-8">
@@ -200,9 +200,9 @@ export function Header({ onOpenMenu, settings, searchTerm, onSearchChange }: Hea
             {/* Logo Section */}
             <div className="flex items-center gap-2 md:gap-5 min-w-0 lg:justify-self-start">
               <Link href={`/${slug}`} className="flex items-center gap-2.5 md:gap-4 group min-w-0">
-                <div className="w-10 h-10 md:w-14 md:h-14 bg-slate-900 rounded-xl md:rounded-2xl flex items-center justify-center shadow-xl shadow-black/30 ring-1 ring-white/10 group-hover:rotate-3 transition-all duration-500 shrink-0">
+                <div className="w-9 h-9 md:w-14 md:h-14 bg-slate-800 md:bg-slate-900 rounded-md md:rounded-2xl flex items-center justify-center shadow-sm md:shadow-xl md:shadow-black/30 ring-1 ring-white/10 md:group-hover:rotate-3 transition-all duration-300 shrink-0">
                   {settings?.logo ? (
-                    <img src={settings.logo} alt="Logo" className="w-full h-full object-cover rounded-xl md:rounded-2xl" />
+                    <img src={settings.logo} alt={`Logo ${storeNameRaw}`} className="w-full h-full object-cover rounded-md md:rounded-2xl" />
                   ) : (
                     <Utensils className="text-primary group-hover:scale-110 transition-transform duration-500" size={18} />
                   )}
@@ -210,13 +210,13 @@ export function Header({ onOpenMenu, settings, searchTerm, onSearchChange }: Hea
                 <div className="flex flex-col min-w-0">
                   <h1
                     style={{ fontWeight: 900, letterSpacing: '-0.02em' }}
-                    className="notranslate text-[20px] sm:text-[24px] md:text-[32px] lg:text-[36px] font-body text-white uppercase leading-[0.9] truncate max-w-60 sm:max-w-75 md:max-w-[320px] lg:max-w-95 xl:max-w-none [text-rendering:optimizeLegibility]"
+                    className="notranslate text-[15px] sm:text-[17px] md:text-[32px] lg:text-[36px] font-body text-white uppercase leading-none truncate max-w-44 sm:max-w-60 md:max-w-[320px] lg:max-w-95 xl:max-w-none [text-rendering:optimizeLegibility]"
                     translate="no"
                   >
                     <span className="text-white">{storeNameMain}</span>
                     {storeNameAccent ? <span className="text-primary ml-1">{storeNameAccent}</span> : null}
                   </h1>
-                  <p className="flex md:hidden text-[8px] font-body font-bold text-slate-300 tracking-wide mt-1 items-center gap-1.5 max-w-40 truncate">
+                  <p className="flex md:hidden text-[9px] font-body font-semibold text-slate-400 mt-1 items-center gap-1.5 max-w-44 truncate">
                     <span className={cn("w-1.5 h-1.5 rounded-full shadow-[0_0_8px_rgba(0,0,0,0.5)]", isOpenNow ? "bg-emerald-500 animate-pulse" : "bg-rose-500")} />
                     {mobileStatusLabel}
                   </p>
@@ -258,10 +258,20 @@ export function Header({ onOpenMenu, settings, searchTerm, onSearchChange }: Hea
                 />
               </div>
 
+              <button
+                type="button"
+                onClick={() => setIsAddressModalOpen(true)}
+                aria-label="Alterar localização"
+                className="grid size-10 place-items-center border border-slate-700 bg-slate-800 text-slate-200 transition-colors active:bg-slate-700 md:hidden"
+              >
+                <MapPin size={17} />
+              </button>
+
               {/* Mobile Menu Toggle */}
               <button
                 onClick={onOpenMenu}
-                className="w-10 h-10 md:w-12 md:h-12 xl:w-14 xl:h-14 bg-slate-700/70 border border-slate-600 rounded-2xl flex items-center justify-center text-slate-100 shadow-sm shadow-black/20 hover:bg-slate-700 hover:border-slate-500 hover:shadow-md active:scale-90 transition-all duration-200"
+                aria-label="Abrir mais opções"
+                className="w-10 h-10 md:w-12 md:h-12 xl:w-14 xl:h-14 bg-slate-800 md:bg-slate-700/70 border border-slate-700 md:border-slate-600 rounded-none md:rounded-2xl flex items-center justify-center text-slate-100 md:shadow-sm md:shadow-black/20 hover:bg-slate-700 hover:border-slate-500 active:scale-95 transition-all duration-200"
               >
                 <Menu size={16} className="md:size-5 lg:size-6" />
               </button>
