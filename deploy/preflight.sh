@@ -60,5 +60,10 @@ if [[ -n "${INITIAL_ADMIN_PASSWORD:-}" || -n "${INITIAL_SUPERADMIN_PASSWORD:-}" 
   exit 1
 fi
 
+if ! [[ "${RATE_LIMIT_MAX:-300}" =~ ^[0-9]+$ ]] || (( ${RATE_LIMIT_MAX:-300} < 50 || ${RATE_LIMIT_MAX:-300} > 2000 )); then
+  echo "Erro: RATE_LIMIT_MAX deve ser um inteiro entre 50 e 2000."
+  exit 1
+fi
+
 docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" config --quiet
 echo "Pré-validação de produção concluída."

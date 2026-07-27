@@ -52,7 +52,7 @@ model Restaurant {
   
   // PIX Configuration for Dynamic QR Codes
   pixKey             String?
-  pixKeyType         String?    // 'cpf' | 'cnpj' | 'email' | 'phone'
+  pixKeyType         String?    // 'cpf' | 'cnpj' | 'email' | 'phone' | 'random'
   whatsappNumber     String?
   pixInstructions    String?
 
@@ -167,6 +167,7 @@ model Product {
 
 model Order {
   id            Int           @id @default(autoincrement())
+  idempotencyKey String?
   customerName  String
   phone         String?
   address       Json?
@@ -197,6 +198,7 @@ model Order {
   @@index([restaurantId])
   @@index([customerId])
   @@index([cashSessionId])
+  @@unique([restaurantId, idempotencyKey])
   @@map("orders")
 }
 

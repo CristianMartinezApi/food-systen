@@ -78,9 +78,26 @@ export default function Checkout() {
   const { address: savedAddress } = useLocationStore();
   const cartItems = hasHydrated ? items : [];
   const { settings } = useSettings();
+  const storeLatitude = Number(settings?.latitude);
+  const storeLongitude = Number(settings?.longitude);
+  const hasStoreCoordinates =
+    Number.isFinite(storeLatitude) &&
+    Number.isFinite(storeLongitude) &&
+    !(storeLatitude === 0 && storeLongitude === 0);
   const router = useRouter();
   const [slug, setSlug] = useState<string>("");
   const rootRef = useRef<HTMLDivElement>(null);
+  const submissionLockRef = useRef(false);
+  const idempotencyKeyRef = useRef<string | null>(null);
+
+  const getOrderIdempotencyKey = () => {
+    if (!idempotencyKeyRef.current) {
+      idempotencyKeyRef.current = typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+        ? crypto.randomUUID()
+        : `${Date.now()}_${Math.random().toString(36).slice(2)}`;
+    }
+    return idempotencyKeyRef.current;
+  };
 
   useEffect(() => {
     setSlug(getTenantSlug());
@@ -241,8 +258,8 @@ export default function Checkout() {
         const customerLng = parseFloat(data[0].lon);
 
         const distance = calculateDistance(
-          settings.latitude,
-          settings.longitude,
+          storeLatitude,
+          storeLongitude,
           customerLat,
           customerLng
         );
@@ -409,7 +426,7 @@ export default function Checkout() {
       }
 
       // Validação de Raio de Entrega
-      if (deliveryMode === "DELIVERY" && settings?.latitude && settings?.longitude && settings?.deliveryRadius) {
+      if (deliveryMode === "DELIVERY" && hasStoreCoordinates && Number(settings?.deliveryRadius) > 0) {
         handleValidateDistance();
         return;
       }
@@ -447,6 +464,8 @@ export default function Checkout() {
   };
 
   const handleFinishOrder = async () => {
+    if (submissionLockRef.current) return;
+
     if (!isOpenNow) {
       const isCashierClosed = settings?.isOpen && settings?.hasCashierSession === false;
       toast.error(
@@ -475,9 +494,11 @@ export default function Checkout() {
       }
     }
 
+    submissionLockRef.current = true;
     setIsSubmitting(true);
     try {
       const orderData = {
+        idempotencyKey: getOrderIdempotencyKey(),
         customerName: formData.customerName,
         phone: formData.phone,
         address: {
@@ -528,6 +549,7 @@ export default function Checkout() {
       console.error("Order error:", error);
       toast.error(error.message || "Erro ao enviar pedido. Tente novamente.", shopErrorToastOptions);
     } finally {
+      submissionLockRef.current = false;
       setIsSubmitting(false);
     }
   };
@@ -1149,11 +1171,14 @@ export default function Checkout() {
                       storeName={settings?.storeName || "FoodSystem"}
                       isConfirming={isSubmitting}
                       onConfirmed={async () => {
+                        if (submissionLockRef.current) return;
+
                         if (!pendingPixOrderData) {
                           toast.error("Não foi possível recuperar os dados do pedido. Tente novamente.", shopErrorToastOptions);
                           return;
                         }
 
+                        submissionLockRef.current = true;
                         setIsSubmitting(true);
                         try {
                           const response = await api.post('/orders', pendingPixOrderData);
@@ -1168,6 +1193,7 @@ export default function Checkout() {
                           console.error('Order error (pix confirm):', error);
                           toast.error(error.message || 'Erro ao concluir pedido. Tente novamente.', shopErrorToastOptions);
                         } finally {
+                          submissionLockRef.current = false;
                           setIsSubmitting(false);
                         }
                       }}
@@ -1347,7 +1373,18 @@ export default function Checkout() {
             </div>
             <div>
               {step === 'review' ? (
-                <button onClick={handleFinishOrder} className={cn("h-10 px-4 rounded-lg font-body font-bold text-xs shadow-2xl transition-all", isBelowMinimum && deliveryMode === 'DELIVERY' ? "bg-slate-100 text-slate-300 cursor-not-allowed shadow-none" : "bg-slate-950 text-white")}>CONFIRMAR</button>
+                <button
+                  onClick={handleFinishOrder}
+                  disabled={isSubmitting || (isBelowMinimum && deliveryMode === 'DELIVERY')}
+                  className={cn(
+                    "h-10 px-4 rounded-lg font-body font-bold text-xs shadow-2xl transition-all disabled:cursor-not-allowed disabled:opacity-60",
+                    isBelowMinimum && deliveryMode === 'DELIVERY'
+                      ? "bg-slate-100 text-slate-300 shadow-none"
+                      : "bg-slate-950 text-white"
+                  )}
+                >
+                  {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : "CONFIRMAR"}
+                </button>
               ) : (
                 <button onClick={handleNext} className="h-10 px-4 rounded-lg font-body font-bold text-xs bg-slate-950 text-white shadow-2xl">
                   {(() => {

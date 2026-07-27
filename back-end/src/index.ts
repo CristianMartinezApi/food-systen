@@ -175,6 +175,8 @@ function isValidCnpj(value: string): boolean {
 
 const app = express();
 const httpServer = createServer(app);
+app.disable('x-powered-by');
+app.set('trust proxy', 'loopback');
 
 // ✅ SEGURO: JWT_SECRET validação
 const JWT_SECRET = process.env.JWT_SECRET;
@@ -573,8 +575,102 @@ function scheduleAuditRetentionCleanup() {
   }, intervalMs);
 }
 
+type RateLimitEntry = { count: number; resetAt: number };
+type RateLimiterOptions = {
+  name: string;
+  windowMs: number;
+  max: number;
+  key?: (req: express.Request) => string;
+};
+
+const rateLimitStores = new Map<string, Map<string, RateLimitEntry>>();
+
+function consumeRateLimit(storeName: string, key: string, windowMs: number, max: number) {
+  const now = Date.now();
+  let store = rateLimitStores.get(storeName);
+  if (!store) {
+    store = new Map();
+    rateLimitStores.set(storeName, store);
+  }
+
+  const current = store.get(key);
+  const entry = !current || current.resetAt <= now
+    ? { count: 1, resetAt: now + windowMs }
+    : { count: current.count + 1, resetAt: current.resetAt };
+  store.set(key, entry);
+
+  return {
+    allowed: entry.count <= max,
+    remaining: Math.max(0, max - entry.count),
+    retryAfterSeconds: Math.max(1, Math.ceil((entry.resetAt - now) / 1000)),
+  };
+}
+
+function createRateLimiter(options: RateLimiterOptions): express.RequestHandler {
+  return (req, res, next) => {
+    const rawKey = options.key?.(req) || req.ip || req.socket.remoteAddress || 'unknown';
+    const result = consumeRateLimit(options.name, rawKey, options.windowMs, options.max);
+
+    res.setHeader('RateLimit-Limit', String(options.max));
+    res.setHeader('RateLimit-Remaining', String(result.remaining));
+    res.setHeader('RateLimit-Reset', String(result.retryAfterSeconds));
+
+    if (!result.allowed) {
+      res.setHeader('Retry-After', String(result.retryAfterSeconds));
+      return res.status(429).json({
+        error: 'Muitas solicitações. Aguarde alguns instantes e tente novamente.',
+        retryAfter: result.retryAfterSeconds,
+      });
+    }
+
+    next();
+  };
+}
+
+const parsedRateLimitMax = Number(process.env.RATE_LIMIT_MAX || 300);
+const RATE_LIMIT_MAX = Number.isFinite(parsedRateLimitMax)
+  ? Math.min(2000, Math.max(50, parsedRateLimitMax))
+  : 300;
+const globalApiLimiter = createRateLimiter({ name: 'api-global', windowMs: 60_000, max: RATE_LIMIT_MAX });
+const loginIpLimiter = createRateLimiter({ name: 'login-ip', windowMs: 15 * 60_000, max: 10 });
+const loginAccountLimiter = createRateLimiter({
+  name: 'login-account',
+  windowMs: 15 * 60_000,
+  max: 20,
+  key: (req) => normalizeEmail(req.body?.email) || 'missing-email',
+});
+const passwordRecoveryLimiter = createRateLimiter({ name: 'password-recovery-ip', windowMs: 60 * 60_000, max: 5 });
+const passwordRecoveryAccountLimiter = createRateLimiter({
+  name: 'password-recovery-account',
+  windowMs: 60 * 60_000,
+  max: 3,
+  key: (req) => normalizeEmail(req.body?.email) || 'missing-email',
+});
+const verificationLimiter = createRateLimiter({ name: 'email-verification', windowMs: 15 * 60_000, max: 10 });
+const orderCreationLimiter = createRateLimiter({ name: 'order-creation', windowMs: 60_000, max: 15 });
+const pixLimiter = createRateLimiter({ name: 'pix', windowMs: 5 * 60_000, max: 30 });
+const uploadLimiter = createRateLimiter({ name: 'uploads', windowMs: 15 * 60_000, max: 20 });
+
+const rateLimitCleanupTimer = setInterval(() => {
+  const now = Date.now();
+  for (const store of rateLimitStores.values()) {
+    for (const [key, entry] of store) {
+      if (entry.resetAt <= now) store.delete(key);
+    }
+  }
+}, 10 * 60_000);
+rateLimitCleanupTimer.unref();
+
 // ✅ SEGURO: CORS configurado explicitamente
 const allowedOrigins = (process.env.ALLOWED_ORIGINS || 'http://localhost:3000').split(',').map(o => o.trim());
+app.use((_req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=(self)');
+  res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
+  next();
+});
 app.use(cors({
   origin: allowedOrigins,
   credentials: true,
@@ -590,10 +686,23 @@ const io = new Server(httpServer, {
     origin: allowedOrigins,
     credentials: true,
     methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE']
-  }
+  },
+  allowRequest: (request, callback) => {
+    const forwardedFor = String(request.headers['x-forwarded-for'] || '');
+    const forwardedParts = forwardedFor.split(',').map((value) => value.trim()).filter(Boolean);
+    const clientIp = forwardedParts.at(-1) || request.socket.remoteAddress || 'unknown';
+    const result = consumeRateLimit('socket-connections', clientIp, 60_000, 30);
+    callback(result.allowed ? null : 'Muitas conexões em pouco tempo', result.allowed);
+  },
 });
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ limit: '50mb', extended: true }));
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ limit: '2mb', extended: true }));
+app.use('/api', globalApiLimiter);
+app.use('/api', (_req, res, next) => {
+  res.setHeader('Content-Security-Policy', "default-src 'none'; frame-ancestors 'none'");
+  res.setHeader('Cache-Control', 'no-store');
+  next();
+});
 
 app.get('/health/live', (_req, res) => {
   res.json({ status: 'ok' });
@@ -1235,7 +1344,7 @@ app.post('/api/auth/register', async (req, res) => {
   return res.status(403).json({ error: 'Cadastro público desativado. O acesso deve ser liberado pelo super admin.' });
 });
 
-app.post('/api/auth/login', async (req, res) => {
+app.post('/api/auth/login', loginIpLimiter, loginAccountLimiter, async (req, res) => {
   try {
     const { password } = req.body;
     const email = normalizeEmail(req.body?.email);
@@ -1277,7 +1386,7 @@ app.post('/api/auth/login', async (req, res) => {
 });
 
 // Confirma a posse do endereço antes de habilitá-lo para avisos operacionais.
-app.post('/api/auth/verify-email', async (req, res) => {
+app.post('/api/auth/verify-email', verificationLimiter, async (req, res) => {
   try {
     const token = String(req.body?.token || '');
     if (!/^[a-f0-9]{64}$/i.test(token)) {
@@ -1313,7 +1422,7 @@ app.post('/api/auth/verify-email', async (req, res) => {
   }
 });
 
-app.post('/api/users/me/email-verification/request', authMiddleware, async (req: AuthRequest, res) => {
+app.post('/api/users/me/email-verification/request', verificationLimiter, authMiddleware, async (req: AuthRequest, res) => {
   try {
     if (!req.userId) return res.status(401).json({ error: 'Não autenticado' });
 
@@ -1455,7 +1564,7 @@ app.patch('/api/users/me/email', authMiddleware, async (req: AuthRequest, res) =
 });
 
 // Solicitar reset de senha
-app.post('/api/auth/forgot-password', async (req, res) => {
+app.post('/api/auth/forgot-password', passwordRecoveryLimiter, passwordRecoveryAccountLimiter, async (req, res) => {
   try {
     const { email } = req.body;
 
@@ -1491,13 +1600,14 @@ app.post('/api/auth/forgot-password', async (req, res) => {
 
     // Gerar token de reset
     const token = generatePasswordResetToken();
+    const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
     const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hora
 
     await prisma.passwordResetToken.create({
       data: {
         userId: user.id,
         email: user.email,
-        token,
+        token: tokenHash,
         expiresAt
       }
     });
@@ -1518,7 +1628,7 @@ app.post('/api/auth/forgot-password', async (req, res) => {
 });
 
 // Resetar senha com token
-app.post('/api/auth/reset-password', async (req, res) => {
+app.post('/api/auth/reset-password', passwordRecoveryLimiter, async (req, res) => {
   try {
     const { token, newPassword, confirmPassword } = req.body;
 
@@ -1540,8 +1650,9 @@ app.post('/api/auth/reset-password', async (req, res) => {
     }
 
     // Buscar token válido
-    const resetToken = await prisma.passwordResetToken.findUnique({
-      where: { token },
+    const tokenHash = crypto.createHash('sha256').update(String(token)).digest('hex');
+    const resetToken = await prisma.passwordResetToken.findFirst({
+      where: { token: { in: [tokenHash, String(token)] } },
       include: { user: true }
     });
 
@@ -3794,9 +3905,37 @@ app.get('/api/orders', authMiddleware, async (req: AuthRequest, res) => {
   res.json(orders);
 });
 
-app.post('/api/orders', async (req: TenantRequest, res) => {
+app.post('/api/orders', orderCreationLimiter, async (req: TenantRequest, res) => {
+  const idempotencyKey = typeof req.body?.idempotencyKey === 'string'
+    ? req.body.idempotencyKey.trim()
+    : '';
+
   try {
     const { customerName, phone, address, paymentMethod, items, subtotal, deliveryFee, total, notes, cpf, changeFor, tableNumber } = req.body;
+
+    if (idempotencyKey && (idempotencyKey.length > 100 || !/^[a-zA-Z0-9_-]+$/.test(idempotencyKey))) {
+      return res.status(400).json({ error: 'Identificador de envio inválido.' });
+    }
+
+    if (idempotencyKey) {
+      const existingOrder = await prisma.order.findUnique({
+        where: {
+          restaurantId_idempotencyKey: {
+            restaurantId: req.restaurantId!,
+            idempotencyKey,
+          },
+        },
+        include: { items: true, customer: true },
+      });
+
+      if (existingOrder) {
+        res.setHeader('Idempotent-Replayed', 'true');
+        return res.status(200).json({
+          ...existingOrder,
+          estimatedDeliveryMinutes: req.restaurant?.settings?.deliveryEtaMinutes || 35,
+        });
+      }
+    }
 
     const normalizedItems = Array.isArray(items)
       ? items.map((item: any) => ({
@@ -4029,6 +4168,7 @@ app.post('/api/orders', async (req: TenantRequest, res) => {
 
     return tx.order.create({
       data: {
+        idempotencyKey: idempotencyKey || null,
         customerName,
         phone,
         address,
@@ -4078,6 +4218,23 @@ app.post('/api/orders', async (req: TenantRequest, res) => {
     res.status(201).json(responseOrder);
   } catch (error) {
     console.error('Error creating order:', error);
+
+    if (idempotencyKey && typeof error === 'object' && error !== null && 'code' in error && error.code === 'P2002') {
+      const existingOrder = await prisma.order.findUnique({
+        where: {
+          restaurantId_idempotencyKey: {
+            restaurantId: req.restaurantId!,
+            idempotencyKey,
+          },
+        },
+        include: { items: true, customer: true },
+      });
+
+      if (existingOrder) {
+        res.setHeader('Idempotent-Replayed', 'true');
+        return res.status(200).json(existingOrder);
+      }
+    }
 
     if (error instanceof Error) {
       if (error.message.startsWith('OUT_OF_STOCK:')) {
@@ -4957,7 +5114,7 @@ app.post('/api/cashier/direct-sales', authMiddleware, async (req: AuthRequest, r
   }
 });
 
-app.post('/api/assets/image', authMiddleware, async (req: AuthRequest, res) => {
+app.post('/api/assets/image', uploadLimiter, authMiddleware, async (req: AuthRequest, res) => {
   try {
     const { dataUrl, folder } = req.body as { dataUrl?: string; folder?: string };
 
@@ -6408,7 +6565,7 @@ app.patch('/api/restaurant/pix-config', authMiddleware, tenantMiddleware, async 
     }
 
     // Validar tipo
-    const validTypes = ['cpf', 'cnpj', 'email', 'phone'];
+    const validTypes = ['cpf', 'cnpj', 'email', 'phone', 'random'];
     if (!validTypes.includes(pixKeyType)) {
       return res.status(400).json({
         code: 'INVALID_PIX_TYPE',
@@ -6589,6 +6746,26 @@ httpServer.listen(PORT, '0.0.0.0', () => {
 
 // ─── PIX ROUTES ──────────────────────────────────────────────────────────────
 
+const normalizePixKeyForType = (key: string, type: string) => {
+  const trimmed = key.trim();
+  if (type === 'cpf' || type === 'cnpj') return trimmed.replace(/\D/g, '');
+  if (type === 'phone') {
+    const digits = trimmed.replace(/\D/g, '');
+    return digits.startsWith('55') && digits.length >= 12 ? `+${digits}` : digits;
+  }
+  return type === 'email' ? trimmed.toLowerCase() : trimmed;
+};
+
+const inferPixKeyType = (key?: string | null): string | null => {
+  const value = String(key || '').trim();
+  const digits = value.replace(/\D/g, '');
+  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)) return 'random';
+  if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) return 'email';
+  if (digits.length === 14) return 'cnpj';
+  if (/^\+?55/.test(value) && (digits.length === 12 || digits.length === 13)) return 'phone';
+  return null;
+};
+
 // Salvar chave PIX do lojista (fluxo manual, sem webhook)
 apiRouter.put('/pix/settings', authMiddleware, tenantMiddleware, async (req: AuthRequest & TenantRequest, res) => {
   if (!ensureSensitiveSettingsPermission(req, res, 'alterar configurações PIX')) {
@@ -6596,42 +6773,60 @@ apiRouter.put('/pix/settings', authMiddleware, tenantMiddleware, async (req: Aut
   }
 
   try {
-    const { pixKey, pixEnabled } = req.body;
+    const pixEnabled = Boolean(req.body?.pixEnabled);
+    const rawPixKey = typeof req.body?.pixKey === 'string' ? req.body.pixKey.trim() : '';
+    const pixKeyType = typeof req.body?.pixKeyType === 'string' ? req.body.pixKeyType.trim().toLowerCase() : '';
+    const validTypes = ['cpf', 'cnpj', 'email', 'phone', 'random'];
+    const pixKey = normalizePixKeyForType(rawPixKey, pixKeyType);
 
-    if (!pixKey && pixEnabled) {
-      return res.status(400).json({ error: 'pixKey é obrigatório quando PIX está ativado' });
+    if (!pixKey) {
+      return res.status(400).json({ error: 'Informe uma chave PIX para salvar a configuração' });
     }
 
-    await prisma.settings.upsert({
+    if (!validTypes.includes(pixKeyType)) {
+      return res.status(400).json({ error: 'Selecione um tipo de chave PIX válido' });
+    }
+
+    const { PixService } = await import('./services/PixService');
+    if (!PixService.validatePixKey(pixKey, pixKeyType)) {
+      return res.status(400).json({ error: 'A chave informada não corresponde ao tipo selecionado' });
+    }
+
+    const current = await prisma.settings.findUnique({
       where: { restaurantId: req.restaurant!.id },
-      update: {
-        pixEnabled: pixEnabled ?? false,
-        pixKey: pixKey ?? null,
-      },
-      create: {
-        restaurantId: req.restaurant!.id,
-        storeName: req.restaurant?.name || 'Minha Loja',
-        phone: req.restaurant?.phone || null,
-        logo: req.restaurant?.logo || null,
-        pixEnabled: pixEnabled ?? false,
-        pixKey: pixKey ?? null,
-      },
+      select: { pixKey: true },
     });
 
-    await prisma.restaurant.update({
-      where: { id: req.restaurant!.id },
-      data: {
-        pixKey: pixEnabled ? (pixKey ?? null) : null,
-        pixInstructions: pixEnabled && pixKey ? `Escaneie o QR code ou use a chave: ${pixKey}` : null,
-      },
+    await prisma.$transaction([
+      prisma.settings.upsert({
+        where: { restaurantId: req.restaurant!.id },
+        update: { pixEnabled, pixKey },
+        create: {
+          restaurantId: req.restaurant!.id,
+          storeName: req.restaurant?.name || 'Minha Loja',
+          phone: req.restaurant?.phone || null,
+          logo: req.restaurant?.logo || null,
+          pixEnabled,
+          pixKey,
+        },
+      }),
+      prisma.restaurant.update({
+        where: { id: req.restaurant!.id },
+        data: {
+          pixKey: pixEnabled ? pixKey : null,
+          pixKeyType,
+          pixInstructions: pixEnabled ? `Escaneie o QR code ou use a chave: ${pixKey}` : null,
+        },
+      }),
+    ]);
+
+    await createAudit(req, current?.pixKey && current.pixKey !== pixKey ? 'replace_pix_key' : 'update_pix_settings', 'restaurant', req.restaurant!.id, {
+      pixEnabled,
+      pixKeyType,
+      keyChanged: Boolean(current?.pixKey && current.pixKey !== pixKey),
     });
 
-    await createAudit(req, 'update_pix_settings', 'restaurant', req.restaurant!.id, {
-      pixEnabled: Boolean(pixEnabled),
-      hasPixKey: Boolean(pixKey),
-    });
-
-    res.json({ ok: true });
+    res.json({ ok: true, pixEnabled, pixKey, pixKeyType });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Erro ao salvar configurações PIX' });
@@ -6642,17 +6837,90 @@ apiRouter.put('/pix/settings', authMiddleware, tenantMiddleware, async (req: Aut
 apiRouter.get('/pix/settings', authMiddleware, tenantMiddleware, async (req: AuthRequest & TenantRequest, res) => {
   try {
     const s = await prisma.settings.findUnique({ where: { restaurantId: req.restaurant!.id } });
+    const restaurant = await prisma.restaurant.findUnique({
+      where: { id: req.restaurant!.id },
+      select: { pixKeyType: true },
+    });
     res.json({
       pixEnabled: s?.pixEnabled ?? false,
       pixKey: s?.pixKey ?? null,
+      pixKeyType: restaurant?.pixKeyType ?? inferPixKeyType(s?.pixKey),
     });
   } catch (err) {
     res.status(500).json({ error: 'Erro ao buscar configurações PIX' });
   }
 });
 
+// Ativar/desativar o recebimento sem apagar a chave cadastrada
+apiRouter.patch('/pix/settings/status', authMiddleware, tenantMiddleware, async (req: AuthRequest & TenantRequest, res) => {
+  if (!ensureSensitiveSettingsPermission(req, res, 'ativar ou desativar o PIX')) return;
+
+  try {
+    const pixEnabled = Boolean(req.body?.pixEnabled);
+    const current = await prisma.settings.findUnique({ where: { restaurantId: req.restaurant!.id } });
+    if (pixEnabled && !current?.pixKey) {
+      return res.status(400).json({ error: 'Cadastre uma chave PIX antes de ativar o recebimento' });
+    }
+
+    const restaurant = await prisma.restaurant.findUnique({
+      where: { id: req.restaurant!.id },
+      select: { pixKeyType: true },
+    });
+    const effectivePixKeyType = restaurant?.pixKeyType || inferPixKeyType(current?.pixKey);
+    if (pixEnabled && !effectivePixKeyType) {
+      return res.status(400).json({ error: 'Não foi possível identificar o tipo da chave antiga. Use “Alterar chave” para confirmá-la.' });
+    }
+
+    await prisma.$transaction([
+      prisma.settings.update({
+        where: { restaurantId: req.restaurant!.id },
+        data: { pixEnabled },
+      }),
+      prisma.restaurant.update({
+        where: { id: req.restaurant!.id },
+        data: {
+          pixKey: pixEnabled ? current!.pixKey : null,
+          pixKeyType: effectivePixKeyType,
+          pixInstructions: pixEnabled ? `Escaneie o QR code ou use a chave: ${current!.pixKey}` : null,
+        },
+      }),
+    ]);
+
+    await createAudit(req, pixEnabled ? 'enable_pix' : 'disable_pix', 'restaurant', req.restaurant!.id, {
+      hasPixKey: Boolean(current?.pixKey),
+    });
+    res.json({ ok: true, pixEnabled });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erro ao alterar o status do PIX' });
+  }
+});
+
+// Excluir definitivamente a chave PIX
+apiRouter.delete('/pix/settings/key', authMiddleware, tenantMiddleware, async (req: AuthRequest & TenantRequest, res) => {
+  if (!ensureSensitiveSettingsPermission(req, res, 'excluir a chave PIX')) return;
+
+  try {
+    await prisma.$transaction([
+      prisma.settings.updateMany({
+        where: { restaurantId: req.restaurant!.id },
+        data: { pixEnabled: false, pixKey: null },
+      }),
+      prisma.restaurant.update({
+        where: { id: req.restaurant!.id },
+        data: { pixKey: null, pixKeyType: null, pixInstructions: null },
+      }),
+    ]);
+    await createAudit(req, 'delete_pix_key', 'restaurant', req.restaurant!.id, {});
+    res.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erro ao excluir a chave PIX' });
+  }
+});
+
 // Gerar PIX de pré-visualização sem criar pedido (usado antes da confirmação final)
-apiRouter.post('/pix/preview', tenantMiddleware, async (req: TenantRequest, res) => {
+apiRouter.post('/pix/preview', pixLimiter, tenantMiddleware, async (req: TenantRequest, res) => {
   try {
     const total = Number(req.body?.total);
 
@@ -6711,7 +6979,7 @@ apiRouter.post('/pix/preview', tenantMiddleware, async (req: TenantRequest, res)
 });
 
 // Criar cobrança PIX para um pedido (chamado pelo frontend após criar o pedido)
-apiRouter.post('/pix/charge/:orderId', tenantMiddleware, async (req: TenantRequest, res) => {
+apiRouter.post('/pix/charge/:orderId', pixLimiter, tenantMiddleware, async (req: TenantRequest, res) => {
   try {
     const orderId = parseInt(req.params.orderId);
     const order = await prisma.order.findFirst({
@@ -6775,5 +7043,17 @@ apiRouter.post('/pix/charge/:orderId', tenantMiddleware, async (req: TenantReque
     console.error('Erro ao criar cobrança PIX:', err?.response?.data || err.message);
     res.status(500).json({ error: 'Erro ao gerar cobrança PIX. Verifique a configuração.' });
   }
+});
+
+app.use((error: any, _req: express.Request, res: express.Response, next: express.NextFunction) => {
+  if (error?.type === 'entity.too.large') {
+    return res.status(413).json({ error: 'Conteúdo muito grande para processamento.' });
+  }
+
+  if (error instanceof SyntaxError && 'body' in error) {
+    return res.status(400).json({ error: 'Corpo da requisição inválido.' });
+  }
+
+  next(error);
 });
 

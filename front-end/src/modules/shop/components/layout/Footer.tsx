@@ -18,6 +18,7 @@ import Link from "next/link";
 import { useState, useEffect } from "react";
 import { getNextOpeningLabel, getOperatingHoursSummary, isRestaurantOpenNow } from "../../../../shared/utils/schedule";
 import { useHasHydrated } from "../../../../core/hooks/useHasHydrated";
+import { useSettings } from "../../../../core/hooks/useSettings";
 
 type SocialLink = {
   label: string;
@@ -53,11 +54,6 @@ function normalizeWhatsApp(value?: string | null) {
 }
 
 function buildStoreMapUrl(settings?: any) {
-  const address = typeof settings?.address === "string" ? settings.address.trim() : "";
-  if (address) {
-    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
-  }
-
   const latitude = Number(settings?.latitude);
   const longitude = Number(settings?.longitude);
   const hasValidCoordinates =
@@ -69,15 +65,38 @@ function buildStoreMapUrl(settings?: any) {
     return `https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`;
   }
 
+  const address = typeof settings?.address === "string" ? settings.address.trim() : "";
+  if (address) {
+    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
+  }
+
   return null;
 }
 
-export function Footer({ settings }: FooterProps) {
+function buildStoreMapEmbedUrl(settings?: any) {
+  const latitude = Number(settings?.latitude);
+  const longitude = Number(settings?.longitude);
+  const hasValidCoordinates =
+    Number.isFinite(latitude) &&
+    Number.isFinite(longitude) &&
+    !(latitude === 0 && longitude === 0);
+  const address = typeof settings?.address === "string" ? settings.address.trim() : "";
+  const query = hasValidCoordinates ? `${latitude},${longitude}` : address;
+
+  return query
+    ? `https://maps.google.com/maps?q=${encodeURIComponent(query)}&z=16&output=embed`
+    : null;
+}
+
+export function Footer({ settings: providedSettings }: FooterProps) {
+  const { settings: loadedSettings } = useSettings();
+  const settings = providedSettings || loadedSettings;
   const currentYear = new Date().getFullYear();
   const [slug, setSlug] = useState<string>("");
   const hasHydrated = useHasHydrated();
   const contactSocial = settings?.contact?.social;
   const storeMapUrl = buildStoreMapUrl(settings);
+  const storeMapEmbedUrl = buildStoreMapEmbedUrl(settings);
   const operatingHoursSummary = hasHydrated
     ? getOperatingHoursSummary(settings?.operatingHours)
     : "Carregando horário";
@@ -209,6 +228,30 @@ export function Footer({ settings }: FooterProps) {
                   )}
                 </div>
               </div>
+              {storeMapEmbedUrl && (
+                <div className="overflow-hidden rounded-2xl border border-white/10 bg-slate-900">
+                  <iframe
+                    title={`Mapa de ${settings?.storeName || "localização da loja"}`}
+                    src={storeMapEmbedUrl}
+                    width="100%"
+                    height="150"
+                    loading="lazy"
+                    allowFullScreen
+                    referrerPolicy="no-referrer-when-downgrade"
+                    className="block w-full grayscale-[20%]"
+                  />
+                  {storeMapUrl && (
+                    <a
+                      href={storeMapUrl}
+                      target="_blank"
+                      rel="noreferrer noopener"
+                      className="flex h-10 items-center justify-between border-t border-white/10 px-3 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-300 transition-colors hover:bg-white/5 hover:text-white"
+                    >
+                      Ver rota no Google Maps <ArrowRight size={13} />
+                    </a>
+                  )}
+                </div>
+              )}
               <div className="flex items-start gap-3 md:gap-4 group">
                 <div className="w-10 h-10 md:w-10 md:h-10 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all shrink-0">
                   <Phone className="size-4 md:size-4.5" />

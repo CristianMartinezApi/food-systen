@@ -55,6 +55,7 @@ export default function SettingsPage() {
     const { settings, updateSettings } = useSettings();
     const [formData, setFormData] = useState<any>(null);
     const [isSaving, setIsSaving] = useState(false);
+    const [isGeocoding, setIsGeocoding] = useState(false);
     const [savedSnapshot, setSavedSnapshot] = useState<string>("");
     const fileInputRef = useRef<HTMLInputElement>(null);
     const bannerFileInputRef = useRef<HTMLInputElement>(null);
@@ -215,7 +216,12 @@ export default function SettingsPage() {
     const handleManualAddressChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const val = e.target.value;
         setValue(val);
-        setFormData((prev: any) => ({ ...prev, address: val }));
+        setFormData((prev: any) => ({
+            ...prev,
+            address: val,
+            latitude: val === prev.address ? prev.latitude : null,
+            longitude: val === prev.address ? prev.longitude : null,
+        }));
     };
 
     const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -252,24 +258,42 @@ export default function SettingsPage() {
         setFormData({ ...formData, cnpj: val });
     };
 
-    const handleSelect = async (address: string) => {
-        setValue(address, false);
-        clearSuggestions();
+    const validateAddressCoordinates = async (address: string, showFeedback = true) => {
+        if (!address.trim()) {
+            toast.error("Informe o endereço da loja.");
+            return false;
+        }
 
+        setIsGeocoding(true);
         try {
             const results = await getGeocode({ address });
+            if (!results[0]) throw new Error("Endereço não localizado");
             const { lat, lng } = await getLatLng(results[0]);
 
             setFormData((prev: any) => ({
                 ...prev,
                 address,
                 latitude: lat,
-                longitude: lng
+                longitude: lng,
             }));
+            if (showFeedback) toast.success("Endereço localizado e coordenadas atualizadas.");
+            return true;
         } catch (error) {
             console.error("Erro ao obter coordenadas:", error);
-            setFormData((prev: any) => ({ ...prev, address }));
+            if (showFeedback) {
+                toast.error("Não foi possível validar o endereço no mapa. Selecione uma sugestão da busca.");
+            }
+            return false;
+        } finally {
+            setIsGeocoding(false);
         }
+    };
+
+    const handleSelect = async (address: string) => {
+        setValue(address, false);
+        clearSuggestions();
+        setFormData((prev: any) => ({ ...prev, address }));
+        await validateAddressCoordinates(address, false);
     };
 
     const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -363,6 +387,10 @@ export default function SettingsPage() {
 
     const operatingHours = normalizeOperatingHours(formData.operatingHours || createDefaultOperatingHours());
     const isOpenNow = isRestaurantOpenNow(operatingHours);
+    const hasValidCoordinates =
+        Number.isFinite(Number(formData.latitude)) &&
+        Number.isFinite(Number(formData.longitude)) &&
+        !(Number(formData.latitude) === 0 && Number(formData.longitude) === 0);
     const setupChecks = [
         {
             label: "Identidade",
@@ -370,9 +398,9 @@ export default function SettingsPage() {
             complete: Boolean(formData.storeName?.trim() && formData.phone?.trim() && formData.logo),
         },
         {
-            label: "Localização",
+            label: "Endereço",
             href: "#settings-location",
-            complete: Boolean(formData.address?.trim() && formData.latitude != null && formData.longitude != null),
+            complete: Boolean(formData.address?.trim()),
         },
         {
             label: "Operação",
@@ -785,10 +813,7 @@ export default function SettingsPage() {
                                     <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Endereço Completo</label>
                                     <input
                                         value={value || ""}
-                                        onChange={(e) => {
-                                            setValue(e.target.value);
-                                            setFormData((prev: any) => ({ ...prev, address: e.target.value }));
-                                        }}
+                                        onChange={handleManualAddressChange}
                                         placeholder="Ex: Rua das Flores, 123 - Centro, São Paulo - SP"
                                         className="w-full h-14 px-5 bg-slate-50 border-2 border-transparent focus:border-primary/20 focus:bg-white rounded-2xl transition-all font-bold text-slate-700 outline-none"
                                     />
@@ -811,6 +836,38 @@ export default function SettingsPage() {
                                                     </div>
                                                 </button>
                                             ))}
+                                        </div>
+                                    )}
+
+                                    {formData.address && (
+                                        <div className={cn(
+                                            "mt-3 flex flex-col gap-3 rounded-xl border p-3 sm:flex-row sm:items-center sm:justify-between",
+                                            hasValidCoordinates
+                                                ? "border-emerald-200 bg-emerald-50"
+                                                : "border-amber-200 bg-amber-50"
+                                        )}>
+                                            <div>
+                                                <p className={cn(
+                                                    "text-xs font-semibold",
+                                                    hasValidCoordinates ? "text-emerald-800" : "text-amber-800"
+                                                )}>
+                                                    {hasValidCoordinates ? "Endereço e coordenadas validados" : "Endereço cadastrado; coordenadas pendentes"}
+                                                </p>
+                                                <p className="mt-1 text-[11px] text-slate-600">
+                                                    {hasValidCoordinates
+                                                        ? "O raio de entrega pode ser conferido com precisão."
+                                                        : "A loja pode operar, mas valide o mapa para aplicar corretamente o limite de entrega."}
+                                                </p>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                disabled={isGeocoding}
+                                                onClick={() => validateAddressCoordinates(String(formData.address || ""))}
+                                                className="ops-button shrink-0 border border-slate-300 bg-white text-slate-700 disabled:opacity-60"
+                                            >
+                                                {isGeocoding ? <Loader2 size={15} className="animate-spin" /> : <MapPin size={15} />}
+                                                {hasValidCoordinates ? "Atualizar mapa" : "Validar no mapa"}
+                                            </button>
                                         </div>
                                     )}
                                 </div>
@@ -849,7 +906,7 @@ export default function SettingsPage() {
                                                 </p>
                                             </div>
 
-                                            {formData.latitude && (
+                                            {hasValidCoordinates && (
                                                 <div className="bg-emerald-500/90 backdrop-blur px-3 py-2 rounded-xl text-white shadow-sm pointer-events-auto animate-in slide-in-from-top duration-500">
                                                     <p className="text-[10px] font-black uppercase flex items-center gap-2">
                                                         <CheckCircle2 size={12} /> Localização Validada
@@ -859,11 +916,11 @@ export default function SettingsPage() {
                                         </div>
 
                                         {/* Detalhes Técnicos da Coordenada */}
-                                        {formData.latitude && (
+                                        {hasValidCoordinates && (
                                             <div className="absolute bottom-4 left-4 right-4 bg-slate-900/80 backdrop-blur px-4 py-2 rounded-2xl flex items-center justify-between opacity-0 group-hover:opacity-100 transition-opacity">
                                                 <div className="flex gap-4">
-                                                    <p className="text-[10px] font-bold text-white/60">LAT: <span className="text-white">{formData.latitude.toFixed(6)}</span></p>
-                                                    <p className="text-[10px] font-bold text-white/60">LNG: <span className="text-white">{formData.longitude.toFixed(6)}</span></p>
+                                                    <p className="text-[10px] font-bold text-white/60">LAT: <span className="text-white">{Number(formData.latitude).toFixed(6)}</span></p>
+                                                    <p className="text-[10px] font-bold text-white/60">LNG: <span className="text-white">{Number(formData.longitude).toFixed(6)}</span></p>
                                                 </div>
                                                 <p className="text-[10px] font-black text-emerald-400 uppercase tracking-widest">100% Preciso</p>
                                             </div>

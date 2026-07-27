@@ -100,7 +100,7 @@ export class PixService {
     const cpfRegex = /^\d{11}$/;
     const cnpjRegex = /^\d{14}$/;
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    const phoneRegex = /^\+?55?\d{10,11}$|^\d{10,11}$/;
+    const randomRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
     switch (type) {
       case 'cpf':
@@ -110,7 +110,10 @@ export class PixService {
       case 'email':
         return emailRegex.test(key);
       case 'phone':
-        return phoneRegex.test(key.replace(/[^\d]/g, ''));
+        const phoneDigits = key.replace(/[^\d]/g, '');
+        return /^\d{10,11}$/.test(phoneDigits) || /^55\d{10,11}$/.test(phoneDigits);
+      case 'random':
+        return randomRegex.test(key);
       default:
         return false;
     }
