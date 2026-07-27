@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import type { CSSProperties } from "react";
 import { AlertCircle, CheckCircle2, Eye, EyeOff, Loader2, Pencil, Power, Trash2, Zap } from "lucide-react";
 import toast from "react-hot-toast";
 import { api } from "../../../core/config/api";
@@ -234,11 +235,17 @@ export default function PixSettings() {
                             <span className="text-[11px] font-bold uppercase tracking-widest text-slate-500">Nova chave PIX</span>
                             <div className="relative">
                                 <input
-                                    type={showInputPixKey ? "text" : "password"}
+                                    type="text"
+                                    name="pix-key-value"
                                     value={pixKey}
                                     onChange={(event) => setPixKey(event.target.value)}
                                     placeholder="Digite a chave correspondente ao tipo selecionado"
                                     autoComplete="off"
+                                    data-lpignore="true"
+                                    data-1p-ignore="true"
+                                    spellCheck={false}
+                                    inputMode={pixKeyType === "email" ? "email" : pixKeyType === "phone" ? "tel" : pixKeyType === "cpf" || pixKeyType === "cnpj" ? "numeric" : "text"}
+                                    style={showInputPixKey ? undefined : { WebkitTextSecurity: "disc" } as CSSProperties}
                                     className="h-12 w-full border border-slate-300 bg-white pl-3 pr-11 text-sm text-slate-900 outline-none focus:border-blue-500"
                                 />
                                 <button
