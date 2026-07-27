@@ -470,29 +470,28 @@ export default function CustomerOrdersPage() {
 
       <nav
         aria-label="Navegação da loja"
-        className="fixed inset-x-2 bottom-2 z-70 rounded-2xl border border-slate-200 bg-white/95 px-2 pt-2 shadow-[0_-12px_35px_rgba(15,23,42,0.16)] backdrop-blur-xl md:hidden"
-        style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 8px)" }}
+        className="fixed inset-x-0 bottom-0 z-70 min-h-16 border-t border-slate-300 bg-white/95 px-1 pb-[max(0.25rem,env(safe-area-inset-bottom))] pt-1 shadow-[0_-8px_24px_rgba(15,23,42,0.08)] backdrop-blur md:hidden"
       >
         <div className="grid grid-cols-4 gap-1">
-          <Link href={`/${slug}`} className="flex h-12 flex-col items-center justify-center gap-1 rounded-xl text-slate-700">
-            <Home size={18} />
-            <span className="text-[9px] font-bold uppercase tracking-wide">Início</span>
+          <Link href={`/${slug}`} className="flex min-w-0 flex-col items-center justify-center gap-1 px-1 py-2 text-[10px] font-semibold text-slate-500">
+            <span className="grid h-7 w-9 place-items-center rounded-md"><Home size={17} /></span>
+            <span className="w-full truncate text-center">Início</span>
           </Link>
-          <Link href={`/${slug}#menu-section`} className="flex h-12 flex-col items-center justify-center gap-1 rounded-xl text-slate-700">
-            <LayoutGrid size={18} />
-            <span className="text-[9px] font-bold uppercase tracking-wide">Cardápio</span>
+          <Link href={`/${slug}#menu-section`} className="flex min-w-0 flex-col items-center justify-center gap-1 px-1 py-2 text-[10px] font-semibold text-slate-500">
+            <span className="grid h-7 w-9 place-items-center rounded-md"><LayoutGrid size={17} /></span>
+            <span className="w-full truncate text-center">Cardápio</span>
           </Link>
-          <div className="flex h-12 flex-col items-center justify-center gap-1 rounded-xl bg-slate-950 text-white">
-            <ReceiptText size={18} />
-            <span className="text-[9px] font-bold uppercase tracking-wide">Pedidos</span>
+          <div className="flex min-w-0 flex-col items-center justify-center gap-1 px-1 py-2 text-[10px] font-semibold text-slate-950">
+            <span className="grid h-7 w-9 place-items-center rounded-md bg-slate-950 text-white"><ReceiptText size={17} /></span>
+            <span className="w-full truncate text-center">Pedidos</span>
           </div>
           <button
             onClick={() => fetchOrders(phone, customerName)}
             disabled={loading}
-            className="flex h-12 flex-col items-center justify-center gap-1 rounded-xl text-slate-700 disabled:opacity-50"
+            className="flex min-w-0 flex-col items-center justify-center gap-1 px-1 py-2 text-[10px] font-semibold text-slate-500 disabled:opacity-50"
           >
-            <RefreshCw size={18} className={loading ? "animate-spin" : ""} />
-            <span className="text-[9px] font-bold uppercase tracking-wide">Atualizar</span>
+            <span className="grid h-7 w-9 place-items-center rounded-md"><RefreshCw size={17} className={loading ? "animate-spin" : ""} /></span>
+            <span className="w-full truncate text-center">Atualizar</span>
           </button>
         </div>
       </nav>

@@ -100,27 +100,26 @@ export function Header({ onOpenMenu, settings, searchTerm, onSearchChange }: Hea
   const mobileNavigation = (
     <nav
       aria-label="Navegação da loja"
-      className="fixed inset-x-2 bottom-2 z-70 md:hidden rounded-2xl border border-slate-200 bg-white/95 px-2 pt-2 shadow-[0_-12px_35px_rgba(15,23,42,0.16)] backdrop-blur-xl"
-      style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 8px)" }}
+      className="fixed inset-x-0 bottom-0 z-70 min-h-16 border-t border-slate-300 bg-white/95 px-1 pb-[max(0.25rem,env(safe-area-inset-bottom))] pt-1 shadow-[0_-8px_24px_rgba(15,23,42,0.08)] backdrop-blur md:hidden"
     >
       <div className="grid grid-cols-4 gap-1">
-        <Link href={`/${slug}`} className="flex h-12 flex-col items-center justify-center gap-1 rounded-xl text-slate-700 active:bg-slate-100">
-          <Home size={18} />
-          <span className="text-[9px] font-bold uppercase tracking-wide">Início</span>
+        <Link href={`/${slug}`} className="flex min-w-0 flex-col items-center justify-center gap-1 px-1 py-2 text-[10px] font-semibold text-slate-950">
+          <span className="grid h-7 w-9 place-items-center rounded-md bg-slate-950 text-white"><Home size={17} /></span>
+          <span className="w-full truncate text-center">Início</span>
         </Link>
-        <button onClick={onOpenMenu} className="flex h-12 flex-col items-center justify-center gap-1 rounded-xl text-slate-700 active:bg-slate-100">
-          <LayoutGrid size={18} />
-          <span className="text-[9px] font-bold uppercase tracking-wide">Categorias</span>
+        <button onClick={onOpenMenu} className="flex min-w-0 flex-col items-center justify-center gap-1 px-1 py-2 text-[10px] font-semibold text-slate-500">
+          <span className="grid h-7 w-9 place-items-center rounded-md"><LayoutGrid size={17} /></span>
+          <span className="w-full truncate text-center">Categorias</span>
         </button>
-        <Link href={`/${slug}/orders`} className="flex h-12 flex-col items-center justify-center gap-1 rounded-xl text-slate-700 active:bg-slate-100">
-          <ReceiptText size={18} />
-          <span className="text-[9px] font-bold uppercase tracking-wide">Pedidos</span>
+        <Link href={`/${slug}/orders`} className="flex min-w-0 flex-col items-center justify-center gap-1 px-1 py-2 text-[10px] font-semibold text-slate-500">
+          <span className="grid h-7 w-9 place-items-center rounded-md"><ReceiptText size={17} /></span>
+          <span className="w-full truncate text-center">Pedidos</span>
         </Link>
-        <button onClick={() => setIsCartOpen(true)} className="relative flex h-12 flex-col items-center justify-center gap-1 rounded-xl bg-slate-950 text-white active:scale-95">
-          <ShoppingCart size={18} />
-          <span className="text-[9px] font-bold uppercase tracking-wide">Cesta</span>
+        <button onClick={() => setIsCartOpen(true)} className="relative flex min-w-0 flex-col items-center justify-center gap-1 px-1 py-2 text-[10px] font-semibold text-slate-500">
+          <span className="grid h-7 w-9 place-items-center rounded-md"><ShoppingCart size={17} /></span>
+          <span className="w-full truncate text-center">Cesta</span>
           {totalItems > 0 && (
-            <span className="absolute right-2 top-1 flex min-w-4.5 h-4.5 items-center justify-center rounded-full bg-rose-500 px-1 text-[8px] font-black text-white">
+            <span className="absolute right-[calc(50%-1.6rem)] top-0 flex min-w-4.5 h-4.5 items-center justify-center rounded-full bg-rose-600 px-1 text-[8px] font-black text-white">
               {totalItems > 99 ? "99+" : totalItems}
             </span>
           )}
