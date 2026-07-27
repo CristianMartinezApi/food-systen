@@ -28,7 +28,8 @@ import {
   ClipboardCheck,
   Search,
   MessageCircle,
-  Plus
+  Plus,
+  Clock
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { api } from "../../../core/config/api";
@@ -1224,6 +1225,16 @@ export default function Checkout() {
                     Pedido <span className="text-slate-950 font-mono font-bold">#{orderCreatedId}</span> recebido com sucesso. Acompanhe os próximos passos abaixo.
                   </p>
 
+                  <div className="mb-5 flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-left">
+                    <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-amber-100 text-amber-700">
+                      <Clock size={19} />
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-amber-700">Aguardando confirmação da loja</p>
+                      <p className="mt-1 text-xs font-medium text-amber-900">Você pode sair desta tela. O andamento ficará disponível em Meus pedidos.</p>
+                    </div>
+                  </div>
+
                   <div className="rounded-xl md:rounded-2xl border border-slate-200 bg-slate-50 p-4 md:p-6 mb-6 md:mb-8">
                     <div className="grid grid-cols-2 gap-3 md:gap-4">
                       <div className="rounded-lg md:rounded-xl border border-slate-200 bg-white p-3 md:p-4">
@@ -1247,21 +1258,23 @@ export default function Checkout() {
                   </div>
 
                   <div className="grid grid-cols-1 gap-4 md:gap-5">
-                    <button
-                      onClick={handleWhatsAppNotify}
-                      className="h-20 md:h-24 flex flex-col items-center justify-center bg-emerald-500 text-white rounded-[1.6rem] md:rounded-[2.5rem] font-body font-medium shadow-[0_20px_40px_rgba(16,185,129,0.3)] hover:bg-emerald-600 active:scale-[0.98] transition-all group"
+                    <Link
+                      href={`/${slug}/orders?order=${createdOrderId || orderCreatedId || ""}`}
+                      className="h-16 md:h-18 flex items-center justify-center gap-3 bg-slate-950 text-white rounded-2xl font-body font-bold shadow-2xl shadow-slate-950/20 hover:bg-black active:scale-[0.98] transition-all uppercase tracking-widest text-xs md:text-sm"
                     >
-                      <span className="text-label font-body font-bold uppercase tracking-[0.2em] opacity-80 mb-1 text-[10px]">Acompanhamento do pedido</span>
-                      <div className="flex items-center gap-3">
-                        <MessageCircle size={20} strokeWidth={2} className="md:size-6" />
-                        <span className="text-body-strong font-body font-bold uppercase tracking-widest text-base md:text-lg">Notificar via WhatsApp</span>
-                      </div>
-                    </button>
+                      <ShoppingBag size={19} />
+                      Acompanhar pedido
+                      <ChevronRight size={18} />
+                    </Link>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-                      <Link href={`/${slug}/orders`} className="h-14 md:h-16 flex items-center justify-center bg-slate-950 text-white rounded-2xl font-body font-bold shadow-2xl shadow-slate-950/20 hover:bg-black transition-all uppercase tracking-widest text-label">
-                        MEUS PEDIDOS
-                      </Link>
+                      <button
+                        onClick={handleWhatsAppNotify}
+                        className="h-14 md:h-16 flex items-center justify-center gap-2 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-2xl font-body font-bold hover:bg-emerald-100 transition-all uppercase tracking-widest text-label"
+                      >
+                        <MessageCircle size={17} />
+                        Falar com a loja
+                      </button>
                       <Link href={`/${slug}`} className="h-14 md:h-16 flex items-center justify-center bg-slate-50 border border-slate-200 text-slate-500 rounded-2xl font-body font-bold hover:bg-slate-100 transition-all uppercase tracking-widest text-label">
                         VOLTAR AO MENU
                       </Link>

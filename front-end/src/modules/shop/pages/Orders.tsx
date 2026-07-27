@@ -24,6 +24,9 @@ import { getTenantSlug } from "../../../shared/utils/tenant";
 import Link from "next/link";
 import { Footer } from "../components/layout/Footer";
 
+const FINAL_ORDER_STATUSES = new Set(["DELIVERED", "RETIRED", "CANCELLED"]);
+const isActiveOrder = (order: any) => !FINAL_ORDER_STATUSES.has(String(order?.status || ""));
+
 export default function CustomerOrdersPage() {
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -45,6 +48,12 @@ export default function CustomerOrdersPage() {
       const query = queryName ? `?customerName=${encodeURIComponent(queryName)}` : "";
       const data = await api.get(`/customer/orders/${encodeURIComponent(phoneToFetch)}${query}`);
       setOrders(data);
+      const requestedOrderId = typeof window !== "undefined"
+        ? Number(new URLSearchParams(window.location.search).get("order"))
+        : 0;
+      const requestedOrder = data.find((order: any) => Number(order.id) === requestedOrderId);
+      const latestActiveOrder = data.find((order: any) => isActiveOrder(order));
+      setExpandedOrderId((current) => current ?? requestedOrder?.id ?? latestActiveOrder?.id ?? null);
     } catch (error) {
       console.error(error);
     } finally {
@@ -104,12 +113,18 @@ export default function CustomerOrdersPage() {
     }
   }, []);
 
-  const getStatusInfo = (status: string) => {
+  const getStatusInfo = (status: string, address?: any) => {
     switch (status) {
-      case 'PENDING': return { label: 'Aguardando Loja', icon: <Clock size={16} />, color: 'text-amber-500', bg: 'bg-amber-50', progress: 20 };
+      case 'PENDING': return { label: 'Aguardando confirmação', icon: <Clock size={16} />, color: 'text-amber-600', bg: 'bg-amber-50', progress: 20 };
       case 'CONFIRMED': return { label: 'Confirmado', icon: <CheckCircle2 size={16} />, color: 'text-emerald-500', bg: 'bg-emerald-50', progress: 40 };
       case 'PREPARING': return { label: 'Em Preparo', icon: <Package size={16} />, color: 'text-blue-500', bg: 'bg-blue-50', progress: 60 };
-      case 'READY': return { label: 'Pronto p/ Retirada', icon: <ShoppingBag size={16} />, color: 'text-orange-500', bg: 'bg-orange-50', progress: 80 };
+      case 'READY': return {
+        label: getOrderType(address) === "PICKUP" ? 'Pronto para retirada' : 'Pronto para entrega',
+        icon: <ShoppingBag size={16} />,
+        color: 'text-orange-500',
+        bg: 'bg-orange-50',
+        progress: 80
+      };
       case 'OUT_FOR_DELIVERY': return { label: 'Em Rota de Entrega', icon: <Bike size={16} className="animate-bounce" />, color: 'text-indigo-500', bg: 'bg-indigo-50', progress: 90 };
       case 'DELIVERED': return { label: 'Entregue', icon: <CheckCircle2 size={16} />, color: 'text-emerald-500', bg: 'bg-emerald-50', progress: 100 };
       case 'RETIRED': return { label: 'Entregue no Balcao', icon: <CheckCircle2 size={16} />, color: 'text-emerald-500', bg: 'bg-emerald-50', progress: 100 };
@@ -225,6 +240,9 @@ export default function CustomerOrdersPage() {
     const quantity = Number(item?.quantity ?? 0);
     return price * quantity;
   };
+  const activeOrders = orders.filter(isActiveOrder);
+  const finishedOrders = orders.filter((order) => !isActiveOrder(order));
+  const displayedOrders = [...activeOrders, ...finishedOrders];
 
   return (
     <div className="min-h-screen bg-slate-100 flex flex-col selection:bg-primary selection:text-white">
@@ -235,8 +253,8 @@ export default function CustomerOrdersPage() {
             <ArrowLeft size={20} className="md:size-6" />
           </Link>
           <div className="text-center min-w-0 flex-1">
-            <h1 className="text-lg md:text-heading-2 font-display text-slate-900 uppercase tracking-tighter leading-none mb-1 truncate">Meu Histórico</h1>
-            <p className="text-[10px] md:text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em] truncate">Experiência Gastronômica</p>
+            <h1 className="text-lg md:text-heading-2 font-display text-slate-900 uppercase tracking-tighter leading-none mb-1 truncate">Acompanhar pedidos</h1>
+            <p className="text-[10px] md:text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em] truncate">Status atualizado em tempo real</p>
           </div>
           <div className="w-11 h-11 md:w-12 md:h-12 rounded-2xl bg-slate-950 flex items-center justify-center text-primary shadow-lg shadow-slate-950/20 shrink-0">
             <History size={18} className="md:size-5" />
@@ -265,12 +283,23 @@ export default function CustomerOrdersPage() {
           <div className="flex items-center justify-center py-28 md:py-40">
             <Loader2 className="animate-spin text-primary md:size-12" size={40} />
           </div>
+        ) : orders.length === 0 ? (
+          <div className="flex flex-col items-center justify-center pt-16 text-center">
+            <div className="mb-5 flex size-20 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-300">
+              <ShoppingBag size={34} />
+            </div>
+            <h2 className="text-xl font-bold uppercase tracking-tight text-slate-900">Nenhum pedido encontrado</h2>
+            <p className="mt-2 max-w-sm text-sm text-slate-500">Quando você fizer um pedido nesta loja, o acompanhamento aparecerá aqui.</p>
+            <Link href={`/${slug}`} className="mt-6 h-12 px-6 bg-slate-950 text-white rounded-xl font-bold flex items-center gap-2 uppercase tracking-wider text-xs">
+              Ver cardápio <ChevronRight size={16} />
+            </Link>
+          </div>
         ) : (
           <div className="space-y-6 md:space-y-10">
             <div className="flex items-center justify-between gap-3">
               <h2 className="text-[10px] md:text-label font-body font-medium text-slate-900 uppercase tracking-[0.06em] flex items-center gap-3 min-w-0">
                 <div className="w-2 h-5 md:h-6 bg-primary rounded-full shrink-0" />
-                <span className="truncate">Últimas Atividades</span>
+                <span className="truncate">{activeOrders.length > 0 ? "Pedidos em andamento" : "Histórico de pedidos"}</span>
               </h2>
               <span className="text-[10px] md:text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em] px-3 md:px-4 py-2 bg-slate-50 rounded-xl border border-slate-100 shrink-0">
                 {orders.length} PEDIDOS
@@ -278,8 +307,8 @@ export default function CustomerOrdersPage() {
             </div>
 
             <div className="grid grid-cols-1 gap-4 md:gap-6">
-              {orders.map((order, idx) => {
-                const status = getStatusInfo(order.status);
+              {displayedOrders.map((order, idx) => {
+                const status = getStatusInfo(order.status, order.address);
                 const timeline = getTimelineLabels(order.address);
                 return (
                   <motion.div
