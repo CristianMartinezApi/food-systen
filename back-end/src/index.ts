@@ -6873,7 +6873,9 @@ const normalizePixKeyForType = (key: string, type: string) => {
   if (type === 'cpf' || type === 'cnpj') return trimmed.replace(/\D/g, '');
   if (type === 'phone') {
     const digits = trimmed.replace(/\D/g, '');
-    return digits.startsWith('55') && digits.length >= 12 ? `+${digits}` : digits;
+    if (/^\d{10,11}$/.test(digits)) return `+55${digits}`;
+    if (/^55\d{10,11}$/.test(digits)) return `+${digits}`;
+    return trimmed;
   }
   return type === 'email' ? trimmed.toLowerCase() : trimmed;
 };
@@ -7055,6 +7057,7 @@ apiRouter.post('/pix/preview', pixLimiter, tenantMiddleware, async (req: TenantR
       select: {
         name: true,
         pixKey: true,
+        pixKeyType: true,
       },
     });
 
@@ -7067,17 +7070,27 @@ apiRouter.post('/pix/preview', pixLimiter, tenantMiddleware, async (req: TenantR
     }
 
     const { PixService } = await import('./services/PixService');
+    const effectivePixKeyType = restaurant?.pixKeyType || inferPixKeyType(effectivePixKey);
+    const normalizedEffectivePixKey = effectivePixKeyType
+      ? normalizePixKeyForType(effectivePixKey, effectivePixKeyType)
+      : effectivePixKey;
+    if (!effectivePixKeyType || !PixService.validatePixKey(normalizedEffectivePixKey, effectivePixKeyType)) {
+      return res.status(400).json({
+        error: 'A chave PIX cadastrada é inválida. Atualize a chave nas configurações da loja.',
+        code: 'INVALID_PIX_KEY',
+      });
+    }
     const previewReference = `${Date.now()}`;
 
     const qrcodeDataUrl = await PixService.generateDynamicPixQRCode({
-      key: effectivePixKey,
+      key: normalizedEffectivePixKey,
       amount: Math.round(total * 100),
       orderId: previewReference,
       recipientName: restaurant?.name || req.restaurant?.name || 'Minha Loja',
     });
 
     const pixCopiaECola = PixService.generatePixCopiaCola(
-      effectivePixKey,
+      normalizedEffectivePixKey,
       Math.round(total * 100),
       previewReference,
       restaurant?.name || req.restaurant?.name || 'Minha Loja'
@@ -7118,6 +7131,7 @@ apiRouter.post('/pix/charge/:orderId', pixLimiter, tenantMiddleware, async (req:
       select: {
         name: true,
         pixKey: true,
+        pixKeyType: true,
       },
     });
 
@@ -7130,15 +7144,25 @@ apiRouter.post('/pix/charge/:orderId', pixLimiter, tenantMiddleware, async (req:
     }
 
     const { PixService } = await import('./services/PixService');
+    const effectivePixKeyType = restaurant?.pixKeyType || inferPixKeyType(effectivePixKey);
+    const normalizedEffectivePixKey = effectivePixKeyType
+      ? normalizePixKeyForType(effectivePixKey, effectivePixKeyType)
+      : effectivePixKey;
+    if (!effectivePixKeyType || !PixService.validatePixKey(normalizedEffectivePixKey, effectivePixKeyType)) {
+      return res.status(400).json({
+        error: 'A chave PIX cadastrada é inválida. Atualize a chave nas configurações da loja.',
+        code: 'INVALID_PIX_KEY',
+      });
+    }
     const qrcodeDataUrl = await PixService.generateDynamicPixQRCode({
-      key: effectivePixKey,
+      key: normalizedEffectivePixKey,
       amount: Math.round(order.total * 100),
       orderId: orderId.toString(),
       recipientName: restaurant?.name || req.restaurant?.name || 'Minha Loja',
     });
 
     const pixCopiaECola = PixService.generatePixCopiaCola(
-      effectivePixKey,
+      normalizedEffectivePixKey,
       Math.round(order.total * 100),
       orderId.toString(),
       restaurant?.name || req.restaurant?.name || 'Minha Loja'

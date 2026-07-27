@@ -138,8 +138,7 @@ export class PixService {
       case 'email':
         return emailRegex.test(key);
       case 'phone':
-        const phoneDigits = key.replace(/[^\d]/g, '');
-        return /^\d{10,11}$/.test(phoneDigits) || /^55\d{10,11}$/.test(phoneDigits);
+        return /^\+55\d{10,11}$/.test(key);
       case 'random':
         return randomRegex.test(key);
       default:

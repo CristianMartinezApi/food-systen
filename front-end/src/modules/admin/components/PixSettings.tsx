@@ -217,7 +217,7 @@ export default function PixSettings() {
                         <p className="text-xs leading-relaxed text-blue-800">
                             {isConfigured
                                 ? "A chave atual continuará funcionando até você confirmar a substituição."
-                                : "Cadastre uma chave válida. O PIX será ativado após o primeiro cadastro."}
+                                : "Cadastre uma chave que já esteja ativa no aplicativo do seu banco. A validação do sistema confirma o formato, mas não consulta o DICT do Banco Central."}
                         </p>
                     </div>
                     <div className="grid gap-4 md:grid-cols-[180px_1fr]">
