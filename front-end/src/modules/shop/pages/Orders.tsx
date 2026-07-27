@@ -17,16 +17,19 @@ import {
   CreditCard,
   Phone,
   History,
-  Home,
   LayoutGrid,
   ReceiptText,
-  RefreshCw
+  Search,
+  ShoppingCart
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { socket } from "../../../core/config/socket";
 import { getTenantSlug } from "../../../shared/utils/tenant";
 import Link from "next/link";
 import { Footer } from "../components/layout/Footer";
+import { CartSidebar } from "../components/cart/CartSidebar";
+import { useCartStore } from "../../../core/stores/useCartStore";
+import { useHasHydrated } from "../../../core/hooks/useHasHydrated";
 
 const FINAL_ORDER_STATUSES = new Set(["DELIVERED", "RETIRED", "CANCELLED"]);
 const isActiveOrder = (order: any) => !FINAL_ORDER_STATUSES.has(String(order?.status || ""));
@@ -38,6 +41,10 @@ export default function CustomerOrdersPage() {
   const [customerName, setCustomerName] = useState("");
   const [slug, setSlug] = useState<string>("");
   const [expandedOrderId, setExpandedOrderId] = useState<number | null>(null);
+  const [isCartOpen, setIsCartOpen] = useState(false);
+  const hasHydrated = useHasHydrated();
+  const { getTotalItems } = useCartStore() as any;
+  const totalItems = hasHydrated ? getTotalItems() : 0;
 
   const normalizePhone = (value?: string) => (value || "").replace(/\D/g, "");
 
@@ -474,28 +481,33 @@ export default function CustomerOrdersPage() {
       >
         <div className="grid grid-cols-4 gap-1">
           <Link href={`/${slug}`} className="flex min-w-0 flex-col items-center justify-center gap-1 px-1 py-2 text-[10px] font-semibold text-slate-500">
-            <span className="grid h-7 w-9 place-items-center rounded-md"><Home size={17} /></span>
-            <span className="w-full truncate text-center">Início</span>
-          </Link>
-          <Link href={`/${slug}#menu-section`} className="flex min-w-0 flex-col items-center justify-center gap-1 px-1 py-2 text-[10px] font-semibold text-slate-500">
             <span className="grid h-7 w-9 place-items-center rounded-md"><LayoutGrid size={17} /></span>
             <span className="w-full truncate text-center">Cardápio</span>
+          </Link>
+          <Link href={`/${slug}?search=1#menu-section`} className="flex min-w-0 flex-col items-center justify-center gap-1 px-1 py-2 text-[10px] font-semibold text-slate-500">
+            <span className="grid h-7 w-9 place-items-center rounded-md"><Search size={17} /></span>
+            <span className="w-full truncate text-center">Buscar</span>
           </Link>
           <div className="flex min-w-0 flex-col items-center justify-center gap-1 px-1 py-2 text-[10px] font-semibold text-slate-950">
             <span className="grid h-7 w-9 place-items-center rounded-md bg-slate-950 text-white"><ReceiptText size={17} /></span>
             <span className="w-full truncate text-center">Pedidos</span>
           </div>
           <button
-            onClick={() => fetchOrders(phone, customerName)}
-            disabled={loading}
-            className="flex min-w-0 flex-col items-center justify-center gap-1 px-1 py-2 text-[10px] font-semibold text-slate-500 disabled:opacity-50"
+            onClick={() => setIsCartOpen(true)}
+            className="relative flex min-w-0 flex-col items-center justify-center gap-1 px-1 py-2 text-[10px] font-semibold text-slate-500"
           >
-            <span className="grid h-7 w-9 place-items-center rounded-md"><RefreshCw size={17} className={loading ? "animate-spin" : ""} /></span>
-            <span className="w-full truncate text-center">Atualizar</span>
+            <span className="grid h-7 w-9 place-items-center rounded-md"><ShoppingCart size={17} /></span>
+            <span className="w-full truncate text-center">Cesta</span>
+            {totalItems > 0 && (
+              <span className="absolute right-[calc(50%-1.6rem)] top-0 flex min-w-4.5 h-4.5 items-center justify-center rounded-full bg-rose-600 px-1 text-[8px] font-black text-white">
+                {totalItems > 99 ? "99+" : totalItems}
+              </span>
+            )}
           </button>
         </div>
       </nav>
 
+      <CartSidebar isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />
       <Footer />
     </div>
   );

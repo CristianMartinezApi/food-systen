@@ -1,11 +1,11 @@
 "use client";
 
-import { ShoppingCart, Menu, Search, MapPin, ChevronRight, Utensils, Home, LayoutGrid, ReceiptText } from "lucide-react";
+import { ShoppingCart, Menu, Search, MapPin, ChevronRight, Utensils, LayoutGrid, ReceiptText, X } from "lucide-react";
 import { useCartStore } from "../../../../core/stores/useCartStore";
 import { useLocationStore } from "../../../../core/stores/useLocationStore";
 import { useHasHydrated } from "../../../../core/hooks/useHasHydrated";
 import { getTenantSlug } from "../../../../shared/utils/tenant";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { CartSidebar } from "../cart/CartSidebar";
 import { AddressModal } from "../modals/AddressModal";
 import { cn } from "../../../../shared/utils";
@@ -30,15 +30,26 @@ export function Header({ onOpenMenu, settings, searchTerm, onSearchChange }: Hea
   const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
   const [slug, setSlug] = useState<string>("");
   const [isScrolled, setIsScrolled] = useState(false);
+  const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
+  const mobileSearchRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const tenantSlug = getTenantSlug();
     setSlug(tenantSlug);
+    if (new URLSearchParams(window.location.search).get("search") === "1") {
+      setIsMobileSearchOpen(true);
+    }
     syncTenantCart();
     const handleScroll = () => setIsScrolled(window.scrollY > 20);
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, [syncTenantCart]);
+
+  useEffect(() => {
+    if (isMobileSearchOpen) {
+      window.setTimeout(() => mobileSearchRef.current?.focus(), 50);
+    }
+  }, [isMobileSearchOpen]);
 
   // Paridade de endereço: Se o usuário não definiu localização, mostra o endereço da loja
   const displayAddress = address
@@ -104,12 +115,12 @@ export function Header({ onOpenMenu, settings, searchTerm, onSearchChange }: Hea
     >
       <div className="grid grid-cols-4 gap-1">
         <Link href={`/${slug}`} className="flex min-w-0 flex-col items-center justify-center gap-1 px-1 py-2 text-[10px] font-semibold text-slate-950">
-          <span className="grid h-7 w-9 place-items-center rounded-md bg-slate-950 text-white"><Home size={17} /></span>
-          <span className="w-full truncate text-center">Início</span>
+          <span className="grid h-7 w-9 place-items-center rounded-md bg-slate-950 text-white"><LayoutGrid size={17} /></span>
+          <span className="w-full truncate text-center">Cardápio</span>
         </Link>
-        <button onClick={onOpenMenu} className="flex min-w-0 flex-col items-center justify-center gap-1 px-1 py-2 text-[10px] font-semibold text-slate-500">
-          <span className="grid h-7 w-9 place-items-center rounded-md"><LayoutGrid size={17} /></span>
-          <span className="w-full truncate text-center">Categorias</span>
+        <button onClick={() => setIsMobileSearchOpen(true)} className="flex min-w-0 flex-col items-center justify-center gap-1 px-1 py-2 text-[10px] font-semibold text-slate-500">
+          <span className="grid h-7 w-9 place-items-center rounded-md"><Search size={17} /></span>
+          <span className="w-full truncate text-center">Buscar</span>
         </button>
         <Link href={`/${slug}/orders`} className="flex min-w-0 flex-col items-center justify-center gap-1 px-1 py-2 text-[10px] font-semibold text-slate-500">
           <span className="grid h-7 w-9 place-items-center rounded-md"><ReceiptText size={17} /></span>
@@ -126,6 +137,51 @@ export function Header({ onOpenMenu, settings, searchTerm, onSearchChange }: Hea
         </button>
       </div>
     </nav>
+  );
+
+  const mobileSearch = (
+    <AnimatePresence>
+      {isMobileSearchOpen && (
+        <>
+          <motion.button
+            type="button"
+            aria-label="Fechar busca"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setIsMobileSearchOpen(false)}
+            className="fixed inset-0 z-80 bg-slate-950/40 md:hidden"
+          />
+          <motion.div
+            initial={{ y: 24, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 24, opacity: 0 }}
+            className="fixed inset-x-0 bottom-16 z-81 border-t border-slate-200 bg-white p-4 shadow-[0_-16px_40px_rgba(15,23,42,0.18)] md:hidden"
+          >
+            <div className="mx-auto flex max-w-xl items-center gap-2">
+              <div className="relative flex-1">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={17} />
+                <input
+                  ref={mobileSearchRef}
+                  value={searchTerm || ""}
+                  onChange={(event) => onSearchChange?.(event.target.value)}
+                  placeholder="Buscar produto no cardápio"
+                  className="h-12 w-full border border-slate-300 bg-slate-50 pl-11 pr-4 text-sm font-semibold text-slate-900 outline-none focus:border-slate-500"
+                />
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsMobileSearchOpen(false)}
+                className="grid size-12 place-items-center border border-slate-300 bg-white text-slate-600"
+                aria-label="Fechar busca"
+              >
+                <X size={18} />
+              </button>
+            </div>
+          </motion.div>
+        </>
+      )}
+    </AnimatePresence>
   );
 
   return (
@@ -216,6 +272,7 @@ export function Header({ onOpenMenu, settings, searchTerm, onSearchChange }: Hea
 
       {hasHydrated ? createPortal(cartButton, document.body) : null}
       {hasHydrated ? createPortal(mobileNavigation, document.body) : null}
+      {hasHydrated ? createPortal(mobileSearch, document.body) : null}
 
       <CartSidebar isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />
       <AddressModal isOpen={isAddressModalOpen} onClose={() => setIsAddressModalOpen(false)} />
