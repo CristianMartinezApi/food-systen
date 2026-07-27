@@ -79,7 +79,7 @@ export function NavSidebar({ isOpen, onClose, categories, settings, activeCatego
             animate={{ x: 0 }}
             exit={{ x: "-100%" }}
             transition={{ type: "spring", damping: 30, stiffness: 300 }}
-            className="fixed left-0 top-0 h-dvh w-full max-w-none sm:max-w-[320px] md:max-w-md bg-slate-800 z-101 shadow-[50px_0_100px_rgba(2,6,23,0.4)] flex flex-col overflow-hidden"
+            className="fixed left-2 top-2 bottom-20 h-auto w-[calc(100%-1rem)] max-w-[360px] rounded-2xl sm:left-0 sm:top-0 sm:bottom-0 sm:h-dvh sm:w-full sm:max-w-[320px] sm:rounded-none md:max-w-md bg-slate-800 z-101 shadow-[50px_0_100px_rgba(2,6,23,0.4)] flex flex-col overflow-hidden"
           >
             <div className="p-5 md:p-10 border-b border-slate-700 space-y-5 md:space-y-6">
               <div className="flex items-start justify-between gap-4">

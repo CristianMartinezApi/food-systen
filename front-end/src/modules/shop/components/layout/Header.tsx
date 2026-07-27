@@ -1,6 +1,6 @@
 "use client";
 
-import { ShoppingCart, Menu, Search, MapPin, ChevronRight, Utensils } from "lucide-react";
+import { ShoppingCart, Menu, Search, MapPin, ChevronRight, Utensils, Home, LayoutGrid, ReceiptText } from "lucide-react";
 import { useCartStore } from "../../../../core/stores/useCartStore";
 import { useLocationStore } from "../../../../core/stores/useLocationStore";
 import { useHasHydrated } from "../../../../core/hooks/useHasHydrated";
@@ -78,7 +78,7 @@ export function Header({ onOpenMenu, settings, searchTerm, onSearchChange }: Hea
     <button
       onClick={() => setIsCartOpen(true)}
       aria-label="Abrir cesto"
-      className="fixed bottom-5 right-4 md:bottom-8 md:right-8 z-70 w-12 h-12 md:w-16 md:h-16 bg-rose-600 text-white rounded-full flex items-center justify-center hover:bg-rose-700 hover:scale-105 active:scale-95 transition-all duration-300 shadow-2xl shadow-rose-900/35 ring-2 ring-white/70"
+      className="fixed bottom-5 right-4 md:bottom-8 md:right-8 z-70 w-12 h-12 md:w-16 md:h-16 bg-rose-600 text-white rounded-full hidden md:flex items-center justify-center hover:bg-rose-700 hover:scale-105 active:scale-95 transition-all duration-300 shadow-2xl shadow-rose-900/35 ring-2 ring-white/70"
     >
       <div className="relative">
         <ShoppingCart size={18} className="md:size-7" />
@@ -95,6 +95,38 @@ export function Header({ onOpenMenu, settings, searchTerm, onSearchChange }: Hea
         )}
       </div>
     </button>
+  );
+
+  const mobileNavigation = (
+    <nav
+      aria-label="Navegação da loja"
+      className="fixed inset-x-2 bottom-2 z-70 md:hidden rounded-2xl border border-slate-200 bg-white/95 px-2 pt-2 shadow-[0_-12px_35px_rgba(15,23,42,0.16)] backdrop-blur-xl"
+      style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 8px)" }}
+    >
+      <div className="grid grid-cols-4 gap-1">
+        <Link href={`/${slug}`} className="flex h-12 flex-col items-center justify-center gap-1 rounded-xl text-slate-700 active:bg-slate-100">
+          <Home size={18} />
+          <span className="text-[9px] font-bold uppercase tracking-wide">Início</span>
+        </Link>
+        <button onClick={onOpenMenu} className="flex h-12 flex-col items-center justify-center gap-1 rounded-xl text-slate-700 active:bg-slate-100">
+          <LayoutGrid size={18} />
+          <span className="text-[9px] font-bold uppercase tracking-wide">Categorias</span>
+        </button>
+        <Link href={`/${slug}/orders`} className="flex h-12 flex-col items-center justify-center gap-1 rounded-xl text-slate-700 active:bg-slate-100">
+          <ReceiptText size={18} />
+          <span className="text-[9px] font-bold uppercase tracking-wide">Pedidos</span>
+        </Link>
+        <button onClick={() => setIsCartOpen(true)} className="relative flex h-12 flex-col items-center justify-center gap-1 rounded-xl bg-slate-950 text-white active:scale-95">
+          <ShoppingCart size={18} />
+          <span className="text-[9px] font-bold uppercase tracking-wide">Cesta</span>
+          {totalItems > 0 && (
+            <span className="absolute right-2 top-1 flex min-w-4.5 h-4.5 items-center justify-center rounded-full bg-rose-500 px-1 text-[8px] font-black text-white">
+              {totalItems > 99 ? "99+" : totalItems}
+            </span>
+          )}
+        </button>
+      </div>
+    </nav>
   );
 
   return (
@@ -184,6 +216,7 @@ export function Header({ onOpenMenu, settings, searchTerm, onSearchChange }: Hea
       </header>
 
       {hasHydrated ? createPortal(cartButton, document.body) : null}
+      {hasHydrated ? createPortal(mobileNavigation, document.body) : null}
 
       <CartSidebar isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />
       <AddressModal isOpen={isAddressModalOpen} onClose={() => setIsAddressModalOpen(false)} />

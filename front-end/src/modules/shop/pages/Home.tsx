@@ -168,7 +168,7 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col selection:bg-primary selection:text-white overflow-x-hidden">
+    <div className="min-h-screen bg-slate-50 flex flex-col selection:bg-primary selection:text-white overflow-x-hidden pb-20 md:pb-0">
       <AnimatePresence>
         {showSplash && (
           <motion.div

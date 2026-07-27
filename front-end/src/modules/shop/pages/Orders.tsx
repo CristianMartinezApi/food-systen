@@ -16,7 +16,11 @@ import {
   MapPin,
   CreditCard,
   Phone,
-  History
+  History,
+  Home,
+  LayoutGrid,
+  ReceiptText,
+  RefreshCw
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { socket } from "../../../core/config/socket";
@@ -262,7 +266,7 @@ export default function CustomerOrdersPage() {
         </div>
       </header>
 
-      <main className="flex-1 container mx-auto px-4 md:px-6 pt-24 md:pt-32 pb-8 md:pb-12 max-w-4xl">
+      <main className="flex-1 container mx-auto px-4 md:px-6 pt-24 md:pt-32 pb-28 md:pb-12 max-w-4xl">
         {!phone ? (
           <div className="flex flex-col items-center justify-center pt-16 md:pt-20 text-center space-y-6 md:space-y-8">
             <div className="relative">
@@ -463,6 +467,35 @@ export default function CustomerOrdersPage() {
           </div>
         )}
       </main>
+
+      <nav
+        aria-label="Navegação da loja"
+        className="fixed inset-x-2 bottom-2 z-70 rounded-2xl border border-slate-200 bg-white/95 px-2 pt-2 shadow-[0_-12px_35px_rgba(15,23,42,0.16)] backdrop-blur-xl md:hidden"
+        style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 8px)" }}
+      >
+        <div className="grid grid-cols-4 gap-1">
+          <Link href={`/${slug}`} className="flex h-12 flex-col items-center justify-center gap-1 rounded-xl text-slate-700">
+            <Home size={18} />
+            <span className="text-[9px] font-bold uppercase tracking-wide">Início</span>
+          </Link>
+          <Link href={`/${slug}#menu-section`} className="flex h-12 flex-col items-center justify-center gap-1 rounded-xl text-slate-700">
+            <LayoutGrid size={18} />
+            <span className="text-[9px] font-bold uppercase tracking-wide">Cardápio</span>
+          </Link>
+          <div className="flex h-12 flex-col items-center justify-center gap-1 rounded-xl bg-slate-950 text-white">
+            <ReceiptText size={18} />
+            <span className="text-[9px] font-bold uppercase tracking-wide">Pedidos</span>
+          </div>
+          <button
+            onClick={() => fetchOrders(phone, customerName)}
+            disabled={loading}
+            className="flex h-12 flex-col items-center justify-center gap-1 rounded-xl text-slate-700 disabled:opacity-50"
+          >
+            <RefreshCw size={18} className={loading ? "animate-spin" : ""} />
+            <span className="text-[9px] font-bold uppercase tracking-wide">Atualizar</span>
+          </button>
+        </div>
+      </nav>
 
       <Footer />
     </div>
