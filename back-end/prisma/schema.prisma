@@ -90,6 +90,7 @@ model User {
   openedCashSessions CashSession[] @relation("CashSessionOpenedBy")
   closedCashSessions CashSession[] @relation("CashSessionClosedBy")
   cashMovements CashMovement[] @relation("CashMovementCreatedBy")
+  voidedCashMovements CashMovement[] @relation("CashMovementVoidedBy")
   passwordChangeAttempts PasswordChangeAttempt[]
   passwordResetTokens PasswordResetToken[]
   requestedPrintJobs PrintJob[] @relation("PrintJobRequestedBy")
@@ -269,6 +270,7 @@ model CashSession {
   differenceAmount Float?
   informedCardAmount Float?            @default(0)
   informedPixAmount  Float?            @default(0)
+  cashCountBreakdown Json?
   status           CashSessionStatus @default(OPEN)
   notes            String?
   openedAt         DateTime          @default(now())
@@ -296,11 +298,16 @@ model CashMovement {
   reason       String?
   notes        String?
   createdAt    DateTime         @default(now())
+  voidedAt     DateTime?
+  voidedById   Int?
+  voidReason   String?
   cashSession  CashSession      @relation(fields: [cashSessionId], references: [id], onDelete: Cascade)
   restaurant   Restaurant       @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
   createdBy    User?            @relation("CashMovementCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  voidedBy     User?            @relation("CashMovementVoidedBy", fields: [voidedById], references: [id], onDelete: SetNull)
 
   @@index([cashSessionId, createdAt])
+  @@index([cashSessionId, voidedAt])
   @@index([restaurantId, type])
   @@map("cash_movements")
 }

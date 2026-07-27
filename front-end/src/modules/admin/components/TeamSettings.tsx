@@ -71,7 +71,7 @@ export default function TeamSettings() {
             resetForm();
             loadTeam();
         } catch (error: any) {
-            toast.error(error.response?.data?.error || "Erro ao adicionar membro.");
+            toast.error(error?.message || "Erro ao adicionar membro.");
         } finally {
             setIsSubmitting(false);
         }
@@ -84,8 +84,8 @@ export default function TeamSettings() {
             });
             toast.success("Status atualizado!");
             loadTeam();
-        } catch (error) {
-            toast.error("Erro ao atualizar status.");
+        } catch (error: any) {
+            toast.error(error?.message || "Erro ao atualizar status.");
         }
     };
 
@@ -95,8 +95,8 @@ export default function TeamSettings() {
             await api.delete(`/team/${id}`);
             toast.success("Membro removido.");
             loadTeam();
-        } catch (error) {
-            toast.error("Erro ao remover membro.");
+        } catch (error: any) {
+            toast.error(error?.message || "Erro ao remover membro.");
         }
     };
 

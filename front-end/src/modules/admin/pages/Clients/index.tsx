@@ -514,7 +514,7 @@ export default function ClientsPage() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="ops-workspace space-y-4">
       {confirmState.open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="w-full max-w-xs rounded-xl border border-slate-200 bg-white p-4 sm:max-w-md sm:p-5">

@@ -151,7 +151,7 @@ export default function ProvisioningPanel() {
   if (loading) return <div className="rounded-xl sm:rounded-[1.75rem] border border-slate-200 bg-white p-4 sm:p-6 shadow-[0_20px_50px_rgba(15,23,42,0.06)]">Carregando...</div>;
 
   return (
-    <div className="space-y-8">
+    <div className="ops-workspace space-y-4">
       {retryModal.open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="w-full max-w-xs sm:max-w-sm md:max-w-lg rounded-2xl sm:rounded-3xl border border-slate-200 bg-white p-4 sm:p-6 shadow-2xl">
@@ -187,7 +187,7 @@ export default function ProvisioningPanel() {
         </div>
       )}
 
-      <div className="system-hero-band relative overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+      <div className="ops-panel relative overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(34,197,94,0.12),transparent_30%),linear-gradient(135deg,rgba(15,23,42,0.02),transparent_45%)]" />
         <div className="relative grid items-center gap-4 p-4 sm:p-5 xl:grid-cols-[1.1fr_0.9fr]">
           <div>

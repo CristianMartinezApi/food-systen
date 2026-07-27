@@ -10,7 +10,9 @@ import {
   ArrowUpRight,
   Target,
   Plus,
-  Settings
+  Settings,
+  AlertTriangle,
+  Wallet
 } from "lucide-react";
 import { formatCurrency, cn } from "../../../shared/utils";
 import { api } from "../../../core/config/api";
@@ -80,6 +82,37 @@ export default function Dashboard() {
     return normalized || "NAO INFORMADO";
   };
 
+  const getOrderStatusBadge = (status?: string) => {
+    const badges: Record<string, { label: string; className: string }> = {
+      PENDING: { label: "Aprovação", className: "bg-amber-50 text-amber-700 border-amber-200" },
+      OPEN: { label: "Mesa aberta", className: "bg-amber-50 text-amber-700 border-amber-200" },
+      CONFIRMED: { label: "Confirmado", className: "bg-sky-50 text-sky-700 border-sky-200" },
+      PAID: { label: "Pago / cozinha", className: "bg-cyan-50 text-cyan-700 border-cyan-200" },
+      PREPARING: { label: "Em produção", className: "bg-blue-50 text-blue-700 border-blue-200" },
+      READY: { label: "Pronto", className: "bg-orange-50 text-orange-700 border-orange-200" },
+      OUT_FOR_DELIVERY: { label: "Em rota", className: "bg-indigo-50 text-indigo-700 border-indigo-200" },
+      DELIVERED: { label: "Finalizado", className: "bg-emerald-50 text-emerald-700 border-emerald-200" },
+      RETIRED: { label: "Finalizado", className: "bg-emerald-50 text-emerald-700 border-emerald-200" },
+      CANCELLED: { label: "Cancelado", className: "bg-slate-100 text-slate-500 border-slate-200" },
+    };
+
+    return badges[String(status || "").toUpperCase()] || {
+      label: status || "Status",
+      className: "bg-slate-100 text-slate-600 border-slate-200",
+    };
+  };
+
+  const comparisonLabel = (current: number, previous: number) => {
+    if (previous <= 0) return current > 0 ? "+100%" : "0%";
+    const variation = Math.round(((current - previous) / previous) * 100);
+    return `${variation > 0 ? "+" : ""}${variation}%`;
+  };
+
+  const countStatuses = (...statuses: string[]) =>
+    (stats?.ordersByStatus || [])
+      .filter((entry: any) => statuses.includes(entry.status))
+      .reduce((total: number, entry: any) => total + Number(entry.count || 0), 0);
+
   if (isLoading) {
     return (
       <div className="h-96 flex items-center justify-center">
@@ -89,8 +122,8 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="space-y-4">
-      <div className="dashboard-hero">
+    <div className="ops-workspace space-y-3">
+      <div>
         <AdminPageHeader
           eyebrow="Operação da loja"
           title="Painel operacional"
@@ -103,20 +136,19 @@ export default function Dashboard() {
         />
       </div>
 
-      <div className="dashboard-link-card relative overflow-hidden rounded-xl border border-slate-800 bg-slate-950 p-4 text-white shadow-sm sm:p-5">
-        <div className="relative z-10 flex flex-col justify-between gap-4 lg:flex-row lg:items-center">
+      <div className="ops-panel p-3">
+        <div className="flex flex-col justify-between gap-3 lg:flex-row lg:items-center">
           <div>
             <div className="mb-2 flex items-center gap-2">
-              <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
-              <span className="text-xs font-medium text-emerald-400">Operação digital ativa</span>
+              <span className="h-2 w-2 rounded-full bg-emerald-500" />
+              <span className="text-xs font-medium text-emerald-700">Vitrine online</span>
             </div>
-            <h2 className="text-base font-semibold">Vitrine pública da loja</h2>
-            <p className="mt-1 text-sm text-slate-400">Copie e compartilhe o endereço com seus clientes.</p>
+            <h2 className="text-sm font-semibold text-slate-950">Endereço público da loja</h2>
           </div>
 
           <div className="flex min-w-0 flex-col items-stretch gap-2 sm:flex-row sm:items-center">
-            <div className="flex min-w-0 items-center rounded-lg border border-white/10 bg-white/5 px-4 py-3">
-              <code className="break-all font-mono text-sm text-slate-200">
+            <div className="flex min-w-0 items-center rounded border border-slate-200 bg-slate-50 px-3 py-2">
+              <code className="break-all font-mono text-xs text-slate-600">
                 {storeUrl.replace('http://', '').replace('https://', '')}
               </code>
             </div>
@@ -126,7 +158,7 @@ export default function Dashboard() {
                 navigator.clipboard.writeText(storeUrl);
                 toast.success("Link copiado para a área de transferência!");
               }}
-              className="flex h-10 items-center justify-center gap-2 rounded-lg bg-white px-4 text-xs font-semibold text-slate-950 transition hover:bg-primary hover:text-white"
+              className="ops-button border border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
             >
               Copiar link
             </button>
@@ -134,33 +166,90 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+      <div className="grid overflow-hidden rounded-md border border-slate-300 bg-white sm:grid-cols-2 xl:grid-cols-4 xl:divide-x xl:divide-slate-200">
         <StatCard
-          title="Faturamento Bruto"
-          value={formatCurrency(stats?.totalSales || 0)}
-          trend="+12%"
+          title="Faturamento de hoje"
+          value={formatCurrency(stats?.today?.sales || 0)}
+          trend={comparisonLabel(stats?.today?.sales || 0, stats?.yesterday?.sales || 0)}
           icon={DollarSign}
-          color="bg-emerald-500"
         />
         <StatCard
-          title="Fluxo de Pedidos"
-          value={stats?.totalOrders || 0}
-          trend="+8 hoje"
+          title="Pedidos de hoje"
+          value={stats?.today?.orders || 0}
+          trend={comparisonLabel(stats?.today?.orders || 0, stats?.yesterday?.orders || 0)}
           icon={ShoppingBag}
-          color="bg-primary"
         />
         <StatCard
-          title="Pedidos em Espera"
-          value={stats?.pendingOrders || 0}
-          trend="ação"
-          icon={Clock}
-          color="bg-orange-500"
+          title="Ticket médio"
+          value={formatCurrency(stats?.today?.averageTicket || 0)}
+          trend={comparisonLabel(stats?.today?.averageTicket || 0, stats?.yesterday?.averageTicket || 0)}
+          icon={Target}
         />
+        <StatCard
+          title="Pedidos ativos"
+          value={stats?.pendingOrders || 0}
+          trend={`${stats?.alerts?.delayedOrders || 0} atrasado${stats?.alerts?.delayedOrders === 1 ? "" : "s"}`}
+          trendTone={(stats?.alerts?.delayedOrders || 0) > 0 ? "danger" : "neutral"}
+          icon={Clock}
+        />
+      </div>
+
+      <div className="grid gap-3 lg:grid-cols-[1fr_20rem]">
+        <section className="ops-panel">
+          <div className="ops-panel-header">
+            <div>
+              <h2 className="text-sm font-semibold text-slate-950">Fluxo de pedidos de hoje</h2>
+              <p className="mt-1 text-xs text-slate-500">Quantidade em cada etapa da operação.</p>
+            </div>
+            <Link href="/admin/orders" className="text-xs font-semibold text-slate-600 hover:text-slate-950">
+              Abrir cozinha
+            </Link>
+          </div>
+          <div className="grid grid-cols-2 divide-x divide-y divide-slate-200 sm:grid-cols-4 sm:divide-y-0">
+            {[
+              ["Aguardando", countStatuses("PENDING", "OPEN", "CONFIRMED")],
+              ["Produção", countStatuses("PAID", "PREPARING")],
+              ["Prontos", countStatuses("READY", "OUT_FOR_DELIVERY")],
+              ["Finalizados", countStatuses("DELIVERED", "RETIRED")],
+            ].map(([label, value]) => (
+              <div key={String(label)} className="p-4">
+                <strong className="block text-2xl font-semibold text-slate-950">{value}</strong>
+                <span className="mt-1 block text-xs font-medium text-slate-500">{label}</span>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className={cn(
+          "ops-panel p-4",
+          stats?.alerts?.cashClosed || stats?.alerts?.delayedOrders > 0 ? "border-amber-300 bg-amber-50" : "bg-white"
+        )}>
+          <div className="flex items-start gap-3">
+            {stats?.alerts?.cashClosed || stats?.alerts?.delayedOrders > 0
+              ? <AlertTriangle size={19} className="mt-0.5 shrink-0 text-amber-700" />
+              : <Wallet size={19} className="mt-0.5 shrink-0 text-emerald-700" />}
+            <div className="min-w-0">
+              <h2 className="text-sm font-semibold text-slate-950">
+                {stats?.cashSession ? "Caixa em operação" : "Caixa fechado"}
+              </h2>
+              <p className="mt-1 text-xs leading-5 text-slate-600">
+                {stats?.cashSession
+                  ? `Aberto por ${stats.cashSession.openedBy?.name || "operador"} às ${new Date(stats.cashSession.openedAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}.`
+                  : "Abra uma sessão antes de iniciar as vendas do turno."}
+              </p>
+              {(stats?.alerts?.delayedOrders || 0) > 0 && (
+                <Link href="/admin/orders" className="mt-2 inline-block text-xs font-bold text-amber-800">
+                  Revisar {stats.alerts.delayedOrders} pedido(s) atrasado(s)
+                </Link>
+              )}
+            </div>
+          </div>
+        </section>
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         {/* Lista de Pedidos Modernizada */}
-        <SystemPanel className="dashboard-panel p-4 sm:p-5 lg:col-span-2">
+        <SystemPanel className="dashboard-panel rounded-md p-4 lg:col-span-2">
           <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h3 className="text-base font-semibold text-slate-950">Pedidos recentes</h3>
@@ -177,16 +266,18 @@ export default function Dashboard() {
                 <p className="text-[12px] sm:text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em]">Nenhum pedido recente registrado.</p>
               </div>
             ) : (
-              stats?.recentOrders?.map((order: any, idx: number) => (
-                <motion.div
+              stats?.recentOrders?.map((order: any, idx: number) => {
+                const statusBadge = getOrderStatusBadge(order.status);
+                return (
+                  <motion.div
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: idx * 0.1 }}
+                  transition={{ duration: 0.1 }}
                   key={order.id}
-                  className="group flex cursor-pointer flex-col gap-3 rounded-lg border border-slate-200 p-4 transition hover:bg-slate-50 sm:flex-row sm:items-center sm:justify-between"
+                  className="group flex cursor-pointer flex-col gap-3 border-b border-slate-200 px-2 py-3 transition last:border-b-0 hover:bg-slate-50 sm:flex-row sm:items-center sm:justify-between"
                 >
                   <div className="flex items-center gap-3 sm:gap-6 min-w-0">
-                    <div className="w-16 h-16 rounded-2xl bg-white border border-slate-100 flex items-center justify-center font-mono font-medium text-slate-300 group-hover:border-primary/20 group-hover:text-primary transition-all shadow-sm">
+                    <div className="flex h-10 w-14 items-center justify-center rounded border border-slate-200 bg-slate-50 font-mono text-xs font-medium text-slate-500">
                       #{order.id.toString().slice(-3)}
                     </div>
                     <div>
@@ -197,11 +288,9 @@ export default function Dashboard() {
                         </span>
                         <span className={cn(
                           "text-[10px] font-body font-bold uppercase tracking-widest px-2.5 py-1 rounded-lg shadow-sm border",
-                          order.status === 'PENDING' ? 'bg-amber-50 text-amber-600 border-amber-100' :
-                            order.status === 'DELIVERED' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-blue-50 text-blue-600 border-blue-100'
+                          statusBadge.className
                         )}>
-                          {order.status === 'PENDING' ? 'Aprovação' :
-                            order.status === 'DELIVERED' ? 'Finalizado' : 'Produção'}
+                          {statusBadge.label}
                         </span>
                       </div>
                     </div>
@@ -210,46 +299,44 @@ export default function Dashboard() {
                     <p className="text-heading-3 font-mono font-medium text-slate-950 tracking-tighter">{formatCurrency(order.total)}</p>
                     <p className="text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em] mt-1">{formatPaymentMethodLabel(order.paymentMethod)}</p>
                   </div>
-                </motion.div>
-              ))
+                  </motion.div>
+                );
+              })
             )}
           </div>
         </SystemPanel>
 
         {/* Coluna da Direita (Metas e Popularidade) */}
         <div className="space-y-4">
-          <div className="dashboard-panel group relative overflow-hidden rounded-xl border border-slate-800 bg-slate-950 p-5 text-white shadow-sm">
-            <div className="pointer-events-none absolute top-0 right-0 p-4 opacity-5 group-hover:scale-110 transition-transform duration-1000">
-              <Target size={160} />
-            </div>
-            <div className="relative z-10 mb-5 flex items-center justify-between">
+          <div className="ops-panel p-4">
+            <div className="mb-4 flex items-center justify-between">
               <div>
-                <h3 className="mb-1 text-base font-semibold">Meta de vendas</h3>
-                <p className="text-xs text-slate-400">Ajuste a meta diária da operação.</p>
+                <h3 className="mb-1 text-base font-semibold text-slate-950">Meta de vendas</h3>
+                <p className="text-xs text-slate-500">Acompanhamento diário.</p>
               </div>
               <button
                 type="button"
                 onClick={() => setIsEditingTarget((prev) => !prev)}
-                className="relative z-20 h-9 cursor-pointer rounded-lg border border-white/20 bg-white/5 px-4 text-xs font-semibold text-white hover:bg-white hover:text-slate-950"
+                className="h-8 cursor-pointer rounded border border-slate-300 bg-white px-3 text-xs font-semibold text-slate-700 hover:bg-slate-50"
               >
                 {isEditingTarget ? "Pronto" : "Editar"}
               </button>
             </div>
 
-            <div className="space-y-8 relative z-10">
+            <div className="space-y-5">
               <div>
                 <div className="flex justify-between items-end mb-4">
-                  <span className="text-4xl font-mono font-medium tracking-tighter">
+                  <span className="font-mono text-3xl font-semibold tracking-tight text-slate-950">
                     {Math.min(Math.round(((stats?.totalSales || 0) / dailySalesTarget) * 100), 100)}%
                   </span>
-                  <span className="text-label font-mono font-medium text-slate-500 uppercase">{formatCurrency(stats?.totalSales || 0)}</span>
+                  <span className="font-mono text-xs font-medium text-slate-500">{formatCurrency(stats?.totalSales || 0)}</span>
                 </div>
-                <div className="h-2.5 w-full bg-white/10 rounded-full overflow-hidden">
+                <div className="h-2 w-full overflow-hidden rounded bg-slate-200">
                   <motion.div
                     initial={{ width: 0 }}
                     animate={{ width: `${Math.min(((stats?.totalSales || 0) / dailySalesTarget) * 100, 100)}%` }}
-                    transition={{ duration: 1, delay: 0.5 }}
-                    className="h-full bg-primary"
+                    transition={{ duration: 0.2 }}
+                    className="h-full bg-slate-800"
                   />
                 </div>
               </div>
@@ -273,21 +360,21 @@ export default function Dashboard() {
                           setDailySalesTarget(num);
                         }
                       }}
-                      className="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-3 text-white placeholder-slate-400 font-mono font-bold text-lg focus:outline-none focus:border-primary/50 transition-all"
+                      className="ops-field font-mono font-semibold"
                       placeholder="5000"
                     />
                     <div className="flex gap-2">
                       <button
                         type="button"
                         onClick={() => setDailySalesTarget(Math.max(100, dailySalesTarget - 100))}
-                        className="flex-1 bg-white/5 border border-white/20 text-white py-2 rounded-lg font-bold text-sm hover:bg-white/10 transition-all active:scale-95"
+                        className="ops-button flex-1 border border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
                       >
                         −100
                       </button>
                       <button
                         type="button"
                         onClick={() => setDailySalesTarget(dailySalesTarget + 100)}
-                        className="flex-1 bg-white/5 border border-white/20 text-white py-2 rounded-lg font-bold text-sm hover:bg-white/10 transition-all active:scale-95"
+                        className="ops-button flex-1 border border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
                       >
                         +100
                       </button>
@@ -299,18 +386,18 @@ export default function Dashboard() {
                         setIsEditingTarget(false);
                         toast.success("Meta salva com sucesso!");
                       }}
-                      className="w-full bg-primary text-white py-2 rounded-lg font-bold uppercase tracking-[0.06em] text-sm hover:bg-primary/80 transition-all"
+                      className="ops-button w-full bg-slate-900 text-white hover:bg-slate-800"
                     >
                       Salvar Meta
                     </button>
                   </div>
                 </div>
               ) : (
-                <p className="text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em] leading-relaxed">
+                <p className="text-xs font-medium leading-relaxed text-slate-500">
                   {((stats?.totalSales || 0) / dailySalesTarget) >= 1 ? (
-                    <>Objetivo <span className="text-emerald-400 font-bold">ALCANÇADO</span>. Continue crescendo!</>
+                    <>Objetivo <span className="font-semibold text-emerald-700">alcançado</span>. Continue crescendo.</>
                   ) : (
-                    <>Você está em <span className="text-white font-bold">{Math.round(((stats?.totalSales || 0) / dailySalesTarget) * 100)}%</span> da meta. Faltam {formatCurrency(Math.max(dailySalesTarget - (stats?.totalSales || 0), 0))}</>
+                    <>Você está em <span className="font-semibold text-slate-950">{Math.round(((stats?.totalSales || 0) / dailySalesTarget) * 100)}%</span> da meta. Faltam {formatCurrency(Math.max(dailySalesTarget - (stats?.totalSales || 0), 0))}</>
                   )}
                 </p>
               )}
@@ -344,6 +431,35 @@ export default function Dashboard() {
               )}
             </div>
           </div>
+
+          <div className="ops-panel p-4">
+            <div className="mb-4">
+              <h3 className="text-base font-semibold text-slate-950">Pagamentos de hoje</h3>
+              <p className="mt-1 text-xs text-slate-500">Participação por forma de recebimento.</p>
+            </div>
+            <div className="space-y-3">
+              {(stats?.payments || []).length === 0 ? (
+                <p className="text-xs text-slate-500">Nenhum pagamento registrado hoje.</p>
+              ) : (
+                stats.payments.map((payment: any) => {
+                  const share = stats?.today?.sales > 0
+                    ? Math.round((Number(payment.total || 0) / Number(stats.today.sales)) * 100)
+                    : 0;
+                  return (
+                    <div key={payment.method}>
+                      <div className="mb-1 flex items-center justify-between gap-3 text-xs">
+                        <span className="font-semibold text-slate-700">{formatPaymentMethodLabel(payment.method)}</span>
+                        <span className="font-mono text-slate-500">{formatCurrency(payment.total)} · {share}%</span>
+                      </div>
+                      <div className="h-1.5 overflow-hidden rounded bg-slate-100">
+                        <div className="h-full bg-slate-700" style={{ width: `${Math.min(share, 100)}%` }} />
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
         </div>
 
         {/* Coluna Lateral - Ações Rápidas */}
@@ -355,11 +471,11 @@ export default function Dashboard() {
               <p className="mt-1 text-sm text-slate-500">Acesse os principais recursos operacionais.</p>
             </div>
             <div className="grid grid-cols-1 gap-3">
-              <QuickActionCard icon={Plus} label="Novo Produto" description="Adicionar item ao catálogo" path="/admin/products" color="bg-gradient-to-br from-emerald-50 to-emerald-100" iconColor="text-emerald-600" />
-              <QuickActionCard icon={ShoppingBag} label="Gerenciar Pedidos" description="Ver e processar pedidos" path="/admin/orders" color="bg-gradient-to-br from-blue-50 to-blue-100" iconColor="text-blue-600" />
-              <QuickActionCard icon={Clock} label="Operação de Caixa" description="Abrir/fechar e movimentar" path="/admin/caixa" color="bg-gradient-to-br from-amber-50 to-amber-100" iconColor="text-amber-600" />
-              <QuickActionCard icon={Settings} label="Configurações" description="Ajustar informações da loja" path="/admin/settings" color="bg-gradient-to-br from-slate-50 to-slate-100" iconColor="text-slate-600" />
-              <QuickActionCard icon={ExternalLink} label="Ver Loja Pública" description="Acessar como cliente" path={`/${slug}`} color="bg-gradient-to-br from-primary/10 to-primary/20" iconColor="text-primary" />
+              <QuickActionCard icon={Plus} label="Novo produto" description="Adicionar item ao catálogo" path="/admin/products" iconColor="text-slate-600" />
+              <QuickActionCard icon={ShoppingBag} label="Gerenciar pedidos" description="Ver e processar pedidos" path="/admin/orders" iconColor="text-slate-600" />
+              <QuickActionCard icon={Clock} label="Operação de caixa" description="Abrir, fechar e movimentar" path="/admin/caixa" iconColor="text-slate-600" />
+              <QuickActionCard icon={Settings} label="Configurações" description="Ajustar informações da loja" path="/admin/settings" iconColor="text-slate-600" />
+              <QuickActionCard icon={ExternalLink} label="Abrir vitrine" description="Visualizar como cliente" path={`/${slug}`} iconColor="text-slate-600" />
             </div>
           </div>
         </div>
@@ -368,44 +484,48 @@ export default function Dashboard() {
   );
 }
 
-function QuickActionCard({ icon: Icon, label, description, path, color, iconColor }: any) {
+function QuickActionCard({ icon: Icon, label, description, path, iconColor }: any) {
   return (
     <Link href={path} className={cn(
-      "group relative overflow-hidden rounded-lg border border-slate-200 p-4 transition hover:border-slate-300 hover:shadow-sm",
-      color
+      "group relative overflow-hidden rounded border border-slate-200 bg-white p-3 transition hover:border-slate-400 hover:bg-slate-50"
     )}>
       <div className="flex items-start gap-4">
-        <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 bg-white/60 group-hover:bg-white transition-all duration-300", iconColor)}>
-          <Icon size={24} />
+        <div className={cn("flex h-9 w-9 flex-shrink-0 items-center justify-center rounded bg-slate-100", iconColor)}>
+          <Icon size={17} />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-black text-slate-950 uppercase tracking-tight leading-tight">{label}</p>
-          <p className="text-[11px] font-medium text-slate-500 uppercase tracking-[0.05em] mt-0.5">{description}</p>
+          <p className="text-sm font-semibold leading-tight text-slate-950">{label}</p>
+          <p className="mt-0.5 text-xs font-medium text-slate-500">{description}</p>
         </div>
         <div className="text-slate-300 group-hover:text-slate-950 group-hover:translate-x-1 transition-all duration-300 flex-shrink-0">
           <ArrowUpRight size={18} />
         </div>
       </div>
-      <div className="pointer-events-none absolute inset-0 rounded-lg bg-white opacity-0 transition-opacity group-hover:opacity-5" />
     </Link>
   );
 }
 
-function StatCard({ title, value, trend, icon: Icon, color }: any) {
+function StatCard({ title, value, trend, trendTone, icon: Icon }: any) {
+  const trendClass = trendTone === "danger"
+    ? "bg-rose-50 text-rose-700"
+    : trendTone === "neutral" || trend === "0%"
+      ? "bg-slate-100 text-slate-600"
+      : String(trend).startsWith("-")
+        ? "bg-rose-50 text-rose-700"
+        : "bg-emerald-50 text-emerald-700";
+
   return (
     <motion.div
-      className="group relative overflow-hidden rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
+      className="relative bg-white p-4"
     >
-      <div className="absolute top-0 right-0 -mr-4 -mt-4 w-24 h-24 bg-slate-50 rounded-full opacity-50 group-hover:scale-125 transition-transform duration-500" />
-
-      <div className="relative z-10">
-        <div className="mb-4 flex items-center justify-between">
-          <div className={cn("flex h-9 w-9 items-center justify-center rounded-lg text-white", color)}>
-            <Icon size={18} />
+      <div>
+        <div className="mb-2 flex items-center justify-between">
+          <div className="flex h-8 w-8 items-center justify-center rounded bg-slate-100 text-slate-600">
+            <Icon size={16} />
           </div>
           <span className={cn(
-            "text-[10px] font-black px-2 py-1 rounded-lg",
-            trend.startsWith('+') ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'
+            "rounded px-2 py-1 text-[10px] font-semibold",
+            trendClass
           )}>
             {trend}
           </span>
@@ -413,6 +533,9 @@ function StatCard({ title, value, trend, icon: Icon, color }: any) {
 
         <p className="mb-1 text-2xl font-semibold tracking-tight text-slate-900">{value}</p>
         <p className="text-xs font-medium text-slate-500">{title}</p>
+        {String(trend).endsWith("%") && (
+          <p className="mt-1 text-[10px] text-slate-400">comparado com ontem</p>
+        )}
       </div>
     </motion.div>
   );

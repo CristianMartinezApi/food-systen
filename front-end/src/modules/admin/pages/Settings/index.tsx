@@ -20,7 +20,12 @@ import {
     DollarSign,
     Map as MapIcon,
     Navigation,
-    ShieldCheck
+    ShieldCheck,
+    Users,
+    CreditCard,
+    Printer,
+    Palette,
+    Settings2
 } from "lucide-react";
 import { useSettings } from "../../../../core/hooks/useSettings";
 import { cn, normalizeMoneyInput, parseMoneyInput, toMoneyInputValue, formatMoneyInputRealtime } from "../../../../shared/utils";
@@ -322,6 +327,12 @@ export default function SettingsPage() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
+        if (!formData.storeName?.trim()) {
+            toast.error("Informe o nome da loja antes de salvar.");
+            document.querySelector("#settings-brand")?.scrollIntoView({ behavior: "smooth" });
+            return;
+        }
+
         if (!hasUnsavedChanges) {
             toast("Não há alterações pendentes para salvar.");
             return;
@@ -352,6 +363,38 @@ export default function SettingsPage() {
 
     const operatingHours = normalizeOperatingHours(formData.operatingHours || createDefaultOperatingHours());
     const isOpenNow = isRestaurantOpenNow(operatingHours);
+    const setupChecks = [
+        {
+            label: "Identidade",
+            href: "#settings-brand",
+            complete: Boolean(formData.storeName?.trim() && formData.phone?.trim() && formData.logo),
+        },
+        {
+            label: "Localização",
+            href: "#settings-location",
+            complete: Boolean(formData.address?.trim() && formData.latitude != null && formData.longitude != null),
+        },
+        {
+            label: "Operação",
+            href: "#settings-delivery",
+            complete: parseMoneyInput(formData.minOrderValue) >= 0 && Number(formData.deliveryEtaMinutes || 0) > 0,
+        },
+        {
+            label: "Horários",
+            href: "#settings-hours",
+            complete: Object.values(operatingHours).some((day) => day.enabled && day.shifts.length > 0),
+        },
+    ];
+    const completedSetupSteps = setupChecks.filter((step) => step.complete).length;
+    const setupProgress = Math.round((completedSetupSteps / setupChecks.length) * 100);
+    const settingsNavigation = [
+        { label: "Marca", href: "#settings-brand", icon: Palette },
+        { label: "Local e entrega", href: "#settings-location", icon: MapPin },
+        { label: "Operação", href: "#settings-hours", icon: Settings2 },
+        { label: "Equipe", href: "#settings-team", icon: Users },
+        { label: "Pagamentos", href: "#settings-payments", icon: CreditCard },
+        { label: "Impressão", href: "#settings-printer", icon: Printer },
+    ];
 
     const syncOperatingHours = (updater: (hours: ReturnType<typeof normalizeOperatingHours>) => ReturnType<typeof normalizeOperatingHours>) => {
         setFormData((prev: any) => {
@@ -412,7 +455,7 @@ export default function SettingsPage() {
     };
 
     return (
-        <div className="settings-workspace pb-28 md:pb-32">
+        <div className="ops-workspace settings-workspace pb-28 md:pb-32">
             <div className="settings-hero mb-4">
                 <AdminPageHeader
                     eyebrow="Administração"
@@ -429,28 +472,70 @@ export default function SettingsPage() {
                 />
             </div>
 
+                <section className="ops-panel mb-4 overflow-hidden">
+                    <div className="grid gap-5 p-4 sm:p-5 lg:grid-cols-[1fr_auto] lg:items-center">
+                        <div>
+                            <div className="flex items-center justify-between gap-4">
+                                <div>
+                                    <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">Montagem da loja</p>
+                                    <h2 className="mt-1 text-lg font-semibold text-slate-950">
+                                        {setupProgress === 100 ? "Base operacional configurada" : `${completedSetupSteps} de ${setupChecks.length} etapas essenciais concluídas`}
+                                    </h2>
+                                </div>
+                                <strong className="font-mono text-2xl text-slate-950">{setupProgress}%</strong>
+                            </div>
+                            <div className="mt-4 h-2 overflow-hidden rounded bg-slate-100">
+                                <div className="h-full bg-emerald-500 transition-all" style={{ width: `${setupProgress}%` }} />
+                            </div>
+                            <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2">
+                                {setupChecks.map((step) => (
+                                    <span key={step.label} className={cn(
+                                        "inline-flex items-center gap-1.5 text-xs font-medium",
+                                        step.complete ? "text-emerald-700" : "text-slate-400"
+                                    )}>
+                                        <CheckCircle2 size={14} /> {step.label}
+                                    </span>
+                                ))}
+                            </div>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => document.querySelector(setupChecks.find((step) => !step.complete)?.href || "#settings-brand")?.scrollIntoView({ behavior: "smooth" })}
+                            className="ops-button border border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
+                        >
+                            Continuar configuração
+                        </button>
+                    </div>
+                    <nav className="flex gap-1 overflow-x-auto border-t border-slate-200 bg-slate-50 p-2 no-scrollbar" aria-label="Seções das configurações">
+                        {settingsNavigation.map((item) => (
+                            <a
+                                key={item.href}
+                                href={item.href}
+                                className="flex h-10 shrink-0 items-center gap-2 rounded border border-transparent px-3 text-xs font-semibold text-slate-600 hover:border-slate-200 hover:bg-white hover:text-slate-950"
+                            >
+                                <item.icon size={15} /> {item.label}
+                            </a>
+                        ))}
+                    </nav>
+                </section>
+
                 <div className="grid grid-cols-1 gap-4 sm:gap-6 2xl:grid-cols-3">
                     {/* Coluna Principal - Informações */}
                     <div className="space-y-4 sm:space-y-6 2xl:col-span-2">
-                        {/* Gestão de Equipe */}
-                        <div className="settings-panel">
-                            <TeamSettings />
-                        </div>
-
-                        <section id="settings-brand" className="settings-panel settings-panel--brand bg-white rounded-2xl sm:rounded-[3rem] border border-slate-50 p-4 sm:p-6 md:p-10 shadow-sm relative overflow-hidden">
+                        <section id="settings-brand" className="settings-panel settings-panel--brand scroll-mt-20 bg-white rounded-2xl sm:rounded-[3rem] border border-slate-50 p-4 sm:p-6 md:p-10 shadow-sm relative overflow-hidden">
                             <div className="flex items-center gap-3 sm:gap-4 mb-6 sm:mb-10">
                                 <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-400">
                                     <Store size={22} />
                                 </div>
                                 <div>
-                                    <h3 className="text-xl sm:text-heading-3 font-display font-bold text-slate-950 uppercase tracking-tight">Identidade Corporativa</h3>
-                                    <p className="text-xs text-slate-500 mt-1">Defina os dados base da loja e como a marca aparece para o cliente.</p>
+                                    <h3 className="text-xl sm:text-heading-3 font-display font-bold text-slate-950 tracking-tight">Identidade da loja</h3>
+                                    <p className="text-xs text-slate-500 mt-1">Nome, contato e marca exibidos para clientes e equipe.</p>
                                 </div>
                             </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 md:gap-10">
                                 <div className="space-y-4 md:col-span-2">
-                                    <label className="text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em]">Emblema da Marca</label>
+                                    <label className="text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em]">Logo da loja</label>
                                     <div className="flex flex-col md:flex-row items-center gap-4 sm:gap-6 md:gap-10">
                                         <div
                                             onClick={() => fileInputRef.current?.click()}
@@ -474,8 +559,8 @@ export default function SettingsPage() {
                                         </div>
 
                                         <div className="flex-1 space-y-4 text-center md:text-left">
-                                            <h4 className="text-body-strong font-body font-bold text-slate-950 uppercase tracking-tight">Gestão de Mídia Reticular</h4>
-                                            <p className="text-label font-body font-medium text-slate-400 uppercase tracking-[0.04em] leading-relaxed max-w-sm">Use arquivos SVG ou PNG de alta fidelidade para garantir a integridade visual da interface.</p>
+                                            <h4 className="text-body-strong font-body font-bold text-slate-950">Imagem principal da marca</h4>
+                                            <p className="max-w-sm text-xs leading-relaxed text-slate-500">Use uma imagem quadrada em PNG, JPG ou WebP. Ela aparecerá na vitrine e no painel.</p>
 
                                             <div className="flex flex-wrap gap-4 justify-center md:justify-start pt-2">
                                                 <button
@@ -509,7 +594,7 @@ export default function SettingsPage() {
                                 </div>
 
                                 <div className="space-y-3">
-                                    <label className="text-[12px] sm:text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em] ml-1">Designação da Loja</label>
+                                    <label className="text-[12px] sm:text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em] ml-1">Nome da loja</label>
                                     <input
                                         value={formData.storeName || ""}
                                         onChange={(e) => setFormData({ ...formData, storeName: e.target.value })}
@@ -518,7 +603,7 @@ export default function SettingsPage() {
                                 </div>
 
                                 <div className="space-y-3">
-                                    <label className="text-[12px] sm:text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em] ml-1">Terminal de Atendimento</label>
+                                    <label className="text-[12px] sm:text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em] ml-1">Telefone de atendimento</label>
                                     <div className="relative">
                                         <Phone className="absolute left-4 sm:left-6 top-1/2 -translate-y-1/2 text-slate-300" size={16} />
                                         <input
@@ -551,7 +636,7 @@ export default function SettingsPage() {
                                 </div>
 
                                 <div className="space-y-4 md:col-span-2 mt-4 pt-10 border-t border-slate-50">
-                                    <label className="text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em] ml-1">Cromatismo Signature (HEX)</label>
+                                    <label className="text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em] ml-1">Cor principal da marca (HEX)</label>
                                     <div className="flex gap-6">
                                         <div className="flex-1 h-16 bg-slate-50 rounded-2xl flex items-center px-6 gap-4">
                                             <div className="w-8 h-8 rounded-xl shadow-lg border-2 border-white" style={{ backgroundColor: formData.primaryColor }} />
@@ -583,7 +668,7 @@ export default function SettingsPage() {
                             </div>
                         </section>
 
-                        <section id="settings-banner" className="settings-panel settings-panel--banner bg-white rounded-2xl sm:rounded-[3rem] border border-slate-50 p-4 sm:p-6 md:p-10 shadow-sm relative overflow-hidden">
+                        <section id="settings-banner" className="settings-panel settings-panel--banner scroll-mt-20 bg-white rounded-2xl sm:rounded-[3rem] border border-slate-50 p-4 sm:p-6 md:p-10 shadow-sm relative overflow-hidden">
                             <div className="flex items-center gap-3 sm:gap-4 mb-6 sm:mb-10">
                                 <div className="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center text-primary">
                                     <ImagePlus size={22} />
@@ -684,7 +769,7 @@ export default function SettingsPage() {
                             </div>
                         </section>
 
-                        <section id="settings-location" className="settings-panel settings-panel--location bg-white rounded-2xl sm:rounded-[2.5rem] border border-slate-100 p-4 sm:p-6 md:p-10 shadow-sm">
+                        <section id="settings-location" className="settings-panel settings-panel--location scroll-mt-20 bg-white rounded-2xl sm:rounded-[2.5rem] border border-slate-100 p-4 sm:p-6 md:p-10 shadow-sm">
                             <div className="flex items-center gap-3 mb-8">
                                 <div className="w-10 h-10 bg-orange-500/10 rounded-xl flex items-center justify-center text-orange-500">
                                     <MapPin size={20} />
@@ -795,7 +880,7 @@ export default function SettingsPage() {
                             </div>
                         </section>
 
-                        <section id="settings-delivery" className="settings-panel settings-panel--delivery bg-white rounded-2xl sm:rounded-[2.5rem] border border-slate-100 p-4 sm:p-6 md:p-10 shadow-sm">
+                        <section id="settings-delivery" className="settings-panel settings-panel--delivery scroll-mt-20 bg-white rounded-2xl sm:rounded-[2.5rem] border border-slate-100 p-4 sm:p-6 md:p-10 shadow-sm">
                             <div className="flex items-center gap-3 mb-8">
                                 <div className="w-10 h-10 bg-emerald-500/10 rounded-xl flex items-center justify-center text-emerald-500">
                                     <Truck size={20} />
@@ -866,7 +951,7 @@ export default function SettingsPage() {
                                 </div>
                             </section>
 
-                            <section id="settings-hours" className="settings-panel settings-panel--hours bg-white rounded-2xl sm:rounded-[2.5rem] border border-slate-100 p-4 sm:p-6 md:p-10 shadow-sm">
+                            <section id="settings-hours" className="settings-panel settings-panel--hours scroll-mt-20 bg-white rounded-2xl sm:rounded-[2.5rem] border border-slate-100 p-4 sm:p-6 md:p-10 shadow-sm">
                                 <div className="flex items-center gap-3 mb-8">
                                     <div className="w-10 h-10 bg-blue-500/10 rounded-xl flex items-center justify-center text-blue-500">
                                         <Clock size={20} />
@@ -1018,6 +1103,10 @@ export default function SettingsPage() {
                                 </div>
                             </div>
                         </section>
+
+                        <div id="settings-team" className="settings-panel scroll-mt-20">
+                            <TeamSettings />
+                        </div>
                     </div>
 
                     {/* Coluna Sidebar */}
@@ -1026,10 +1115,9 @@ export default function SettingsPage() {
                             <div className="w-20 h-20 bg-emerald-50 text-emerald-500 rounded-3xl flex items-center justify-center mx-auto mb-6">
                                 <CheckCircle2 size={40} />
                             </div>
-                            <h4 className="font-black text-slate-900 uppercase tracking-tighter mb-2">Suporte Prioritário</h4>
+                            <h4 className="font-black text-slate-900 uppercase tracking-tighter mb-2">Ajuda na configuração</h4>
                             <p className="text-xs text-slate-400 font-medium leading-relaxed">
-                                Você faz parte do nosso plano Premium.
-                                Precisa de ajuda com as configurações? Fale com o time de suporte e abra um atendimento agora.
+                                Precisa de ajuda para preparar a loja? Fale com o suporte e receba orientação sobre esta etapa.
                             </p>
                             <button
                                 type="button"
@@ -1048,14 +1136,14 @@ export default function SettingsPage() {
                         <ChangePassword />
 
                         {/* Configuração PIX */}
-                        <div id="settings-payments">
+                        <div id="settings-payments" className="scroll-mt-20">
                             <PixSettings />
                         </div>
                     </div>
                 </div>
 
                 {/* Configuração da Impressora 80mm */}
-                <div id="settings-printer" className="mt-4 sm:mt-6 md:mt-10 settings-panel">
+                <div id="settings-printer" className="mt-4 scroll-mt-20 sm:mt-6 md:mt-10 settings-panel">
                     <PrinterSettings />
                 </div>
 

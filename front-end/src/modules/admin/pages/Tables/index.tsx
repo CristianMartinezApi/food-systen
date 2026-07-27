@@ -34,7 +34,7 @@ export default function TablesPage() {
     const occupiedCount = tables.filter(t => t.isOccupied).length;
 
     return (
-        <div className="space-y-6 sm:space-y-8 animate-in fade-in duration-500">
+        <div className="ops-workspace space-y-3">
             <AdminPageHeader
                 eyebrow="Atendimento"
                 title="Gestão de mesas"
@@ -46,7 +46,7 @@ export default function TablesPage() {
                 }
             />
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
                 {tables.map((table) => {
                     const order = table.isOccupied ? table.orders[0] : null;
                     
@@ -58,21 +58,21 @@ export default function TablesPage() {
                                 router.push(`/admin/caixa?table=${table.tableNumber}`);
                             }}
                             className={cn(
-                                "relative group flex h-40 flex-col overflow-hidden rounded-xl border p-4 text-left shadow-sm transition",
+                                "group relative flex h-32 flex-col overflow-hidden rounded-md border p-3 text-left transition-colors",
                                 table.isOccupied 
                                     ? "bg-amber-50 border-amber-200"
-                                    : "bg-white border-slate-200 hover:border-emerald-300 hover:shadow-md"
+                                    : "bg-white border-slate-300 hover:border-emerald-400"
                             )}
                         >
                             <div className="flex justify-between items-start mb-auto">
                                 <span className={cn(
-                                    "text-2xl font-black tracking-tighter",
+                                    "text-xl font-semibold tracking-tight",
                                     table.isOccupied ? "text-amber-900" : "text-slate-900"
                                 )}>
                                     #{String(table.tableNumber).padStart(2, '0')}
                                 </span>
                                 {table.isOccupied && (
-                                    <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                                    <div className="h-2 w-2 rounded-full bg-amber-500" />
                                 )}
                             </div>
 
@@ -102,14 +102,6 @@ export default function TablesPage() {
                                 </div>
                             )}
 
-                            {/* Background Icon */}
-                            <LayoutDashboard 
-                                size={60} 
-                                className={cn(
-                                    "absolute -right-4 -bottom-4 opacity-5 transition-transform duration-500 group-hover:scale-110",
-                                    table.isOccupied ? "text-amber-900" : "text-slate-900"
-                                )} 
-                            />
                         </button>
                     );
                 })}

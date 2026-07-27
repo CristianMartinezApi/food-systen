@@ -16,6 +16,7 @@ import path from 'path';
 import { getNextOpeningLabel, isRestaurantOpenNow, normalizeOperatingHours, validateOperatingHours } from './utils/hours';
 import { validateGuidedSelections } from './utils/guided-assembly';
 import { sendEmail, getCashierReminderEmail, getCashierNeededEmail, getEmailVerificationEmail } from './utils/sendEmail';
+import { calculateExpectedCash, canWithdrawCash } from './utils/cashier';
 
 dotenv.config();
 
@@ -889,13 +890,13 @@ async function buildCashClosingPayload(restaurantId: number, sessionId: number) 
       where: { id: restaurantId },
       select: { id: true, name: true, corporateName: true, cnpj: true, phone: true },
     }),
-    prisma.cashMovement.aggregate({ where: { cashSessionId: session.id, type: 'SUPPLY' }, _sum: { amount: true } }),
-    prisma.cashMovement.aggregate({ where: { cashSessionId: session.id, type: 'WITHDRAWAL' }, _sum: { amount: true } }),
-    prisma.cashMovement.aggregate({ where: { cashSessionId: session.id, type: 'ADJUSTMENT' }, _sum: { amount: true } }),
+    prisma.cashMovement.aggregate({ where: { cashSessionId: session.id, type: 'SUPPLY', voidedAt: null }, _sum: { amount: true } }),
+    prisma.cashMovement.aggregate({ where: { cashSessionId: session.id, type: 'WITHDRAWAL', voidedAt: null }, _sum: { amount: true } }),
+    prisma.cashMovement.aggregate({ where: { cashSessionId: session.id, type: 'ADJUSTMENT', voidedAt: null }, _sum: { amount: true } }),
     prisma.order.aggregate({
       where: {
         restaurantId,
-        createdAt: { gte: session.countFromDate ?? session.openedAt, ...(session.closedAt ? { lte: session.closedAt } : {}) },
+        cashSessionId: session.id,
         status: { in: CASH_COUNTED_ORDER_STATUSES },
       },
       _sum: { total: true },
@@ -903,7 +904,7 @@ async function buildCashClosingPayload(restaurantId: number, sessionId: number) 
     prisma.order.aggregate({
       where: {
         restaurantId,
-        createdAt: { gte: session.countFromDate ?? session.openedAt, ...(session.closedAt ? { lte: session.closedAt } : {}) },
+        cashSessionId: session.id,
         status: { in: CASH_COUNTED_ORDER_STATUSES },
         paymentMethod: 'CASH',
       },
@@ -913,7 +914,7 @@ async function buildCashClosingPayload(restaurantId: number, sessionId: number) 
       by: ['paymentMethod'],
       where: {
         restaurantId,
-        createdAt: { gte: session.countFromDate ?? session.openedAt, ...(session.closedAt ? { lte: session.closedAt } : {}) },
+        cashSessionId: session.id,
         status: { in: CASH_COUNTED_ORDER_STATUSES },
       },
       _sum: { total: true },
@@ -925,7 +926,7 @@ async function buildCashClosingPayload(restaurantId: number, sessionId: number) 
   const adjustments = Number(adjustmentsAgg._sum.amount || 0);
   const sales = Number(salesAgg._sum.total || 0);
   const cashSales = Number(cashSalesAgg._sum.total || 0);
-  const expectedAmount = Number((session.openingAmount + supplies - withdrawals + adjustments + cashSales).toFixed(2));
+  const expectedAmount = calculateExpectedCash({ openingAmount: session.openingAmount, supplies, withdrawals, adjustments, cashSales });
   const closingAmount = Number(session.closingAmount || 0);
   const informedCardAmount = Number(session.informedCardAmount || 0);
   const informedPixAmount = Number(session.informedPixAmount || 0);
@@ -1368,6 +1369,25 @@ app.post('/api/users/me/email-verification/request', authMiddleware, async (req:
   } catch (error) {
     console.error('Erro ao solicitar confirmação de e-mail:', error);
     return res.status(502).json({ error: 'Não foi possível enviar o e-mail de confirmação' });
+  }
+});
+
+app.get('/api/users/me/email-verification', authMiddleware, async (req: AuthRequest, res) => {
+  try {
+    if (!req.userId) return res.status(401).json({ error: 'Não autenticado' });
+
+    const user = await prisma.user.findUnique({
+      where: { id: req.userId },
+      select: { email: true, emailVerifiedAt: true },
+    });
+    if (!user) {
+      return res.status(404).json({ error: 'Usuário não encontrado' });
+    }
+
+    return res.json(user);
+  } catch (error) {
+    console.error('Erro ao consultar confirmação de e-mail:', error);
+    return res.status(500).json({ error: 'Não foi possível consultar a confirmação do e-mail' });
   }
 });
 
@@ -2118,7 +2138,7 @@ app.get('/api/team', authMiddleware, async (req: AuthRequest, res) => {
     const team = await prisma.user.findMany({
       where: { 
         restaurantId: req.restaurantId,
-        role: { in: ['MANAGER', 'EMPLOYEE'] }
+        role: { in: ['MANAGER', 'CASHIER', 'EMPLOYEE'] }
       },
       select: {
         id: true,
@@ -2150,7 +2170,11 @@ app.post('/api/team', authMiddleware, async (req: AuthRequest, res) => {
     return res.status(400).json({ error: 'Todos os campos são obrigatórios' });
   }
 
-  if (!['OWNER', 'MANAGER', 'CASHIER', 'EMPLOYEE'].includes(role)) {
+  const allowedRoles = req.userRole === 'OWNER'
+    ? ['MANAGER', 'CASHIER', 'EMPLOYEE']
+    : ['CASHIER', 'EMPLOYEE'];
+
+  if (!allowedRoles.includes(role)) {
     return res.status(400).json({ error: 'Cargo inválido para membro da equipe' });
   }
 
@@ -2196,6 +2220,13 @@ app.patch('/api/team/:id', authMiddleware, async (req: AuthRequest, res) => {
 
   const memberId = Number(req.params.id);
   const { role, isActive } = req.body;
+  const allowedRoles = req.userRole === 'OWNER'
+    ? ['MANAGER', 'CASHIER', 'EMPLOYEE']
+    : ['CASHIER', 'EMPLOYEE'];
+
+  if (role !== undefined && !allowedRoles.includes(role)) {
+    return res.status(400).json({ error: 'Cargo inválido ou não permitido para o seu perfil' });
+  }
 
   try {
     const member = await prisma.user.findFirst({
@@ -3520,6 +3551,12 @@ app.get('/api/products', async (req: TenantRequest, res) => {
         trackStock: true,
         restaurantId: true,
         categoryId: true,
+        category: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
         createdAt: true,
         updatedAt: true,
         addons: true,
@@ -4291,15 +4328,15 @@ app.get('/api/cashier/session', authMiddleware, async (req: AuthRequest, res) =>
 
     const [suppliesAgg, withdrawalsAgg, adjustmentsAgg, salesAgg, cashSalesAgg, cardSalesAgg, debitSalesAgg, creditSalesAgg, pixSalesAgg, movementsCount, sessionOrders] = await Promise.all([
       prisma.cashMovement.aggregate({
-        where: { cashSessionId: activeSession.id, type: 'SUPPLY' },
+        where: { cashSessionId: activeSession.id, type: 'SUPPLY', voidedAt: null },
         _sum: { amount: true },
       }),
       prisma.cashMovement.aggregate({
-        where: { cashSessionId: activeSession.id, type: 'WITHDRAWAL' },
+        where: { cashSessionId: activeSession.id, type: 'WITHDRAWAL', voidedAt: null },
         _sum: { amount: true },
       }),
       prisma.cashMovement.aggregate({
-        where: { cashSessionId: activeSession.id, type: 'ADJUSTMENT' },
+        where: { cashSessionId: activeSession.id, type: 'ADJUSTMENT', voidedAt: null },
         _sum: { amount: true },
       }),
       prisma.order.aggregate({
@@ -4356,7 +4393,7 @@ app.get('/api/cashier/session', authMiddleware, async (req: AuthRequest, res) =>
         _sum: { total: true },
       }),
       prisma.cashMovement.count({
-        where: { cashSessionId: activeSession.id },
+        where: { cashSessionId: activeSession.id, voidedAt: null },
       }),
       prisma.order.findMany({
         where: {
@@ -4379,7 +4416,7 @@ app.get('/api/cashier/session', authMiddleware, async (req: AuthRequest, res) =>
     const debitSales = Number(debitSalesAgg._sum.total || 0);
     const creditSales = Number(creditSalesAgg._sum.total || 0);
     const pixSales = Number(pixSalesAgg._sum.total || 0);
-    const expectedAmount = Number((activeSession.openingAmount + supplies - withdrawals + adjustments + cashSales).toFixed(2));
+    const expectedAmount = calculateExpectedCash({ openingAmount: activeSession.openingAmount, supplies, withdrawals, adjustments, cashSales });
 
     return res.json({
       session: activeSession,
@@ -4415,7 +4452,7 @@ app.post('/api/cashier/session/open', authMiddleware, async (req: AuthRequest, r
     const notes = req.body?.notes ? String(req.body.notes) : null;
     const confirmOutsideOperatingHours = req.body?.confirmOutsideOperatingHours === true;
 
-    if (Number.isNaN(openingAmount) || openingAmount <= 0) {
+    if (!Number.isFinite(openingAmount) || openingAmount < 0) {
       return res.status(400).json({ error: 'Valor de abertura inválido.' });
     }
 
@@ -4529,12 +4566,16 @@ app.post('/api/cashier/movements', authMiddleware, async (req: AuthRequest, res)
       return res.status(400).json({ error: 'Tipo de movimento inválido.' });
     }
 
-    if (Number.isNaN(amount) || amount <= 0) {
+    if (!Number.isFinite(amount) || amount <= 0) {
       return res.status(400).json({ error: 'Valor do movimento inválido.' });
     }
 
-    if (['WITHDRAWAL', 'ADJUSTMENT'].includes(type) && !reason) {
-      return res.status(400).json({ error: 'Motivo é obrigatório para sangria e ajuste.' });
+    if (!reason) {
+      return res.status(400).json({ error: 'Motivo é obrigatório para movimentos de caixa.' });
+    }
+
+    if (type === 'ADJUSTMENT' && (!req.userRole || !SENSITIVE_SETTINGS_ROLES.has(req.userRole))) {
+      return res.status(403).json({ error: 'Ajustes de caixa exigem perfil de gerente ou administrador.' });
     }
 
     const activeSession = await prisma.cashSession.findFirst({
@@ -4547,6 +4588,48 @@ app.post('/api/cashier/movements', authMiddleware, async (req: AuthRequest, res)
 
     if (!activeSession) {
       return res.status(409).json({ error: 'Nenhuma sessão de caixa aberta.' });
+    }
+
+    if (type === 'WITHDRAWAL') {
+      const [suppliesAgg, withdrawalsAgg, adjustmentsAgg, cashSalesAgg] = await Promise.all([
+        prisma.cashMovement.aggregate({
+          where: { cashSessionId: activeSession.id, type: 'SUPPLY', voidedAt: null },
+          _sum: { amount: true },
+        }),
+        prisma.cashMovement.aggregate({
+          where: { cashSessionId: activeSession.id, type: 'WITHDRAWAL', voidedAt: null },
+          _sum: { amount: true },
+        }),
+        prisma.cashMovement.aggregate({
+          where: { cashSessionId: activeSession.id, type: 'ADJUSTMENT', voidedAt: null },
+          _sum: { amount: true },
+        }),
+        prisma.order.aggregate({
+          where: {
+            restaurantId: req.restaurantId,
+            cashSessionId: activeSession.id,
+            status: { in: CASH_COUNTED_ORDER_STATUSES },
+            paymentMethod: 'CASH',
+          },
+          _sum: { total: true },
+        }),
+      ]);
+      const balance = {
+        openingAmount: activeSession.openingAmount,
+        supplies: Number(suppliesAgg._sum.amount || 0),
+        withdrawals: Number(withdrawalsAgg._sum.amount || 0),
+        adjustments: Number(adjustmentsAgg._sum.amount || 0),
+        cashSales: Number(cashSalesAgg._sum.total || 0),
+      };
+      const availableCash = calculateExpectedCash(balance);
+
+      if (!canWithdrawCash(amount, balance)) {
+        return res.status(409).json({
+          error: `A sangria não pode superar o saldo disponível de ${availableCash.toFixed(2)}.`,
+          code: 'INSUFFICIENT_CASH_BALANCE',
+          availableCash,
+        });
+      }
     }
 
     const movement = await prisma.cashMovement.create({
@@ -4575,6 +4658,100 @@ app.post('/api/cashier/movements', authMiddleware, async (req: AuthRequest, res)
   } catch (error) {
     console.error('Error creating cash movement:', error);
     res.status(500).json({ error: 'Erro ao registrar movimento de caixa.' });
+  }
+});
+
+app.patch('/api/cashier/movements/:id/void', authMiddleware, async (req: AuthRequest, res) => {
+  if (!ensureCashierPermission(req, res, SENSITIVE_SETTINGS_ROLES, 'estornar movimentos de caixa')) {
+    return;
+  }
+
+  try {
+    const movementId = Number(req.params.id);
+    const voidReason = String(req.body?.reason || '').trim();
+    if (!Number.isInteger(movementId) || movementId <= 0) {
+      return res.status(400).json({ error: 'Movimento inválido.' });
+    }
+    if (!voidReason) {
+      return res.status(400).json({ error: 'Informe o motivo do estorno.' });
+    }
+
+    const movement = await prisma.cashMovement.findFirst({
+      where: { id: movementId, restaurantId: req.restaurantId },
+      include: { cashSession: { select: { id: true, status: true, openingAmount: true } } },
+    });
+    if (!movement) {
+      return res.status(404).json({ error: 'Movimento não encontrado.' });
+    }
+    if (movement.voidedAt) {
+      return res.status(409).json({ error: 'Este movimento já foi estornado.' });
+    }
+    if (movement.cashSession.status !== 'OPEN') {
+      return res.status(409).json({ error: 'Não é possível estornar movimento de uma sessão fechada.' });
+    }
+
+    if (movement.type === 'SUPPLY' || movement.type === 'ADJUSTMENT') {
+      const [suppliesAgg, withdrawalsAgg, adjustmentsAgg, cashSalesAgg] = await Promise.all([
+        prisma.cashMovement.aggregate({
+          where: { cashSessionId: movement.cashSessionId, type: 'SUPPLY', voidedAt: null },
+          _sum: { amount: true },
+        }),
+        prisma.cashMovement.aggregate({
+          where: { cashSessionId: movement.cashSessionId, type: 'WITHDRAWAL', voidedAt: null },
+          _sum: { amount: true },
+        }),
+        prisma.cashMovement.aggregate({
+          where: { cashSessionId: movement.cashSessionId, type: 'ADJUSTMENT', voidedAt: null },
+          _sum: { amount: true },
+        }),
+        prisma.order.aggregate({
+          where: {
+            restaurantId: req.restaurantId,
+            cashSessionId: movement.cashSessionId,
+            status: { in: CASH_COUNTED_ORDER_STATUSES },
+            paymentMethod: 'CASH',
+          },
+          _sum: { total: true },
+        }),
+      ]);
+      const projectedBalance = calculateExpectedCash({
+        openingAmount: movement.cashSession.openingAmount,
+        supplies: Number(suppliesAgg._sum.amount || 0) - (movement.type === 'SUPPLY' ? movement.amount : 0),
+        withdrawals: Number(withdrawalsAgg._sum.amount || 0),
+        adjustments: Number(adjustmentsAgg._sum.amount || 0) - (movement.type === 'ADJUSTMENT' ? movement.amount : 0),
+        cashSales: Number(cashSalesAgg._sum.total || 0),
+      });
+      if (projectedBalance < 0) {
+        return res.status(409).json({
+          error: 'O estorno deixaria o saldo do caixa negativo. Revise as sangrias realizadas primeiro.',
+          code: 'NEGATIVE_CASH_BALANCE',
+        });
+      }
+    }
+
+    const voidedMovement = await prisma.cashMovement.update({
+      where: { id: movement.id },
+      data: {
+        voidedAt: new Date(),
+        voidedById: req.userId,
+        voidReason,
+      },
+      include: {
+        createdBy: { select: { id: true, name: true, email: true } },
+        voidedBy: { select: { id: true, name: true, email: true } },
+      },
+    });
+    await createAudit(req, 'void_cash_movement', 'cash_movement', movement.id, {
+      cashSessionId: movement.cashSessionId,
+      type: movement.type,
+      amount: movement.amount,
+      reason: voidReason,
+    });
+
+    return res.json(voidedMovement);
+  } catch (error) {
+    console.error('Error voiding cash movement:', error);
+    return res.status(500).json({ error: 'Erro ao estornar movimento de caixa.' });
   }
 });
 
@@ -4837,9 +5014,39 @@ app.post('/api/cashier/session/close', authMiddleware, async (req: AuthRequest, 
     const informedCardAmount = Number(req.body?.informedCardAmount || 0);
     const informedPixAmount = Number(req.body?.informedPixAmount || 0);
     const notes = req.body?.notes ? String(req.body.notes) : null;
+    const cashCountBreakdownInput = req.body?.cashCountBreakdown;
+    const allowedDenominations = new Set([0.05, 0.1, 0.25, 0.5, 1, 2, 5, 10, 20, 50, 100, 200]);
+    let cashCountBreakdown: Array<{ denomination: number; quantity: number; subtotal: number }> | null = null;
 
     if (Number.isNaN(closingAmount) || closingAmount < 0) {
       return res.status(400).json({ error: 'Valor de fechamento inválido.' });
+    }
+
+    if (cashCountBreakdownInput !== undefined && cashCountBreakdownInput !== null) {
+      if (!Array.isArray(cashCountBreakdownInput)) {
+        return res.status(400).json({ error: 'Contagem de cédulas e moedas inválida.' });
+      }
+
+      cashCountBreakdown = [];
+      for (const entry of cashCountBreakdownInput) {
+        const denomination = Number(entry?.denomination);
+        const quantity = Number(entry?.quantity);
+        if (!allowedDenominations.has(denomination) || !Number.isInteger(quantity) || quantity < 0 || quantity > 100000) {
+          return res.status(400).json({ error: 'A contagem contém uma denominação ou quantidade inválida.' });
+        }
+        if (quantity > 0) {
+          cashCountBreakdown.push({
+            denomination,
+            quantity,
+            subtotal: Number((denomination * quantity).toFixed(2)),
+          });
+        }
+      }
+
+      const countedTotal = Number(cashCountBreakdown.reduce((sum, entry) => sum + entry.subtotal, 0).toFixed(2));
+      if (Math.abs(countedTotal - closingAmount) > 0.009) {
+        return res.status(400).json({ error: 'O total da contagem física não confere com o valor de fechamento.' });
+      }
     }
 
     const activeSession = await prisma.cashSession.findFirst({
@@ -4855,6 +5062,9 @@ app.post('/api/cashier/session/close', authMiddleware, async (req: AuthRequest, 
     }
 
     const forceClose = Boolean(req.body?.forceClose);
+    if (forceClose && (!req.userRole || !SENSITIVE_SETTINGS_ROLES.has(req.userRole))) {
+      return res.status(403).json({ error: 'Fechamento forçado exige perfil de gerente ou administrador.' });
+    }
 
     // Verificar pedidos em andamento vinculados a esta sessão (exceto PENDING = não confirmado ainda)
     const activeOrdersCount = await prisma.order.count({
@@ -4875,21 +5085,21 @@ app.post('/api/cashier/session/close', authMiddleware, async (req: AuthRequest, 
 
     const [suppliesAgg, withdrawalsAgg, adjustmentsAgg, salesAgg, cashSalesAgg, debitSalesAgg, creditSalesAgg, cardSalesAgg, pixSalesAgg, settings] = await Promise.all([
       prisma.cashMovement.aggregate({
-        where: { cashSessionId: activeSession.id, type: 'SUPPLY' },
+        where: { cashSessionId: activeSession.id, type: 'SUPPLY', voidedAt: null },
         _sum: { amount: true },
       }),
       prisma.cashMovement.aggregate({
-        where: { cashSessionId: activeSession.id, type: 'WITHDRAWAL' },
+        where: { cashSessionId: activeSession.id, type: 'WITHDRAWAL', voidedAt: null },
         _sum: { amount: true },
       }),
       prisma.cashMovement.aggregate({
-        where: { cashSessionId: activeSession.id, type: 'ADJUSTMENT' },
+        where: { cashSessionId: activeSession.id, type: 'ADJUSTMENT', voidedAt: null },
         _sum: { amount: true },
       }),
       prisma.order.aggregate({
         where: {
           restaurantId: req.restaurantId,
-          createdAt: { gte: activeSession.countFromDate ?? activeSession.openedAt },
+          cashSessionId: activeSession.id,
           status: { in: CASH_COUNTED_ORDER_STATUSES },
         },
         _sum: { total: true },
@@ -4897,7 +5107,7 @@ app.post('/api/cashier/session/close', authMiddleware, async (req: AuthRequest, 
       prisma.order.aggregate({
         where: {
           restaurantId: req.restaurantId,
-          createdAt: { gte: activeSession.countFromDate ?? activeSession.openedAt },
+          cashSessionId: activeSession.id,
           status: { in: CASH_COUNTED_ORDER_STATUSES },
           paymentMethod: 'CASH',
         },
@@ -4906,7 +5116,7 @@ app.post('/api/cashier/session/close', authMiddleware, async (req: AuthRequest, 
       prisma.order.aggregate({
         where: {
           restaurantId: req.restaurantId,
-          createdAt: { gte: activeSession.countFromDate ?? activeSession.openedAt },
+          cashSessionId: activeSession.id,
           status: { in: CASH_COUNTED_ORDER_STATUSES },
           paymentMethod: 'DEBIT',
         },
@@ -4915,7 +5125,7 @@ app.post('/api/cashier/session/close', authMiddleware, async (req: AuthRequest, 
       prisma.order.aggregate({
         where: {
           restaurantId: req.restaurantId,
-          createdAt: { gte: activeSession.countFromDate ?? activeSession.openedAt },
+          cashSessionId: activeSession.id,
           status: { in: CASH_COUNTED_ORDER_STATUSES },
           paymentMethod: 'CREDIT',
         },
@@ -4924,7 +5134,7 @@ app.post('/api/cashier/session/close', authMiddleware, async (req: AuthRequest, 
       prisma.order.aggregate({
         where: {
           restaurantId: req.restaurantId,
-          createdAt: { gte: activeSession.countFromDate ?? activeSession.openedAt },
+          cashSessionId: activeSession.id,
           status: { in: CASH_COUNTED_ORDER_STATUSES },
           paymentMethod: 'CARD',
         },
@@ -4933,7 +5143,7 @@ app.post('/api/cashier/session/close', authMiddleware, async (req: AuthRequest, 
       prisma.order.aggregate({
         where: {
           restaurantId: req.restaurantId,
-          createdAt: { gte: activeSession.countFromDate ?? activeSession.openedAt },
+          cashSessionId: activeSession.id,
           status: { in: CASH_COUNTED_ORDER_STATUSES },
           paymentMethod: 'PIX',
         },
@@ -4957,7 +5167,7 @@ app.post('/api/cashier/session/close', authMiddleware, async (req: AuthRequest, 
     const differenceNoteThreshold = Number(
       settings?.cashDifferenceNoteThreshold ?? DEFAULT_CASH_DIFFERENCE_NOTE_THRESHOLD
     );
-    const expectedAmount = Number((activeSession.openingAmount + supplies - withdrawals + adjustments + cashSales).toFixed(2));
+    const expectedAmount = calculateExpectedCash({ openingAmount: activeSession.openingAmount, supplies, withdrawals, adjustments, cashSales });
     const differenceAmount = Number((closingAmount - expectedAmount).toFixed(2));
 
     if (Math.abs(differenceAmount) >= differenceNoteThreshold && !notes?.trim()) {
@@ -4977,6 +5187,7 @@ app.post('/api/cashier/session/close', authMiddleware, async (req: AuthRequest, 
         differenceAmount,
         informedCardAmount,
         informedPixAmount,
+        cashCountBreakdown: cashCountBreakdown ?? undefined,
         notes: notes || activeSession.notes,
       },
       include: {
@@ -4991,6 +5202,7 @@ app.post('/api/cashier/session/close', authMiddleware, async (req: AuthRequest, 
       differenceAmount,
       informedCardAmount,
       informedPixAmount,
+      cashCountBreakdown,
       sales,
       cashSales,
       debitSales,
@@ -5665,24 +5877,21 @@ app.get('/api/cashier/sessions/:id/report', authMiddleware, async (req: AuthRequ
         },
       }),
       prisma.cashMovement.aggregate({
-        where: { cashSessionId: session.id, type: 'SUPPLY' },
+        where: { cashSessionId: session.id, type: 'SUPPLY', voidedAt: null },
         _sum: { amount: true },
       }),
       prisma.cashMovement.aggregate({
-        where: { cashSessionId: session.id, type: 'WITHDRAWAL' },
+        where: { cashSessionId: session.id, type: 'WITHDRAWAL', voidedAt: null },
         _sum: { amount: true },
       }),
       prisma.cashMovement.aggregate({
-        where: { cashSessionId: session.id, type: 'ADJUSTMENT' },
+        where: { cashSessionId: session.id, type: 'ADJUSTMENT', voidedAt: null },
         _sum: { amount: true },
       }),
       prisma.order.aggregate({
         where: {
           restaurantId: req.restaurantId,
-          createdAt: {
-            gte: session.countFromDate ?? session.openedAt,
-            ...(session.closedAt ? { lte: session.closedAt } : {}),
-          },
+          cashSessionId: session.id,
           status: { in: CASH_COUNTED_ORDER_STATUSES },
         },
         _sum: { total: true },
@@ -5690,10 +5899,7 @@ app.get('/api/cashier/sessions/:id/report', authMiddleware, async (req: AuthRequ
       prisma.order.aggregate({
         where: {
           restaurantId: req.restaurantId,
-          createdAt: {
-            gte: session.countFromDate ?? session.openedAt,
-            ...(session.closedAt ? { lte: session.closedAt } : {}),
-          },
+          cashSessionId: session.id,
           status: { in: CASH_COUNTED_ORDER_STATUSES },
           paymentMethod: 'CASH',
         },
@@ -5703,10 +5909,7 @@ app.get('/api/cashier/sessions/:id/report', authMiddleware, async (req: AuthRequ
         by: ['paymentMethod'],
         where: {
           restaurantId: req.restaurantId,
-          createdAt: {
-            gte: session.countFromDate ?? session.openedAt,
-            ...(session.closedAt ? { lte: session.closedAt } : {}),
-          },
+          cashSessionId: session.id,
           status: { in: CASH_COUNTED_ORDER_STATUSES },
         },
         _sum: { total: true },
@@ -5718,7 +5921,7 @@ app.get('/api/cashier/sessions/:id/report', authMiddleware, async (req: AuthRequ
     const adjustments = Number(adjustmentsAgg._sum.amount || 0);
     const sales = Number(salesAgg._sum.total || 0);
     const cashSales = Number(cashSalesAgg._sum.total || 0);
-    const expectedAmount = Number((session.openingAmount + supplies - withdrawals + adjustments + cashSales).toFixed(2));
+    const expectedAmount = calculateExpectedCash({ openingAmount: session.openingAmount, supplies, withdrawals, adjustments, cashSales });
     const closingAmount = Number(session.closingAmount || 0);
     const informedCardAmount = Number(session.informedCardAmount || 0);
     const informedPixAmount = Number(session.informedPixAmount || 0);
@@ -5777,6 +5980,122 @@ app.get('/api/cashier/sessions/:id/report', authMiddleware, async (req: AuthRequ
   }
 });
 
+app.get('/api/reports/daily', authMiddleware, async (req: AuthRequest, res) => {
+  if (!req.userRole || !SENSITIVE_SETTINGS_ROLES.has(req.userRole)) {
+    return res.status(403).json({ error: 'Relatórios financeiros exigem perfil de gerente ou administrador.' });
+  }
+
+  const date = String(req.query.date || '').trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    return res.status(400).json({ error: 'Informe uma data válida no formato AAAA-MM-DD.' });
+  }
+
+  const start = new Date(`${date}T00:00:00-03:00`);
+  const end = new Date(`${date}T23:59:59.999-03:00`);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+    return res.status(400).json({ error: 'Data inválida.' });
+  }
+
+  try {
+    const restaurantId = req.restaurantId!;
+    const countedStatuses = CASH_COUNTED_ORDER_STATUSES;
+    const [restaurant, salesByPaymentRaw, orderStatusRaw, validOrders, cancelledOrders, movementsRaw, sessions] = await Promise.all([
+      prisma.restaurant.findUnique({
+        where: { id: restaurantId },
+        select: { id: true, name: true, slug: true },
+      }),
+      prisma.order.groupBy({
+        by: ['paymentMethod'],
+        where: { restaurantId, createdAt: { gte: start, lte: end }, status: { in: countedStatuses } },
+        _sum: { total: true },
+        _count: { _all: true },
+      }),
+      prisma.order.groupBy({
+        by: ['status'],
+        where: { restaurantId, createdAt: { gte: start, lte: end } },
+        _sum: { total: true },
+        _count: { _all: true },
+      }),
+      prisma.order.aggregate({
+        where: { restaurantId, createdAt: { gte: start, lte: end }, status: { in: countedStatuses } },
+        _sum: { total: true },
+        _count: { _all: true },
+      }),
+      prisma.order.aggregate({
+        where: { restaurantId, createdAt: { gte: start, lte: end }, status: 'CANCELLED' },
+        _sum: { total: true },
+        _count: { _all: true },
+      }),
+      prisma.cashMovement.groupBy({
+        by: ['type'],
+        where: { restaurantId, createdAt: { gte: start, lte: end }, voidedAt: null },
+        _sum: { amount: true },
+        _count: { _all: true },
+      }),
+      prisma.cashSession.findMany({
+        where: {
+          restaurantId,
+          OR: [
+            { openedAt: { gte: start, lte: end } },
+            { closedAt: { gte: start, lte: end } },
+          ],
+        },
+        orderBy: { openedAt: 'asc' },
+        include: {
+          openedBy: { select: { id: true, name: true } },
+          closedBy: { select: { id: true, name: true } },
+        },
+      }),
+    ]);
+
+    const salesByPayment = (salesByPaymentRaw || []).map((entry) => ({
+      method: entry.paymentMethod || 'NOT_INFORMED',
+      total: Number(entry._sum.total || 0),
+      orders: entry._count._all,
+    }));
+    const movements = (movementsRaw || []).map((entry) => ({
+      type: entry.type,
+      total: Number(entry._sum.amount || 0),
+      count: entry._count._all,
+    }));
+    const closedSessions = sessions.filter((session) => session.status === 'CLOSED' && session.closedAt && session.closedAt >= start && session.closedAt <= end);
+    const expectedCash = Number(closedSessions.reduce((sum, session) => sum + Number(session.expectedAmount || 0), 0).toFixed(2));
+    const informedCash = Number(closedSessions.reduce((sum, session) => sum + Number(session.closingAmount || 0), 0).toFixed(2));
+    const cashDifference = Number(closedSessions.reduce((sum, session) => sum + Number(session.differenceAmount || 0), 0).toFixed(2));
+    const grossSales = Number(validOrders._sum.total || 0);
+    const orderCount = validOrders._count._all;
+
+    res.json({
+      date,
+      period: { start: start.toISOString(), end: end.toISOString() },
+      restaurant,
+      summary: {
+        grossSales,
+        orderCount,
+        averageTicket: orderCount > 0 ? Number((grossSales / orderCount).toFixed(2)) : 0,
+        cancelledCount: cancelledOrders._count._all,
+        cancelledTotal: Number(cancelledOrders._sum.total || 0),
+        sessionCount: sessions.length,
+        closedSessionCount: closedSessions.length,
+        expectedCash,
+        informedCash,
+        cashDifference,
+      },
+      salesByPayment,
+      ordersByStatus: (orderStatusRaw || []).map((entry) => ({
+        status: entry.status,
+        total: Number(entry._sum.total || 0),
+        count: entry._count._all,
+      })),
+      movements,
+      sessions,
+    });
+  } catch (error) {
+    console.error('Error generating daily report:', error);
+    res.status(500).json({ error: 'Erro ao gerar relatório diário.' });
+  }
+});
+
 app.get('/api/cashier/sessions', authMiddleware, async (req: AuthRequest, res) => {
   if (!ensureCashierPermission(req, res, CASHIER_OPERATION_ROLES, 'consultar histórico do caixa')) {
     return;
@@ -5825,41 +6144,86 @@ app.get('/api/cashier/sessions', authMiddleware, async (req: AuthRequest, res) =
 
 // Stats
 app.get('/api/stats', authMiddleware, async (req: AuthRequest, res) => {
-  const [totalOrders, totalSales, pendingOrders, recentOrders, totalCustomers, topProductsRaw] = await Promise.all([
-    prisma.order.count({ where: { restaurantId: req.restaurantId } }),
+  const restaurantId = req.restaurantId!;
+  const localDate = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Sao_Paulo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date());
+  const todayStart = new Date(`${localDate}T00:00:00-03:00`);
+  const todayEnd = new Date(`${localDate}T23:59:59.999-03:00`);
+  const yesterdayStart = new Date(todayStart.getTime() - 24 * 60 * 60 * 1000);
+  const yesterdayEnd = new Date(todayStart.getTime() - 1);
+  const activeStatuses: OrderStatus[] = ['PENDING', 'OPEN', 'CONFIRMED', 'PAID', 'PREPARING', 'READY', 'OUT_FOR_DELIVERY'];
+  const delayedBefore = new Date(Date.now() - 20 * 60 * 1000);
+
+  const [
+    todayOrders,
+    yesterdayOrders,
+    pendingOrders,
+    delayedOrders,
+    recentOrders,
+    totalCustomers,
+    topProductsRaw,
+    ordersByStatusRaw,
+    paymentsRaw,
+    activeCashSession,
+  ] = await Promise.all([
     prisma.order.aggregate({
-      where: {
-        restaurantId: req.restaurantId,
-        status: 'DELIVERED'
-      },
-      _sum: { total: true }
+      where: { restaurantId, createdAt: { gte: todayStart, lte: todayEnd }, status: { in: CASH_COUNTED_ORDER_STATUSES } },
+      _sum: { total: true },
+      _count: { _all: true },
     }),
+    prisma.order.aggregate({
+      where: { restaurantId, createdAt: { gte: yesterdayStart, lte: yesterdayEnd }, status: { in: CASH_COUNTED_ORDER_STATUSES } },
+      _sum: { total: true },
+      _count: { _all: true },
+    }),
+    prisma.order.count({ where: { restaurantId, status: { in: activeStatuses } } }),
     prisma.order.count({
       where: {
-        restaurantId: req.restaurantId,
-        NOT: { OR: [{ status: 'DELIVERED' }, { status: 'CANCELLED' }] }
-      }
+        restaurantId,
+        status: { in: ['PENDING', 'CONFIRMED', 'PAID', 'PREPARING'] },
+        createdAt: { lt: delayedBefore },
+      },
     }),
     prisma.order.findMany({
-      where: { restaurantId: req.restaurantId },
+      where: { restaurantId },
       take: 5,
       orderBy: { createdAt: 'desc' },
-      include: {
-        items: true
-      }
+      include: { items: true },
     }),
-    prisma.customer.count({ where: { restaurantId: req.restaurantId } }),
+    prisma.customer.count({ where: { restaurantId } }),
     prisma.orderItem.groupBy({
       by: ['productId'],
       _sum: { quantity: true },
       where: {
-        order: { restaurantId: req.restaurantId }
+        order: {
+          restaurantId,
+          createdAt: { gte: todayStart, lte: todayEnd },
+          status: { in: CASH_COUNTED_ORDER_STATUSES },
+        },
       },
-      orderBy: {
-        _sum: { quantity: 'desc' }
-      },
-      take: 3
-    })
+      orderBy: { _sum: { quantity: 'desc' } },
+      take: 3,
+    }),
+    prisma.order.groupBy({
+      by: ['status'],
+      where: { restaurantId, createdAt: { gte: todayStart, lte: todayEnd } },
+      _count: { _all: true },
+    }),
+    prisma.order.groupBy({
+      by: ['paymentMethod'],
+      where: { restaurantId, createdAt: { gte: todayStart, lte: todayEnd }, status: { in: CASH_COUNTED_ORDER_STATUSES } },
+      _sum: { total: true },
+      _count: { _all: true },
+    }),
+    prisma.cashSession.findFirst({
+      where: { restaurantId, status: 'OPEN' },
+      orderBy: { openedAt: 'desc' },
+      include: { openedBy: { select: { id: true, name: true } } },
+    }),
   ]);
 
   // Fetch product names for top products
@@ -5875,13 +6239,49 @@ app.get('/api/stats', authMiddleware, async (req: AuthRequest, res) => {
     })
   );
 
+  const todaySales = Number(todayOrders._sum.total || 0);
+  const yesterdaySales = Number(yesterdayOrders._sum.total || 0);
+  const todayOrderCount = todayOrders._count._all;
+  const yesterdayOrderCount = yesterdayOrders._count._all;
+
   res.json({
-    totalOrders,
-    totalSales: totalSales._sum.total || 0,
+    date: localDate,
+    totalOrders: todayOrderCount,
+    totalSales: todaySales,
     pendingOrders,
     recentOrders,
     totalCustomers,
-    topProducts
+    topProducts,
+    today: {
+      sales: todaySales,
+      orders: todayOrderCount,
+      averageTicket: todayOrderCount > 0 ? Number((todaySales / todayOrderCount).toFixed(2)) : 0,
+    },
+    yesterday: {
+      sales: yesterdaySales,
+      orders: yesterdayOrderCount,
+      averageTicket: yesterdayOrderCount > 0 ? Number((yesterdaySales / yesterdayOrderCount).toFixed(2)) : 0,
+    },
+    ordersByStatus: ordersByStatusRaw.map((entry) => ({
+      status: entry.status,
+      count: entry._count._all,
+    })),
+    payments: paymentsRaw.map((entry) => ({
+      method: entry.paymentMethod || 'NOT_INFORMED',
+      total: Number(entry._sum.total || 0),
+      orders: entry._count._all,
+    })),
+    alerts: {
+      delayedOrders,
+      cashClosed: !activeCashSession,
+    },
+    cashSession: activeCashSession ? {
+      id: activeCashSession.id,
+      status: activeCashSession.status,
+      openedAt: activeCashSession.openedAt,
+      openedBy: activeCashSession.openedBy,
+      openingAmount: activeCashSession.openingAmount,
+    } : null,
   });
 });
 

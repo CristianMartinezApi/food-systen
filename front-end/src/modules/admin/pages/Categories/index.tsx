@@ -13,6 +13,7 @@ import { api } from "../../../../core/config/api";
 import { motion, AnimatePresence } from "framer-motion";
 import { CategoryModal } from "../../components/modals/CategoryModal";
 import { AdminPageHeader, SystemPanel } from "../../components/layout/AdminPageHeader";
+import toast from "react-hot-toast";
 
 export default function CategoriesPage() {
   const [categories, setCategories] = useState<any[]>([]);
@@ -36,17 +37,18 @@ export default function CategoriesPage() {
   }, []);
 
   const handleDelete = async (id: number) => {
-    if (!confirm("Tem certeza? Isso excluirá todos os produtos desta categoria.")) return;
+    if (!confirm("Excluir esta categoria? A exclusão só será permitida se não houver produtos vinculados.")) return;
     try {
       await api.delete(`/categories/${id}`);
       fetchCategories();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Erro ao excluir categoria:", error);
+      toast.error(error?.message || "Não foi possível excluir a categoria.");
     }
   };
 
   return (
-    <div className="space-y-4">
+    <div className="ops-workspace space-y-3">
       <div className="categories-hero">
         <AdminPageHeader
           eyebrow="Cardápio"
@@ -67,7 +69,7 @@ export default function CategoriesPage() {
         />
       </div>
 
-      <SystemPanel className="categories-panel">
+      <SystemPanel className="categories-panel rounded-md">
         {isLoading ? (
           <div className="py-24 flex flex-col items-center gap-6">
                <Loader2 className="animate-spin text-primary" size={40} />
@@ -113,7 +115,7 @@ export default function CategoriesPage() {
                       <td className="px-5 py-4">
                         {cat.isActive !== false ? (
                           <div className="flex items-center gap-2">
-                             <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                             <div className="h-2 w-2 rounded-full bg-emerald-500" />
                              <span className="text-label font-body font-bold text-emerald-600 uppercase tracking-widest">Ativa</span>
                           </div>
                         ) : (
@@ -130,13 +132,13 @@ export default function CategoriesPage() {
                               setSelectedCategory(cat);
                               setIsModalOpen(true);
                             }}
-                            className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-500 transition hover:bg-slate-950 hover:text-white"
+                            className="flex h-8 w-8 items-center justify-center rounded border border-slate-300 text-slate-500 transition-colors hover:bg-slate-900 hover:text-white"
                           >
                              <Edit2 size={16} />
                           </button>
                           <button 
                             onClick={() => handleDelete(cat.id)}
-                            className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-500 transition hover:bg-rose-500 hover:text-white"
+                            className="flex h-8 w-8 items-center justify-center rounded border border-slate-300 text-slate-500 transition-colors hover:bg-rose-600 hover:text-white"
                           >
                              <Trash2 size={16} />
                           </button>

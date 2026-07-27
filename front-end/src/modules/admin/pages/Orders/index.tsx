@@ -23,12 +23,15 @@ import { ConfirmActionModal } from "../../components/modals/ConfirmActionModal";
 const PRINT_MODE_STORAGE_KEY = "@FoodSystem:printMode";
 const DIRECT_PRINT_ACCEPTED_ORDERS_KEY = "@FoodSystem:directPrintAcceptedOrders";
 const ENABLE_PRINT_EVENT_SUMMARY = process.env.NEXT_PUBLIC_ENABLE_PRINT_EVENT_SUMMARY === "true";
+const COMPLETED_PAGE_SIZE = 20;
+const COMPLETED_STATUSES = ["DELIVERED", "RETIRED"];
 
 export default function OrdersPage({ isCompact = false, onOrdersChange }: { isCompact?: boolean; onOrdersChange?: (orders: any[]) => void }) {
 
     const [orders, setOrders] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [statusFilter, setStatusFilter] = useState("ALL");
+    const [completedPage, setCompletedPage] = useState(1);
     const [isMuted, setIsMuted] = useState(false);
     const [isAudioEnabled, setIsAudioEnabled] = useState(false);
     const [isTestingAlert, setIsTestingAlert] = useState(false);
@@ -57,14 +60,19 @@ export default function OrdersPage({ isCompact = false, onOrdersChange }: { isCo
     };
 
     const doesOrderMatchFilter = (order: any) => {
-        if (statusFilter === "ALL") return true;
+        if (statusFilter === "ALL") return ![...COMPLETED_STATUSES, "CANCELLED"].includes(order.status);
         if (statusFilter === "PENDING") return ["PENDING", "CONFIRMED", "OPEN"].includes(order.status);
         if (statusFilter === "PREPARING") return ["PREPARING", "READY", "OUT_FOR_DELIVERY"].includes(order.status);
-        if (statusFilter === "DELIVERED") return ["DELIVERED", "RETIRED", "PAID"].includes(order.status);
+        if (statusFilter === "DELIVERED") return COMPLETED_STATUSES.includes(order.status);
         return order.status === statusFilter;
     };
 
     const filteredOrders = orders.filter((o) => doesOrderMatchFilter(o));
+    const completedPageCount = Math.max(1, Math.ceil(filteredOrders.length / COMPLETED_PAGE_SIZE));
+    const visibleCompletedOrders = filteredOrders.slice(
+        (completedPage - 1) * COMPLETED_PAGE_SIZE,
+        completedPage * COMPLETED_PAGE_SIZE
+    );
 
     const getStatusBadge = (order: any) => {
         if (order.status === "PENDING") return { label: "Novo", className: "bg-rose-50 text-rose-600 border-rose-100 shadow-[0_0_8px_rgba(225,29,72,0.15)] animate-pulse" };
@@ -816,7 +824,7 @@ export default function OrdersPage({ isCompact = false, onOrdersChange }: { isCo
     }, []);
 
     return (
-        <div className={cn("space-y-4", !isCompact && "min-h-screen max-w-full")}>
+        <div className={cn("space-y-3", !isCompact && "ops-workspace max-w-full")}>
             {!isCompact && (
                 <AdminPageHeader
                     eyebrow="Operação"
@@ -829,7 +837,7 @@ export default function OrdersPage({ isCompact = false, onOrdersChange }: { isCo
                     <span className="sr-only">Filtros de pedidos</span>
                 )}
 
-                <div className={cn("flex flex-wrap items-center gap-2", !isCompact && "orders-filters w-full bg-white p-2 rounded-xl border border-slate-200 shadow-sm")}>
+                <div className={cn("flex flex-wrap items-center gap-2", !isCompact && "ops-panel orders-filters w-full p-2")}>
                     <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1">
                         {[
                             { id: "ALL", label: "Tudo" },
@@ -839,9 +847,12 @@ export default function OrdersPage({ isCompact = false, onOrdersChange }: { isCo
                         ].map((f) => (
                             <button
                                 key={f.id}
-                                onClick={() => setStatusFilter(f.id)}
+                                onClick={() => {
+                                    setStatusFilter(f.id);
+                                    setCompletedPage(1);
+                                }}
                                 className={cn(
-                                    "h-9 px-4 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shrink-0 border",
+                                    "h-9 shrink-0 rounded border px-4 text-xs font-semibold transition-colors",
                                     statusFilter === f.id
                                         ? "bg-slate-950 text-white border-slate-900 shadow-lg shadow-slate-950/20"
                                         : "bg-white text-slate-400 border-slate-100 hover:text-slate-600 hover:bg-slate-50"
@@ -849,18 +860,18 @@ export default function OrdersPage({ isCompact = false, onOrdersChange }: { isCo
                             >
                                 {f.label}
                                 {orders.filter(o => {
-                                    if (f.id === "ALL") return true;
+                                    if (f.id === "ALL") return ![...COMPLETED_STATUSES, "CANCELLED"].includes(o.status);
                                     if (f.id === "PENDING") return ["PENDING", "CONFIRMED", "OPEN"].includes(o.status);
                                     if (f.id === "PREPARING") return ["PREPARING", "READY", "OUT_FOR_DELIVERY"].includes(o.status);
-                                    if (f.id === "DELIVERED") return ["DELIVERED", "RETIRED", "PAID"].includes(o.status);
+                                    if (f.id === "DELIVERED") return COMPLETED_STATUSES.includes(o.status);
                                     return false;
                                 }).length > 0 && (
                                     <span className="ml-1.5 opacity-60">
                                         ({orders.filter(o => {
-                                            if (f.id === "ALL") return true;
+                                            if (f.id === "ALL") return ![...COMPLETED_STATUSES, "CANCELLED"].includes(o.status);
                                             if (f.id === "PENDING") return ["PENDING", "CONFIRMED", "OPEN"].includes(o.status);
                                             if (f.id === "PREPARING") return ["PREPARING", "READY", "OUT_FOR_DELIVERY"].includes(o.status);
-                                            if (f.id === "DELIVERED") return ["DELIVERED", "RETIRED", "PAID"].includes(o.status);
+                                            if (f.id === "DELIVERED") return COMPLETED_STATUSES.includes(o.status);
                                             return false;
                                         }).length})
                                     </span>
@@ -873,7 +884,7 @@ export default function OrdersPage({ isCompact = false, onOrdersChange }: { isCo
                         <button
                             onClick={() => setIsMuted(!isMuted)}
                             className={cn(
-                                "w-9 h-9 flex items-center justify-center rounded-xl border transition-all",
+                                "flex h-9 w-9 items-center justify-center rounded border transition-colors",
                                 isMuted ? "bg-rose-50 border-rose-100 text-rose-500" : "bg-slate-50 border-slate-100 text-slate-400 hover:text-slate-600"
                             )}
                             title={isMuted ? "Ativar som" : "Mutar som"}
@@ -885,7 +896,7 @@ export default function OrdersPage({ isCompact = false, onOrdersChange }: { isCo
                                 onClick={handleTestAlert}
                                 disabled={isMuted || isTestingAlert}
                                 className={cn(
-                                    "h-9 px-4 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border",
+                                    "h-9 rounded border px-4 text-xs font-semibold transition-colors",
                                     isMuted ? "bg-slate-100 border-slate-200 text-slate-300 cursor-not-allowed" : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
                                 )}
                             >
@@ -901,6 +912,99 @@ export default function OrdersPage({ isCompact = false, onOrdersChange }: { isCo
                     <Loader2 className="animate-spin text-slate-200" size={32} />
                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Sincronizando fluxo...</p>
                 </div>
+            ) : statusFilter === "DELIVERED" ? (
+                <section className="ops-panel">
+                    <div className="ops-panel-header">
+                        <div>
+                            <h2 className="text-sm font-semibold text-slate-950">Histórico de pedidos finalizados</h2>
+                            <p className="text-xs text-slate-500">{filteredOrders.length} pedido(s) concluído(s) no período carregado</p>
+                        </div>
+                        <span className="text-xs font-medium text-slate-500">
+                            Página {completedPage} de {completedPageCount}
+                        </span>
+                    </div>
+
+                    {visibleCompletedOrders.length === 0 ? (
+                        <div className="p-10 text-center text-sm text-slate-500">Nenhum pedido finalizado no período.</div>
+                    ) : (
+                        <div className="overflow-x-auto">
+                            <table className="w-full min-w-[760px] text-left">
+                                <thead className="border-b border-slate-200 bg-slate-50 text-xs font-semibold text-slate-500">
+                                    <tr>
+                                        <th className="px-4 py-2.5">Pedido</th>
+                                        <th className="px-4 py-2.5">Cliente</th>
+                                        <th className="px-4 py-2.5">Conclusão</th>
+                                        <th className="px-4 py-2.5">Pagamento</th>
+                                        <th className="px-4 py-2.5">Status</th>
+                                        <th className="px-4 py-2.5 text-right">Total</th>
+                                        <th className="w-16 px-4 py-2.5 text-right">Ação</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-200">
+                                    {visibleCompletedOrders.map((order) => {
+                                        const statusBadge = getStatusBadge(order);
+                                        return (
+                                            <tr key={order.id} className="text-sm hover:bg-slate-50">
+                                                <td className="px-4 py-3 font-mono font-semibold text-slate-700">#{order.id}</td>
+                                                <td className="max-w-64 truncate px-4 py-3 font-medium text-slate-900">
+                                                    {order.customer?.name || order.customerName || "Cliente ocasional"}
+                                                </td>
+                                                <td className="px-4 py-3 text-xs text-slate-500">
+                                                    {new Date(order.updatedAt || order.createdAt).toLocaleString("pt-BR")}
+                                                </td>
+                                                <td className="px-4 py-3 text-xs text-slate-600">
+                                                    {formatPaymentMethodLabel(order.paymentMethod, order.changeFor)}
+                                                </td>
+                                                <td className="px-4 py-3">
+                                                    <span className={cn("rounded border px-2 py-1 text-[10px] font-semibold", statusBadge.className)}>
+                                                        {statusBadge.label}
+                                                    </span>
+                                                </td>
+                                                <td className="px-4 py-3 text-right font-semibold tabular-nums text-slate-950">
+                                                    {formatCurrency(order.total)}
+                                                </td>
+                                                <td className="px-4 py-3 text-right">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => requestPrintOrder(order)}
+                                                        className="inline-flex h-8 w-8 items-center justify-center rounded border border-slate-300 text-slate-500 hover:bg-slate-100"
+                                                        title="Imprimir pedido"
+                                                    >
+                                                        <Printer size={14} />
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+
+                    <div className="flex items-center justify-between border-t border-slate-200 px-4 py-3">
+                        <span className="text-xs text-slate-500">
+                            Exibindo {visibleCompletedOrders.length} de {filteredOrders.length}
+                        </span>
+                        <div className="flex gap-2">
+                            <button
+                                type="button"
+                                disabled={completedPage <= 1}
+                                onClick={() => setCompletedPage((page) => Math.max(1, page - 1))}
+                                className="ops-button border border-slate-300 bg-white text-slate-700 disabled:opacity-40"
+                            >
+                                Anterior
+                            </button>
+                            <button
+                                type="button"
+                                disabled={completedPage >= completedPageCount}
+                                onClick={() => setCompletedPage((page) => Math.min(completedPageCount, page + 1))}
+                                className="ops-button border border-slate-300 bg-white text-slate-700 disabled:opacity-40"
+                            >
+                                Próxima
+                            </button>
+                        </div>
+                    </div>
+                </section>
             ) : (
                 <div className={cn(
                     "grid gap-4",
@@ -913,7 +1017,7 @@ export default function OrdersPage({ isCompact = false, onOrdersChange }: { isCo
                                 initial={{ opacity: 0 }}
                                 animate={{ opacity: 1 }}
                                 exit={{ opacity: 0 }}
-                                className="col-span-full py-20 flex flex-col items-center justify-center border border-dashed border-slate-200 rounded-3xl text-center bg-slate-50/30"
+                                className="col-span-full flex flex-col items-center justify-center rounded-md border border-dashed border-slate-300 bg-white py-16 text-center"
                             >
                                 <PackageCheck size={48} className="text-slate-200 mb-4" />
                                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Nenhum pedido no fluxo atual</p>
@@ -936,7 +1040,7 @@ export default function OrdersPage({ isCompact = false, onOrdersChange }: { isCo
                                     transition={{ delay: idx * 0.02 }}
                                     key={order.id}
                                     className={cn(
-                                        "group bg-white rounded-2xl border transition-all duration-300 overflow-hidden flex flex-col",
+                                        "group flex flex-col overflow-hidden rounded-md border bg-white transition-colors",
                                         order.status === "PENDING" ? "border-rose-100 shadow-sm shadow-rose-500/5 ring-1 ring-rose-50" : "border-slate-100 hover:border-slate-300",
                                         isCritical && "bg-rose-50/30",
                                         isCompact ? "aspect-auto" : "min-h-[320px]"

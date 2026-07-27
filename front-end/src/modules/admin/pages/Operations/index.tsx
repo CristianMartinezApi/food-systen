@@ -63,8 +63,8 @@ export default function OperationsPage() {
   const isOpen = sessionSummary?.status === "OPEN";
 
   return (
-    <div className="min-h-screen bg-slate-100/60 p-3 sm:p-4">
-      <div className="space-y-4 max-w-[1600px] mx-auto">
+    <div className="ops-workspace">
+      <div className="mx-auto max-w-[1600px] space-y-3">
         <OperationHeader
         isOpen={isOpen}
         sessionSummary={sessionSummary}
@@ -77,7 +77,7 @@ export default function OperationsPage() {
 
       {/* ── BANNER: CAIXA FECHADO ── */}
       {!sessionLoading && !isOpen && (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 flex items-center justify-between gap-4">
+        <div className="flex items-center justify-between gap-4 rounded-md border border-amber-300 bg-amber-50 px-4 py-3">
           <div className="flex items-start gap-3">
             <AlertTriangle size={18} className="text-amber-600 shrink-0 mt-0.5" />
             <div>
@@ -109,7 +109,7 @@ export default function OperationsPage() {
               </h2>
             </div>
           </div>
-          <section className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+          <section className="ops-panel">
             <div className="p-3 min-h-[700px]">
               <OrdersPage
                 key={`orders-${refreshKey}`}
@@ -132,7 +132,7 @@ export default function OperationsPage() {
               </h2>
             </div>
           </div>
-          <section className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+          <section className="ops-panel">
             <div className="p-3 max-h-[calc(100vh-140px)] overflow-y-auto custom-scrollbar">
               <CashierPage
                 key={`cashier-${refreshKey}`}
@@ -160,7 +160,7 @@ export default function OperationsPage() {
 
       {/* ── LAYOUT MOBILE/TABLET: ABAS ── */}
       <div className="lg:hidden space-y-3">
-        <div className="grid grid-cols-2 gap-1 rounded-xl border border-slate-200 bg-white p-1 shadow-sm">
+        <div className="grid grid-cols-2 gap-1 rounded-md border border-slate-300 bg-white p-1">
           <button
             type="button"
             onClick={() => setMobileTab("ORDERS")}
@@ -186,12 +186,12 @@ export default function OperationsPage() {
         </div>
 
         {mobileTab === "ORDERS" && (
-          <section className="rounded-xl border border-slate-200 bg-white shadow-sm p-2">
+          <section className="ops-panel p-2">
             <OrdersPage key={`orders-mobile-${refreshKey}`} />
           </section>
         )}
         {mobileTab === "CASHIER" && (
-          <section className="rounded-xl border border-slate-200 bg-white shadow-sm p-2">
+          <section className="ops-panel p-2">
             <CashierPage key={`cashier-mobile-${refreshKey}`} />
           </section>
         )}

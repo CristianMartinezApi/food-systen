@@ -23,11 +23,11 @@ export function OperationHeader({
   activeOrderCount
 }: OperationHeaderProps) {
   return (
-    <header className="sticky top-0 z-30 rounded-xl border border-slate-200 bg-white/95 px-4 py-3 shadow-sm backdrop-blur-md lg:px-5">
+    <header className="ops-panel sticky top-0 z-30 px-4 py-3">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-4 min-w-0">
           <div className="flex items-center gap-3">
-            <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${isOpen ? "bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.4)]" : "bg-slate-300"}`} />
+            <div className={`h-2.5 w-2.5 shrink-0 rounded-full ${isOpen ? "bg-emerald-500" : "bg-slate-300"}`} />
             <div className="hidden sm:block">
               <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400 leading-none">Operação do dia</p>
               <p className="mt-1 text-sm font-semibold text-slate-950">

@@ -35,7 +35,7 @@ export default function PlansPage() {
   const [formData, setFormData] = useState({
     name: "Start",
     tier: "BASIC",
-    price: "89,00",
+    price: "99,00",
     maxProducts: 120,
     maxOrders: 900
   });
@@ -66,7 +66,7 @@ export default function PlansPage() {
       });
       toast.success("Plano criado com sucesso");
       setIsCreating(false);
-      setFormData({ name: "Start", tier: "BASIC", price: "89,00", maxProducts: 120, maxOrders: 900 });
+      setFormData({ name: "Start", tier: "BASIC", price: "99,00", maxProducts: 120, maxOrders: 900 });
       loadPlans();
     } catch (error: any) {
       toast.error(error.message || "Erro ao criar plano");
@@ -124,7 +124,7 @@ export default function PlansPage() {
   }
 
   return (
-    <div className="mx-auto max-w-7xl space-y-4">
+    <div className="ops-workspace mx-auto max-w-7xl space-y-3">
       <AdminPageHeader
         eyebrow="Super Admin"
         title="Gestão de planos"

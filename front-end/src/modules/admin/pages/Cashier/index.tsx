@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, useRef } from "react";
-import { Wallet, Receipt, ArrowDownCircle, ArrowUpCircle, ShieldCheck, Loader2, Archive, PlusCircle, MinusCircle, Scale, Printer, ShoppingCart, X, CreditCard, CheckCircle2, AlertTriangle } from "lucide-react";
+import { Wallet, Receipt, ArrowDownCircle, ArrowUpCircle, ShieldCheck, Loader2, Archive, PlusCircle, MinusCircle, Scale, Printer, ShoppingCart, X, CreditCard, CheckCircle2, AlertTriangle, Banknote, Coins } from "lucide-react";
 import { api } from "../../../../core/config/api";
 import { formatCurrency, normalizeMoneyInput, parseMoneyInput, formatMoneyInputRealtime, cn } from "../../../../shared/utils";
 import toast from "react-hot-toast";
@@ -14,6 +14,7 @@ const PRINT_MODE_STORAGE_KEY = "@FoodSystem:printMode";
 const DEFAULT_CASH_DIFFERENCE_NOTE_THRESHOLD = 5;
 const HOMOLOGATION_STORAGE_KEY = "@FoodSystem:cashierHomologationChecklist";
 const ENABLE_PRINT_EVENT_SUMMARY = process.env.NEXT_PUBLIC_ENABLE_PRINT_EVENT_SUMMARY === "true";
+const CASH_DENOMINATIONS = [200, 100, 50, 20, 10, 5, 2, 1, 0.5, 0.25, 0.1, 0.05];
 
 const paymentLabels: Record<string, string> = {
     PIX: "PIX",
@@ -36,6 +37,7 @@ type CashSession = {
     expectedAmount?: number | null;
     differenceAmount?: number | null;
     notes?: string | null;
+    cashCountBreakdown?: Array<{ denomination: number; quantity: number; subtotal: number }> | null;
 };
 
 type CashOperator = {
@@ -51,6 +53,9 @@ type CashMovement = {
     amount: number;
     reason?: string | null;
     createdAt: string;
+    voidedAt?: string | null;
+    voidReason?: string | null;
+    voidedBy?: { id: number; name: string; email: string } | null;
 };
 
 type SessionOrder = {
@@ -118,6 +123,14 @@ export default function CashierPage({
 
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
+    const [currentUserRole] = useState(() => {
+        if (typeof window === "undefined") return "";
+        try {
+            return JSON.parse(localStorage.getItem("@FoodSystem:user") || "{}")?.role || "";
+        } catch {
+            return "";
+        }
+    });
     const rootRef = useRef<HTMLDivElement>(null);
     const [session, setSession] = useState<CashSession | null>(null);
     const [movements, setMovements] = useState<CashMovement[]>([]);
@@ -165,9 +178,13 @@ export default function CashierPage({
     const [informedCardAmount, setInformedCardAmount] = useState("");
     const [informedPixAmount, setInformedPixAmount] = useState("");
     const [closingNotes, setClosingNotes] = useState("");
+    const [cashCountEnabled, setCashCountEnabled] = useState(false);
+    const [cashCountQuantities, setCashCountQuantities] = useState<Record<string, number>>({});
     const [movementType, setMovementType] = useState<"SUPPLY" | "WITHDRAWAL" | "ADJUSTMENT">("SUPPLY");
     const [movementAmount, setMovementAmount] = useState("");
     const [movementReason, setMovementReason] = useState("");
+    const [voidMovementTarget, setVoidMovementTarget] = useState<CashMovement | null>(null);
+    const [voidMovementReason, setVoidMovementReason] = useState("");
     const [directSalePaymentMethod, setDirectSalePaymentMethod] = useState<DirectSalePaymentMethod>("CASH");
     const [checkoutPaymentMethod, setCheckoutPaymentMethod] = useState<Exclude<DirectSalePaymentMethod, "OPEN">>("CASH");
     const [directSaleCashReceivedAmount, setDirectSaleCashReceivedAmount] = useState("");
@@ -202,12 +219,23 @@ export default function CashierPage({
     );
     const printModeLabel = printMode === "THERMAL" ? "Termica 80mm" : "A4";
     const closingDifference = Number((parseMoneyInput(closingAmount) - (totals.expectedAmount || 0)).toFixed(2));
+    const cashCountBreakdown = CASH_DENOMINATIONS
+        .map((denomination) => {
+            const quantity = cashCountQuantities[String(denomination)] || 0;
+            return { denomination, quantity, subtotal: Number((denomination * quantity).toFixed(2)) };
+        })
+        .filter((entry) => entry.quantity > 0);
+    const cashCountTotal = Number(cashCountBreakdown.reduce((sum, entry) => sum + entry.subtotal, 0).toFixed(2));
     const directSaleAmountNumber = Number(
         directSaleItems.reduce((acc, item) => acc + (item.price * item.quantity), 0).toFixed(2)
     );
     const openingAmountNumber = parseMoneyInput(openingAmount);
-    const canOpenSession = !Number.isNaN(openingAmountNumber) && openingAmountNumber > 0;
-    const requiresMovementReason = movementType === "WITHDRAWAL" || movementType === "ADJUSTMENT";
+    const canOpenSession = openingAmount.trim() !== "" && Number.isFinite(openingAmountNumber) && openingAmountNumber >= 0;
+    const requiresMovementReason = true;
+    const movementAmountNumber = parseMoneyInput(movementAmount);
+    const canCreateMovement = Number.isFinite(movementAmountNumber) && movementAmountNumber > 0 && Boolean(movementReason.trim());
+    const canManageSensitiveCashActions = ["SUPER_ADMIN", "OWNER", "MANAGER"].includes(currentUserRole);
+    const isBlindClosing = currentUserRole === "CASHIER";
     const directSaleCashReceivedNumber = parseMoneyInput(directSaleCashReceivedAmount || 0);
     const directSaleChangeDue = directSalePaymentMethod === "CASH"
         ? Number((directSaleCashReceivedNumber - directSaleAmountNumber).toFixed(2))
@@ -242,6 +270,7 @@ export default function CashierPage({
             o.status !== 'RETIRED'
         );
     }, [orders]);
+    const activeMovements = useMemo(() => movements.filter((movement) => !movement.voidedAt), [movements]);
 
     const categories = useMemo(() => {
         const cats = new Map<string, { id: string, name: string }>();
@@ -347,7 +376,7 @@ export default function CashierPage({
 
             const autoSteps: string[] = [];
             if (sessionData?.session) autoSteps.push("open");
-            if ((sessionData?.movements || []).length > 0) autoSteps.push("movement");
+            if ((sessionData?.movements || []).some((movement: CashMovement) => !movement.voidedAt)) autoSteps.push("movement");
             if (Number(sessionData?.totals?.cashSales || 0) > 0) autoSteps.push("cashSale");
             if (Number(sessionData?.totals?.sales || 0) > Number(sessionData?.totals?.cashSales || 0)) autoSteps.push("pixCardSale");
             if ((sessionsHistory.data || []).some((item: any) => item.status === "CLOSED")) autoSteps.push("close");
@@ -379,8 +408,8 @@ export default function CashierPage({
 
     const handleOpenSession = async () => {
         const parsed = parseMoneyInput(openingAmount);
-        if (Number.isNaN(parsed) || parsed <= 0) {
-            toast.error("Informe um valor de abertura maior que zero");
+        if (!Number.isFinite(parsed) || parsed < 0) {
+            toast.error("Informe um valor de abertura válido");
             return;
         }
 
@@ -451,7 +480,12 @@ export default function CashierPage({
         }
 
         if (requiresMovementReason && !movementReason.trim()) {
-            toast.error("Informe o motivo para sangria ou ajuste");
+            toast.error("Informe o motivo do movimento");
+            return;
+        }
+
+        if (movementType === "WITHDRAWAL" && parsed > totals.expectedAmount) {
+            toast.error("A sangria não pode superar o saldo disponível no caixa");
             return;
         }
 
@@ -469,6 +503,29 @@ export default function CashierPage({
             await loadCashier(historyPage);
         } catch (error: any) {
             toast.error(error.message || "Erro ao registrar movimento");
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
+    const handleVoidMovement = async () => {
+        if (!voidMovementTarget) return;
+        if (!voidMovementReason.trim()) {
+            toast.error("Informe o motivo do estorno");
+            return;
+        }
+
+        try {
+            setSubmitting(true);
+            await api.patch(`/cashier/movements/${voidMovementTarget.id}/void`, {
+                reason: voidMovementReason.trim(),
+            });
+            toast.success("Movimento estornado com sucesso");
+            setVoidMovementTarget(null);
+            setVoidMovementReason("");
+            await loadCashier(historyPage);
+        } catch (error: any) {
+            toast.error(error.message || "Erro ao estornar movimento");
         } finally {
             setSubmitting(false);
         }
@@ -780,6 +837,7 @@ export default function CashierPage({
                 closingAmount: parsed,
                 informedCardAmount: cardParsed,
                 informedPixAmount: pixParsed,
+                cashCountBreakdown: cashCountEnabled ? cashCountBreakdown : null,
                 notes: closingNotes || null,
                 forceClose: false,
             });
@@ -789,6 +847,8 @@ export default function CashierPage({
             setInformedCardAmount("");
             setInformedPixAmount("");
             setClosingNotes("");
+            setCashCountEnabled(false);
+            setCashCountQuantities({});
             setCloseSessionConfirmOpen(false);
             await loadCashier(1);
         } catch (error: any) {
@@ -813,6 +873,7 @@ export default function CashierPage({
                 closingAmount: parsed,
                 informedCardAmount: cardParsed,
                 informedPixAmount: pixParsed,
+                cashCountBreakdown: cashCountEnabled ? cashCountBreakdown : null,
                 notes: closingNotes || null,
                 forceClose: true,
             });
@@ -822,6 +883,8 @@ export default function CashierPage({
             setInformedCardAmount("");
             setInformedPixAmount("");
             setClosingNotes("");
+            setCashCountEnabled(false);
+            setCashCountQuantities({});
             setForceCloseModal({ open: false, count: 0 });
             await loadCashier(1);
         } catch (error: any) {
@@ -839,7 +902,7 @@ export default function CashierPage({
         }
 
         const differenceAmount = Number((parsed - (totals.expectedAmount || 0)).toFixed(2));
-        if (Math.abs(differenceAmount) >= differenceNoteThreshold && !closingNotes.trim()) {
+        if (!isBlindClosing && Math.abs(differenceAmount) >= differenceNoteThreshold && !closingNotes.trim()) {
             toast.error(`Informe uma justificativa para divergencias a partir de ${formatCurrency(differenceNoteThreshold)}.`);
             return;
         }
@@ -866,6 +929,14 @@ export default function CashierPage({
                         <span>${formatCurrency(entry.informed || 0)}</span>
                     </div>
                     ${entry.difference !== 0 ? `<div class="line" style="font-size: 9px; color: ${entry.difference < 0 ? 'red' : 'green'}"><span>Diferenca ${entry.method}</span><span>${formatCurrency(entry.difference)}</span></div>` : ''}
+                `)
+                .join("");
+            const cashCountRows = (reportSession.cashCountBreakdown || [])
+                .map((entry) => `
+                    <div class="line muted">
+                        <span>${entry.quantity} x ${formatCurrency(entry.denomination)}</span>
+                        <span>${formatCurrency(entry.subtotal)}</span>
+                    </div>
                 `)
                 .join("");
 
@@ -913,6 +984,11 @@ export default function CashierPage({
                                     <div class="line"><span>Esperado em caixa</span><span>${formatCurrency(reportTotals.expectedAmount || 0)}</span></div>
                                     <div class="line"><span>Fechamento</span><span>${formatCurrency(reportTotals.closingAmount || 0)}</span></div>
                                     <div class="line strong"><span>Diferenca</span><span>${formatCurrency(reportTotals.differenceAmount || 0)}</span></div>
+                                    ${cashCountRows ? `
+                                        <div class="sep"></div>
+                                        <h2>Contagem fisica</h2>
+                                        ${cashCountRows}
+                                    ` : ""}
 
                                     <div class="sep"></div>
                                     <h2>Pagamento</h2>
@@ -1136,8 +1212,62 @@ export default function CashierPage({
     }
 
     return (
-        <div ref={rootRef} className={cn("space-y-4", !isSidebar && "min-h-screen max-w-full")}>
+        <div ref={rootRef} className={cn("space-y-3", !isSidebar && "ops-workspace max-w-full")}>
             {!isSidebar && (
+                <section className="ops-panel">
+                    <div className="flex flex-col gap-3 border-b border-slate-200 px-4 py-3 md:flex-row md:items-center md:justify-between">
+                        <div className="flex min-w-0 items-center gap-3">
+                            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-slate-900 text-white">
+                                <Wallet size={18} />
+                            </div>
+                            <div className="min-w-0">
+                                <div className="flex flex-wrap items-center gap-2">
+                                    <h1 className="text-lg font-semibold text-slate-950">Controle de caixa</h1>
+                                    <span className={cn(
+                                        "inline-flex items-center gap-1.5 rounded px-2 py-0.5 text-xs font-semibold",
+                                        session ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-600"
+                                    )}>
+                                        <span className={cn("h-1.5 w-1.5 rounded-full", session ? "bg-emerald-500" : "bg-slate-400")} />
+                                        {session ? `Aberto · sessão #${session.id}` : "Fechado"}
+                                    </span>
+                                </div>
+                                <p className="mt-0.5 truncate text-xs text-slate-500">
+                                    {session
+                                        ? `Aberto às ${new Date(session.openedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} por ${session.openedBy?.name || "Sistema"}`
+                                        : "Nenhuma sessão em andamento"}
+                                </p>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-2 text-xs text-slate-500">
+                            <span className="font-medium">{currentUserRole || "Operador"}</span>
+                            {isHomologated && <span className="rounded border border-slate-200 px-2 py-1">Terminal homologado</span>}
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 divide-x divide-y divide-slate-200 md:grid-cols-4 md:divide-y-0">
+                        <div className="px-4 py-3">
+                            <p className="text-xs text-slate-500">Saldo físico estimado</p>
+                            <p className="mt-0.5 text-base font-semibold tabular-nums text-slate-950">
+                                {session && !isBlindClosing ? formatCurrency(totals.expectedAmount || 0) : "—"}
+                            </p>
+                        </div>
+                        <div className="px-4 py-3">
+                            <p className="text-xs text-slate-500">Vendas da sessão</p>
+                            <p className="mt-0.5 text-base font-semibold tabular-nums text-slate-950">{formatCurrency(totals.sales || 0)}</p>
+                        </div>
+                        <div className="px-4 py-3">
+                            <p className="text-xs text-slate-500">Entradas</p>
+                            <p className="mt-0.5 text-base font-semibold tabular-nums text-emerald-700">{formatCurrency(totals.supplies || 0)}</p>
+                        </div>
+                        <div className="px-4 py-3">
+                            <p className="text-xs text-slate-500">Sangrias</p>
+                            <p className="mt-0.5 text-base font-semibold tabular-nums text-rose-700">{formatCurrency(totals.withdrawals || 0)}</p>
+                        </div>
+                    </div>
+                </section>
+            )}
+
+            {false && !isSidebar && (
                 <AdminPageHeader
                     eyebrow="Financeiro operacional"
                     title="Sessão de caixa"
@@ -1150,19 +1280,15 @@ export default function CashierPage({
                 />
             )}
 
-            <section className={cn("grid gap-2", isSidebar ? "grid-cols-2" : "sm:grid-cols-2 xl:grid-cols-4")}>
+            <section className={cn("grid overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm", isSidebar ? "grid-cols-2" : "hidden")}>
                 {cards.map((card: any) => (
                     <article key={card.label} className={cn(
-                        "rounded-2xl border shadow-sm",
-                        isSidebar ? "p-3" : "p-4",
-                        card.color === "emerald" ? "border-emerald-100 bg-emerald-50" :
-                        card.color === "rose" ? "border-rose-100 bg-rose-50" :
-                        card.color === "blue" ? "border-blue-100 bg-blue-50" :
-                        "border-slate-100 bg-white"
+                        "border-b border-r border-slate-200 bg-white last:border-r-0",
+                        isSidebar ? "p-3" : "p-4"
                     )}>
                         <div className="flex items-center justify-between">
                             <p className={cn(
-                                "text-[8px] font-black uppercase tracking-[0.2em]",
+                                "text-[10px] font-semibold",
                                 card.color === "emerald" ? "text-emerald-600" :
                                 card.color === "rose" ? "text-rose-500" :
                                 card.color === "blue" ? "text-blue-600" :
@@ -1176,8 +1302,8 @@ export default function CashierPage({
                             } />
                         </div>
                         <p className={cn(
-                            "mt-1 font-black uppercase tracking-tight",
-                            isSidebar ? "text-xs" : "text-base",
+                            "mt-1 font-bold tracking-tight",
+                            isSidebar ? "text-xs" : "text-lg",
                             card.color === "emerald" ? "text-emerald-900" :
                             card.color === "rose" ? "text-rose-700" :
                             card.color === "blue" ? "text-blue-900" :
@@ -1188,7 +1314,7 @@ export default function CashierPage({
             </section>
 
             {!isSidebar && (session ? (
-                <section className="rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-3 flex items-center justify-between gap-3">
+                <section className="hidden">
                     <div className="flex items-center gap-3">
                         <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.6)]" />
                         <span className="text-[11px] font-black uppercase tracking-[0.15em] text-emerald-800">Caixa Aberto — Sessão #{session.id}</span>
@@ -1197,21 +1323,21 @@ export default function CashierPage({
                     <span className="text-[10px] font-bold text-emerald-700 uppercase tracking-widest shrink-0">{session.openedBy?.name || 'Sistema'}</span>
                 </section>
             ) : (
-                <section className="rounded-2xl border border-amber-200 bg-amber-50 px-5 py-3 flex items-center gap-3">
+                <section className="hidden">
                     <div className="w-2.5 h-2.5 rounded-full bg-amber-500" />
                     <span className="text-[11px] font-black uppercase tracking-[0.15em] text-amber-800">Caixa Fechado — Abra uma sessão para iniciar a operação</span>
                 </section>
             ))}
 
-            <section className="rounded-2xl border border-slate-100 bg-white p-1.5 shadow-sm">
-                <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
+            <section className="ops-panel px-4">
+                <div className="flex gap-6 overflow-x-auto">
                     <button
                         type="button"
                         onClick={() => setOperationTab("CASH_OPERATION")}
                         className={cn(
-                            "rounded-xl border font-black uppercase tracking-[0.16em] transition-colors",
-                            isSidebar ? "h-9 text-[9px]" : "h-11 text-[11px]",
-                            operationTab === "CASH_OPERATION" ? "border-slate-900 bg-slate-900 text-white" : "border-slate-200 bg-white text-slate-500 hover:bg-slate-50"
+                            "border-b-2 px-1 font-semibold transition-colors",
+                            isSidebar ? "h-9 text-[10px]" : "h-11 text-sm",
+                            operationTab === "CASH_OPERATION" ? "border-slate-900 text-slate-950" : "border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-800"
                         )}
                     >
                         Abertura e Fechamento
@@ -1220,9 +1346,9 @@ export default function CashierPage({
                         type="button"
                         onClick={() => setOperationTab("DIRECT_SALES")}
                         className={cn(
-                            "relative rounded-xl border font-black uppercase tracking-[0.16em] transition-colors",
-                            isSidebar ? "h-9 text-[9px]" : "h-11 text-[11px]",
-                            operationTab === "DIRECT_SALES" ? "border-slate-900 bg-slate-900 text-white" : "border-slate-200 bg-white text-slate-500 hover:bg-slate-50"
+                            "relative border-b-2 px-1 font-semibold transition-colors",
+                            isSidebar ? "h-9 text-[10px]" : "h-11 text-sm",
+                            operationTab === "DIRECT_SALES" ? "border-slate-900 text-slate-950" : "border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-800"
                         )}
                     >
                         Venda Direta / PDV
@@ -1237,7 +1363,7 @@ export default function CashierPage({
 
             <section className={cn("grid gap-4", !isSidebar && operationTab === "CASH_OPERATION" ? "xl:grid-cols-3" : "grid-cols-1")}>
                 {operationTab === "CASH_OPERATION" && (
-                    <article className={cn("rounded-2xl border border-slate-100 bg-white shadow-sm", isSidebar ? "p-3" : "p-6", !isSidebar && "xl:col-span-2")}>
+                    <article className={cn("ops-panel", isSidebar ? "p-3" : "p-4", !isSidebar && "xl:col-span-2")}>
                         <h2 className={cn("font-display font-bold text-slate-950 uppercase tracking-tight", isSidebar ? "text-sm" : "text-heading-3")}>Sessão Atual</h2>
                         {!session ? (
                             <div className="mt-5 space-y-4">
@@ -1249,19 +1375,19 @@ export default function CashierPage({
                                         type="text"
                                         inputMode="decimal"
                                         placeholder="0,00"
-                                        className="mt-2 h-12 w-full rounded-2xl border border-slate-200 px-4 outline-none"
+                                        className="mt-2 h-11 w-full rounded-md border border-slate-300 px-3 outline-none focus:border-slate-500 focus:ring-2 focus:ring-slate-100"
                                     />
                                 </label>
                                 <button
                                     disabled={submitting || !canOpenSession}
                                     onClick={handleOpenSession}
-                                    className="h-12 px-6 rounded-2xl bg-slate-950 text-white text-[10px] font-black uppercase tracking-[0.2em] disabled:opacity-50 disabled:cursor-not-allowed"
+                                    className="h-11 rounded-md bg-slate-950 px-5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
                                 >
                                     Abrir Caixa
                                 </button>
                                 {!canOpenSession && (
                                     <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-amber-600">
-                                        Informe um valor maior que zero para abrir o caixa.
+                                        Informe um valor válido. O caixa pode ser aberto com R$ 0,00.
                                     </p>
                                 )}
                             </div>
@@ -1274,7 +1400,7 @@ export default function CashierPage({
                                         <p className="text-[9px] font-bold uppercase tracking-[0.12em] text-slate-400">{new Date(session.openedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
                                     </div>
                                 </div>
-                                <div className={cn("grid gap-2", isSidebar ? "grid-cols-1" : "sm:grid-cols-3")}>
+                                <div className={cn("grid gap-2", isSidebar ? "grid-cols-1" : isBlindClosing ? "sm:grid-cols-2" : "sm:grid-cols-3")}>
                                     <div className={cn("rounded-xl border border-emerald-100 bg-emerald-50", isSidebar ? "p-3" : "p-4")}>
                                         <p className="text-[8px] font-black uppercase tracking-[0.2em] text-emerald-600">Faturamento</p>
                                         <p className={cn("font-bold text-emerald-700", isSidebar ? "text-xs" : "text-sm")}>{formatCurrency(totals.sales || 0)}</p>
@@ -1283,17 +1409,19 @@ export default function CashierPage({
                                         <p className="text-[8px] font-black uppercase tracking-[0.2em] text-blue-600">Dinheiro</p>
                                         <p className={cn("font-bold text-blue-700", isSidebar ? "text-xs" : "text-sm")}>{formatCurrency(totals.cashSales || 0)}</p>
                                     </div>
-                                    <div className={cn("rounded-xl border border-blue-100 bg-blue-50", isSidebar ? "p-3" : "p-4")}>
-                                        <p className="text-[8px] font-black uppercase tracking-[0.2em] text-blue-600">Esperado</p>
-                                        <p className={cn("font-bold text-blue-700", isSidebar ? "text-xs" : "text-sm")}>{formatCurrency(totals.expectedAmount || 0)}</p>
-                                    </div>
+                                    {!isBlindClosing && (
+                                        <div className={cn("rounded-xl border border-blue-100 bg-blue-50", isSidebar ? "p-3" : "p-4")}>
+                                            <p className="text-[8px] font-black uppercase tracking-[0.2em] text-blue-600">Esperado</p>
+                                            <p className={cn("font-bold text-blue-700", isSidebar ? "text-xs" : "text-sm")}>{formatCurrency(totals.expectedAmount || 0)}</p>
+                                        </div>
+                                    )}
                                 </div>
                                 <div className={cn("rounded-2xl border border-slate-100 bg-slate-50", isSidebar ? "p-3" : "p-4")}>
                                     <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">Checklist de fechamento</p>
                                     <div className="mt-2 space-y-1.5">
                                         <div className="flex items-center justify-between text-[8px] font-bold uppercase tracking-[0.12em]">
-                                            <span className="text-slate-500">1. Valor esperado</span>
-                                            <span className="text-emerald-600">OK</span>
+                                            <span className="text-slate-500">1. Conferência</span>
+                                            <span className="text-emerald-600">{isBlindClosing ? "Cega" : "OK"}</span>
                                         </div>
                                         <div className="flex items-center justify-between text-[8px] font-bold uppercase tracking-[0.12em]">
                                             <span className="text-slate-500">2. Informar em caixa</span>
@@ -1340,6 +1468,59 @@ export default function CashierPage({
                                     </label>
                                 </div>
 
+                                <div className="rounded-md border border-slate-200 bg-slate-50">
+                                    <button
+                                        type="button"
+                                        onClick={() => setCashCountEnabled((enabled) => !enabled)}
+                                        className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left"
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            <div className="flex h-8 w-8 items-center justify-center rounded bg-white text-slate-600 ring-1 ring-slate-200">
+                                                <Coins size={16} />
+                                            </div>
+                                            <div>
+                                                <p className="text-sm font-semibold text-slate-900">Contagem por cédulas e moedas</p>
+                                                <p className="text-xs text-slate-500">Calcula automaticamente o dinheiro físico informado.</p>
+                                            </div>
+                                        </div>
+                                        <span className="text-xs font-semibold text-slate-600">{cashCountEnabled ? "Ocultar" : "Usar contagem"}</span>
+                                    </button>
+                                    {cashCountEnabled && (
+                                        <div className="border-t border-slate-200 p-4">
+                                            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+                                                {CASH_DENOMINATIONS.map((denomination) => (
+                                                    <label key={denomination} className="rounded border border-slate-200 bg-white p-2">
+                                                        <span className="flex items-center gap-1 text-xs font-semibold text-slate-600">
+                                                            {denomination >= 2 ? <Banknote size={13} /> : <Coins size={13} />}
+                                                            {formatCurrency(denomination)}
+                                                        </span>
+                                                        <input
+                                                            type="number"
+                                                            min="0"
+                                                            step="1"
+                                                            inputMode="numeric"
+                                                            value={cashCountQuantities[String(denomination)] || ""}
+                                                            onChange={(event) => {
+                                                                const quantity = Math.max(0, Math.floor(Number(event.target.value) || 0));
+                                                                const next = { ...cashCountQuantities, [String(denomination)]: quantity };
+                                                                setCashCountQuantities(next);
+                                                                const total = CASH_DENOMINATIONS.reduce((sum, value) => sum + value * (next[String(value)] || 0), 0);
+                                                                setClosingAmount(total.toFixed(2).replace(".", ","));
+                                                            }}
+                                                            className="mt-2 h-9 w-full rounded border border-slate-300 px-2 text-right text-sm font-semibold outline-none focus:border-slate-500"
+                                                            placeholder="0"
+                                                        />
+                                                    </label>
+                                                ))}
+                                            </div>
+                                            <div className="mt-3 flex items-center justify-between rounded bg-slate-900 px-4 py-3 text-white">
+                                                <span className="text-sm font-medium">Total contado</span>
+                                                <span className="text-lg font-semibold tabular-nums">{formatCurrency(cashCountTotal)}</span>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+
                                 <label className="block">
                                     <span className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400">Dinheiro em Espécie no Cofre</span>
                                     <input
@@ -1348,10 +1529,12 @@ export default function CashierPage({
                                         type="text"
                                         inputMode="decimal"
                                         placeholder="0,00"
-                                        className={cn("mt-1.5 w-full rounded-xl border border-slate-200 px-4 outline-none", isSidebar ? "h-10 text-[11px]" : "h-12")}
+                                        readOnly={cashCountEnabled}
+                                        className={cn("mt-1.5 w-full rounded-xl border border-slate-200 px-4 outline-none", cashCountEnabled && "bg-slate-100", isSidebar ? "h-10 text-[11px]" : "h-12")}
                                     />
                                 </label>
 
+                                {!isBlindClosing ? (
                                 <div className={cn("rounded-2xl border border-slate-200 bg-white space-y-4", isSidebar ? "p-3" : "p-4")}>
                                     <div className="flex flex-col gap-1 mb-1">
                                         <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">Resumo de conferência</p>
@@ -1413,16 +1596,28 @@ export default function CashierPage({
                                         </p>
                                     </div>
                                 </div>
+                                ) : (
+                                    <div className="rounded-2xl border border-sky-200 bg-sky-50 p-4">
+                                        <p className="text-[10px] font-black uppercase tracking-[0.16em] text-sky-700">Conferência cega ativa</p>
+                                        <p className="mt-1 text-xs text-sky-700">
+                                            Conte dinheiro, comprovantes e PIX sem consultar os valores esperados. O resultado ficará disponível no relatório após o fechamento.
+                                        </p>
+                                    </div>
+                                )}
 
-                                {absoluteClosingDifference >= differenceNoteThreshold && (
+                                {(isBlindClosing || absoluteClosingDifference >= differenceNoteThreshold) && (
                                     <label className="block">
-                                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-600">Justificativa da divergencia</span>
+                                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-600">
+                                            {isBlindClosing ? "Observação do fechamento" : "Justificativa da divergência"}
+                                        </span>
                                         <textarea
                                             value={closingNotes}
                                             onChange={(e) => setClosingNotes(e.target.value)}
                                             rows={3}
                                             className="mt-2 w-full rounded-2xl border border-amber-200 bg-amber-50/40 px-4 py-3 outline-none resize-none"
-                                            placeholder={`Explique a divergencia encontrada no fechamento (a partir de ${formatCurrency(differenceNoteThreshold)})`}
+                                            placeholder={isBlindClosing
+                                                ? "Informe ocorrências percebidas durante a conferência, se houver"
+                                                : `Explique a divergência encontrada no fechamento (a partir de ${formatCurrency(differenceNoteThreshold)})`}
                                         />
                                     </label>
                                 )}
@@ -1440,7 +1635,7 @@ export default function CashierPage({
                     </article>
                 )}
 
-                <article className={cn("rounded-2xl border border-slate-100 bg-white shadow-sm", isSidebar ? "p-4" : "p-6")}>
+                <article className={cn("ops-panel", isSidebar ? "p-4" : "p-4")}>
                     <h2 className={cn("font-display font-bold text-slate-950 uppercase tracking-tight", isSidebar ? "text-sm" : "text-heading-3")}>
                         {operationTab === "DIRECT_SALES" ? "Venda Direta" : "Movimentos & Sangria"}
                     </h2>
@@ -1867,14 +2062,14 @@ export default function CashierPage({
                                 {operationTab === "CASH_OPERATION" && (
                                     <>
                                         {/* Seletor de tipo */}
-                                        <div className="grid grid-cols-3 gap-2">
+                                        <div className={cn("grid gap-2", canManageSensitiveCashActions ? "grid-cols-3" : "grid-cols-2")}>
                                             <button
                                                 type="button"
                                                 onClick={() => { setMovementType("SUPPLY"); setMovementReason(""); }}
                                                 className={cn(
-                                                    "h-11 rounded-2xl border text-[10px] font-black uppercase tracking-[0.12em] flex items-center justify-center gap-1.5 transition-all",
+                                                    "flex h-10 items-center justify-center gap-1.5 rounded-md border text-[11px] font-semibold transition-colors",
                                                     movementType === "SUPPLY"
-                                                        ? "border-emerald-500 bg-emerald-500 text-white shadow-lg shadow-emerald-200"
+                                                        ? "border-emerald-600 bg-emerald-600 text-white"
                                                         : "border-slate-200 bg-white text-slate-500 hover:border-emerald-200 hover:text-emerald-600"
                                                 )}
                                             >
@@ -1884,34 +2079,33 @@ export default function CashierPage({
                                                 type="button"
                                                 onClick={() => setMovementType("WITHDRAWAL")}
                                                 className={cn(
-                                                    "h-11 rounded-2xl border text-[10px] font-black uppercase tracking-[0.12em] flex items-center justify-center gap-1.5 transition-all",
+                                                    "flex h-10 items-center justify-center gap-1.5 rounded-md border text-[11px] font-semibold transition-colors",
                                                     movementType === "WITHDRAWAL"
-                                                        ? "border-rose-500 bg-rose-500 text-white shadow-lg shadow-rose-200"
+                                                        ? "border-rose-600 bg-rose-600 text-white"
                                                         : "border-slate-200 bg-white text-slate-500 hover:border-rose-200 hover:text-rose-600"
                                                 )}
                                             >
                                                 <MinusCircle size={13} /> Sangria
                                             </button>
-                                            <button
-                                                type="button"
-                                                onClick={() => setMovementType("ADJUSTMENT")}
-                                                className={cn(
-                                                    "h-11 rounded-2xl border text-[10px] font-black uppercase tracking-[0.12em] flex items-center justify-center gap-1.5 transition-all",
-                                                    movementType === "ADJUSTMENT"
-                                                        ? "border-blue-500 bg-blue-500 text-white shadow-lg shadow-blue-200"
-                                                        : "border-slate-200 bg-white text-slate-500 hover:border-blue-200 hover:text-blue-600"
-                                                )}
-                                            >
-                                                <Scale size={13} /> Ajuste
-                                            </button>
+                                            {canManageSensitiveCashActions && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setMovementType("ADJUSTMENT")}
+                                                    className={cn(
+                                                        "flex h-10 items-center justify-center gap-1.5 rounded-md border text-[11px] font-semibold transition-colors",
+                                                        movementType === "ADJUSTMENT"
+                                                            ? "border-blue-600 bg-blue-600 text-white"
+                                                            : "border-slate-200 bg-white text-slate-500 hover:border-blue-200 hover:text-blue-600"
+                                                    )}
+                                                >
+                                                    <Scale size={13} /> Ajuste positivo
+                                                </button>
+                                            )}
                                         </div>
 
                                         {/* Form colorido por tipo */}
                                         <div className={cn(
-                                            "rounded-2xl border p-4 space-y-3 transition-all",
-                                            movementType === "SUPPLY" ? "border-emerald-100 bg-emerald-50/40" :
-                                            movementType === "WITHDRAWAL" ? "border-rose-100 bg-rose-50/40" :
-                                            "border-blue-100 bg-blue-50/40"
+                                            "space-y-3 rounded-md border border-slate-200 bg-slate-50 p-4",
                                         )}>
                                             <input
                                                 value={movementAmount}
@@ -1920,21 +2114,32 @@ export default function CashierPage({
                                                 inputMode="decimal"
                                                 placeholder="Valor (R$)"
                                                 className={cn(
-                                                    "h-12 w-full rounded-2xl border bg-white px-4 outline-none font-bold text-slate-900 transition-all",
+                                                    "h-11 w-full rounded-md border bg-white px-3 font-semibold text-slate-900 outline-none transition-colors focus:ring-2 focus:ring-slate-100",
                                                     movementType === "SUPPLY" ? "border-emerald-200" :
                                                     movementType === "WITHDRAWAL" ? "border-rose-200" :
                                                     "border-blue-200"
                                                 )}
                                             />
+                                            {movementType === "WITHDRAWAL" && canManageSensitiveCashActions && (
+                                                <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-rose-600">
+                                                    Saldo máximo disponível: {formatCurrency(totals.expectedAmount || 0)}
+                                                </p>
+                                            )}
                                             {requiresMovementReason && (
                                                 <>
                                                     <input
                                                         value={movementReason}
                                                         onChange={(e) => setMovementReason(e.target.value)}
                                                         type="text"
-                                                        placeholder={movementType === "WITHDRAWAL" ? "Por que está saindo dinheiro do caixa?" : "Motivo do ajuste"}
+                                                        placeholder={
+                                                            movementType === "WITHDRAWAL"
+                                                                ? "Por que está saindo dinheiro do caixa?"
+                                                                : movementType === "SUPPLY"
+                                                                    ? "Origem do dinheiro adicionado"
+                                                                    : "Motivo do ajuste"
+                                                        }
                                                         className={cn(
-                                                            "h-12 w-full rounded-2xl border bg-white px-4 outline-none transition-all",
+                                                            "h-11 w-full rounded-md border bg-white px-3 outline-none transition-colors focus:ring-2 focus:ring-slate-100",
                                                             movementType === "WITHDRAWAL" ? "border-rose-200" : "border-blue-200"
                                                         )}
                                                     />
@@ -1943,7 +2148,11 @@ export default function CashierPage({
                                                             "text-[10px] font-bold uppercase tracking-[0.12em]",
                                                             movementType === "WITHDRAWAL" ? "text-rose-500" : "text-blue-500"
                                                         )}>
-                                                            {movementType === "WITHDRAWAL" ? "Justificativa obrigatória para sangria." : "Informe o motivo do ajuste."}
+                                                            {movementType === "WITHDRAWAL"
+                                                                ? "Justificativa obrigatória para sangria."
+                                                                : movementType === "SUPPLY"
+                                                                    ? "Informe a origem do suprimento."
+                                                                    : "Informe o motivo do ajuste."}
                                                         </p>
                                                     )}
                                                 </>
@@ -1951,10 +2160,10 @@ export default function CashierPage({
                                         </div>
 
                                         <button
-                                            disabled={submitting}
+                                            disabled={submitting || !canCreateMovement}
                                             onClick={handleCreateMovement}
                                             className={cn(
-                                                "h-12 px-6 rounded-2xl text-white text-[10px] font-black uppercase tracking-[0.2em] transition-colors disabled:opacity-50",
+                                                "h-11 rounded-md px-5 text-sm font-semibold text-white transition-colors disabled:opacity-50",
                                                 movementType === "SUPPLY" ? "bg-emerald-600 hover:bg-emerald-700" :
                                                 movementType === "WITHDRAWAL" ? "bg-rose-600 hover:bg-rose-700" :
                                                 "bg-blue-600 hover:bg-blue-700"
@@ -1962,7 +2171,7 @@ export default function CashierPage({
                                         >
                                             {movementType === "SUPPLY" ? "Registrar Suprimento" :
                                              movementType === "WITHDRAWAL" ? "Registrar Sangria" :
-                                             "Registrar Ajuste"}
+                                             "Registrar Ajuste Positivo"}
                                         </button>
                                     </>
                                 )}
@@ -1976,25 +2185,25 @@ export default function CashierPage({
                                             <div className="rounded-xl border border-emerald-100 bg-emerald-50 px-3 py-2 text-center">
                                                 <p className="text-[8px] font-black uppercase tracking-widest text-emerald-600">Suprimentos</p>
                                                 <p className="text-[11px] font-black text-emerald-800">
-                                                    {formatCurrency(movements.filter(m => m.type === "SUPPLY").reduce((s, m) => s + m.amount, 0))}
+                                                    {formatCurrency(activeMovements.filter(m => m.type === "SUPPLY").reduce((s, m) => s + m.amount, 0))}
                                                 </p>
                                             </div>
                                             <div className="rounded-xl border border-rose-100 bg-rose-50 px-3 py-2 text-center">
                                                 <p className="text-[8px] font-black uppercase tracking-widest text-rose-600">Sangrias</p>
                                                 <p className="text-[11px] font-black text-rose-800">
-                                                    {formatCurrency(movements.filter(m => m.type === "WITHDRAWAL").reduce((s, m) => s + m.amount, 0))}
+                                                    {formatCurrency(activeMovements.filter(m => m.type === "WITHDRAWAL").reduce((s, m) => s + m.amount, 0))}
                                                 </p>
                                             </div>
                                             <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-center">
                                                 <p className="text-[8px] font-black uppercase tracking-widest text-slate-500">Saldo Mov.</p>
                                                 <p className={cn("text-[11px] font-black",
-                                                    movements.filter(m => m.type === "SUPPLY").reduce((s, m) => s + m.amount, 0) -
-                                                    movements.filter(m => m.type === "WITHDRAWAL").reduce((s, m) => s + m.amount, 0) >= 0
+                                                    activeMovements.filter(m => m.type === "SUPPLY").reduce((s, m) => s + m.amount, 0) -
+                                                    activeMovements.filter(m => m.type === "WITHDRAWAL").reduce((s, m) => s + m.amount, 0) >= 0
                                                         ? "text-emerald-700" : "text-rose-700"
                                                 )}>
                                                     {formatCurrency(
-                                                        movements.filter(m => m.type === "SUPPLY").reduce((s, m) => s + m.amount, 0) -
-                                                        movements.filter(m => m.type === "WITHDRAWAL").reduce((s, m) => s + m.amount, 0)
+                                                        activeMovements.filter(m => m.type === "SUPPLY").reduce((s, m) => s + m.amount, 0) -
+                                                        activeMovements.filter(m => m.type === "WITHDRAWAL").reduce((s, m) => s + m.amount, 0)
                                                     )}
                                                 </p>
                                             </div>
@@ -2012,9 +2221,11 @@ export default function CashierPage({
                                                 <div key={movement.id} className={cn(
                                                     "rounded-xl border transition-all",
                                                     isSidebar ? "px-3 py-2" : "px-4 py-3",
-                                                    movement.type === "SUPPLY" ? "border-emerald-100 bg-emerald-50" :
-                                                    movement.type === "WITHDRAWAL" ? "border-rose-100 bg-rose-50" :
-                                                    "border-blue-100 bg-blue-50"
+                                                    movement.voidedAt
+                                                        ? "border-slate-200 bg-slate-100 opacity-70"
+                                                        : movement.type === "SUPPLY" ? "border-emerald-100 bg-emerald-50" :
+                                                          movement.type === "WITHDRAWAL" ? "border-rose-100 bg-rose-50" :
+                                                          "border-blue-100 bg-blue-50"
                                                 )}>
                                                     <div className="flex items-center justify-between gap-3">
                                                         <div className="flex items-center gap-2">
@@ -2036,7 +2247,8 @@ export default function CashierPage({
                                                             isSidebar ? "text-[10px]" : "text-[11px]",
                                                             movement.type === "SUPPLY" ? "text-emerald-900" :
                                                             movement.type === "WITHDRAWAL" ? "text-rose-900" :
-                                                            "text-blue-900"
+                                                            "text-blue-900",
+                                                            movement.voidedAt && "line-through text-slate-400"
                                                         )}>{formatCurrency(movement.amount)}</span>
                                                     </div>
                                                     <p className={cn(
@@ -2048,6 +2260,22 @@ export default function CashierPage({
                                                     )}>
                                                         {movement.reason || "—"} • {new Date(movement.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                                     </p>
+                                                    {movement.voidedAt ? (
+                                                        <div className="mt-2 rounded-lg border border-slate-200 bg-white/70 px-2 py-1 text-[9px] font-bold uppercase tracking-[0.1em] text-slate-500">
+                                                            Estornado: {movement.voidReason || "sem motivo informado"}
+                                                        </div>
+                                                    ) : canManageSensitiveCashActions ? (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                setVoidMovementTarget(movement);
+                                                                setVoidMovementReason("");
+                                                            }}
+                                                            className="mt-2 text-[9px] font-black uppercase tracking-[0.14em] text-rose-600 hover:text-rose-700"
+                                                        >
+                                                            Estornar lançamento
+                                                        </button>
+                                                    ) : null}
                                                 </div>
                                             ))
                                         )}
@@ -2066,7 +2294,7 @@ export default function CashierPage({
             </section>
 
             {!isSidebar && (
-                <section className="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm">
+                <section className="ops-panel p-4">
                     <div className="flex items-center gap-3">
                         <Archive size={16} className="text-primary" />
                         <h2 className="text-heading-3 font-display font-bold text-slate-950 uppercase tracking-tight">Histórico de Sessões</h2>
@@ -2075,7 +2303,7 @@ export default function CashierPage({
                         <select
                             value={filterStatus}
                             onChange={(e) => setFilterStatus(e.target.value as any)}
-                            className="h-11 rounded-2xl border border-slate-200 px-3 outline-none"
+                            className="h-10 rounded-md border border-slate-300 px-3 text-sm outline-none"
                         >
                             <option value="ALL">Todos status</option>
                             <option value="OPEN">Abertos</option>
@@ -2084,7 +2312,7 @@ export default function CashierPage({
                         <select
                             value={filterOperatorId}
                             onChange={(e) => setFilterOperatorId(e.target.value)}
-                            className="h-11 rounded-2xl border border-slate-200 px-3 outline-none"
+                            className="h-10 rounded-md border border-slate-300 px-3 text-sm outline-none"
                         >
                             <option value="ALL">Todos operadores</option>
                             {operators.map((op) => (
@@ -2098,7 +2326,7 @@ export default function CashierPage({
                                 setFilterPreset("ALL");
                                 setFilterStartDate(e.target.value);
                             }}
-                            className="h-11 rounded-2xl border border-slate-200 px-3 outline-none"
+                            className="h-10 rounded-md border border-slate-300 px-3 text-sm outline-none"
                         />
                         <input
                             type="date"
@@ -2107,7 +2335,7 @@ export default function CashierPage({
                                 setFilterPreset("ALL");
                                 setFilterEndDate(e.target.value);
                             }}
-                            className="h-11 rounded-2xl border border-slate-200 px-3 outline-none"
+                            className="h-10 rounded-md border border-slate-300 px-3 text-sm outline-none"
                         />
                         <button
                             onClick={() => {
@@ -2115,7 +2343,7 @@ export default function CashierPage({
                                 setFilterOperatorId("ALL");
                                 applyPreset("ALL");
                             }}
-                            className="h-11 rounded-2xl border border-slate-200 bg-slate-50 px-3 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500"
+                            className="h-10 rounded-md border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-600 hover:bg-slate-50"
                         >
                             Limpar
                         </button>
@@ -2142,7 +2370,7 @@ export default function CashierPage({
                             </div>
                         )}
                         {history.map((item) => (
-                            <div key={item.id} className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                            <div key={item.id} className="flex flex-col gap-2 border-b border-slate-200 px-3 py-3 last:border-b-0 sm:flex-row sm:items-center sm:justify-between">
                                 <div>
                                     <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-600">Sessão #{item.id} • {item.status === "OPEN" ? "Aberta" : "Fechada"}</p>
                                     <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">Abertura: {new Date(item.openedAt).toLocaleString()} {item.openedBy?.name ? `• ${item.openedBy.name}` : ""}</p>
@@ -2192,7 +2420,7 @@ export default function CashierPage({
             )}
 
             {!isSidebar && (
-                <footer className="rounded-[1.75rem] border border-slate-100 bg-white px-5 py-5 shadow-[0_18px_60px_rgba(15,23,42,0.04)]">
+                <footer className="hidden">
                     <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
                         <div className="min-w-0">
                             <p className="text-[10px] font-black uppercase tracking-[0.24em] text-slate-300">Operação do caixa</p>
@@ -2249,6 +2477,11 @@ export default function CashierPage({
                 }}
                 onClose={() => setCloseSessionConfirmOpen(false)}
             >
+                {isBlindClosing ? (
+                    <div className="rounded-2xl border border-sky-200 bg-sky-50 p-4 text-xs font-medium text-sky-700">
+                        Confirme somente os valores que você contou. Os valores esperados e as divergências serão apresentados no relatório após o fechamento.
+                    </div>
+                ) : (
                 <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4 space-y-2">
                     <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500">
                         <span>Valor esperado</span>
@@ -2292,7 +2525,49 @@ export default function CashierPage({
                         </p>
                     </div>
                 </div>
+                )}
             </ConfirmActionModal>
+
+            {voidMovementTarget && (
+                <div className="fixed inset-0 z-200 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm p-4">
+                    <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl">
+                        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-rose-600">Estorno de movimento</p>
+                        <h3 className="mt-1 text-lg font-black uppercase tracking-tight text-slate-950">
+                            {movementTypeLabel[voidMovementTarget.type]} · {formatCurrency(voidMovementTarget.amount)}
+                        </h3>
+                        <p className="mt-2 text-sm text-slate-500">
+                            O lançamento continuará no histórico, mas deixará de compor o saldo do caixa.
+                        </p>
+                        <textarea
+                            value={voidMovementReason}
+                            onChange={(event) => setVoidMovementReason(event.target.value)}
+                            rows={3}
+                            placeholder="Motivo obrigatório do estorno"
+                            className="mt-4 w-full resize-none rounded-2xl border border-rose-200 bg-rose-50/40 px-4 py-3 text-sm outline-none"
+                        />
+                        <div className="mt-5 flex gap-3">
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setVoidMovementTarget(null);
+                                    setVoidMovementReason("");
+                                }}
+                                className="h-11 flex-1 rounded-2xl border border-slate-200 bg-slate-50 text-[10px] font-black uppercase tracking-[0.15em] text-slate-700"
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                type="button"
+                                disabled={submitting || !voidMovementReason.trim()}
+                                onClick={handleVoidMovement}
+                                className="h-11 flex-1 rounded-2xl bg-rose-600 text-[10px] font-black uppercase tracking-[0.15em] text-white disabled:opacity-50"
+                            >
+                                Confirmar estorno
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Modal: fechamento forçado com pedidos em aberto */}
             {forceCloseModal.open && (
@@ -2319,13 +2594,19 @@ export default function CashierPage({
                             >
                                 Cancelar
                             </button>
-                            <button
-                                disabled={submitting}
-                                onClick={handleForceCloseSession}
-                                className="flex-1 h-11 rounded-2xl bg-rose-600 text-white text-[10px] font-black uppercase tracking-[0.15em] hover:bg-rose-700 transition-colors disabled:opacity-50"
-                            >
-                                Fechar mesmo assim
-                            </button>
+                            {canManageSensitiveCashActions ? (
+                                <button
+                                    disabled={submitting}
+                                    onClick={handleForceCloseSession}
+                                    className="flex-1 h-11 rounded-2xl bg-rose-600 text-white text-[10px] font-black uppercase tracking-[0.15em] hover:bg-rose-700 transition-colors disabled:opacity-50"
+                                >
+                                    Fechar mesmo assim
+                                </button>
+                            ) : (
+                                <div className="flex-1 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 text-center text-[10px] font-black uppercase tracking-[0.12em] text-amber-700">
+                                    Solicite um gerente
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>

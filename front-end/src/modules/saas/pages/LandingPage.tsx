@@ -1,492 +1,508 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, CheckCircle2, Clock3, LayoutDashboard, MessageSquare, ReceiptText, ShieldCheck, Store, Users, Utensils, Zap } from "lucide-react";
-import { useSettings } from "../../../core/hooks/useSettings";
+import {
+    ArrowRight,
+    BarChart3,
+    Check,
+    ChevronRight,
+    CircleDollarSign,
+    ClipboardCheck,
+    Clock3,
+    LayoutDashboard,
+    Menu,
+    MessageCircle,
+    PackageCheck,
+    ReceiptText,
+    ShieldCheck,
+    Store,
+    Users,
+    Utensils,
+    WalletCards,
+    X,
+} from "lucide-react";
+import { useState } from "react";
 import { SAAS_SUPPORT_PHONE } from "../../../core/config/support";
 import { sendToWhatsApp } from "../../../shared/utils/whatsapp";
 
-const PRODUCT_SURFACES = [
+const OPERATION_AREAS = [
     {
-        title: "Cardápio digital",
-        description: "Monte categorias, produtos, variações, tamanhos e adicionais e publique sua loja em poucos minutos.",
+        eyebrow: "Atendimento",
+        title: "Salão, balcão e delivery no mesmo fluxo",
+        description: "Mesas, comandas do garçom, venda direta e pedidos do cardápio digital chegam organizados para a equipe.",
+        icon: Utensils,
+    },
+    {
+        eyebrow: "Produção",
+        title: "Pedidos claros para executar sem ruído",
+        description: "Acompanhe cada pedido, seu canal e seu status sem depender de anotações ou mensagens soltas.",
+        icon: PackageCheck,
+    },
+    {
+        eyebrow: "Financeiro",
+        title: "Caixa seguro do início ao fechamento",
+        description: "Abertura, suprimento, sangria, contagem por cédulas e fechamento cego com registro de divergências.",
+        icon: CircleDollarSign,
+    },
+    {
+        eyebrow: "Gestão",
+        title: "Decisões baseadas no que aconteceu",
+        description: "Relatórios diários, histórico de sessões e trilha operacional para entender cada turno da loja.",
+        icon: BarChart3,
+    },
+];
+
+const FEATURES = [
+    {
+        title: "Cardápio digital próprio",
+        description: "Venda por um canal da sua marca, com categorias, variações, adicionais, entrega e retirada.",
         icon: ReceiptText,
     },
     {
-        title: "Pedidos e checkout",
-        description: "Entrega, retirada, formas de pagamento e acompanhamento do pedido em um fluxo de compra simples para o cliente.",
-        icon: Store,
+        title: "Mesas e atendimento",
+        description: "Organize salão, garçom e pedidos por mesa com uma visão simples para a operação.",
+        icon: Users,
     },
     {
-        title: "Caixa operacional",
-        description: "Abertura, fechamento, sangria, suprimento e conferência automática de divergência — sem planilha paralela.",
-        icon: Clock3,
+        title: "Venda direta e pedidos",
+        description: "Registre vendas no balcão e acompanhe o andamento dos pedidos em uma única fila.",
+        icon: WalletCards,
     },
     {
-        title: "Painel da sua loja",
-        description: "Pedidos, produtos, clientes e vendas em um só painel, para você acompanhar a operação do dia a dia sem complicação.",
+        title: "Controle de caixa",
+        description: "Tenha abertura, movimentações, conferência e fechamento com responsabilidade identificada.",
+        icon: ShieldCheck,
+    },
+    {
+        title: "Relatório diário",
+        description: "Consulte hoje ou dias anteriores e entenda faturamento, formas de pagamento e desempenho.",
         icon: LayoutDashboard,
     },
-];
-
-const WHO_IT_IS_FOR = [
-    "Pizzarias",
-    "Hamburguerias",
-    "Restaurantes de bairro",
-    "Dark kitchens",
-    "Marmitarias",
-    "Lanchonetes",
-];
-
-const HOW_IT_WORKS = [
     {
-        step: "01",
-        title: "Entendemos a operação",
-        description: "Conversamos com o responsável pela loja, entendemos o cenário e organizamos a entrada com clareza.",
-    },
-    {
-        step: "02",
-        title: "Configuramos a loja",
-        description: "Cardápio, preços, entrega, pagamentos e identidade visual ficam prontos para uso, com acompanhamento da nossa equipe.",
-    },
-    {
-        step: "03",
-        title: "A equipe começa a operar",
-        description: "O time passa a receber pedidos, acompanhar vendas e executar o dia a dia com mais previsibilidade.",
+        title: "Equipe e permissões",
+        description: "Defina acessos por função e mantenha as ações importantes vinculadas a quem executou.",
+        icon: ClipboardCheck,
     },
 ];
 
-const OPERATIONAL_PROMISES = [
-    "Canal próprio de venda",
-    "Fluxo de pedidos organizado de ponta a ponta",
-    "Implantação acompanhada pela nossa equipe",
-    "Suporte direto para o dia a dia da loja",
-];
-
-const PRICING_PLANS = [
+const PLANS = [
     {
         name: "Start",
-        subtitle: "Para operação em crescimento",
-        price: 89,
-        maxProducts: 120,
-        maxOrders: 900,
-        avgDailyOrders: 30,
-        highlight: false,
+        audience: "Para começar com controle",
+        price: 99,
+        products: "até 120 produtos",
+        orders: "até 900 pedidos/mês",
+        features: ["Núcleo operacional completo", "Cardápio e pedidos próprios", "Caixa e relatórios diários", "Suporte em horário comercial"],
     },
     {
         name: "Pro",
-        subtitle: "Para loja com volume forte",
+        audience: "Para a operação que ganhou ritmo",
         price: 179,
-        maxProducts: 350,
-        maxOrders: 2500,
-        avgDailyOrders: 83,
-        highlight: true,
+        products: "até 350 produtos",
+        orders: "até 2.500 pedidos/mês",
+        features: ["Tudo do plano Start", "Mais volume para salão e delivery", "Equipe e permissões", "Implantação acompanhada"],
+        featured: true,
     },
     {
         name: "Scale",
-        subtitle: "Para operação em escala",
-        price: 349,
-        maxProducts: 1000,
-        maxOrders: 6000,
-        avgDailyOrders: 200,
-        highlight: false,
+        audience: "Para alto volume operacional",
+        price: 299,
+        products: "até 1.000 produtos",
+        orders: "até 6.000 pedidos/mês",
+        features: ["Tudo do plano Pro", "Maior capacidade de operação", "Acompanhamento prioritário", "Revisão assistida da operação"],
     },
 ];
 
 const FAQ = [
     {
-        question: "Isso é para restaurante que está começando?",
-        answer: "Sim. A plataforma ajuda restaurantes em fase inicial ou em crescimento a terem um canal digital organizado desde o começo.",
+        question: "Preciso instalar algum programa?",
+        answer: "Não. O FoodSystem funciona no navegador e pode ser acessado pelos dispositivos usados na sua operação.",
     },
     {
-        question: "Vocês fazem a implantação ou eu preciso configurar tudo sozinho?",
-        answer: "A entrada é guiada pela nossa equipe: ajudamos a publicar o cardápio, configurar entrega e pagamentos para a loja começar com menos atrito.",
+        question: "O FoodSystem cobra comissão por pedido?",
+        answer: "Não. A mensalidade do plano não muda de acordo com o valor das suas vendas e não há comissão por pedido.",
     },
     {
-        question: "Preciso ter equipe técnica?",
-        answer: "Não. O sistema foi pensado para uso comercial e operacional do dia a dia, sem exigir conhecimento técnico da sua equipe.",
+        question: "Minha equipe recebe ajuda para começar?",
+        answer: "Sim. A implantação é acompanhada para organizar a configuração inicial e orientar o primeiro uso da operação.",
     },
     {
-        question: "Tenho suporte depois que a loja já está rodando?",
-        answer: "Sim. O suporte continua disponível após a implantação para resolver dúvidas e ajustes da operação no dia a dia.",
+        question: "Posso consultar vendas de dias anteriores?",
+        answer: "Sim. O relatório diário permite selecionar outra data e revisar vendas, pagamentos e informações do caixa.",
     },
     {
-        question: "Como funciona a cobrança dos planos?",
-        answer: "A assinatura é mensal, sem contrato de fidelidade, e você pode mudar de plano conforme o volume de pedidos da sua loja cresce.",
-    },
-    {
-        question: "Os valores dos planos têm taxa extra sobre os pedidos?",
-        answer: "Não. O valor da assinatura é fixo conforme o plano escolhido, sem comissão por pedido vendido.",
+        question: "Posso mudar de plano depois?",
+        answer: "Sim. O plano pode acompanhar o crescimento do volume de produtos e pedidos da sua loja.",
     },
 ];
 
 export default function LandingPage() {
-    const { settings } = useSettings();
-    const contactPhone = SAAS_SUPPORT_PHONE;
+    const [menuOpen, setMenuOpen] = useState(false);
 
-    const bannerBadge = settings?.bannerBadge ?? "Sistema comercial e operacional para restaurantes";
-    const bannerTitle = settings?.bannerTitleLine1 || settings?.bannerTitleLine2
-        ? `${settings?.bannerTitleLine1 ?? ""}${settings?.bannerTitleLine2 ? ` ${settings.bannerTitleLine2}` : ""}`.trim()
-        : "Tudo o que seu restaurante precisa para vender direto e operar com controle.";
-    const bannerDescription = settings?.bannerDescription ?? "Cardápio digital, checkout, pedidos, caixa e painel de gestão da loja em uma única plataforma, pensada para a rotina real do restaurante — com implantação acompanhada pela nossa equipe.";
-    const bannerCta = settings?.bannerCtaLabel ?? "Solicitar acesso";
-    const bannerImage = "/hero-mockup.png";
-
-    const openLeadWhatsApp = () => {
+    const requestDemo = (origin: string) => {
         sendToWhatsApp(
             SAAS_SUPPORT_PHONE,
-            "Olá! Vi o sistema FoodSystem e gostaria de saber mais sobre como posso utilizá-lo no meu restaurante."
+            `Olá! Conheci o FoodSystem pela ${origin} e gostaria de agendar uma demonstração para minha operação.`
         );
     };
 
     return (
-        <div className="min-h-screen bg-white text-slate-900 flex flex-col selection:bg-primary selection:text-white">
-            <header className="sticky top-0 z-50 border-b border-slate-100 bg-white/90 backdrop-blur-xl">
-                <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-4">
-                    <Link href="/" className="flex items-center gap-3">
-                        <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-950 text-primary shadow-lg shadow-slate-950/15">
-                            <Utensils size={22} />
-                        </div>
-                        <div className="leading-tight">
-                            <p className="text-[10px] font-black uppercase tracking-[0.28em] text-slate-400">FoodSystem</p>
-                            <p className="text-sm font-black uppercase tracking-[0.14em] text-slate-950">Para restaurantes</p>
-                        </div>
+        <div className="min-h-screen bg-[#f6f7f8] text-slate-950 selection:bg-emerald-200">
+            <header className="sticky top-0 z-50 border-b border-slate-200/80 bg-white/95 backdrop-blur">
+                <div className="mx-auto flex h-16 max-w-[1440px] items-center justify-between px-5 lg:px-8">
+                    <Link href="/" className="flex items-center gap-3" aria-label="FoodSystem - início">
+                        <Image
+                            src="/foodsystem-icon.svg"
+                            alt=""
+                            width={40}
+                            height={40}
+                            className="h-10 w-10"
+                        />
+                        <span>
+                            <strong className="block text-sm leading-none">FoodSystem</strong>
+                            <span className="mt-1 block text-[9px] font-bold uppercase tracking-[0.2em] text-slate-400">Operação gastronômica</span>
+                        </span>
                     </Link>
 
-                    <nav className="hidden items-center gap-8 text-[11px] font-black uppercase tracking-[0.18em] text-slate-500 md:flex">
-                        <a href="#solucao" className="transition-colors hover:text-primary">Solução</a>
-                        <a href="#para-quem" className="transition-colors hover:text-primary">Para quem</a>
-                        <a href="#processo" className="transition-colors hover:text-primary">Como funciona</a>
-                        <a href="#planos" className="transition-colors hover:text-primary">Planos</a>
-                        <a href="#acesso" className="transition-colors hover:text-primary">Acesso</a>
-                        <a href="#faq" className="transition-colors hover:text-primary">FAQ</a>
+                    <nav className="hidden items-center gap-8 text-sm font-semibold text-slate-600 lg:flex">
+                        <a href="#plataforma" className="hover:text-slate-950">Plataforma</a>
+                        <a href="#recursos" className="hover:text-slate-950">Recursos</a>
+                        <a href="#planos" className="hover:text-slate-950">Planos</a>
+                        <a href="#faq" className="hover:text-slate-950">Dúvidas</a>
                     </nav>
 
-                    <div className="flex items-center gap-3">
-                        {contactPhone ? (
-                            <button
-                                type="button"
-                                onClick={openLeadWhatsApp}
-                                className="inline-flex h-12 items-center gap-2 rounded-2xl bg-slate-950 px-5 text-[11px] font-black uppercase tracking-[0.16em] text-white transition-all hover:bg-black"
-                            >
-                                Solicitar acesso <ArrowRight size={14} />
-                            </button>
-                        ) : (
-                            <Link href="#faq" className="inline-flex h-12 items-center gap-2 rounded-2xl bg-slate-950 px-5 text-[11px] font-black uppercase tracking-[0.16em] text-white transition-all hover:bg-black">
-                                Solicitar acesso <ArrowRight size={14} />
-                            </Link>
-                        )}
+                    <div className="hidden items-center gap-3 sm:flex">
+                        <Link href="/login" className="px-4 py-2 text-sm font-bold text-slate-700 hover:text-slate-950">
+                            Entrar
+                        </Link>
+                        <button
+                            type="button"
+                            onClick={() => requestDemo("página inicial")}
+                            className="inline-flex h-10 items-center gap-2 bg-emerald-500 px-5 text-sm font-black text-slate-950 transition hover:bg-emerald-400"
+                        >
+                            Agendar demonstração <ArrowRight size={16} />
+                        </button>
                     </div>
+
+                    <button
+                        type="button"
+                        onClick={() => setMenuOpen((current) => !current)}
+                        className="grid h-10 w-10 place-items-center border border-slate-200 sm:hidden"
+                        aria-label="Abrir menu"
+                    >
+                        {menuOpen ? <X size={20} /> : <Menu size={20} />}
+                    </button>
                 </div>
+
+                {menuOpen && (
+                    <div className="border-t border-slate-200 bg-white p-5 sm:hidden">
+                        <nav className="grid gap-1 text-sm font-bold">
+                            {[
+                                ["Plataforma", "#plataforma"],
+                                ["Recursos", "#recursos"],
+                                ["Planos", "#planos"],
+                                ["Dúvidas", "#faq"],
+                            ].map(([label, href]) => (
+                                <a key={href} href={href} onClick={() => setMenuOpen(false)} className="border-b border-slate-100 py-3">
+                                    {label}
+                                </a>
+                            ))}
+                            <Link href="/login" className="py-3">Entrar no sistema</Link>
+                        </nav>
+                    </div>
+                )}
             </header>
 
-            <main className="flex-1">
-                <section className="relative overflow-hidden border-b border-slate-100 bg-linear-to-br from-white via-slate-50 to-slate-100 py-16 md:py-24">
-                    <div className="mx-auto grid max-w-7xl grid-cols-1 items-center gap-14 px-4 lg:grid-cols-[1.05fr_0.95fr]">
-                        <div className="max-w-3xl">
-                            <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-[10px] font-black uppercase tracking-[0.24em] text-slate-500 shadow-sm">
-                                <ShieldCheck size={12} className="text-emerald-600" /> {bannerBadge}
+            <main>
+                <section className="bg-slate-950">
+                    <div className="mx-auto grid min-h-[700px] max-w-[1440px] lg:grid-cols-[0.88fr_1.12fr]">
+                        <div className="flex flex-col justify-center px-5 py-20 text-white lg:px-12 xl:px-20">
+                            <div className="mb-7 flex items-center gap-3 text-[10px] font-black uppercase tracking-[0.24em] text-emerald-400">
+                                <span className="h-px w-8 bg-emerald-400" />
+                                Sistema para restaurantes
                             </div>
-
-                            <h1 className="mt-6 max-w-2xl text-4xl font-black leading-[0.94] tracking-tighter text-slate-950 md:text-6xl lg:text-7xl">
-                                {bannerTitle}
+                            <h1 className="max-w-xl text-5xl font-black leading-[0.98] tracking-[-0.055em] sm:text-6xl xl:text-7xl">
+                                Sua operação inteira, no mesmo ritmo.
                             </h1>
-
-                            <p className="mt-6 max-w-2xl text-base leading-relaxed text-slate-600 md:text-lg">
-                                {bannerDescription}
+                            <p className="mt-7 max-w-xl text-lg leading-8 text-slate-300">
+                                Do pedido ao fechamento do caixa, o FoodSystem conecta salão, balcão, delivery e gestão para sua equipe operar com clareza.
                             </p>
 
-                            <div className="mt-8 flex flex-col gap-4 sm:flex-row">
-                                <button type="button" onClick={openLeadWhatsApp} className="inline-flex h-14 items-center justify-center gap-3 rounded-3xl bg-primary px-8 text-sm font-black uppercase tracking-[0.16em] text-white shadow-xl shadow-primary/20 transition-transform hover:scale-[1.02]">
-                                    {bannerCta} <Zap size={18} />
-                                </button>
-                                <Link href="#solucao" className="inline-flex h-14 items-center justify-center gap-3 rounded-3xl border border-slate-200 bg-white px-8 text-sm font-black uppercase tracking-[0.16em] text-slate-900 transition-colors hover:border-slate-400 hover:bg-slate-50">
-                                    Ver o que entregamos
-                                    <MessageSquare size={18} />
-                                </Link>
-                            </div>
-
-                            <div className="mt-10 grid gap-4 sm:grid-cols-2">
-                                <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-                                    <p className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-400">Compromisso</p>
-                                    <p className="mt-2 text-sm font-semibold leading-relaxed text-slate-700">
-                                        Implantação guiada e suporte próximo, com foco no que a sua operação realmente usa no dia a dia.
-                                    </p>
-                                </div>
-                                <div className="rounded-3xl border border-slate-950 bg-slate-950 p-5 text-white shadow-sm">
-                                    <p className="text-[10px] font-black uppercase tracking-[0.22em] text-primary">O que você recebe</p>
-                                    <p className="mt-2 text-sm font-semibold leading-relaxed text-slate-200">
-                                        Cardápio digital, checkout, pedidos, caixa operacional e painel de gestão da loja, tudo integrado.
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="relative">
-                            <div className="absolute -left-8 top-8 h-24 w-24 rounded-full bg-primary/10 blur-3xl" />
-                            <div className="rounded-4xl border border-slate-200 bg-white p-5 shadow-2xl shadow-slate-200/60 md:p-7">
-                                <div className="rounded-3xl border border-slate-100 bg-slate-50 p-2">
-                                    <img src={bannerImage} alt="Apresentação do sistema" className="w-full rounded-[1.2rem] shadow-sm" />
-                                </div>
-
-                                <div className="mt-6 grid gap-3">
-                                    {OPERATIONAL_PROMISES.map((item) => (
-                                        <div key={item} className="flex items-center gap-3 rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3">
-                                            <CheckCircle2 size={16} className="text-emerald-600" />
-                                            <span className="text-sm font-semibold text-slate-700">{item}</span>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-
-                <section id="solucao" className="border-b border-slate-100 py-20 md:py-28">
-                    <div className="mx-auto max-w-7xl px-4">
-                        <div className="max-w-3xl">
-                            <p className="text-sm font-black uppercase tracking-[0.28em] text-orange-600">Solução</p>
-                            <h2 className="mt-4 text-3xl font-black tracking-tighter text-slate-950 md:text-5xl">
-                                O que entregamos para o seu restaurante operar com mais ordem e previsibilidade no dia a dia.
-                            </h2>
-                        </div>
-
-                        <div className="mt-12 grid gap-6 md:grid-cols-3">
-                            {PRODUCT_SURFACES.map((item) => (
-                                <article key={item.title} className="rounded-4xl border border-slate-100 bg-white p-7 shadow-sm transition-shadow hover:shadow-lg">
-                                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-950 text-orange-500">
-                                        <item.icon size={20} />
-                                    </div>
-                                    <h3 className="mt-5 text-xl font-black tracking-tight text-slate-950">{item.title}</h3>
-                                    <p className="mt-3 text-sm leading-relaxed text-slate-600">{item.description}</p>
-                                </article>
-                            ))}
-                        </div>
-                    </div>
-                </section>
-
-                <section id="para-quem" className="border-b border-slate-100 bg-slate-50 py-20 md:py-28">
-                    <div className="mx-auto grid max-w-7xl grid-cols-1 gap-10 px-4 lg:grid-cols-[0.9fr_1.1fr] lg:items-start">
-                        <div>
-                            <p className="text-sm font-black uppercase tracking-[0.28em] text-orange-600">Para quem é</p>
-                            <h2 className="mt-4 text-3xl font-black tracking-tighter text-slate-950 md:text-5xl">
-                                Feito para quem quer profissionalizar a venda sem perder o controle da operação.
-                            </h2>
-                            <p className="mt-5 max-w-xl text-base leading-relaxed text-slate-600">
-                                A plataforma foi pensada para negócios de alimentação que precisam vender com mais organização e manter relacionamento direto com o cliente.
-                            </p>
-                        </div>
-
-                        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                            {WHO_IT_IS_FOR.map((item) => (
-                                <div key={item} className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-                                    <div className="flex items-center gap-3">
-                                        <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-950 text-orange-500">
-                                            <Store size={18} />
-                                        </div>
-                                        <p className="text-[11px] font-black uppercase tracking-[0.14em] text-slate-900">{item}</p>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                </section>
-
-                <section id="processo" className="border-b border-slate-100 py-20 md:py-28">
-                    <div className="mx-auto max-w-7xl px-4">
-                        <div className="max-w-3xl">
-                            <p className="text-sm font-black uppercase tracking-[0.28em] text-orange-600">Como funciona</p>
-                            <h2 className="mt-4 text-3xl font-black tracking-tighter text-slate-950 md:text-5xl">
-                                A entrada é simples: organizar a loja, publicar o cardápio e começar a operar.
-                            </h2>
-                        </div>
-
-                        <div className="mt-12 grid gap-6 lg:grid-cols-3">
-                            {HOW_IT_WORKS.map((item) => (
-                                <article key={item.step} className="rounded-4xl border border-slate-100 bg-white p-7 shadow-sm">
-                                    <p className="text-sm font-black uppercase tracking-[0.28em] text-orange-600">Etapa {item.step}</p>
-                                    <h3 className="mt-4 text-xl font-black tracking-tight text-slate-950">{item.title}</h3>
-                                    <p className="mt-3 text-sm leading-relaxed text-slate-600">{item.description}</p>
-                                </article>
-                            ))}
-                        </div>
-                    </div>
-                </section>
-
-                <section id="planos" className="border-b border-slate-100 bg-slate-50 py-20 md:py-28">
-                    <div className="mx-auto max-w-7xl px-4">
-                        <div className="max-w-3xl">
-                            <p className="text-sm font-black uppercase tracking-[0.28em] text-orange-600">Planos</p>
-                            <h2 className="mt-4 text-3xl font-black tracking-tighter text-slate-950 md:text-5xl">
-                                Planos claros por volume da operação: preço, produtos e pedidos por mês.
-                            </h2>
-                            <p className="mt-5 text-base leading-relaxed text-slate-600">
-                                Comece com o plano que faz sentido para o seu momento e ajuste conforme a loja cresce. Sem taxa por pedido e sem contrato de fidelidade.
-                            </p>
-                        </div>
-
-                        <div className="mt-12 grid gap-6 lg:grid-cols-3">
-                            {PRICING_PLANS.map((plan) => (
-                                <article
-                                    key={plan.name}
-                                    className={`rounded-4xl border p-7 shadow-sm ${plan.highlight
-                                        ? "border-slate-950 bg-slate-950 text-white"
-                                        : "border-slate-200 bg-white text-slate-900"
-                                        }`}
+                            <div className="mt-10 flex flex-col gap-3 sm:flex-row">
+                                <button
+                                    type="button"
+                                    onClick={() => requestDemo("apresentação principal")}
+                                    className="inline-flex h-14 items-center justify-center gap-3 bg-emerald-500 px-7 text-sm font-black text-slate-950 transition hover:bg-emerald-400"
                                 >
-                                    <div className="flex items-center justify-between gap-2">
-                                        <p className={`text-[10px] font-black uppercase tracking-[0.22em] ${plan.highlight ? "text-orange-500" : "text-slate-400"}`}>
-                                            {plan.name}
-                                        </p>
-                                        {plan.highlight && (
-                                            <span className="rounded-full border border-white/20 bg-white/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-white">
-                                                Mais escolhido
-                                            </span>
-                                        )}
+                                    Ver o sistema em operação <ArrowRight size={18} />
+                                </button>
+                                <a href="#plataforma" className="inline-flex h-14 items-center justify-center gap-2 border border-slate-700 px-7 text-sm font-bold text-white hover:border-slate-500">
+                                    Conhecer a plataforma
+                                </a>
+                            </div>
+
+                            <div className="mt-11 grid grid-cols-2 gap-x-6 gap-y-4 border-t border-slate-800 pt-7 text-xs font-semibold text-slate-300">
+                                {["Sem comissão por pedido", "Implantação acompanhada", "Acesso pelo navegador", "Suporte para sua equipe"].map((item) => (
+                                    <span key={item} className="flex items-center gap-2">
+                                        <Check size={15} className="shrink-0 text-emerald-400" /> {item}
+                                    </span>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="relative min-h-[460px] overflow-hidden border-l border-white/10 lg:min-h-full">
+                            <Image
+                                src="/foodsystem-operations-hero.png"
+                                alt="Equipe de restaurante usando o FoodSystem no balcão, tablet e celular"
+                                fill
+                                priority
+                                sizes="(max-width: 1024px) 100vw, 58vw"
+                                className="object-cover"
+                            />
+                            <div className="absolute inset-0 bg-gradient-to-r from-slate-950/35 via-transparent to-transparent" />
+                            <div className="absolute bottom-5 left-5 right-5 grid grid-cols-3 border border-white/15 bg-slate-950/85 text-white backdrop-blur md:bottom-8 md:left-8 md:right-8">
+                                {[
+                                    ["01", "Pedidos organizados"],
+                                    ["02", "Caixa conferido"],
+                                    ["03", "Gestão em tempo real"],
+                                ].map(([number, label]) => (
+                                    <div key={number} className="border-r border-white/10 px-3 py-4 last:border-r-0 md:px-5">
+                                        <span className="block text-[9px] font-black tracking-[0.2em] text-emerald-400">{number}</span>
+                                        <strong className="mt-1 block text-[10px] leading-4 md:text-xs">{label}</strong>
                                     </div>
-
-                                    <p className={`mt-3 text-sm ${plan.highlight ? "text-slate-300" : "text-slate-600"}`}>{plan.subtitle}</p>
-
-                                    <div className="mt-5 flex items-end gap-2">
-                                        <span className="text-4xl font-black tracking-tight">R$ {plan.price}</span>
-                                        <span className={`pb-1 text-xs font-bold uppercase tracking-[0.14em] ${plan.highlight ? "text-slate-400" : "text-slate-500"}`}>/mês</span>
-                                    </div>
-
-                                    <div className={`mt-6 space-y-3 rounded-3xl border p-4 ${plan.highlight ? "border-white/15 bg-white/5" : "border-slate-100 bg-slate-50"}`}>
-                                        <div className="flex items-center justify-between gap-3">
-                                            <span className={`text-[11px] font-black uppercase tracking-[0.14em] ${plan.highlight ? "text-slate-300" : "text-slate-500"}`}>Produtos</span>
-                                            <span className="text-sm font-black tracking-tight">até {plan.maxProducts}</span>
-                                        </div>
-                                        <div className="flex items-center justify-between gap-3">
-                                            <span className={`text-[11px] font-black uppercase tracking-[0.14em] ${plan.highlight ? "text-slate-300" : "text-slate-500"}`}>Pedidos/mês</span>
-                                            <span className="text-sm font-black tracking-tight">até {plan.maxOrders}</span>
-                                        </div>
-                                        <div className="flex items-center justify-between gap-3">
-                                            <span className={`text-[11px] font-black uppercase tracking-[0.14em] ${plan.highlight ? "text-slate-300" : "text-slate-500"}`}>Média diária</span>
-                                            <span className="text-sm font-black tracking-tight">~ {plan.avgDailyOrders}/dia</span>
-                                        </div>
-                                    </div>
-
-                                    <button
-                                        type="button"
-                                        onClick={openLeadWhatsApp}
-                                        className={`mt-6 inline-flex h-12 w-full items-center justify-center gap-2 rounded-2xl px-5 text-[11px] font-black uppercase tracking-[0.14em] transition-all ${plan.highlight
-                                            ? "bg-primary text-white hover:brightness-110"
-                                            : "bg-slate-950 text-white hover:bg-black"
-                                            }`}
-                                    >
-                                        Solicitar este plano <ArrowRight size={14} />
-                                    </button>
-                                </article>
-                            ))}
+                                ))}
+                            </div>
                         </div>
                     </div>
                 </section>
 
-                <section id="acesso" className="border-b border-slate-100 bg-slate-950 py-20 text-white md:py-28">
-                    <div className="mx-auto max-w-7xl px-4">
-                        <div className="max-w-3xl">
-                            <p className="text-sm font-black uppercase tracking-[0.28em] text-orange-500">Acesso</p>
-                            <h2 className="mt-4 text-3xl font-black tracking-tighter md:text-5xl">
-                                Acesso guiado, configuração assistida e contato direto com a equipe.
-                            </h2>
-                            <p className="mt-5 text-base leading-relaxed text-slate-300">
-                                Cada loja é configurada com acompanhamento da nossa equipe, do primeiro contato até o cardápio publicado e os primeiros pedidos chegando.
+                <section className="border-b border-slate-200 bg-white">
+                    <div className="mx-auto grid max-w-[1440px] grid-cols-2 lg:grid-cols-4">
+                        {["Salão e garçom", "Balcão e delivery", "Caixa operacional", "Relatórios diários"].map((item) => (
+                            <div key={item} className="flex min-h-24 items-center justify-center border-r border-t border-slate-200 px-5 text-center text-xs font-black uppercase tracking-[0.14em] text-slate-500 lg:border-t-0">
+                                {item}
+                            </div>
+                        ))}
+                    </div>
+                </section>
+
+                <section id="plataforma" className="scroll-mt-20 py-24 lg:py-32">
+                    <div className="mx-auto max-w-[1280px] px-5 lg:px-8">
+                        <div className="grid gap-8 border-b border-slate-300 pb-12 lg:grid-cols-[0.8fr_1.2fr] lg:items-end">
+                            <div>
+                                <span className="text-[10px] font-black uppercase tracking-[0.24em] text-emerald-700">Uma operação conectada</span>
+                                <h2 className="mt-4 text-4xl font-black tracking-[-0.04em] sm:text-5xl">
+                                    Menos improviso.<br />Mais controle no turno.
+                                </h2>
+                            </div>
+                            <p className="max-w-2xl text-lg leading-8 text-slate-600 lg:justify-self-end">
+                                O FoodSystem foi pensado para o trabalho que acontece agora: atender, produzir, receber e conferir. Cada etapa alimenta a próxima e deixa um histórico útil para a gestão.
                             </p>
                         </div>
 
-                        <div className="mt-12 grid gap-6 lg:grid-cols-3">
-                            {[
-                                {
-                                    name: "Configuração guiada",
-                                    detail: "Ajuda para publicar a loja, ajustar o cardápio e deixar a operação pronta para vender.",
-                                },
-                                {
-                                    name: "Canal próprio",
-                                    detail: "Venda direta com cardápio, checkout e fluxo da loja sob seu controle.",
-                                },
-                                {
-                                    name: "Atendimento próximo",
-                                    detail: "Contato humano e acompanhamento contínuo para a operação rodar com segurança.",
-                                },
-                            ].map((plan) => (
-                                <article key={plan.name} className="rounded-4xl border border-white/10 bg-white/5 p-7 backdrop-blur-sm">
-                                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary text-white">
-                                        <Clock3 size={20} />
+                        <div className="grid lg:grid-cols-4">
+                            {OPERATION_AREAS.map((area, index) => {
+                                const Icon = area.icon;
+                                return (
+                                    <article key={area.title} className="border-b border-slate-300 py-9 lg:border-b-0 lg:border-r lg:px-7 lg:first:pl-0 lg:last:border-r-0 lg:last:pr-0">
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-700">{area.eyebrow}</span>
+                                            <span className="text-xs font-bold text-slate-300">0{index + 1}</span>
+                                        </div>
+                                        <Icon className="mt-10 text-slate-950" size={28} strokeWidth={1.7} />
+                                        <h3 className="mt-5 text-xl font-black leading-7">{area.title}</h3>
+                                        <p className="mt-3 text-sm leading-6 text-slate-600">{area.description}</p>
+                                    </article>
+                                );
+                            })}
+                        </div>
+                    </div>
+                </section>
+
+                <section className="bg-white py-24 lg:py-32">
+                    <div className="mx-auto max-w-[1280px] px-5 lg:px-8">
+                        <div className="grid gap-10 lg:grid-cols-[0.75fr_1.25fr]">
+                            <div>
+                                <span className="text-[10px] font-black uppercase tracking-[0.24em] text-emerald-700">Fluxo operacional</span>
+                                <h2 className="mt-4 text-4xl font-black tracking-[-0.04em]">A informação não para no meio do caminho.</h2>
+                                <p className="mt-6 max-w-md text-base leading-7 text-slate-600">
+                                    O pedido nasce no atendimento, acompanha a execução, entra na conferência financeira e vira dado de gestão.
+                                </p>
+                            </div>
+                            <div className="border-y border-slate-200">
+                                {[
+                                    ["1", "Atender", "Mesa, garçom, balcão ou cardápio digital"],
+                                    ["2", "Executar", "Fila de pedidos com status para a equipe"],
+                                    ["3", "Receber", "Venda e movimentações vinculadas ao caixa"],
+                                    ["4", "Conferir", "Fechamento e relatório diário da operação"],
+                                ].map(([number, title, detail]) => (
+                                    <div key={number} className="grid gap-2 border-b border-slate-200 py-6 last:border-b-0 sm:grid-cols-[56px_0.55fr_1fr] sm:items-center">
+                                        <span className="text-xs font-black text-emerald-700">{number.padStart(2, "0")}</span>
+                                        <strong className="text-lg">{title}</strong>
+                                        <span className="text-sm leading-6 text-slate-500">{detail}</span>
                                     </div>
-                                    <h3 className="mt-5 text-xl font-black tracking-tight text-white">{plan.name}</h3>
-                                    <p className="mt-3 text-sm leading-relaxed text-slate-300">{plan.detail}</p>
-                                </article>
-                            ))}
-                        </div>
-                    </div>
-                </section>
-
-                <section id="faq" className="border-b border-slate-100 py-20 md:py-28">
-                    <div className="mx-auto max-w-7xl px-4">
-                        <div className="max-w-3xl">
-                            <p className="text-sm font-black uppercase tracking-[0.28em] text-orange-600">FAQ</p>
-                            <h2 className="mt-4 text-3xl font-black tracking-tighter text-slate-950 md:text-5xl">
-                                Respostas diretas para as principais dúvidas antes de você começar.
-                            </h2>
-                        </div>
-
-                        <div className="mt-12 grid gap-4 lg:grid-cols-2">
-                            {FAQ.map((item) => (
-                                <article key={item.question} className="rounded-[1.75rem] border border-slate-100 bg-slate-50 p-6">
-                                    <h3 className="text-base font-black tracking-tight text-slate-950">{item.question}</h3>
-                                    <p className="mt-3 text-sm leading-relaxed text-slate-600">{item.answer}</p>
-                                </article>
-                            ))}
-                        </div>
-                    </div>
-                </section>
-
-                <section className="py-20 md:py-28">
-                    <div className="mx-auto max-w-7xl px-4">
-                        <div className="rounded-[2.25rem] border border-slate-100 bg-linear-to-br from-slate-950 to-slate-900 p-8 text-white md:p-12">
-                            <div className="grid gap-8 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
-                                <div>
-                                    <p className="text-sm font-black uppercase tracking-[0.28em] text-orange-500">Próximo passo</p>
-                                    <h2 className="mt-4 text-3xl font-black tracking-tighter md:text-5xl">
-                                        Se faz sentido para o seu restaurante, vamos conversar de forma objetiva.
-                                    </h2>
-                                    <p className="mt-5 max-w-2xl text-base leading-relaxed text-slate-300">
-                                        A entrada é pensada para você ser atendido com atenção e clareza, com foco em colocar sua loja para operar de verdade.
-                                    </p>
-                                </div>
-
-                                <div className="flex flex-col gap-4 sm:flex-row lg:justify-end">
-                                    <button
-                                        type="button"
-                                        onClick={openLeadWhatsApp}
-                                        className="inline-flex h-14 items-center justify-center gap-3 rounded-3xl bg-white px-8 text-sm font-black uppercase tracking-[0.16em] text-slate-950 transition-colors hover:bg-slate-100"
-                                    >
-                                        Solicitar acesso <ArrowRight size={18} />
-                                    </button>
-                                    <Link href="#faq" className="inline-flex h-14 items-center justify-center gap-3 rounded-3xl border border-white/10 bg-white/5 px-8 text-sm font-black uppercase tracking-[0.16em] text-white transition-colors hover:bg-white/10">
-                                        Ver dúvidas
-                                        <Users size={18} />
-                                    </Link>
-                                </div>
+                                ))}
                             </div>
                         </div>
+                    </div>
+                </section>
+
+                <section id="recursos" className="scroll-mt-20 bg-slate-950 py-24 text-white lg:py-32">
+                    <div className="mx-auto max-w-[1280px] px-5 lg:px-8">
+                        <div className="max-w-3xl">
+                            <span className="text-[10px] font-black uppercase tracking-[0.24em] text-emerald-400">Recursos que trabalham juntos</span>
+                            <h2 className="mt-4 text-4xl font-black tracking-[-0.04em] sm:text-5xl">O essencial para colocar a loja em operação.</h2>
+                        </div>
+                        <div className="mt-14 grid border-l border-t border-slate-800 md:grid-cols-2 lg:grid-cols-3">
+                            {FEATURES.map((feature) => {
+                                const Icon = feature.icon;
+                                return (
+                                    <article key={feature.title} className="min-h-64 border-b border-r border-slate-800 p-7 lg:p-9">
+                                        <Icon size={27} className="text-emerald-400" strokeWidth={1.7} />
+                                        <h3 className="mt-12 text-xl font-black">{feature.title}</h3>
+                                        <p className="mt-3 text-sm leading-6 text-slate-400">{feature.description}</p>
+                                    </article>
+                                );
+                            })}
+                        </div>
+                    </div>
+                </section>
+
+                <section id="planos" className="scroll-mt-20 py-24 lg:py-32">
+                    <div className="mx-auto max-w-[1280px] px-5 lg:px-8">
+                        <div className="grid gap-6 lg:grid-cols-2 lg:items-end">
+                            <div>
+                                <span className="text-[10px] font-black uppercase tracking-[0.24em] text-emerald-700">Planos simples</span>
+                                <h2 className="mt-4 text-4xl font-black tracking-[-0.04em] sm:text-5xl">Escolha pelo ritmo da sua loja.</h2>
+                            </div>
+                            <p className="max-w-xl text-base leading-7 text-slate-600 lg:justify-self-end">
+                                O núcleo operacional está presente desde o primeiro plano. Você escolhe a capacidade de produtos, pedidos e o nível de acompanhamento.
+                            </p>
+                        </div>
+
+                        <div className="mt-12 grid gap-4 lg:grid-cols-3">
+                            {PLANS.map((plan) => (
+                                <article key={plan.name} className={`relative flex flex-col border p-7 lg:p-9 ${plan.featured ? "border-emerald-500 bg-slate-950 text-white" : "border-slate-300 bg-white"}`}>
+                                    {plan.featured && (
+                                        <span className="absolute right-0 top-0 bg-emerald-500 px-4 py-2 text-[9px] font-black uppercase tracking-[0.18em] text-slate-950">Mais escolhido</span>
+                                    )}
+                                    <span className={`text-[10px] font-black uppercase tracking-[0.2em] ${plan.featured ? "text-emerald-400" : "text-emerald-700"}`}>{plan.audience}</span>
+                                    <h3 className="mt-4 text-2xl font-black">{plan.name}</h3>
+                                    <div className="mt-8 flex items-end gap-2 border-b border-current/10 pb-8">
+                                        <span className="mb-2 text-sm font-bold">R$</span>
+                                        <strong className="text-5xl font-black tracking-[-0.05em]">{plan.price}</strong>
+                                        <span className={`mb-2 text-sm ${plan.featured ? "text-slate-400" : "text-slate-500"}`}>/mês</span>
+                                    </div>
+                                    <div className={`grid grid-cols-2 gap-3 border-b py-6 text-xs font-bold ${plan.featured ? "border-slate-800 text-slate-300" : "border-slate-200 text-slate-600"}`}>
+                                        <span>{plan.products}</span>
+                                        <span>{plan.orders}</span>
+                                    </div>
+                                    <ul className="mt-7 flex-1 space-y-4">
+                                        {plan.features.map((feature) => (
+                                            <li key={feature} className={`flex gap-3 text-sm ${plan.featured ? "text-slate-300" : "text-slate-600"}`}>
+                                                <Check size={17} className="shrink-0 text-emerald-500" /> {feature}
+                                            </li>
+                                        ))}
+                                    </ul>
+                                    <button
+                                        type="button"
+                                        onClick={() => requestDemo(`seção do plano ${plan.name}`)}
+                                        className={`mt-9 inline-flex h-12 items-center justify-between px-5 text-sm font-black transition ${plan.featured ? "bg-emerald-500 text-slate-950 hover:bg-emerald-400" : "bg-slate-950 text-white hover:bg-slate-800"}`}
+                                    >
+                                        Falar sobre este plano <ChevronRight size={17} />
+                                    </button>
+                                </article>
+                            ))}
+                        </div>
+                        <p className="mt-5 text-center text-xs text-slate-500">Valores mensais. Sem comissão sobre pedidos. Consulte condições de implantação e contratação.</p>
+                    </div>
+                </section>
+
+                <section className="border-y border-slate-200 bg-white py-20">
+                    <div className="mx-auto grid max-w-[1280px] gap-10 px-5 lg:grid-cols-[1fr_1.3fr] lg:items-center lg:px-8">
+                        <div>
+                            <span className="text-[10px] font-black uppercase tracking-[0.24em] text-emerald-700">Entrada assistida</span>
+                            <h2 className="mt-4 text-3xl font-black tracking-[-0.03em]">Não entregamos apenas um login.</h2>
+                        </div>
+                        <div className="grid gap-6 sm:grid-cols-3">
+                            {[
+                                ["01", "Diagnóstico", "Entendemos o fluxo atual da loja."],
+                                ["02", "Configuração", "Organizamos a base para começar."],
+                                ["03", "Operação", "Acompanhamos o primeiro uso."],
+                            ].map(([number, title, text]) => (
+                                <div key={number} className="border-l border-slate-300 pl-5">
+                                    <span className="text-[10px] font-black text-emerald-700">{number}</span>
+                                    <strong className="mt-3 block text-sm">{title}</strong>
+                                    <p className="mt-2 text-xs leading-5 text-slate-500">{text}</p>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </section>
+
+                <section id="faq" className="scroll-mt-20 py-24 lg:py-32">
+                    <div className="mx-auto grid max-w-[1100px] gap-12 px-5 lg:grid-cols-[0.65fr_1.35fr] lg:px-8">
+                        <div>
+                            <span className="text-[10px] font-black uppercase tracking-[0.24em] text-emerald-700">Dúvidas frequentes</span>
+                            <h2 className="mt-4 text-4xl font-black tracking-[-0.04em]">Antes de começar.</h2>
+                            <button type="button" onClick={() => requestDemo("seção de dúvidas")} className="mt-7 inline-flex items-center gap-2 text-sm font-black text-emerald-700">
+                                Falar com nossa equipe <MessageCircle size={17} />
+                            </button>
+                        </div>
+                        <div className="border-t border-slate-300">
+                            {FAQ.map((item) => (
+                                <details key={item.question} className="group border-b border-slate-300 py-6">
+                                    <summary className="flex cursor-pointer list-none items-center justify-between gap-6 text-base font-black">
+                                        {item.question}
+                                        <span className="text-xl font-normal text-slate-400 transition group-open:rotate-45">+</span>
+                                    </summary>
+                                    <p className="max-w-2xl pt-4 text-sm leading-7 text-slate-600">{item.answer}</p>
+                                </details>
+                            ))}
+                        </div>
+                    </div>
+                </section>
+
+                <section className="bg-emerald-500">
+                    <div className="mx-auto grid max-w-[1280px] gap-10 px-5 py-16 lg:grid-cols-[1fr_auto] lg:items-center lg:px-8 lg:py-20">
+                        <div>
+                            <Clock3 size={26} className="mb-6" />
+                            <h2 className="max-w-3xl text-4xl font-black tracking-[-0.045em] sm:text-5xl">Veja como o FoodSystem se encaixa no turno da sua loja.</h2>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => requestDemo("chamada final")}
+                            className="inline-flex h-14 items-center justify-center gap-3 bg-slate-950 px-8 text-sm font-black text-white hover:bg-slate-800"
+                        >
+                            Agendar demonstração <ArrowRight size={18} />
+                        </button>
                     </div>
                 </section>
             </main>
 
-            <footer className="border-t border-slate-100 bg-white py-10">
-                <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 md:flex-row md:items-center md:justify-between">
-                    <p className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-400">
-                        © 2026 FOODSYSTEM.APP.BR - TODOS OS DIREITOS RESERVADOS.
-                    </p>
-                    <div className="flex flex-wrap gap-5 text-[10px] font-black uppercase tracking-[0.22em] text-slate-400">
-                        <a href="#solucao" className="transition-colors hover:text-primary">Solução</a>
-                        <a href="#para-quem" className="transition-colors hover:text-primary">Para quem</a>
-                        <a href="#planos" className="transition-colors hover:text-primary">Planos</a>
-                        <a href="#acesso" className="transition-colors hover:text-primary">Acesso</a>
-                        <a href="#faq" className="transition-colors hover:text-primary">FAQ</a>
+            <footer className="bg-slate-950 py-10 text-white">
+                <div className="mx-auto flex max-w-[1280px] flex-col gap-6 px-5 sm:flex-row sm:items-center sm:justify-between lg:px-8">
+                    <div className="flex items-center gap-3">
+                        <Image
+                            src="/foodsystem-icon.svg"
+                            alt=""
+                            width={36}
+                            height={36}
+                            className="h-9 w-9 ring-1 ring-white/15"
+                        />
+                        <div>
+                            <strong className="block text-sm">FoodSystem</strong>
+                            <span className="text-[9px] uppercase tracking-[0.18em] text-slate-500">foodsystem.app.br</span>
+                        </div>
                     </div>
+                    <div className="flex flex-wrap gap-5 text-xs font-semibold text-slate-400">
+                        <a href="#plataforma" className="hover:text-white">Plataforma</a>
+                        <a href="#recursos" className="hover:text-white">Recursos</a>
+                        <a href="#planos" className="hover:text-white">Planos</a>
+                        <Link href="/login" className="hover:text-white">Entrar</Link>
+                    </div>
+                    <p className="text-[10px] uppercase tracking-[0.12em] text-slate-600">© 2026 FoodSystem</p>
                 </div>
             </footer>
         </div>

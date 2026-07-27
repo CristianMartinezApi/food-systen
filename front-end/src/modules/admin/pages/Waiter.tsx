@@ -199,7 +199,7 @@ export default function WaiterPage() {
             setStep("TABLES");
             loadData();
         } catch (error: any) {
-            toast.error(error.response?.data?.error || "Erro ao enviar pedido");
+            toast.error(error?.message || "Erro ao enviar pedido");
         } finally {
             setSubmitting(false);
         }
@@ -236,9 +236,9 @@ export default function WaiterPage() {
     }
 
     return (
-        <div className="flex min-h-screen flex-col bg-slate-50 pb-20">
+        <div className="ops-workspace flex min-h-[calc(100vh-6rem)] flex-col pb-20">
             {/* Header */}
-            <header className="sticky top-0 z-20 flex items-center justify-between bg-white px-4 py-4 shadow-sm">
+            <header className="ops-panel sticky top-0 z-20 flex items-center justify-between px-3 py-3">
                 <div className="flex items-center gap-3">
                     {step !== "TABLES" && (
                         <button 
@@ -246,12 +246,12 @@ export default function WaiterPage() {
                                 if (step === "CART") setStep("MENU");
                                 else if (step === "MENU") setStep("TABLES");
                             }}
-                            className="rounded-full bg-slate-100 p-2"
+                            className="rounded bg-slate-100 p-2"
                         >
                             <ChevronLeft className="h-5 w-5" />
                         </button>
                     )}
-                    <h1 className="text-xl font-bold text-slate-900">
+                    <h1 className="text-lg font-semibold text-slate-900">
                         {step === "TABLES" && "Garçom - Mesas"}
                         {step === "MENU" && (selectedTable?.tableNumber === 0 ? "Venda Balcão" : `Mesa ${selectedTable?.tableNumber}`)}
                         {step === "CART" && "Carrinho"}
@@ -260,14 +260,14 @@ export default function WaiterPage() {
                 {step === "TABLES" && (
                     <button 
                         onClick={handleLogout}
-                        className="rounded-full bg-slate-100 p-2 text-red-500"
+                        className="rounded bg-slate-100 p-2 text-red-500"
                     >
                         <LogOut className="h-5 w-5" />
                     </button>
                 )}
             </header>
 
-            <main className="flex-1 p-4">
+            <main className="flex-1 py-3">
                 {step === "TABLES" && (
                     <div className="space-y-6">
                         {/* Opção Balcão / Para Viagem */}
@@ -276,10 +276,10 @@ export default function WaiterPage() {
                                 setSelectedTable({ tableNumber: 0, isOccupied: false, orders: [] });
                                 setStep("MENU");
                             }}
-                            className="w-full flex items-center justify-between p-5 bg-white border-2 border-slate-900 rounded-3xl shadow-sm active:scale-[0.98] transition-all group"
+                            className="group flex w-full items-center justify-between rounded-md border border-slate-400 bg-white p-4 transition-colors hover:bg-slate-50"
                         >
                             <div className="flex items-center gap-4">
-                                <div className="w-12 h-12 bg-slate-900 rounded-2xl flex items-center justify-center shadow-lg shadow-slate-200">
+                                <div className="flex h-10 w-10 items-center justify-center rounded bg-slate-900">
                                     <ShoppingBag className="text-white" size={24} />
                                 </div>
                                 <div className="text-left">
@@ -302,7 +302,7 @@ export default function WaiterPage() {
                                     setStep("MENU");
                                 }}
                                 className={cn(
-                                    "relative flex flex-col items-center justify-center rounded-2xl border-2 p-6 transition-all active:scale-95",
+                                    "relative flex flex-col items-center justify-center rounded-md border p-4 transition-colors active:bg-slate-100",
                                     table.isOccupied 
                                         ? "border-red-100 bg-red-50 text-red-700 shadow-sm"
                                         : "border-emerald-100 bg-emerald-50 text-emerald-700 shadow-sm"
@@ -334,7 +334,7 @@ export default function WaiterPage() {
                                 <input 
                                     type="text"
                                     placeholder="Buscar produto..."
-                                    className="w-full rounded-2xl border-none bg-white py-3 pl-10 pr-4 shadow-sm focus:ring-2 focus:ring-slate-900"
+                                    className="ops-field pl-10"
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
                                 />
@@ -357,7 +357,7 @@ export default function WaiterPage() {
                                         key={cat.id}
                                         onClick={() => setSelectedCategoryId(cat.id)}
                                         className={cn(
-                                            "whitespace-nowrap rounded-full px-4 py-2 text-sm font-semibold transition-all",
+                                            "whitespace-nowrap rounded px-4 py-2 text-sm font-semibold transition-colors",
                                             selectedCategoryId === cat.id 
                                                 ? "bg-slate-900 text-white shadow-md shadow-slate-900/20" 
                                                 : "bg-white text-slate-600 shadow-sm"
@@ -375,7 +375,7 @@ export default function WaiterPage() {
                                 <button
                                     key={product.id}
                                     onClick={() => openProductModal(product)}
-                                    className="flex items-center justify-between rounded-2xl bg-white p-4 shadow-sm transition-all active:bg-slate-50 border border-slate-100"
+                                    className="flex items-center justify-between rounded-md border border-slate-300 bg-white p-3 transition-colors active:bg-slate-50"
                                 >
                                     <div className="text-left flex-1">
                                         <div className="font-bold text-slate-900 group-active:text-primary transition-colors">{product.name}</div>
@@ -400,7 +400,7 @@ export default function WaiterPage() {
                             </div>
                         ) : (
                             <>
-                                <div className="divide-y divide-slate-100 rounded-2xl bg-white shadow-sm">
+                                <div className="ops-panel divide-y divide-slate-200">
                                     {cart.map((item, idx) => (
                                         <div key={`${item.productId}-${idx}`} className="flex flex-col p-4">
                                             <div className="flex items-center justify-between">
@@ -445,7 +445,7 @@ export default function WaiterPage() {
                                     ))}
                                 </div>
 
-                                <div className="rounded-2xl bg-slate-900 p-6 text-white shadow-lg shadow-slate-900/20">
+                                <div className="rounded-md bg-slate-900 p-4 text-white">
                                     <div className="flex items-center justify-between text-lg font-bold">
                                         <span>Total do Pedido</span>
                                         <span>{formatCurrency(cartTotal)}</span>

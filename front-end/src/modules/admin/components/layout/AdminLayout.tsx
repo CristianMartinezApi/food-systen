@@ -17,7 +17,9 @@ import {
   Wallet,
   ShieldCheck,
   Grid3X3,
-  Utensils
+  Utensils,
+  BarChart3,
+  Menu
 } from "lucide-react";
 import { cn } from "../../../../shared/utils";
 import { motion, AnimatePresence } from "framer-motion";
@@ -25,7 +27,7 @@ import { getTenantSlug } from "../../../../shared/utils/tenant";
 import { useSettings } from "../../../../core/hooks/useSettings";
 import { api } from "../../../../core/config/api";
 import { socket } from "../../../../core/config/socket";
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import packageJson from "../../../../../package.json";
 import toast from "react-hot-toast";
 
@@ -100,6 +102,24 @@ export function AdminLayout({ children }: AdminLayoutProps) {
   const appVersion = `v${packageJson.version}`;
   const isStoreAdmin = ['OWNER', 'MANAGER'].includes(userRole);
   const hasEmailNotice = isStoreAdmin && !emailVerified;
+  const syncEmailVerification = useCallback(async () => {
+    try {
+      const response = await api.get('/users/me/email-verification');
+      setUserEmail(response.email || "");
+      setNewEmail(response.email || "");
+      setEmailVerified(Boolean(response.emailVerifiedAt));
+
+      const stored = localStorage.getItem("@FoodSystem:user");
+      if (stored) {
+        const user = JSON.parse(stored);
+        user.email = response.email;
+        user.emailVerifiedAt = response.emailVerifiedAt;
+        localStorage.setItem("@FoodSystem:user", JSON.stringify(user));
+      }
+    } catch {
+      // Mantém o último estado conhecido se a consulta falhar temporariamente.
+    }
+  }, []);
   const footerBadgeLabel = useMemo(() => {
     const name = (settings?.storeName || "Food System").trim();
     const tokens = name.split(/\s+/).filter(Boolean).slice(0, 2);
@@ -125,6 +145,28 @@ export function AdminLayout({ children }: AdminLayoutProps) {
       }
     }
   }, []);
+
+  useEffect(() => {
+    setIsSidebarOpen(false);
+    setIsNoticesOpen(false);
+  }, [pathname]);
+
+  useEffect(() => {
+    if (!isStoreAdmin) return;
+
+    void syncEmailVerification();
+    const handleFocus = () => void syncEmailVerification();
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') void syncEmailVerification();
+    };
+
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
+  }, [isStoreAdmin, syncEmailVerification]);
 
   useEffect(() => {
     if (!userRole) return;
@@ -164,6 +206,9 @@ export function AdminLayout({ children }: AdminLayoutProps) {
     try {
       setVerificationSending(true);
       const response = await api.post('/users/me/email-verification/request', {});
+      if (response.alreadyVerified) {
+        await syncEmailVerification();
+      }
       toast.success(response.message);
     } catch (error: any) {
       toast.error(error.message || 'Não foi possível enviar a confirmação');
@@ -308,7 +353,10 @@ export function AdminLayout({ children }: AdminLayoutProps) {
 
   const openNotices = async () => {
     if (userRole !== 'SUPER_ADMIN') {
-      if (isStoreAdmin) setIsNoticesOpen((current) => !current);
+      if (isStoreAdmin) {
+        await syncEmailVerification();
+        setIsNoticesOpen((current) => !current);
+      }
       return;
     }
 
@@ -361,6 +409,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
     { icon: Grid3X3, label: "Mesas", path: "/admin/tables" },
     { icon: Utensils, label: "Garçom", path: "/admin/garcom" },
     { icon: Wallet, label: "Sessão de Caixa", path: "/admin/caixa" },
+    { icon: BarChart3, label: "Relatórios", path: "/admin/relatorios" },
     { icon: ShoppingBag, label: "Pedidos", path: "/admin/orders" },
     { icon: Tags, label: "Categorias", path: "/admin/categories" },
     { icon: Package, label: "Produtos", path: "/admin/products" },
@@ -395,6 +444,16 @@ export function AdminLayout({ children }: AdminLayoutProps) {
     ];
   }
 
+  const mobilePrimaryItems = userRole === "SUPER_ADMIN"
+    ? menuItems.slice(0, 4)
+    : userRole === "EMPLOYEE"
+      ? menuItems
+      : userRole === "CASHIER"
+        ? menuItems.slice(0, 4)
+        : menuItems.filter((item) =>
+            ["/admin", "/admin/orders", "/admin/caixa", "/admin/relatorios"].includes(item.path)
+          );
+
   const roleLabels: Record<string, string> = {
     "SUPER_ADMIN": "Master",
     "OWNER": "Proprietário",
@@ -406,7 +465,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
   const storeUrl = typeof window !== 'undefined' ? `${window.location.origin}/${slug}` : '';
 
   return (
-    <div className="min-h-screen bg-slate-50 flex">
+    <div className="flex h-screen overflow-hidden bg-slate-100">
       {/* Sidebar administrativa com visual discreto */}
       <AnimatePresence>
         {isSidebarOpen && (
@@ -421,23 +480,23 @@ export function AdminLayout({ children }: AdminLayoutProps) {
       </AnimatePresence>
 
       <aside className={cn(
-        "fixed inset-y-0 left-0 w-72 bg-white border-r border-slate-200 flex flex-col h-screen overflow-y-auto z-70 transition-transform duration-300 lg:sticky lg:translate-x-0 lg:z-50",
+        "fixed inset-y-0 left-0 z-70 flex h-screen w-64 flex-col overflow-y-auto border-r border-slate-300 bg-slate-950 transition-transform duration-200 lg:sticky lg:z-50 lg:translate-x-0",
         isSidebarOpen ? "translate-x-0" : "-translate-x-full"
       )}>
-        <div className="px-6 py-6 flex items-center justify-between border-b border-slate-200">
+        <div className="flex h-16 items-center justify-between border-b border-slate-800 px-4">
           <div className="flex items-center gap-3 min-w-0">
             {settings?.logo ? (
-              <img src={settings.logo} alt="Logo" className="w-10 h-10 rounded-lg object-cover border border-slate-200" />
+              <img src={settings.logo} alt="Logo" className="h-9 w-9 rounded object-cover ring-1 ring-slate-700" />
             ) : (
-              <div className="w-10 h-10 bg-slate-900 rounded-lg flex items-center justify-center">
+              <div className="flex h-9 w-9 items-center justify-center rounded bg-slate-800">
                 <Utensils className="text-white" size={18} />
               </div>
             )}
             <div className="flex flex-col min-w-0">
-              <span className="text-sm font-semibold text-slate-900 truncate leading-none">
+              <span className="truncate text-sm font-semibold leading-none text-white">
                 {settings?.storeName?.split(' ')[0] || "Food"}
               </span>
-              <span className="text-xs font-medium text-slate-500 mt-1">Painel administrativo</span>
+              <span className="mt-1 text-[11px] font-medium text-slate-400">Operação administrativa</span>
             </div>
           </div>
 
@@ -449,29 +508,30 @@ export function AdminLayout({ children }: AdminLayoutProps) {
           </button>
         </div>
 
-        <nav className="flex-1 px-4 py-4 space-y-1.5">
+        <nav className="flex-1 space-y-1 px-3 py-4">
           {menuItems.map((item) => {
             const isActive = pathname === item.path;
             return (
               <Link
                 key={item.path}
                 href={item.path}
+                onClick={() => setIsSidebarOpen(false)}
                 className={cn(
-                  "flex items-center justify-between px-3 sm:px-4 h-11 rounded-lg transition-colors group text-sm font-medium",
+                  "group flex h-10 items-center justify-between rounded px-3 text-sm font-medium transition-colors",
                   isActive
-                    ? "bg-slate-100 text-slate-950 border border-slate-200"
-                    : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                    ? "bg-slate-800 text-white"
+                    : "text-slate-400 hover:bg-slate-900 hover:text-white"
                 )}
               >
                 <div className="flex items-center gap-3">
                   <item.icon size={20} className={cn(
                     "transition-colors",
-                    isActive ? "text-slate-700" : "text-slate-400 group-hover:text-slate-700"
+                    isActive ? "text-white" : "text-slate-500 group-hover:text-white"
                   )} />
                   <span>{item.label}</span>
                 </div>
                 {isActive && (
-                  <motion.div layoutId="nav-active-dot" className="w-1.5 h-1.5 rounded-full bg-slate-500" />
+                  <motion.div layoutId="nav-active-dot" className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
                 )}
               </Link>
             );
@@ -485,20 +545,20 @@ export function AdminLayout({ children }: AdminLayoutProps) {
               href={storeUrl}
               target="_blank"
               rel="noreferrer"
-              className="flex items-center justify-center gap-2 w-full h-10 bg-white border border-slate-200 text-slate-600 rounded-lg text-sm font-medium hover:bg-slate-100 hover:text-slate-900 transition-colors"
+              className="flex h-10 w-full items-center justify-center gap-2 rounded border border-slate-700 bg-slate-900 text-sm font-medium text-slate-300 transition-colors hover:bg-slate-800 hover:text-white"
             >
               Acessar Vitrine <ExternalLink size={14} />
             </a>
           </div>
         )}
 
-        <div className="p-4 border-t border-slate-200">
-          <div className="bg-slate-50 rounded-lg px-3 py-3 flex items-center gap-3 mb-3 border border-slate-200">
-            <div className="w-10 h-10 rounded-md bg-white border border-slate-200 flex items-center justify-center shrink-0">
-              <User size={18} className="text-slate-700" />
+        <div className="border-t border-slate-800 p-3">
+          <div className="mb-2 flex items-center gap-3 rounded bg-slate-900 px-3 py-3">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded bg-slate-800">
+              <User size={17} className="text-slate-300" />
             </div>
             <div className="truncate flex-1">
-              <p className="text-sm font-semibold text-slate-900 truncate leading-none mb-1">
+              <p className="mb-1 truncate text-sm font-semibold leading-none text-white">
                 {userName || "Operador"}
               </p>
               <div className="flex items-center gap-1.5 min-w-0">
@@ -519,7 +579,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
           </div>
           <button
             onClick={handleLogout}
-            className="flex items-center gap-3 w-full px-3 h-10 rounded-lg text-slate-600 hover:text-rose-600 hover:bg-rose-50 transition-colors text-sm font-medium"
+            className="flex h-9 w-full items-center gap-3 rounded px-3 text-sm font-medium text-slate-400 transition-colors hover:bg-slate-900 hover:text-rose-300"
           >
             <LogOut size={16} />
             <span>Encerrar Sessão</span>
@@ -528,10 +588,10 @@ export function AdminLayout({ children }: AdminLayoutProps) {
       </aside>
 
       {/* Main Content Area */}
-      <main className="flex-1 flex flex-col min-h-0 overflow-hidden bg-slate-50">
+      <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-slate-100">
         {/* Header superior do sistema */}
-        <header className="h-16 lg:h-17 bg-white border-b border-slate-200 px-4 lg:px-8 flex items-center justify-between sticky top-0 z-40 shrink-0">
-          <div className="flex items-center gap-4">
+        <header className="sticky top-0 z-40 flex h-14 shrink-0 items-center justify-between border-b border-slate-300 bg-white px-4 lg:px-6">
+          <div className="flex min-w-0 items-center gap-3 lg:gap-4">
             <button
               onClick={() => setIsSidebarOpen(true)}
               className="lg:hidden w-9 h-9 rounded-md border border-slate-200 bg-white flex items-center justify-center text-slate-700 active:scale-95 transition-all"
@@ -542,12 +602,12 @@ export function AdminLayout({ children }: AdminLayoutProps) {
               <h2 className="text-xs font-medium text-slate-500">Administração</h2>
               <ChevronRight size={12} className="text-slate-300" />
             </div>
-            <span className="text-sm font-semibold text-slate-900">
+            <span className="truncate text-sm font-semibold text-slate-900">
               {menuItems.find(m => m.path === pathname)?.label || "Visão Geral"}
             </span>
           </div>
 
-          <div className="flex items-center gap-3 lg:gap-4">
+          <div className="flex shrink-0 items-center gap-2 lg:gap-4">
             <div className="hidden md:flex items-center gap-2 bg-slate-100 px-3 py-2 rounded-md border border-slate-200">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
               <span className="text-xs font-medium text-slate-600">Loja online</span>
@@ -578,7 +638,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
               </button>
 
               {isNoticesOpen && isStoreAdmin && (
-                <div className="absolute right-0 top-14 z-50 w-[min(92vw,30rem)] overflow-hidden rounded-3xl border border-slate-100 bg-white shadow-[0_28px_80px_rgba(15,23,42,0.18)]">
+                <div className="fixed left-3 right-3 top-16 z-50 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-[0_28px_80px_rgba(15,23,42,0.18)] sm:absolute sm:left-auto sm:right-0 sm:top-14 sm:w-[min(92vw,30rem)]">
                   <div className="border-b border-slate-100 px-5 py-4">
                     <p className="text-[10px] font-black uppercase tracking-[0.24em] text-slate-400">Avisos da conta</p>
                     <h3 className="mt-1 text-sm font-black uppercase tracking-tight text-slate-950">Pendências que exigem ação</h3>
@@ -622,7 +682,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
               )}
 
               {isNoticesOpen && userRole === 'SUPER_ADMIN' && (
-                <div className="absolute right-0 top-14 z-50 w-[min(92vw,28rem)] rounded-3xl border border-slate-100 bg-white shadow-[0_28px_80px_rgba(15,23,42,0.18)] overflow-hidden">
+                <div className="fixed left-3 right-3 top-16 z-50 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-[0_28px_80px_rgba(15,23,42,0.18)] sm:absolute sm:left-auto sm:right-0 sm:top-14 sm:w-[min(92vw,28rem)]">
                   <div className="border-b border-slate-100 px-5 py-4 flex items-center justify-between">
                     <div>
                       <p className="text-[10px] font-black uppercase tracking-[0.24em] text-slate-300">Avisos reais</p>
@@ -747,19 +807,19 @@ export function AdminLayout({ children }: AdminLayoutProps) {
           </div>
         </header>
 
-        <div className="flex-1 overflow-y-auto px-4 py-4 md:px-6 md:py-6 lg:px-8 lg:py-8 no-scrollbar">
-          <div className="max-w-430 mx-auto w-full min-h-full flex flex-col">
+        <div className="no-scrollbar flex-1 overflow-y-auto p-3 pb-24 md:p-4 md:pb-24 lg:p-5">
+          <div className="mx-auto flex min-h-full w-full max-w-[1680px] flex-col">
             <motion.div
               className="flex-1"
               key={pathname}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6 }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.12 }}
             >
               {children}
             </motion.div>
 
-            <footer className="mt-auto pb-10 lg:pb-12 border-t border-slate-100 pt-6 lg:pt-7">
+            <footer className="hidden">
               <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
                 <div className="min-w-0">
                   <div className="mt-2 flex items-center gap-3 min-w-0">
@@ -791,6 +851,44 @@ export function AdminLayout({ children }: AdminLayoutProps) {
             </footer>
           </div>
         </div>
+
+        <nav
+          className="fixed inset-x-0 bottom-0 z-50 grid min-h-16 border-t border-slate-300 bg-white/95 px-1 pb-[max(0.25rem,env(safe-area-inset-bottom))] pt-1 shadow-[0_-8px_24px_rgba(15,23,42,0.08)] backdrop-blur lg:hidden"
+          style={{ gridTemplateColumns: `repeat(${Math.min(mobilePrimaryItems.length + 1, 5)}, minmax(0, 1fr))` }}
+          aria-label="Navegação administrativa móvel"
+        >
+          {mobilePrimaryItems.slice(0, 4).map((item) => {
+            const isActive = pathname === item.path;
+            return (
+              <Link
+                key={`mobile-${item.path}`}
+                href={item.path}
+                className={cn(
+                  "flex min-w-0 flex-col items-center justify-center gap-1 px-1 py-2 text-[10px] font-semibold",
+                  isActive ? "text-slate-950" : "text-slate-500"
+                )}
+              >
+                <span className={cn(
+                  "grid h-7 w-9 place-items-center rounded-md",
+                  isActive && "bg-slate-950 text-white"
+                )}>
+                  <item.icon size={17} />
+                </span>
+                <span className="w-full truncate text-center">{item.label}</span>
+              </Link>
+            );
+          })}
+          <button
+            type="button"
+            onClick={() => setIsSidebarOpen(true)}
+            className="flex min-w-0 flex-col items-center justify-center gap-1 px-1 py-2 text-[10px] font-semibold text-slate-500"
+          >
+            <span className="grid h-7 w-9 place-items-center rounded-md">
+              <Menu size={18} />
+            </span>
+            <span>Mais</span>
+          </button>
+        </nav>
       </main>
     </div>
   );

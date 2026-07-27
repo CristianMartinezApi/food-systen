@@ -17,6 +17,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ProductModal } from "../../components/modals/ProductModal";
 import { clampDiscountPercent, getProductDiscountedPrice, hasProductDiscount } from "../../../../shared/utils/product";
 import { AdminPageHeader, SystemPanel } from "../../components/layout/AdminPageHeader";
+import toast from "react-hot-toast";
 
 export default function ProductsPage() {
   const [products, setProducts] = useState<any[]>([]);
@@ -56,13 +57,14 @@ export default function ProductsPage() {
     try {
       await api.delete(`/products/${id}`);
       fetchProducts();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Erro ao excluir produto:", error);
+      toast.error(error?.message || "Não foi possível excluir o produto.");
     }
   };
 
   return (
-    <div className="space-y-4">
+    <div className="ops-workspace space-y-3">
       <div className="products-hero">
         <AdminPageHeader
           eyebrow="Cardápio"
@@ -84,7 +86,7 @@ export default function ProductsPage() {
       </div>
 
         {/* Filtros e Busca Moderno */}
-        <SystemPanel className="products-filters flex flex-col gap-3 p-3 md:flex-row">
+        <SystemPanel className="products-filters flex flex-col gap-3 rounded-md p-3 md:flex-row">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
             <input 
@@ -120,9 +122,9 @@ export default function ProductsPage() {
                   initial={false}
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.9 }}
-                  transition={{ delay: idx * 0.05 }}
+                  transition={{ duration: 0.1 }}
                   key={product.id || idx}
-                  className="product-card group flex h-full flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition hover:border-slate-300 hover:shadow-md"
+                  className="product-card group flex h-full flex-col overflow-hidden rounded-md border border-slate-300 bg-white transition-colors hover:border-slate-400"
                 >
                   {/* Image Container with Actions */}
                   <div className="relative aspect-square overflow-hidden bg-slate-50 shrink-0">
@@ -130,7 +132,7 @@ export default function ProductsPage() {
                       <img 
                         src={product.image} 
                         alt={product.name}
-                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-[1.5s] ease-out" 
+                        className="h-full w-full object-cover"
                       />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-slate-200">

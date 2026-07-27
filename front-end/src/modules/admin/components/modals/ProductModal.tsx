@@ -413,7 +413,7 @@ export function ProductModal({ isOpen, onClose, onSave, product }: ProductModalP
       onClose();
     } catch (error: any) {
       console.error("Erro ao salvar produto:", error);
-      alert(error.response?.data?.error || "Erro ao salvar produto. Verifique os campos e tente novamente.");
+      alert(error?.message || "Erro ao salvar produto. Verifique os campos e tente novamente.");
     } finally {
       setIsSaving(false);
     }
