@@ -1591,6 +1591,77 @@ app.get('/api/users/me/email-verification', authMiddleware, async (req: AuthRequ
   }
 });
 
+app.get('/api/users/me/profile', authMiddleware, async (req: AuthRequest, res) => {
+  try {
+    if (!req.userId) return res.status(401).json({ error: 'Não autenticado' });
+
+    const user = await prisma.user.findUnique({
+      where: { id: req.userId },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        emailVerifiedAt: true,
+        emailNotificationsEnabled: true,
+        createdAt: true,
+        updatedAt: true,
+        restaurant: {
+          select: { id: true, name: true, slug: true, logo: true },
+        },
+      },
+    });
+    if (!user) return res.status(404).json({ error: 'Usuário não encontrado' });
+
+    return res.json(user);
+  } catch (error) {
+    console.error('Erro ao consultar perfil:', error);
+    return res.status(500).json({ error: 'Não foi possível consultar o perfil' });
+  }
+});
+
+app.patch('/api/users/me/profile', authMiddleware, async (req: AuthRequest, res) => {
+  try {
+    if (!req.userId) return res.status(401).json({ error: 'Não autenticado' });
+
+    const name = String(req.body?.name || '').trim().replace(/\s+/g, ' ');
+    const emailNotificationsEnabled = req.body?.emailNotificationsEnabled;
+    if (name.length < 2 || name.length > 80) {
+      return res.status(400).json({ error: 'O nome deve ter entre 2 e 80 caracteres' });
+    }
+    if (typeof emailNotificationsEnabled !== 'boolean') {
+      return res.status(400).json({ error: 'Preferência de notificações inválida' });
+    }
+
+    const updated = await prisma.user.update({
+      where: { id: req.userId },
+      data: { name, emailNotificationsEnabled },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        emailVerifiedAt: true,
+        emailNotificationsEnabled: true,
+        createdAt: true,
+        updatedAt: true,
+        restaurant: {
+          select: { id: true, name: true, slug: true, logo: true },
+        },
+      },
+    });
+    await createAudit(req, 'update_own_profile', 'user', req.userId, {
+      name,
+      emailNotificationsEnabled,
+    });
+
+    return res.json({ ...updated, message: 'Perfil atualizado com sucesso' });
+  } catch (error) {
+    console.error('Erro ao atualizar perfil:', error);
+    return res.status(500).json({ error: 'Não foi possível atualizar o perfil' });
+  }
+});
+
 app.patch('/api/users/me/email', authMiddleware, async (req: AuthRequest, res) => {
   try {
     if (!req.userId) return res.status(401).json({ error: 'Não autenticado' });

@@ -61,6 +61,7 @@ const STORE_ADMIN_ROUTES = [
   "/admin/categories",
   "/admin/products",
   "/admin/settings",
+  "/admin/profile",
 ];
 
 const SUPER_ADMIN_ROUTES = [
@@ -69,6 +70,7 @@ const SUPER_ADMIN_ROUTES = [
   "/admin/plans",
   "/admin/provisioning",
   "/admin/audit",
+  "/admin/profile",
 ];
 
 export function AdminLayout({ children }: AdminLayoutProps) {
@@ -130,20 +132,26 @@ export function AdminLayout({ children }: AdminLayoutProps) {
   useEffect(() => {
     setSlug(getTenantSlug());
 
-    const userData = localStorage.getItem("@FoodSystem:user");
-    if (userData) {
-      try {
+    const syncStoredUser = () => {
+      const userData = localStorage.getItem("@FoodSystem:user");
+      if (userData) {
+        try {
         const parsedUser = JSON.parse(userData);
         setUserRole(parsedUser.role || "");
         setUserName(parsedUser.name || "");
         setUserEmail(parsedUser.email || "");
         setNewEmail(parsedUser.email || "");
         setEmailVerified(Boolean(parsedUser.emailVerifiedAt));
-      } catch {
-        setUserRole("");
-        setUserName("");
+        } catch {
+          setUserRole("");
+          setUserName("");
+        }
       }
-    }
+    };
+
+    syncStoredUser();
+    window.addEventListener("foodsystem:user-updated", syncStoredUser);
+    return () => window.removeEventListener("foodsystem:user-updated", syncStoredUser);
   }, []);
 
   useEffect(() => {
@@ -802,13 +810,16 @@ export function AdminLayout({ children }: AdminLayoutProps) {
               )}
             </div>
 
-            <button className="flex items-center gap-2 h-10 px-3 rounded-md bg-white border border-slate-200 text-slate-700">
+            <button
+              onClick={() => router.push("/admin/profile")}
+              className="flex items-center gap-2 h-10 px-3 rounded-md bg-white border border-slate-200 text-slate-700 transition-colors hover:border-primary/30 hover:bg-primary/5"
+            >
               <div className="w-7 h-7 rounded-md bg-slate-100 flex items-center justify-center text-slate-600 shrink-0">
                 <User size={14} />
               </div>
               <div className="hidden sm:flex flex-col items-start leading-none min-w-0">
                 <span className="text-[10px] font-medium text-slate-500">Perfil</span>
-                <span className="text-[11px] font-semibold text-slate-900 truncate max-w-40">{storeLabel}</span>
+                <span className="text-[11px] font-semibold text-slate-900 truncate max-w-40">{userName || storeLabel}</span>
               </div>
             </button>
           </div>
