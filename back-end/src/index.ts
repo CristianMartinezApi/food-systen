@@ -6539,7 +6539,11 @@ app.get('/api/stats', authMiddleware, async (req: AuthRequest, res) => {
   const todayEnd = new Date(`${localDate}T23:59:59.999-03:00`);
   const yesterdayStart = new Date(todayStart.getTime() - 24 * 60 * 60 * 1000);
   const yesterdayEnd = new Date(todayStart.getTime() - 1);
-  const activeStatuses: OrderStatus[] = ['PENDING', 'OPEN', 'CONFIRMED', 'PAID', 'PREPARING', 'READY', 'OUT_FOR_DELIVERY'];
+  const activeStatuses: OrderStatus[] = ['PENDING', 'OPEN', 'CONFIRMED', 'PREPARING', 'READY', 'OUT_FOR_DELIVERY'];
+  const paidPickupFilter = {
+    status: 'PAID' as OrderStatus,
+    address: { path: ['type'], equals: 'PICKUP' },
+  };
   const delayedBefore = new Date(Date.now() - 20 * 60 * 1000);
 
   const [
@@ -6564,11 +6568,22 @@ app.get('/api/stats', authMiddleware, async (req: AuthRequest, res) => {
       _sum: { total: true },
       _count: { _all: true },
     }),
-    prisma.order.count({ where: { restaurantId, status: { in: activeStatuses } } }),
     prisma.order.count({
       where: {
         restaurantId,
-        status: { in: ['PENDING', 'CONFIRMED', 'PAID', 'PREPARING'] },
+        OR: [
+          { status: { in: activeStatuses } },
+          paidPickupFilter,
+        ],
+      },
+    }),
+    prisma.order.count({
+      where: {
+        restaurantId,
+        OR: [
+          { status: { in: ['PENDING', 'CONFIRMED', 'PREPARING'] } },
+          paidPickupFilter,
+        ],
         createdAt: { lt: delayedBefore },
       },
     }),
