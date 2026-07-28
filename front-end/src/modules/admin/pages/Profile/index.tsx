@@ -221,6 +221,29 @@ export default function Profile() {
                 </span>
               )}
             </div>
+            <div className="mt-4 flex flex-wrap items-center gap-2">
+              <label className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-xl bg-slate-950 px-4 text-[10px] font-black uppercase tracking-wider text-white transition hover:bg-black">
+                {uploadingAvatar ? <Loader2 size={15} className="animate-spin" /> : <Camera size={15} />}
+                {avatarUrl ? "Alterar foto" : "Adicionar foto"}
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  onChange={changeAvatar}
+                  disabled={uploadingAvatar}
+                  className="hidden"
+                />
+              </label>
+              {avatarUrl && (
+                <button
+                  type="button"
+                  onClick={() => setAvatarUrl("")}
+                  className="h-10 rounded-xl border border-slate-200 bg-white px-4 text-[10px] font-black uppercase tracking-wider text-slate-500 transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700"
+                >
+                  Remover foto
+                </button>
+              )}
+              <p className="w-full text-[11px] text-slate-400">PNG, JPG ou WebP. A imagem será recortada e otimizada automaticamente.</p>
+            </div>
           </div>
         </div>
       </header>
