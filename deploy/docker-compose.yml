@@ -7,7 +7,8 @@ services:
       args:
         NEXT_PUBLIC_API_URL: ${DEPLOY_NEXT_PUBLIC_API_URL:-http://localhost:8001/api}
         NEXT_PUBLIC_SOCKET_URL: ${DEPLOY_NEXT_PUBLIC_SOCKET_URL:-http://localhost:8001}
-    command: npm run dev -- -H 0.0.0.0
+    # Webpack respeita WATCHPACK_POLLING nos volumes montados do Docker Desktop/Windows.
+    command: npm run dev -- --webpack -H 0.0.0.0
     ports:
       - "3001:3000"
     volumes:
