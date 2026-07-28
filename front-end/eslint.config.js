@@ -1,24 +1,21 @@
-import { FlatCompat } from '@eslint/eslintrc'
 import { defineConfig, globalIgnores } from 'eslint/config'
-import path from 'path'
-import { fileURLToPath } from 'url'
+import nextVitals from 'eslint-config-next/core-web-vitals'
+import nextTypeScript from 'eslint-config-next/typescript'
 
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = path.dirname(__filename)
-
-const compat = new FlatCompat({
-  baseDirectory: __dirname,
-})
-
-const eslintConfig = defineConfig([
-  ...compat.extends('next/core-web-vitals', 'next/typescript'),
+export default defineConfig([
+  ...nextVitals,
+  ...nextTypeScript,
   {
     rules: {
-      // Divida tecnica: existem ~150 ocorrencias de "any" no projeto.
-      // Rebaixado para warning ate serem tipados aos poucos.
+      // Dívida técnica: tipar gradualmente as ocorrências existentes.
       '@typescript-eslint/no-explicit-any': 'warn',
       '@typescript-eslint/no-unused-vars': 'warn',
       'react-hooks/exhaustive-deps': 'warn',
+      // Regras novas do React 19 aplicadas gradualmente no código legado.
+      'react-hooks/set-state-in-effect': 'warn',
+      'react-hooks/immutability': 'warn',
+      'react-hooks/preserve-manual-memoization': 'warn',
+      'react-hooks/purity': 'warn',
     },
   },
   globalIgnores([
@@ -29,5 +26,3 @@ const eslintConfig = defineConfig([
     'next-env.d.ts',
   ]),
 ])
-
-export default eslintConfig

@@ -34,7 +34,6 @@ export default function Login() {
     try {
       const response = await api.post("/auth/login", { email, password });
 
-      localStorage.setItem("@FoodSystem:token", response.token);
       localStorage.setItem("@FoodSystem:user", JSON.stringify(response.user));
       if (response.restaurant) {
         localStorage.setItem("@FoodSystem:restaurant", JSON.stringify(response.restaurant));

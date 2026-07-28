@@ -23,10 +23,8 @@ async function downloadUsersCsv(search: string, filter: "all" | "approved" | "pe
   if (filter) q.set("filter", filter);
 
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
-  const token = localStorage.getItem("@FoodSystem:token");
-
   const response = await fetch(`${apiUrl}/admin/users/export?${q.toString()}`, {
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    credentials: "include",
   });
 
   if (!response.ok) {

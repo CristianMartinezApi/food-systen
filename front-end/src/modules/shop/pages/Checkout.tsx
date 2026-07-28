@@ -500,6 +500,9 @@ export default function Checkout() {
     try {
       const orderData = {
         idempotencyKey: getOrderIdempotencyKey(),
+        customerAccessToken: localStorage.getItem(
+          `@FoodSystem:customerAccessToken:${slug || getTenantSlug()}`
+        ) || undefined,
         customerName: formData.customerName,
         phone: formData.phone,
         address: {
@@ -539,6 +542,12 @@ export default function Checkout() {
         setStep("pix");
       } else {
         const response = await api.post("/orders", orderData);
+        if (response.customerAccessToken) {
+          localStorage.setItem(
+            `@FoodSystem:customerAccessToken:${slug || getTenantSlug()}`,
+            response.customerAccessToken,
+          );
+        }
         setCreatedOrder(response);
         setOrderCreatedId(response.id);
         setCreatedOrderIdState(response.id);
@@ -1183,6 +1192,12 @@ export default function Checkout() {
                         setIsSubmitting(true);
                         try {
                           const response = await api.post('/orders', pendingPixOrderData);
+                          if (response.customerAccessToken) {
+                            localStorage.setItem(
+                              `@FoodSystem:customerAccessToken:${slug || getTenantSlug()}`,
+                              response.customerAccessToken,
+                            );
+                          }
                           setCreatedOrder(response);
                           setOrderCreatedId(response.id);
                           setCreatedOrderIdState(response.id);

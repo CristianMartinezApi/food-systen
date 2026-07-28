@@ -83,10 +83,8 @@ async function downloadAuditCsv(search: string, subjectType: string) {
   if (subjectType) q.set("subjectType", subjectType);
 
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
-  const token = localStorage.getItem("@FoodSystem:token");
-
   const response = await fetch(`${apiUrl}/admin/audit-logs/export?${q.toString()}`, {
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    credentials: "include",
   });
 
   if (!response.ok) {

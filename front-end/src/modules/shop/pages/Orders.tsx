@@ -57,7 +57,16 @@ export default function CustomerOrdersPage() {
       setLoading(true);
       const queryName = customerNameToFetch?.trim();
       const query = queryName ? `?customerName=${encodeURIComponent(queryName)}` : "";
-      const data = await api.get(`/customer/orders/${encodeURIComponent(phoneToFetch)}${query}`);
+      const currentSlug = getTenantSlug();
+      const customerAccessToken = localStorage.getItem(`@FoodSystem:customerAccessToken:${currentSlug}`) || '';
+      if (!customerAccessToken) {
+        setOrders([]);
+        return;
+      }
+      const data = await api.get(
+        `/customer/orders/${encodeURIComponent(phoneToFetch)}${query}`,
+        { 'x-customer-access-token': customerAccessToken },
+      );
       setOrders(data);
       const requestedOrderId = typeof window !== "undefined"
         ? Number(new URLSearchParams(window.location.search).get("order"))
@@ -93,9 +102,9 @@ export default function CustomerOrdersPage() {
       setCustomerName(savedName);
       fetchOrders(savedPhone, savedName);
 
-      if (!socket.connected) {
-        socket.connect();
-      }
+      // Refaz o handshake para entrar somente na sala segura deste cliente.
+      if (socket.connected) socket.disconnect();
+      socket.connect();
 
       const eventName = `order_status_updated_${currentSlug}`;
       const normalizedSavedName = savedName.trim().toLowerCase();

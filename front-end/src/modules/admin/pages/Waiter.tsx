@@ -220,7 +220,12 @@ export default function WaiterPage() {
         });
     };
 
-    const handleLogout = () => {
+    const handleLogout = async () => {
+        try {
+            await api.post("/auth/logout", {});
+        } catch {
+            // Continua com a limpeza local.
+        }
         localStorage.removeItem("@FoodSystem:token");
         localStorage.removeItem("@FoodSystem:user");
         localStorage.removeItem("@FoodSystem:restaurant");

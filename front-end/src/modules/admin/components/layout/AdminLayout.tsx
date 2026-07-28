@@ -249,6 +249,8 @@ export function AdminLayout({ children }: AdminLayoutProps) {
   useEffect(() => {
     if (!userRole || !slug) return;
 
+    // Refaz o handshake para aplicar o token administrativo atual.
+    if (socket.connected) socket.disconnect();
     socket.connect();
 
     const cashierNeededEvent = `cashier_needed_${slug}`;
@@ -396,7 +398,12 @@ export function AdminLayout({ children }: AdminLayoutProps) {
     }
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      await api.post("/auth/logout", {});
+    } catch {
+      // A limpeza local continua mesmo se a API estiver indisponível.
+    }
     localStorage.removeItem("@FoodSystem:token");
     localStorage.removeItem("@FoodSystem:user");
     localStorage.removeItem("@FoodSystem:restaurant");

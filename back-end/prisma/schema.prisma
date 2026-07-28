@@ -82,6 +82,7 @@ model User {
   emailVerificationExpiresAt DateTime?
   emailVerificationSentAt DateTime?
   emailNotificationsEnabled Boolean @default(true)
+  sessionVersion Int @default(0)
   restaurantId Int?
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
@@ -110,9 +111,24 @@ model Customer {
   updatedAt    DateTime   @updatedAt
   restaurant   Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
   orders       Order[]
+  accessCredential CustomerAccessCredential?
 
   @@index([restaurantId])
   @@map("customers")
+}
+
+model CustomerAccessCredential {
+  id           Int      @id @default(autoincrement())
+  customerId   Int      @unique
+  restaurantId Int
+  tokenHash    String
+  validFrom    DateTime @default(now())
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  customer     Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([restaurantId, tokenHash])
+  @@map("customer_access_credentials")
 }
 
 model Category {

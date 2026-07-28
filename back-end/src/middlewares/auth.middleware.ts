@@ -1,5 +1,7 @@
 import { Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
+import { prisma } from '../lib/prisma';
+import { getAuthToken } from '../utils/auth-cookie';
 import { TenantRequest } from './tenant.middleware';
 
 export interface AuthRequest extends TenantRequest {
@@ -7,46 +9,58 @@ export interface AuthRequest extends TenantRequest {
   userRole?: string;
 }
 
-export const authMiddleware = (req: AuthRequest, res: Response, next: NextFunction) => {
-  const authHeader = req.headers.authorization;
-
-  if (!authHeader) {
+export const authMiddleware = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  const token = getAuthToken(req);
+  if (!token) {
     return res.status(401).json({ error: 'No token provided' });
   }
 
-  const parts = authHeader.split(' ');
-
-  if (parts.length !== 2) {
-    return res.status(401).json({ error: 'Token error' });
-  }
-
-  const [scheme, token] = parts;
-
-  if (!/^Bearer$/i.test(scheme)) {
-    return res.status(401).json({ error: 'Token malformatted' });
-  }
-
-  // ✅ SEGURO: JWT_SECRET validação (não permite fallback inseguro)
   const secret = process.env.JWT_SECRET;
   if (!secret) {
-    console.error('❌ CRÍTICO: JWT_SECRET não está configurado');
+    console.error('CRÍTICO: JWT_SECRET não está configurado');
     return res.status(500).json({ error: 'Server configuration error' });
   }
 
-  jwt.verify(token, secret, (err: any, decoded: any) => {
-    if (err) {
+  try {
+    const decoded = jwt.verify(token, secret, { algorithms: ['HS256'] });
+    if (typeof decoded !== 'object' || !Number.isInteger(Number(decoded.id))) {
       return res.status(401).json({ error: 'Token invalid' });
     }
 
-    req.userId = decoded.id;
-    req.userRole = decoded.role;
+    const user = await prisma.user.findUnique({
+      where: { id: Number(decoded.id) },
+      select: {
+        id: true,
+        role: true,
+        restaurantId: true,
+        isActive: true,
+        isApproved: true,
+        sessionVersion: true,
+      },
+    });
 
-    // Se o usuário estiver tentando acessar um recurso de um restaurante,
-    // verificamos se ele pertence a esse restaurante (exceto se for SUPER_ADMIN)
-    if (decoded.role !== 'SUPER_ADMIN' && req.restaurantId !== undefined && Number(decoded.restaurantId) !== Number(req.restaurantId)) {
+    if (
+      !user ||
+      !user.isActive ||
+      (!user.isApproved && user.role !== 'SUPER_ADMIN') ||
+      Number(decoded.sessionVersion) !== user.sessionVersion
+    ) {
+      return res.status(401).json({ error: 'Sessão inválida ou usuário desativado' });
+    }
+
+    req.userId = user.id;
+    req.userRole = user.role;
+
+    if (
+      user.role !== 'SUPER_ADMIN' &&
+      req.restaurantId !== undefined &&
+      Number(user.restaurantId) !== Number(req.restaurantId)
+    ) {
       return res.status(403).json({ error: 'Forbidden: You do not belong to this restaurant' });
     }
 
     return next();
-  });
+  } catch {
+    return res.status(401).json({ error: 'Token invalid' });
+  }
 };

@@ -61,6 +61,29 @@ export function getEmailVerificationEmail(name: string, verificationUrl: string)
   `;
 }
 
+export function getPasswordResetEmail(name: string, resetUrl: string): string {
+  return `
+    <!DOCTYPE html>
+    <html lang="pt-BR">
+      <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+      <body style="margin:0;padding:24px;font-family:Arial,sans-serif;background:#f1f5f9;color:#0f172a">
+        <div style="max-width:560px;margin:auto;background:#fff;border-radius:16px;padding:32px">
+          <h1 style="margin-top:0">Redefinição de senha</h1>
+          <p>Olá, ${name}.</p>
+          <p>Recebemos uma solicitação para alterar a senha da sua conta FoodSystem.</p>
+          <p style="text-align:center;margin:32px 0">
+            <a href="${resetUrl}" style="background:#dc2626;color:#fff;padding:14px 24px;border-radius:8px;text-decoration:none;font-weight:bold">
+              Criar nova senha
+            </a>
+          </p>
+          <p>Este link expira em 1 hora e só pode ser utilizado uma vez.</p>
+          <p style="font-size:13px;color:#64748b">Se você não solicitou a alteração, ignore esta mensagem.</p>
+        </div>
+      </body>
+    </html>
+  `;
+}
+
 export function getCashierReminderEmail(restaurantName: string, openTime: string): string {
   return `
     <!DOCTYPE html>

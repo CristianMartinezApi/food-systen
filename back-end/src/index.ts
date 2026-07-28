@@ -15,7 +15,8 @@ import { promises as fs } from 'fs';
 import path from 'path';
 import { getCashSessionDeadline, getNextOpeningLabel, isCashSessionExpired, isRestaurantOpenNow, normalizeOperatingHours, validateOperatingHours } from './utils/hours';
 import { validateGuidedSelections } from './utils/guided-assembly';
-import { sendEmail, getCashierReminderEmail, getCashierNeededEmail, getEmailVerificationEmail, getExpiredCashSessionEmail } from './utils/sendEmail';
+import { sendEmail, getCashierReminderEmail, getCashierNeededEmail, getEmailVerificationEmail, getPasswordResetEmail, getExpiredCashSessionEmail } from './utils/sendEmail';
+import { AUTH_COOKIE_NAME, clearAuthCookie, readCookie, setAuthCookie } from './utils/auth-cookie';
 import { calculateExpectedCash, canWithdrawCash } from './utils/cashier';
 
 dotenv.config();
@@ -248,6 +249,22 @@ function parseDataUrl(dataUrl: string): { mime: string; base64: string } | null 
   const match = /^data:(image\/[a-zA-Z0-9.+-]+);base64,(.+)$/.exec(dataUrl);
   if (!match) return null;
   return { mime: match[1], base64: match[2] };
+}
+
+function detectImageExtension(bytes: Buffer): 'png' | 'jpg' | 'webp' | null {
+  if (
+    bytes.length >= 8 &&
+    bytes.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))
+  ) return 'png';
+  if (bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) {
+    return 'jpg';
+  }
+  if (
+    bytes.length >= 12 &&
+    bytes.subarray(0, 4).toString('ascii') === 'RIFF' &&
+    bytes.subarray(8, 12).toString('ascii') === 'WEBP'
+  ) return 'webp';
+  return null;
 }
 const PUBLIC_STORE_CACHE_TTL_MS = Math.min(60000, Math.max(5000, Number(process.env.PUBLIC_STORE_CACHE_TTL_MS || 15000)));
 const CASH_COUNTED_ORDER_STATUSES: OrderStatus[] = ['OPEN', 'CONFIRMED', 'PREPARING', 'READY', 'DELIVERED', 'PAID', 'RETIRED' as OrderStatus];
@@ -677,6 +694,15 @@ app.use(cors({
   methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE'],
   optionsSuccessStatus: 200
 }));
+app.use('/api', (req, res, next) => {
+  const unsafeMethod = !['GET', 'HEAD', 'OPTIONS'].includes(req.method.toUpperCase());
+  const usesSessionCookie = Boolean(readCookie(req.headers.cookie, AUTH_COOKIE_NAME));
+  const origin = String(req.headers.origin || '');
+  if (unsafeMethod && usesSessionCookie && origin && !allowedOrigins.includes(origin)) {
+    return res.status(403).json({ error: 'Origem da requisição não autorizada.' });
+  }
+  next();
+});
 app.use('/uploads', express.static(UPLOADS_ROOT, { maxAge: '7d', immutable: false }));
 app.use('/api/uploads', express.static(UPLOADS_ROOT, { maxAge: '7d', immutable: false }));
 
@@ -694,6 +720,65 @@ const io = new Server(httpServer, {
     const result = consumeRateLimit('socket-connections', clientIp, 60_000, 30);
     callback(result.allowed ? null : 'Muitas conexões em pouco tempo', result.allowed);
   },
+});
+
+const publicSocketRoom = (slug: string) => `restaurant:${slug}:public`;
+const adminSocketRoom = (slug: string) => `restaurant:${slug}:admin`;
+const customerSocketRoom = (restaurantId: number, customerId: number) =>
+  `restaurant:${restaurantId}:customer:${customerId}`;
+
+io.use(async (socket, next) => {
+  try {
+    const slug = String(socket.handshake.auth?.tenantSlug || '').trim();
+    if (!slug) return next(new Error('Tenant obrigatório'));
+
+    const restaurant = await prisma.restaurant.findUnique({
+      where: { slug },
+      select: { id: true, slug: true, isActive: true },
+    });
+    if (!restaurant?.isActive) return next(new Error('Loja inválida'));
+
+    socket.join(publicSocketRoom(restaurant.slug));
+
+    const token = readCookie(socket.handshake.headers.cookie, AUTH_COOKIE_NAME) ||
+      String(socket.handshake.auth?.token || '');
+    if (token) {
+      const decoded = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] });
+      if (typeof decoded !== 'object' || !Number.isInteger(Number(decoded.id))) {
+        return next(new Error('Sessão inválida'));
+      }
+      const user = await prisma.user.findUnique({
+        where: { id: Number(decoded.id) },
+        select: { role: true, restaurantId: true, isActive: true, isApproved: true, sessionVersion: true },
+      });
+      const authorized = user &&
+        user.isActive &&
+        (user.isApproved || user.role === 'SUPER_ADMIN') &&
+        Number(decoded.sessionVersion) === user.sessionVersion &&
+        (user.role === 'SUPER_ADMIN' || user.restaurantId === restaurant.id);
+      if (!authorized) return next(new Error('Sessão inválida'));
+      socket.join(adminSocketRoom(restaurant.slug));
+    }
+
+    const customerAccessToken = String(socket.handshake.auth?.customerAccessToken || '');
+    const customerPhone = String(socket.handshake.auth?.customerPhone || '');
+    if (/^[a-f0-9]{64}$/i.test(customerAccessToken) && customerPhone) {
+      const accessTokenHash = crypto.createHash('sha256').update(customerAccessToken).digest('hex');
+      const customer = await prisma.customer.findFirst({
+        where: {
+          restaurantId: restaurant.id,
+          phone: customerPhone,
+          accessCredential: { tokenHash: accessTokenHash },
+        },
+        select: { id: true },
+      });
+      if (customer) socket.join(customerSocketRoom(restaurant.id, customer.id));
+    }
+
+    next();
+  } catch {
+    next(new Error('Conexão não autorizada'));
+  }
 });
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ limit: '2mb', extended: true }));
@@ -1366,7 +1451,7 @@ app.post('/api/auth/login', loginIpLimiter, loginAccountLimiter, async (req, res
     }
 
     const token = jwt.sign(
-      { id: user.id, role: user.role, restaurantId: user.restaurantId },
+      { id: user.id, role: user.role, restaurantId: user.restaurantId, sessionVersion: user.sessionVersion },
       JWT_SECRET,
       { expiresIn: '7d' }
     );
@@ -1379,7 +1464,8 @@ app.post('/api/auth/login', loginIpLimiter, loginAccountLimiter, async (req, res
       ...safeUser
     } = user;
 
-    res.json({ user: safeUser, token, restaurant: user.restaurant });
+    setAuthCookie(res, token);
+    res.json({ user: safeUser, restaurant: user.restaurant });
   } catch (error) {
     res.status(500).json({ error: 'Erro ao fazer login' });
   }
@@ -1420,6 +1506,11 @@ app.post('/api/auth/verify-email', verificationLimiter, async (req, res) => {
     console.error('Erro ao confirmar e-mail:', error);
     return res.status(500).json({ error: 'Não foi possível confirmar o e-mail' });
   }
+});
+
+app.post('/api/auth/logout', (_req, res) => {
+  clearAuthCookie(res);
+  return res.status(204).send();
 });
 
 app.post('/api/users/me/email-verification/request', verificationLimiter, authMiddleware, async (req: AuthRequest, res) => {
@@ -1612,9 +1703,18 @@ app.post('/api/auth/forgot-password', passwordRecoveryLimiter, passwordRecoveryA
       }
     });
 
-    // TODO: Integrar com serviço de email (SendGrid, AWS SES, etc)
-    // Em produção, nunca registrar token/link de reset em log.
-    console.log(`📧 Solicitação de reset registrada para ${user.email}. Token válido por 1 hora.`);
+    const frontendUrl = String(process.env.FRONTEND_URL || '').replace(/\/+$/, '');
+    const resetUrl = `${frontendUrl}/admin/reset-password?token=${encodeURIComponent(token)}`;
+    try {
+      await sendEmail({
+        to: user.email,
+        subject: 'Redefinição de senha - FoodSystem',
+        html: getPasswordResetEmail(user.name, resetUrl),
+      });
+    } catch (emailError) {
+      // Não revela se a conta existe. O erro fica disponível nos logs operacionais.
+      console.error('Falha ao enviar e-mail de recuperação de senha:', emailError);
+    }
 
     await createAudit(req, 'forgot_password_requested', 'user', user.id, { email: user.email });
 
@@ -1674,7 +1774,7 @@ app.post('/api/auth/reset-password', passwordRecoveryLimiter, async (req, res) =
     // Atualizar senha do usuário
     await prisma.user.update({
       where: { id: resetToken.userId },
-      data: { password: hashedPassword }
+      data: { password: hashedPassword, sessionVersion: { increment: 1 } }
     });
 
     // Marcar token como utilizado
@@ -2168,7 +2268,7 @@ app.post('/api/users/me/change-password', authMiddleware, async (req: AuthReques
     // Atualizar senha
     await prisma.user.update({
       where: { id: userId },
-      data: { password: hashedPassword }
+      data: { password: hashedPassword, sessionVersion: { increment: 1 } }
     });
 
     // Registrar tentativa bem-sucedida
@@ -2434,7 +2534,7 @@ app.post('/api/admin/users/:id/reset-password', authMiddleware, async (req: Auth
     // Atualizar senha
     await prisma.user.update({
       where: { id: userId },
-      data: { password: hashedPassword }
+      data: { password: hashedPassword, sessionVersion: { increment: 1 } }
     });
 
     // Limpar tokens de reset de senha pendentes para este usuário
@@ -3242,12 +3342,18 @@ app.post('/api/onboarding/create-store', authMiddleware, async (req: AuthRequest
     });
 
     const token = jwt.sign(
-      { id: refreshedUser!.id, role: refreshedUser!.role, restaurantId: refreshedUser!.restaurantId },
+      {
+        id: refreshedUser!.id,
+        role: refreshedUser!.role,
+        restaurantId: refreshedUser!.restaurantId,
+        sessionVersion: refreshedUser!.sessionVersion,
+      },
       JWT_SECRET,
       { expiresIn: '7d' }
     );
 
-    res.status(201).json({ restaurant, user: refreshedUser, token });
+    setAuthCookie(res, token);
+    res.status(201).json({ restaurant, user: refreshedUser });
   } catch (error) {
     console.error('Onboarding create-store error:', error);
     res.status(500).json({ error: 'Erro ao criar a loja' });
@@ -3466,7 +3572,7 @@ app.patch('/api/settings', authMiddleware, async (req: AuthRequest, res) => {
       scheduleOpeningReminders(req.restaurantId!, req.restaurant.slug, operatingHours);
     }
 
-    io.emit(`settings_updated_${req.restaurant?.slug}`, {
+    io.to(publicSocketRoom(req.restaurant!.slug)).emit(`settings_updated_${req.restaurant?.slug}`, {
       ...plainSettings,
       corporateName: restaurant?.corporateName || null,
       cnpj: restaurant?.cnpj || null,
@@ -3746,7 +3852,7 @@ app.post('/api/products', authMiddleware, async (req: AuthRequest, res) => {
     });
     invalidatePublicStoreCache(req.restaurantId);
     const allProducts = await prisma.product.findMany({ where: { restaurantId: req.restaurantId } });
-    io.emit(`products_updated_${req.restaurant?.slug}`, allProducts);
+    io.to(publicSocketRoom(req.restaurant!.slug)).emit(`products_updated_${req.restaurant?.slug}`, allProducts);
     res.status(201).json(product);
   } catch (error) {
     console.error('Error creating product:', error);
@@ -3795,7 +3901,7 @@ app.patch('/api/products/:id', authMiddleware, async (req: AuthRequest, res) => 
     const product = await prisma.product.findUnique({ where: { id } });
   invalidatePublicStoreCache(req.restaurantId);
     const allProducts = await prisma.product.findMany({ where: { restaurantId: req.restaurantId } });
-    io.emit(`products_updated_${req.restaurant?.slug}`, allProducts);
+    io.to(publicSocketRoom(req.restaurant!.slug)).emit(`products_updated_${req.restaurant?.slug}`, allProducts);
     res.json(product);
   } catch (error: any) {
     console.error('Error updating product:', error);
@@ -3831,11 +3937,27 @@ app.delete('/api/products/:id', authMiddleware, async (req: AuthRequest, res) =>
 app.get('/api/customer/orders/:phone', async (req: TenantRequest, res) => {
   try {
     const { phone } = req.params;
-    const customerName = typeof req.query.customerName === 'string' ? req.query.customerName.trim() : '';
+    const accessToken = String(req.headers['x-customer-access-token'] || '');
+    if (!/^[a-f0-9]{64}$/i.test(accessToken)) {
+      return res.status(403).json({ error: 'Acesso aos pedidos não autorizado.' });
+    }
+    const accessTokenHash = crypto.createHash('sha256').update(accessToken).digest('hex');
+    const customer = await prisma.customer.findFirst({
+      where: {
+        restaurantId: req.restaurantId!,
+        phone,
+        accessCredential: { tokenHash: accessTokenHash },
+      },
+      select: { id: true, accessCredential: { select: { validFrom: true } } },
+    });
+    if (!customer) {
+      return res.status(403).json({ error: 'Acesso aos pedidos não autorizado.' });
+    }
     const orders = await prisma.order.findMany({
       where: {
-        phone,
         restaurantId: req.restaurantId,
+        customerId: customer.id,
+        createdAt: { gte: customer.accessCredential!.validFrom },
       },
       orderBy: { createdAt: "desc" },
       include: {
@@ -3921,6 +4043,12 @@ app.post('/api/orders', orderCreationLimiter, async (req: TenantRequest, res) =>
 
   try {
     const { customerName, phone, address, paymentMethod, items, subtotal, deliveryFee, total, notes, cpf, changeFor, tableNumber } = req.body;
+    const suppliedCustomerAccessToken = typeof req.body?.customerAccessToken === 'string'
+      ? req.body.customerAccessToken.trim()
+      : '';
+    if (suppliedCustomerAccessToken && !/^[a-f0-9]{64}$/i.test(suppliedCustomerAccessToken)) {
+      return res.status(400).json({ error: 'Credencial do cliente inválida.' });
+    }
 
     if (idempotencyKey && (idempotencyKey.length > 100 || !/^[a-zA-Z0-9_-]+$/.test(idempotencyKey))) {
       return res.status(400).json({ error: 'Identificador de envio inválido.' });
@@ -4017,7 +4145,7 @@ app.post('/api/orders', orderCreationLimiter, async (req: TenantRequest, res) =>
       
       // Notificar o admin em tempo real via socket
       if (slug) {
-        io.emit(`cashier_needed_${slug}`, {
+        io.to(adminSocketRoom(slug)).emit(`cashier_needed_${slug}`, {
           customerName: customerName || 'Cliente',
           phone: phone || null,
           timestamp: new Date().toISOString(),
@@ -4085,6 +4213,7 @@ app.post('/api/orders', orderCreationLimiter, async (req: TenantRequest, res) =>
       });
     }
 
+    let issuedCustomerAccessToken: string | null = null;
     const order = await prisma.$transaction(async (tx) => {
       const productIds = [...new Set(normalizedItems.map((item: any) => item.productId))];
 
@@ -4160,16 +4289,41 @@ app.post('/api/orders', orderCreationLimiter, async (req: TenantRequest, res) =>
             restaurantId: req.restaurantId!,
             phone: normalizedPhone,
           },
+          include: {
+            accessCredential: { select: { tokenHash: true } },
+          },
         });
 
         if (existingCustomer) {
           customerId = existingCustomer.id;
+          if (!existingCustomer.accessCredential) {
+            issuedCustomerAccessToken = crypto.randomBytes(32).toString('hex');
+            await tx.customerAccessCredential.create({
+              data: {
+                customerId: existingCustomer.id,
+                restaurantId: req.restaurantId!,
+                tokenHash: crypto.createHash('sha256').update(issuedCustomerAccessToken).digest('hex'),
+              },
+            });
+          } else if (suppliedCustomerAccessToken) {
+            const suppliedHash = crypto.createHash('sha256').update(suppliedCustomerAccessToken).digest('hex');
+            if (suppliedHash !== existingCustomer.accessCredential.tokenHash) {
+              throw new Error('CUSTOMER_ACCESS_DENIED');
+            }
+          }
         } else {
+          issuedCustomerAccessToken = crypto.randomBytes(32).toString('hex');
           const createdCustomer = await tx.customer.create({
             data: {
               restaurantId: req.restaurantId!,
               name: customerName || 'Cliente',
               phone: normalizedPhone,
+              accessCredential: {
+                create: {
+                  restaurantId: req.restaurantId!,
+                  tokenHash: crypto.createHash('sha256').update(issuedCustomerAccessToken).digest('hex'),
+                },
+              },
             },
           });
           customerId = createdCustomer.id;
@@ -4226,13 +4380,15 @@ app.post('/api/orders', orderCreationLimiter, async (req: TenantRequest, res) =>
     const responseOrder = {
       ...order,
       estimatedDeliveryMinutes: settings?.deliveryEtaMinutes || 35,
+      ...(issuedCustomerAccessToken ? { customerAccessToken: issuedCustomerAccessToken } : {}),
     };
 
     // TODO: Auto-print de pedidos quando impressoras forem configuradas
     // const activePrintDevice = await getPrimaryPrintDevice(req.restaurantId!);
     // if (activePrintDevice?.autoPrintOrders) { ... }
 
-    io.emit(`new_order_${req.restaurant?.slug}`, responseOrder);
+    const { customerAccessToken: _customerAccessToken, ...socketOrder } = responseOrder;
+    io.to(adminSocketRoom(req.restaurant!.slug)).emit(`new_order_${req.restaurant?.slug}`, socketOrder);
     res.status(201).json(responseOrder);
   } catch (error) {
     console.error('Error creating order:', error);
@@ -4262,6 +4418,9 @@ app.post('/api/orders', orderCreationLimiter, async (req: TenantRequest, res) =>
 
       if (error.message === 'PRODUCT_NOT_FOUND') {
         return res.status(400).json({ error: 'Um ou mais itens do pedido não existem mais.' });
+      }
+      if (error.message === 'CUSTOMER_ACCESS_DENIED') {
+        return res.status(403).json({ error: 'Este telefone já está vinculado a outro acesso do cliente.' });
       }
     }
 
@@ -4364,10 +4523,10 @@ app.post('/api/orders/:id/items', authMiddleware, async (req: AuthRequest, res) 
     });
 
     if (order.status !== 'PAID') {
-      io.emit(`new_order_${req.restaurant?.slug}`, result);
+      io.to(adminSocketRoom(req.restaurant!.slug)).emit(`new_order_${req.restaurant?.slug}`, result);
     }
     
-    io.emit(`order_updated_${req.restaurant?.slug}`, result);
+    io.to(adminSocketRoom(req.restaurant!.slug)).emit(`order_updated_${req.restaurant?.slug}`, result);
     res.json(result);
   } catch (error) {
     console.error('Erro ao adicionar itens ao pedido:', error);
@@ -4451,7 +4610,11 @@ app.patch('/api/orders/:id', authMiddleware, async (req: AuthRequest, res) => {
       },
     });
 
-    io.emit(`order_status_updated_${req.restaurant?.slug}`, updatedOrder);
+    io.to(adminSocketRoom(req.restaurant!.slug)).emit(`order_status_updated_${req.restaurant?.slug}`, updatedOrder);
+    if (updatedOrder.customerId) {
+      io.to(customerSocketRoom(req.restaurantId!, updatedOrder.customerId))
+        .emit(`order_status_updated_${req.restaurant?.slug}`, updatedOrder);
+    }
     res.json(updatedOrder);
   } catch (error) {
     console.error('Erro ao atualizar status do pedido:', error);
@@ -5137,7 +5300,7 @@ app.post('/api/cashier/direct-sales', authMiddleware, async (req: AuthRequest, r
     });
 
     if (sendToKitchen) {
-      io.emit(`new_order_${req.restaurant?.slug}`, order);
+      io.to(adminSocketRoom(req.restaurant!.slug)).emit(`new_order_${req.restaurant?.slug}`, order);
     }
 
     res.status(201).json(order);
@@ -5183,18 +5346,25 @@ app.post('/api/assets/image', uploadLimiter, authMiddleware, async (req: AuthReq
       return res.status(400).json({ error: 'Data URL inválida.' });
     }
 
+    if (!/^[a-zA-Z0-9+/]+={0,2}$/.test(parsed.base64) || parsed.base64.length % 4 !== 0) {
+      return res.status(400).json({ error: 'Conteúdo Base64 inválido.' });
+    }
     const bytes = Buffer.from(parsed.base64, 'base64');
     const maxSizeInBytes = 5 * 1024 * 1024;
     if (bytes.length > maxSizeInBytes) {
       return res.status(413).json({ error: 'Imagem muito grande. Limite de 5MB.' });
+    }
+    const extension = detectImageExtension(bytes);
+    const expectedMime = extension === 'jpg' ? 'image/jpeg' : extension ? `image/${extension}` : '';
+    if (!extension || (parsed.mime !== expectedMime && !(extension === 'jpg' && parsed.mime === 'image/jpg'))) {
+      return res.status(400).json({ error: 'O conteúdo do arquivo não corresponde a uma imagem permitida.' });
     }
 
     const safeFolder = sanitizeAssetFolder(folder);
     const targetDir = path.join(UPLOADS_ROOT, String(req.restaurantId), safeFolder);
     await fs.mkdir(targetDir, { recursive: true });
 
-    const extension = parsed.mime.includes('png') ? 'png' : parsed.mime.includes('jpeg') || parsed.mime.includes('jpg') ? 'jpg' : 'webp';
-    const fileName = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}.${extension}`;
+    const fileName = `${Date.now()}-${crypto.randomBytes(8).toString('hex')}.${extension}`;
     const filePath = path.join(targetDir, fileName);
 
     await fs.writeFile(filePath, bytes);
@@ -6510,8 +6680,11 @@ app.get('/api/orders/:id/pix-qrcode', async (req, res) => {
     const { id } = req.params;
 
     // Buscar pedido
-    const order = await prisma.order.findUnique({
-      where: { id: parseInt(id) },
+    const order = await prisma.order.findFirst({
+      where: {
+        id: parseInt(id),
+        restaurantId: (req as TenantRequest).restaurantId!,
+      },
       include: {
         restaurant: {
           select: {
@@ -6723,7 +6896,7 @@ async function notifyExpiredCashSessions() {
       });
       if (alreadyNotified) continue;
 
-      io.emit(`cashier_expired_${session.restaurant.slug}`, {
+      io.to(adminSocketRoom(session.restaurant.slug)).emit(`cashier_expired_${session.restaurant.slug}`, {
         sessionId: session.id,
         openedAt: session.openedAt.toISOString(),
         deadline: getCashSessionDeadline(operatingHours, session.openedAt).toISOString(),
@@ -6804,7 +6977,7 @@ async function scheduleOpeningReminders(restaurantId: number, slug: string, rawH
             });
 
             // Emitir socket
-            io.emit(`cashier_reminder_${slug}`, {
+            io.to(adminSocketRoom(slug)).emit(`cashier_reminder_${slug}`, {
               opensAt: shift.open,
               message: `Sua loja abre às ${shift.open}! Abra a Sessão de Caixa para ativar os pedidos online.`,
             });

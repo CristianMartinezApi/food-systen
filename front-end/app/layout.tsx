@@ -1,9 +1,6 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "react-hot-toast";
-
-const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "Food System",
@@ -28,7 +25,7 @@ export default function RootLayout({
       <head>
         <meta name="google" content="notranslate" />
       </head>
-      <body className={`${inter.className} overflow-x-hidden`}>
+      <body className="overflow-x-hidden font-sans">
         <Toaster position="top-right" />
         {children}
       </body>

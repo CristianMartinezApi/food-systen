@@ -4,16 +4,11 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
 const API_TIMEOUT_MS = 12000;
 
 const getHeaders = (headers: Record<string, string> = {}) => {
-  const token = localStorage.getItem('@FoodSystem:token');
   const baseHeaders: Record<string, string> = {
     'Content-Type': 'application/json',
     'x-tenant-slug': getTenantSlug(),
     ...headers
   };
-
-  if (token) {
-    baseHeaders['Authorization'] = `Bearer ${token}`;
-  }
 
   return baseHeaders;
 };
@@ -30,6 +25,7 @@ const fetchWithTimeout = async (input: string, init?: RequestInit) => {
   try {
     return await fetch(input, {
       ...init,
+      credentials: 'include',
       signal: controller.signal,
     });
   } catch (error: any) {
@@ -95,9 +91,9 @@ const handleError = async (response: Response, endpoint: string) => {
 };
 
 export const api = {
-  get: async (endpoint: string) => {
+  get: async (endpoint: string, headers: Record<string, string> = {}) => {
     const response = await fetchReadableWithRetry(`${API_URL}${endpoint}`, {
-      headers: getHeaders()
+      headers: getHeaders(headers)
     });
     if (!response.ok) await handleError(response, endpoint);
     return response.json();

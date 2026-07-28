@@ -23,9 +23,8 @@ export default function OnboardingPage() {
   });
 
   useEffect(() => {
-    const token = localStorage.getItem("@FoodSystem:token");
     const userData = localStorage.getItem("@FoodSystem:user");
-    setTokenExists(Boolean(token));
+    setTokenExists(Boolean(userData));
 
     if (userData) {
       try {
@@ -64,7 +63,6 @@ export default function OnboardingPage() {
       setIsSaving(true);
       const response = await api.post("/onboarding/create-store", formData);
 
-      localStorage.setItem("@FoodSystem:token", response.token);
       localStorage.setItem("@FoodSystem:user", JSON.stringify(response.user));
       localStorage.setItem("@FoodSystem:restaurant", JSON.stringify(response.restaurant));
 
