@@ -59,11 +59,17 @@ export default function OrdersPage({ isCompact = false, onOrdersChange }: { isCo
         return "DELIVERY";
     };
 
+    const isCompletedOrder = (order: any) => {
+        if (COMPLETED_STATUSES.includes(order.status)) return true;
+        // Mesa paga e entrega paga já encerraram seus respectivos fluxos.
+        return order.status === "PAID" && getOrderMode(order) !== "PICKUP";
+    };
+
     const doesOrderMatchFilter = (order: any) => {
-        if (statusFilter === "ALL") return ![...COMPLETED_STATUSES, "CANCELLED"].includes(order.status);
+        if (statusFilter === "ALL") return !isCompletedOrder(order) && order.status !== "CANCELLED";
         if (statusFilter === "PENDING") return ["PENDING", "CONFIRMED", "OPEN"].includes(order.status);
         if (statusFilter === "PREPARING") return ["PREPARING", "READY", "OUT_FOR_DELIVERY"].includes(order.status);
-        if (statusFilter === "DELIVERED") return COMPLETED_STATUSES.includes(order.status);
+        if (statusFilter === "DELIVERED") return isCompletedOrder(order);
         return order.status === statusFilter;
     };
 
@@ -110,9 +116,10 @@ export default function OrdersPage({ isCompact = false, onOrdersChange }: { isCo
         }
 
         if (order.status === "PAID") {
+            if (mode !== "PICKUP") return null;
             return {
-                label: "Finalizar",
-                nextStatus: "DELIVERED",
+                label: "Entregar Retirada",
+                nextStatus: "RETIRED",
                 className: "h-9 px-4 bg-emerald-600 text-white rounded-lg font-body font-bold text-[10px] uppercase tracking-widest shadow-md shadow-emerald-500/20 hover:bg-emerald-700 transition-all active:scale-95 flex-1"
             };
         }
@@ -860,18 +867,18 @@ export default function OrdersPage({ isCompact = false, onOrdersChange }: { isCo
                             >
                                 {f.label}
                                 {orders.filter(o => {
-                                    if (f.id === "ALL") return ![...COMPLETED_STATUSES, "CANCELLED"].includes(o.status);
+                                    if (f.id === "ALL") return !isCompletedOrder(o) && o.status !== "CANCELLED";
                                     if (f.id === "PENDING") return ["PENDING", "CONFIRMED", "OPEN"].includes(o.status);
                                     if (f.id === "PREPARING") return ["PREPARING", "READY", "OUT_FOR_DELIVERY"].includes(o.status);
-                                    if (f.id === "DELIVERED") return COMPLETED_STATUSES.includes(o.status);
+                                    if (f.id === "DELIVERED") return isCompletedOrder(o);
                                     return false;
                                 }).length > 0 && (
                                     <span className="ml-1.5 opacity-60">
                                         ({orders.filter(o => {
-                                            if (f.id === "ALL") return ![...COMPLETED_STATUSES, "CANCELLED"].includes(o.status);
+                                            if (f.id === "ALL") return !isCompletedOrder(o) && o.status !== "CANCELLED";
                                             if (f.id === "PENDING") return ["PENDING", "CONFIRMED", "OPEN"].includes(o.status);
                                             if (f.id === "PREPARING") return ["PREPARING", "READY", "OUT_FOR_DELIVERY"].includes(o.status);
-                                            if (f.id === "DELIVERED") return COMPLETED_STATUSES.includes(o.status);
+                                            if (f.id === "DELIVERED") return isCompletedOrder(o);
                                             return false;
                                         }).length})
                                     </span>
