@@ -190,10 +190,52 @@ export default function Profile() {
         mimeType: "image/webp",
       });
       const uploadedUrl = await uploadImageAsset(optimized, `profiles/user-${profile?.id || "me"}`);
-      setAvatarUrl(uploadedUrl);
-      toast.success("Foto preparada. Salve o perfil para confirmar.");
+      const response = await api.patch("/users/me/profile", {
+        name: profile?.name || name,
+        phone: profile?.phone || "",
+        avatarUrl: uploadedUrl,
+        emailNotificationsEnabled: profile?.emailNotificationsEnabled ?? emailNotificationsEnabled,
+      });
+      setAvatarUrl(response.avatarUrl || "");
+      setProfile(response);
+
+      const stored = localStorage.getItem("@FoodSystem:user");
+      if (stored) {
+        const user = JSON.parse(stored);
+        user.avatarUrl = response.avatarUrl;
+        localStorage.setItem("@FoodSystem:user", JSON.stringify(user));
+      }
+      window.dispatchEvent(new Event("foodsystem:user-updated"));
+      toast.success("Foto atualizada com sucesso.");
     } catch (error: any) {
       toast.error(error.message || "Não foi possível processar a foto");
+    } finally {
+      setUploadingAvatar(false);
+    }
+  };
+
+  const removeAvatar = async () => {
+    try {
+      setUploadingAvatar(true);
+      const response = await api.patch("/users/me/profile", {
+        name: profile?.name || name,
+        phone: profile?.phone || "",
+        avatarUrl: "",
+        emailNotificationsEnabled: profile?.emailNotificationsEnabled ?? emailNotificationsEnabled,
+      });
+      setAvatarUrl("");
+      setProfile(response);
+
+      const stored = localStorage.getItem("@FoodSystem:user");
+      if (stored) {
+        const user = JSON.parse(stored);
+        user.avatarUrl = null;
+        localStorage.setItem("@FoodSystem:user", JSON.stringify(user));
+      }
+      window.dispatchEvent(new Event("foodsystem:user-updated"));
+      toast.success("Foto removida.");
+    } catch (error: any) {
+      toast.error(error.message || "Não foi possível remover a foto");
     } finally {
       setUploadingAvatar(false);
     }
@@ -316,7 +358,8 @@ export default function Profile() {
               {avatarUrl && (
                 <button
                   type="button"
-                  onClick={() => setAvatarUrl("")}
+                  onClick={removeAvatar}
+                  disabled={uploadingAvatar}
                   className="h-10 rounded-xl border border-slate-200 bg-white px-4 text-[10px] font-black uppercase tracking-wider text-slate-500 transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700"
                 >
                   Remover foto
