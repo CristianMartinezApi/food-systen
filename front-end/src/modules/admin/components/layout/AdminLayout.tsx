@@ -21,7 +21,7 @@ import {
   BarChart3,
   Menu
 } from "lucide-react";
-import { cn } from "../../../../shared/utils";
+import { cn, normalizeAssetUrl } from "../../../../shared/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { getTenantSlug } from "../../../../shared/utils/tenant";
 import { useSettings } from "../../../../core/hooks/useSettings";
@@ -81,6 +81,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [userRole, setUserRole] = useState<string>("");
   const [userName, setUserName] = useState<string>("");
+  const [userAvatar, setUserAvatar] = useState<string>("");
   const [userEmail, setUserEmail] = useState("");
   const [emailVerified, setEmailVerified] = useState(true);
   const [verificationSending, setVerificationSending] = useState(false);
@@ -139,6 +140,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
         const parsedUser = JSON.parse(userData);
         setUserRole(parsedUser.role || "");
         setUserName(parsedUser.name || "");
+        setUserAvatar(parsedUser.avatarUrl || "");
         setUserEmail(parsedUser.email || "");
         setNewEmail(parsedUser.email || "");
         setEmailVerified(Boolean(parsedUser.emailVerifiedAt));
@@ -569,8 +571,12 @@ export function AdminLayout({ children }: AdminLayoutProps) {
 
         <div className="border-t border-slate-800 p-3">
           <div className="mb-2 flex items-center gap-3 rounded bg-slate-900 px-3 py-3">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded bg-slate-800">
-              <User size={17} className="text-slate-300" />
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded bg-slate-800">
+              {userAvatar ? (
+                <img src={normalizeAssetUrl(userAvatar)} alt="" className="h-full w-full object-cover" />
+              ) : (
+                <User size={17} className="text-slate-300" />
+              )}
             </div>
             <div className="truncate flex-1">
               <p className="mb-1 truncate text-sm font-semibold leading-none text-white">
@@ -814,8 +820,12 @@ export function AdminLayout({ children }: AdminLayoutProps) {
               onClick={() => router.push("/admin/profile")}
               className="flex items-center gap-2 h-10 px-3 rounded-md bg-white border border-slate-200 text-slate-700 transition-colors hover:border-primary/30 hover:bg-primary/5"
             >
-              <div className="w-7 h-7 rounded-md bg-slate-100 flex items-center justify-center text-slate-600 shrink-0">
-                <User size={14} />
+              <div className="w-7 h-7 rounded-md bg-slate-100 flex items-center justify-center text-slate-600 shrink-0 overflow-hidden">
+                {userAvatar ? (
+                  <img src={normalizeAssetUrl(userAvatar)} alt="" className="h-full w-full object-cover" />
+                ) : (
+                  <User size={14} />
+                )}
               </div>
               <div className="hidden sm:flex flex-col items-start leading-none min-w-0">
                 <span className="text-[10px] font-medium text-slate-500">Perfil</span>

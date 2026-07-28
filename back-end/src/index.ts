@@ -1601,6 +1601,8 @@ app.get('/api/users/me/profile', authMiddleware, async (req: AuthRequest, res) =
         id: true,
         name: true,
         email: true,
+        phone: true,
+        avatarUrl: true,
         role: true,
         emailVerifiedAt: true,
         emailNotificationsEnabled: true,
@@ -1625,6 +1627,8 @@ app.patch('/api/users/me/profile', authMiddleware, async (req: AuthRequest, res)
     if (!req.userId) return res.status(401).json({ error: 'Não autenticado' });
 
     const name = String(req.body?.name || '').trim().replace(/\s+/g, ' ');
+    const phoneDigits = String(req.body?.phone || '').replace(/\D/g, '');
+    const avatarUrl = String(req.body?.avatarUrl || '').trim();
     const emailNotificationsEnabled = req.body?.emailNotificationsEnabled;
     if (name.length < 2 || name.length > 80) {
       return res.status(400).json({ error: 'O nome deve ter entre 2 e 80 caracteres' });
@@ -1632,14 +1636,27 @@ app.patch('/api/users/me/profile', authMiddleware, async (req: AuthRequest, res)
     if (typeof emailNotificationsEnabled !== 'boolean') {
       return res.status(400).json({ error: 'Preferência de notificações inválida' });
     }
+    if (phoneDigits && (phoneDigits.length < 10 || phoneDigits.length > 13)) {
+      return res.status(400).json({ error: 'Informe um telefone válido com DDD' });
+    }
+    if (avatarUrl && !/^\/uploads\/[a-zA-Z0-9/_-]+\.(png|jpe?g|webp)$/i.test(avatarUrl)) {
+      return res.status(400).json({ error: 'A imagem de perfil é inválida' });
+    }
 
     const updated = await prisma.user.update({
       where: { id: req.userId },
-      data: { name, emailNotificationsEnabled },
+      data: {
+        name,
+        phone: phoneDigits || null,
+        avatarUrl: avatarUrl || null,
+        emailNotificationsEnabled,
+      },
       select: {
         id: true,
         name: true,
         email: true,
+        phone: true,
+        avatarUrl: true,
         role: true,
         emailVerifiedAt: true,
         emailNotificationsEnabled: true,
@@ -1652,6 +1669,8 @@ app.patch('/api/users/me/profile', authMiddleware, async (req: AuthRequest, res)
     });
     await createAudit(req, 'update_own_profile', 'user', req.userId, {
       name,
+      phoneConfigured: Boolean(phoneDigits),
+      avatarConfigured: Boolean(avatarUrl),
       emailNotificationsEnabled,
     });
 
@@ -1659,6 +1678,35 @@ app.patch('/api/users/me/profile', authMiddleware, async (req: AuthRequest, res)
   } catch (error) {
     console.error('Erro ao atualizar perfil:', error);
     return res.status(500).json({ error: 'Não foi possível atualizar o perfil' });
+  }
+});
+
+app.post('/api/users/me/revoke-other-sessions', authMiddleware, async (req: AuthRequest, res) => {
+  try {
+    if (!req.userId) return res.status(401).json({ error: 'Não autenticado' });
+
+    const user = await prisma.user.update({
+      where: { id: req.userId },
+      data: { sessionVersion: { increment: 1 } },
+      select: { id: true, role: true, restaurantId: true, sessionVersion: true },
+    });
+    const token = jwt.sign(
+      {
+        id: user.id,
+        role: user.role,
+        restaurantId: user.restaurantId,
+        sessionVersion: user.sessionVersion,
+      },
+      JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+    setAuthCookie(res, token);
+    await createAudit(req, 'revoke_other_sessions', 'user', user.id, { success: true });
+
+    return res.json({ message: 'Outras sessões foram encerradas. Este dispositivo continua conectado.' });
+  } catch (error) {
+    console.error('Erro ao encerrar outras sessões:', error);
+    return res.status(500).json({ error: 'Não foi possível encerrar as outras sessões' });
   }
 });
 

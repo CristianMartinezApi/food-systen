@@ -4,21 +4,29 @@ import { useEffect, useMemo, useState } from "react";
 import {
   Bell,
   Building2,
+  Camera,
   CheckCircle2,
   Loader2,
   Mail,
+  MonitorX,
+  Phone,
   Save,
   ShieldCheck,
   User,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { api } from "../../../../core/config/api";
+import { uploadImageAsset } from "../../../../core/services/assets";
+import { compressImageFileToDataUrl } from "../../../../shared/utils/image";
+import { normalizeAssetUrl } from "../../../../shared/utils";
 import ChangePassword from "../../components/ChangePassword";
 
 type ProfileData = {
   id: number;
   name: string;
   email: string;
+  phone: string | null;
+  avatarUrl: string | null;
   role: string;
   emailVerifiedAt: string | null;
   emailNotificationsEnabled: boolean;
@@ -40,12 +48,27 @@ const ROLE_LABELS: Record<string, string> = {
   EMPLOYEE: "Colaborador",
 };
 
+const formatPhone = (value: string) => {
+  const digits = value.replace(/\D/g, "").slice(0, 13);
+  const localDigits = digits.startsWith("55") && digits.length > 11 ? digits.slice(2) : digits;
+  if (localDigits.length <= 10) {
+    return localDigits.replace(/^(\d{0,2})(\d{0,4})(\d{0,4}).*/, (_match, ddd, first, last) =>
+      [ddd && `(${ddd}`, ddd.length === 2 && ") ", first, last && `-${last}`].filter(Boolean).join("")
+    );
+  }
+  return localDigits.replace(/^(\d{2})(\d{5})(\d{0,4}).*/, "($1) $2-$3").replace(/-$/, "");
+};
+
 export default function Profile() {
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [avatarUrl, setAvatarUrl] = useState("");
   const [emailNotificationsEnabled, setEmailNotificationsEnabled] = useState(true);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [revokingSessions, setRevokingSessions] = useState(false);
   const [sendingVerification, setSendingVerification] = useState(false);
 
   const initials = useMemo(() => {
@@ -63,6 +86,8 @@ export default function Profile() {
       const response = await api.get("/users/me/profile");
       setProfile(response);
       setName(response.name);
+      setPhone(formatPhone(response.phone || ""));
+      setAvatarUrl(response.avatarUrl || "");
       setEmailNotificationsEnabled(response.emailNotificationsEnabled);
     } catch (error: any) {
       toast.error(error.message || "Não foi possível carregar o perfil");
@@ -81,14 +106,20 @@ export default function Profile() {
       setSaving(true);
       const response = await api.patch("/users/me/profile", {
         name,
+        phone,
+        avatarUrl,
         emailNotificationsEnabled,
       });
       setProfile(response);
+      setPhone(formatPhone(response.phone || ""));
+      setAvatarUrl(response.avatarUrl || "");
 
       const stored = localStorage.getItem("@FoodSystem:user");
       if (stored) {
         const user = JSON.parse(stored);
         user.name = response.name;
+        user.phone = response.phone;
+        user.avatarUrl = response.avatarUrl;
         user.emailNotificationsEnabled = response.emailNotificationsEnabled;
         localStorage.setItem("@FoodSystem:user", JSON.stringify(user));
       }
@@ -98,6 +129,42 @@ export default function Profile() {
       toast.error(error.message || "Não foi possível salvar o perfil");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const changeAvatar = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+
+    try {
+      setUploadingAvatar(true);
+      const optimized = await compressImageFileToDataUrl(file, {
+        maxWidth: 512,
+        maxHeight: 512,
+        quality: 0.78,
+        mimeType: "image/webp",
+      });
+      const uploadedUrl = await uploadImageAsset(optimized, `profiles/user-${profile?.id || "me"}`);
+      setAvatarUrl(uploadedUrl);
+      toast.success("Foto preparada. Salve o perfil para confirmar.");
+    } catch (error: any) {
+      toast.error(error.message || "Não foi possível processar a foto");
+    } finally {
+      setUploadingAvatar(false);
+    }
+  };
+
+  const revokeOtherSessions = async () => {
+    if (!window.confirm("Encerrar todos os outros acessos desta conta? Este dispositivo continuará conectado.")) return;
+    try {
+      setRevokingSessions(true);
+      const response = await api.post("/users/me/revoke-other-sessions", {});
+      toast.success(response.message);
+    } catch (error: any) {
+      toast.error(error.message || "Não foi possível encerrar as outras sessões");
+    } finally {
+      setRevokingSessions(false);
     }
   };
 
@@ -130,8 +197,16 @@ export default function Profile() {
     <div className="mx-auto w-full max-w-5xl space-y-5">
       <header className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm md:p-7">
         <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
-          <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-3xl bg-slate-950 text-xl font-black tracking-widest text-white">
-            {initials}
+          <div className="relative h-20 w-20 shrink-0">
+            <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-3xl bg-slate-950 text-xl font-black tracking-widest text-white">
+              {avatarUrl ? (
+                <img src={normalizeAssetUrl(avatarUrl)} alt={`Foto de ${profile.name}`} className="h-full w-full object-cover" />
+              ) : initials}
+            </div>
+            <label className="absolute -bottom-2 -right-2 flex h-9 w-9 cursor-pointer items-center justify-center rounded-xl border-2 border-white bg-primary text-white shadow-lg">
+              {uploadingAvatar ? <Loader2 size={15} className="animate-spin" /> : <Camera size={15} />}
+              <input type="file" accept="image/png,image/jpeg,image/webp" onChange={changeAvatar} disabled={uploadingAvatar} className="hidden" />
+            </label>
           </div>
           <div className="min-w-0 flex-1">
             <p className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">Minha conta</p>
@@ -172,6 +247,22 @@ export default function Profile() {
                 required
                 className="h-12 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm font-semibold text-slate-800 outline-none transition focus:border-primary/30 focus:bg-white"
               />
+            </label>
+
+            <label className="block">
+              <span className="mb-2 block text-[10px] font-black uppercase tracking-widest text-slate-400">Telefone pessoal</span>
+              <div className="relative">
+                <Phone size={17} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  value={phone}
+                  onChange={(event) => setPhone(formatPhone(event.target.value))}
+                  inputMode="tel"
+                  autoComplete="tel"
+                  placeholder="(00) 00000-0000"
+                  className="h-12 w-full rounded-xl border border-slate-200 bg-slate-50 pl-11 pr-4 text-sm font-semibold text-slate-800 outline-none transition focus:border-primary/30 focus:bg-white"
+                />
+              </div>
+              <p className="mt-2 text-xs text-slate-400">Uso interno do seu perfil. Não substitui o WhatsApp comercial da loja.</p>
             </label>
 
             <div>
@@ -246,6 +337,15 @@ export default function Profile() {
                 <p className="mt-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">
                   Membro desde {new Date(profile.createdAt).toLocaleDateString("pt-BR")}
                 </p>
+                <button
+                  type="button"
+                  onClick={revokeOtherSessions}
+                  disabled={revokingSessions}
+                  className="mt-4 inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 text-[10px] font-black uppercase tracking-wider text-slate-700 transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700 disabled:opacity-50"
+                >
+                  {revokingSessions ? <Loader2 size={15} className="animate-spin" /> : <MonitorX size={15} />}
+                  Encerrar outros acessos
+                </button>
               </div>
             </div>
           </section>
