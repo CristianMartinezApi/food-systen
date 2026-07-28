@@ -1640,7 +1640,18 @@ app.patch('/api/users/me/profile', authMiddleware, async (req: AuthRequest, res)
 
     const name = String(req.body?.name || '').trim().replace(/\s+/g, ' ');
     const phoneDigits = String(req.body?.phone || '').replace(/\D/g, '');
-    const avatarUrl = String(req.body?.avatarUrl || '').trim();
+    const avatarInput = String(req.body?.avatarUrl || '').trim();
+    let avatarUrl = avatarInput;
+    if (/^https?:\/\//i.test(avatarInput)) {
+      try {
+        avatarUrl = new URL(avatarInput).pathname;
+      } catch {
+        return res.status(400).json({ error: 'A imagem de perfil é inválida' });
+      }
+    }
+    if (avatarUrl.startsWith('/api/uploads/')) {
+      avatarUrl = avatarUrl.slice(4);
+    }
     const emailNotificationsEnabled = req.body?.emailNotificationsEnabled;
     if (name.length < 2 || name.length > 80) {
       return res.status(400).json({ error: 'O nome deve ter entre 2 e 80 caracteres' });

@@ -8,6 +8,6 @@ interface UploadImageAssetResponse {
 
 export async function uploadImageAsset(dataUrl: string, folder: string): Promise<string> {
   const response = await api.post('/assets/image', { dataUrl, folder }) as UploadImageAssetResponse;
-  // Normalize storage URL format to keep compatibility across absolute/relative responses.
-  return normalizeAssetUrl(response?.relativeUrl || response?.url || dataUrl);
+  // Persiste o caminho relativo quando o storage é local; normalizeAssetUrl fica para exibição.
+  return response?.relativeUrl || normalizeAssetUrl(response?.url || dataUrl);
 }
