@@ -6,6 +6,9 @@ import {
   Building2,
   Camera,
   CheckCircle2,
+  History,
+  KeyRound,
+  Laptop,
   Loader2,
   Mail,
   MonitorX,
@@ -40,6 +43,13 @@ type ProfileData = {
   } | null;
 };
 
+type AccessEntry = {
+  id: number;
+  createdAt: string;
+  ipAddress: string;
+  userAgent: string;
+};
+
 const ROLE_LABELS: Record<string, string> = {
   SUPER_ADMIN: "Administrador do sistema",
   OWNER: "Proprietário",
@@ -59,16 +69,45 @@ const formatPhone = (value: string) => {
   return localDigits.replace(/^(\d{2})(\d{5})(\d{0,4}).*/, "($1) $2-$3").replace(/-$/, "");
 };
 
+const describeDevice = (userAgent: string) => {
+  const browser = /Edg\//.test(userAgent)
+    ? "Microsoft Edge"
+    : /Chrome\//.test(userAgent)
+      ? "Google Chrome"
+      : /Firefox\//.test(userAgent)
+        ? "Firefox"
+        : /Safari\//.test(userAgent)
+          ? "Safari"
+          : "Navegador";
+  const system = /Windows/i.test(userAgent)
+    ? "Windows"
+    : /Android/i.test(userAgent)
+      ? "Android"
+      : /iPhone|iPad/i.test(userAgent)
+        ? "iOS"
+        : /Mac OS/i.test(userAgent)
+          ? "macOS"
+          : /Linux/i.test(userAgent)
+            ? "Linux"
+            : "dispositivo";
+  return `${browser} em ${system}`;
+};
+
 export default function Profile() {
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
+  const [accessHistory, setAccessHistory] = useState<AccessEntry[]>([]);
+  const [editingEmail, setEditingEmail] = useState(false);
+  const [newEmail, setNewEmail] = useState("");
+  const [emailPassword, setEmailPassword] = useState("");
   const [emailNotificationsEnabled, setEmailNotificationsEnabled] = useState(true);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [revokingSessions, setRevokingSessions] = useState(false);
+  const [savingEmail, setSavingEmail] = useState(false);
   const [sendingVerification, setSendingVerification] = useState(false);
 
   const initials = useMemo(() => {
@@ -83,11 +122,16 @@ export default function Profile() {
   const loadProfile = async () => {
     try {
       setLoading(true);
-      const response = await api.get("/users/me/profile");
+      const [response, historyResponse] = await Promise.all([
+        api.get("/users/me/profile"),
+        api.get("/users/me/access-history"),
+      ]);
       setProfile(response);
       setName(response.name);
       setPhone(formatPhone(response.phone || ""));
       setAvatarUrl(response.avatarUrl || "");
+      setNewEmail(response.email);
+      setAccessHistory(historyResponse.data || []);
       setEmailNotificationsEnabled(response.emailNotificationsEnabled);
     } catch (error: any) {
       toast.error(error.message || "Não foi possível carregar o perfil");
@@ -178,6 +222,42 @@ export default function Profile() {
       toast.error(error.message || "Não foi possível enviar a confirmação");
     } finally {
       setSendingVerification(false);
+    }
+  };
+
+  const updateEmail = async () => {
+    if (!newEmail.trim() || !emailPassword) {
+      toast.error("Informe o novo e-mail e sua senha atual");
+      return;
+    }
+    try {
+      setSavingEmail(true);
+      const response = await api.patch("/users/me/email", {
+        email: newEmail,
+        currentPassword: emailPassword,
+      });
+      setProfile((current) => current ? {
+        ...current,
+        email: response.email,
+        emailVerifiedAt: response.emailVerifiedAt,
+      } : current);
+      setNewEmail(response.email);
+      setEmailPassword("");
+      setEditingEmail(false);
+
+      const stored = localStorage.getItem("@FoodSystem:user");
+      if (stored) {
+        const user = JSON.parse(stored);
+        user.email = response.email;
+        user.emailVerifiedAt = response.emailVerifiedAt;
+        localStorage.setItem("@FoodSystem:user", JSON.stringify(user));
+      }
+      window.dispatchEvent(new Event("foodsystem:user-updated"));
+      toast.success(response.message || "E-mail atualizado");
+    } catch (error: any) {
+      toast.error(error.message || "Não foi possível alterar o e-mail");
+    } finally {
+      setSavingEmail(false);
     }
   };
 
@@ -293,8 +373,52 @@ export default function Profile() {
               <div className="flex min-h-12 items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4">
                 <Mail size={17} className="text-slate-400" />
                 <span className="min-w-0 flex-1 truncate text-sm font-semibold text-slate-700">{profile.email}</span>
+                <button
+                  type="button"
+                  onClick={() => setEditingEmail((current) => !current)}
+                  className="shrink-0 text-[10px] font-black uppercase tracking-wider text-primary"
+                >
+                  {editingEmail ? "Cancelar" : "Alterar"}
+                </button>
               </div>
-              <p className="mt-2 text-xs text-slate-400">A alteração do e-mail exige sua senha atual e permanece disponível no aviso de confirmação do painel.</p>
+              <p className="mt-2 text-xs text-slate-400">A alteração exige sua senha atual e o novo endereço precisará ser confirmado.</p>
+              {editingEmail && (
+                <div className="mt-4 space-y-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                  <label className="block">
+                    <span className="mb-2 block text-[10px] font-black uppercase tracking-widest text-slate-400">Novo e-mail</span>
+                    <input
+                      type="email"
+                      value={newEmail}
+                      onChange={(event) => setNewEmail(event.target.value)}
+                      required
+                      className="h-11 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold outline-none focus:border-primary/30"
+                    />
+                  </label>
+                  <label className="block">
+                    <span className="mb-2 block text-[10px] font-black uppercase tracking-widest text-slate-400">Senha atual</span>
+                    <div className="relative">
+                      <KeyRound size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                      <input
+                        type="password"
+                        value={emailPassword}
+                        onChange={(event) => setEmailPassword(event.target.value)}
+                        required
+                        autoComplete="current-password"
+                        className="h-11 w-full rounded-xl border border-slate-200 bg-white pl-11 pr-4 text-sm font-semibold outline-none focus:border-primary/30"
+                      />
+                    </div>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={updateEmail}
+                    disabled={savingEmail}
+                    className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 text-[10px] font-black uppercase tracking-wider text-white disabled:opacity-50"
+                  >
+                    {savingEmail && <Loader2 size={14} className="animate-spin" />}
+                    Confirmar novo e-mail
+                  </button>
+                </div>
+              )}
             </div>
 
             <label className="flex cursor-pointer items-start justify-between gap-4 rounded-2xl border border-slate-200 p-4">
@@ -374,6 +498,44 @@ export default function Profile() {
           </section>
         </div>
       </div>
+
+      <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm md:p-7">
+        <div className="mb-5 flex items-center gap-3">
+          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-100 text-slate-700">
+            <History size={21} />
+          </div>
+          <div>
+            <h2 className="font-black text-slate-950">Acessos recentes</h2>
+            <p className="text-xs text-slate-500">Últimos logins registrados nesta conta.</p>
+          </div>
+        </div>
+        {accessHistory.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-5 text-sm text-slate-500">
+            O histórico começará a aparecer no próximo login.
+          </div>
+        ) : (
+          <div className="divide-y divide-slate-100">
+            {accessHistory.map((access, index) => (
+              <div key={access.id} className="flex items-start gap-3 py-4 first:pt-0 last:pb-0">
+                <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-500">
+                  <Laptop size={17} />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="text-sm font-bold text-slate-900">{describeDevice(access.userAgent)}</p>
+                    {index === 0 && (
+                      <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[9px] font-black uppercase tracking-wider text-emerald-700">Mais recente</span>
+                    )}
+                  </div>
+                  <p className="mt-1 text-xs text-slate-500">
+                    {new Date(access.createdAt).toLocaleString("pt-BR")} · IP {access.ipAddress}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
 
       <ChangePassword />
     </div>

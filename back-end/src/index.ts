@@ -1465,6 +1465,18 @@ app.post('/api/auth/login', loginIpLimiter, loginAccountLimiter, async (req, res
     } = user;
 
     setAuthCookie(res, token);
+    await createAudit(
+      {
+        userId: user.id,
+      },
+      'login_success',
+      'user',
+      user.id,
+      {
+        ipAddress: String(req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown').split(',')[0].trim(),
+        userAgent: String(req.headers['user-agent'] || 'unknown').slice(0, 500),
+      }
+    );
     res.json({ user: safeUser, restaurant: user.restaurant });
   } catch (error) {
     res.status(500).json({ error: 'Erro ao fazer login' });
@@ -1710,6 +1722,40 @@ app.post('/api/users/me/revoke-other-sessions', authMiddleware, async (req: Auth
   }
 });
 
+app.get('/api/users/me/access-history', authMiddleware, async (req: AuthRequest, res) => {
+  try {
+    if (!req.userId) return res.status(401).json({ error: 'Não autenticado' });
+
+    const accesses = await prisma.auditLog.findMany({
+      where: {
+        actorId: req.userId,
+        action: 'login_success',
+        subjectType: 'user',
+      },
+      select: { id: true, details: true, createdAt: true },
+      orderBy: { createdAt: 'desc' },
+      take: 8,
+    });
+
+    return res.json({
+      data: accesses.map((access) => {
+        const details = access.details && typeof access.details === 'object' && !Array.isArray(access.details)
+          ? access.details as Record<string, unknown>
+          : {};
+        return {
+          id: access.id,
+          createdAt: access.createdAt,
+          ipAddress: String(details.ipAddress || 'Não identificado'),
+          userAgent: String(details.userAgent || 'Dispositivo não identificado'),
+        };
+      }),
+    });
+  } catch (error) {
+    console.error('Erro ao consultar histórico de acessos:', error);
+    return res.status(500).json({ error: 'Não foi possível consultar o histórico de acessos' });
+  }
+});
+
 app.patch('/api/users/me/email', authMiddleware, async (req: AuthRequest, res) => {
   try {
     if (!req.userId) return res.status(401).json({ error: 'Não autenticado' });
@@ -1729,9 +1775,6 @@ app.patch('/api/users/me/email', authMiddleware, async (req: AuthRequest, res) =
     });
     if (!user || !(await bcrypt.compare(currentPassword, user.password))) {
       return res.status(401).json({ error: 'Senha atual incorreta' });
-    }
-    if (!['OWNER', 'MANAGER'].includes(user.role)) {
-      return res.status(403).json({ error: 'A alteração está disponível aos administradores da loja' });
     }
     if (email === user.email.toLowerCase()) {
       return res.json({ email: user.email, emailVerifiedAt: user.emailVerifiedAt, unchanged: true });
