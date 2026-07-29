@@ -123,20 +123,20 @@ export function Footer({ settings: providedSettings }: FooterProps) {
   }, []);
 
   return (
-    <footer className="bg-slate-950 text-slate-300 pt-10 md:pt-32 pb-4 md:pb-12 overflow-hidden relative">
+    <footer id="store-footer" className="relative overflow-hidden bg-slate-950 pb-4 pt-10 text-slate-300 md:pb-8 md:pt-16 lg:pt-20">
       {/* Visual Decoration */}
         <div className="absolute top-0 left-0 right-0 h-px bg-linear-to-r from-transparent via-white/10 to-transparent" />
         <div className="absolute top-0 left-[15%] w-px h-64 bg-linear-to-b from-white/5 to-transparent hidden md:block" />
         <div className="absolute top-0 right-[15%] w-px h-64 bg-linear-to-b from-white/5 to-transparent hidden md:block" />
 
-        <div className="w-full px-4 md:px-8 lg:px-12 xl:px-16 mx-auto relative z-10">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 md:gap-12 lg:gap-14 xl:gap-16 mb-8 md:mb-24">
+        <div className="relative z-10 mx-auto w-full max-w-[1440px] px-4 md:px-8 lg:px-10 xl:px-12">
+          <div className="mb-8 grid grid-cols-1 gap-8 md:mb-12 md:grid-cols-2 md:gap-10 lg:grid-cols-[1.05fr_0.65fr_1.2fr_1fr] lg:gap-10 xl:gap-14">
 
           {/* Brand & Manifesto */}
-          <div className="space-y-4 md:space-y-8">
+          <div className="space-y-4 md:space-y-6">
             <div className="flex items-center gap-3 md:gap-5 group cursor-default">
-              <div className="w-11 h-11 md:w-16 md:h-16 bg-slate-900 rounded-[1.25rem] flex items-center justify-center shadow-2xl shadow-slate-900 border border-white/5 group-hover:rotate-12 transition-all duration-700 shrink-0">
-                <Utensils className="text-primary size-5 md:size-8" />
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[1.1rem] border border-white/5 bg-slate-900 shadow-2xl shadow-slate-900 transition-all duration-700 group-hover:rotate-6 md:h-14 md:w-14">
+                <Utensils className="size-5 text-primary md:size-7" />
               </div>
               <div className="min-w-0">
                 <h3 className="notranslate text-heading-3 md:text-heading-2 font-display font-bold text-white tracking-tight leading-none uppercase truncate" translate="no">
@@ -149,7 +149,7 @@ export function Footer({ settings: providedSettings }: FooterProps) {
               {settings?.description || "Experiência gastronômica premium no conforto da sua casa. Qualidade impecável em cada detalhe."}
             </p>
             {socialLinks.length > 0 && (
-              <div className="flex flex-wrap gap-2.5 md:gap-4 pt-2 md:pt-4">
+              <div className="flex flex-wrap gap-2.5 pt-2">
                 {socialLinks.map(({ label, href, Icon }) => (
                   <a
                     key={label}
@@ -158,9 +158,10 @@ export function Footer({ settings: providedSettings }: FooterProps) {
                     rel="noreferrer noopener"
                     aria-label={label}
                     title={label}
-                    className="w-10 h-10 md:w-14 md:h-14 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-white hover:bg-primary hover:text-white hover:border-primary/20 transition-all duration-500 group"
+                    className="group flex h-10 items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 text-white transition-all duration-300 hover:border-primary/20 hover:bg-primary"
                   >
                     <Icon size={16} className="group-hover:scale-110 transition-transform" />
+                    <span className="hidden text-[9px] font-bold uppercase tracking-wider xl:inline">{label}</span>
                   </a>
                 ))}
               </div>
@@ -168,12 +169,12 @@ export function Footer({ settings: providedSettings }: FooterProps) {
           </div>
 
           {/* Quick Links */}
-          <div className="space-y-5 md:space-y-10">
+          <div className="space-y-5 md:space-y-7">
             <h4 className="text-[10px] md:text-label font-body font-bold text-white uppercase tracking-[0.3em] md:tracking-[0.4em] flex items-center gap-3 md:gap-4">
               Navegação
               <div className="h-px w-8 md:w-10 bg-primary/20" />
             </h4>
-            <ul className="space-y-3 md:space-y-6">
+            <ul className="space-y-3 md:space-y-4">
               {[
                 { label: 'Início', href: `/${slug}` },
                 { label: 'Nosso Cardápio', href: `/${slug}` },
@@ -191,12 +192,12 @@ export function Footer({ settings: providedSettings }: FooterProps) {
           </div>
 
           {/* Contacts */}
-          <div className="space-y-5 md:space-y-10">
+          <div className="space-y-5 md:space-y-7">
             <h4 className="text-[10px] md:text-label font-body font-bold text-white uppercase tracking-[0.3em] md:tracking-[0.4em] flex items-center gap-3 md:gap-4">
               Localização
               <div className="h-px w-8 md:w-10 bg-primary/20" />
             </h4>
-            <div className="space-y-5 md:space-y-10">
+            <div className="space-y-5 md:space-y-6">
               <div className="flex items-start gap-3 md:gap-5 group">
                 <div className="w-10 h-10 md:w-12 md:h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all duration-500 shrink-0">
                   <MapPin className="size-4 md:size-5" />
@@ -209,12 +210,12 @@ export function Footer({ settings: providedSettings }: FooterProps) {
                       target="_blank"
                       rel="noreferrer noopener"
                       title="Abrir localização no mapa"
-                      className="text-[10px] md:text-label font-body font-bold text-slate-300 hover:text-primary leading-tight uppercase tracking-tight truncate transition-colors"
+                      className="text-[10px] font-bold uppercase leading-relaxed tracking-tight text-slate-300 transition-colors hover:text-primary md:text-label"
                     >
                       {settings?.address || "Abrir no mapa"}
                     </a>
                   ) : (
-                    <p className="text-[10px] md:text-label font-body font-bold text-slate-300 leading-tight uppercase tracking-tight truncate">
+                    <p className="text-[10px] font-bold uppercase leading-relaxed tracking-tight text-slate-300 md:text-label">
                       {settings?.address || "Carregando destino..."}
                     </p>
                   )}
@@ -226,11 +227,11 @@ export function Footer({ settings: providedSettings }: FooterProps) {
                     title={`Mapa de ${settings?.storeName || "localização da loja"}`}
                     src={storeMapEmbedUrl}
                     width="100%"
-                    height="150"
+                    height="112"
                     loading="lazy"
                     allowFullScreen
                     referrerPolicy="no-referrer-when-downgrade"
-                    className="block w-full grayscale-[20%]"
+                    className="block w-full grayscale-[20%] contrast-90"
                   />
                   {storeMapUrl && (
                     <a
@@ -259,25 +260,25 @@ export function Footer({ settings: providedSettings }: FooterProps) {
           </div>
 
           {/* Status & Hours */}
-          <div className="space-y-4 md:space-y-8">
+          <div className="space-y-4 md:space-y-7">
             <h4 className="text-[10px] md:text-xs font-black text-white uppercase tracking-[0.3em] md:tracking-[0.4em] flex items-center gap-2 md:gap-3">
-              Status
+              Funcionamento
               <div className="h-px w-6 md:w-8 bg-primary/30" />
             </h4>
-            <div className="bg-slate-900/50 border border-white/5 rounded-4xl p-4 md:p-8 space-y-4 md:space-y-6 relative overflow-hidden group">
+            <div className="group relative space-y-4 overflow-hidden rounded-3xl border border-white/5 bg-slate-900/50 p-4 md:p-6">
               <div className="absolute top-0 right-0 w-24 h-24 bg-primary/5 rounded-full blur-3xl group-hover:bg-primary/10 transition-colors" />
               <div className="flex items-center gap-3 md:gap-4">
                 <div className="w-10 h-10 md:w-12 md:h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-primary shrink-0">
                   <Clock className="size-4 md:size-5" />
                 </div>
                 <div className="space-y-1 min-w-0">
-                  <p className="text-[9px] md:text-[10px] font-black text-slate-500 uppercase tracking-widest leading-none">Aberto das</p>
-                  <p className="text-base md:text-lg font-black text-white uppercase tracking-tighter truncate">{operatingHoursSummary}</p>
+                  <p className="text-[9px] font-black uppercase leading-none tracking-widest text-slate-500 md:text-[10px]">Horários de hoje</p>
+                  <p className="text-base font-black uppercase leading-tight tracking-tighter text-white md:text-lg">{operatingHoursSummary}</p>
                 </div>
               </div>
-              <div className="pt-3 md:pt-6 border-t border-white/5 flex items-center gap-2 md:gap-3">
+              <div className="flex items-center gap-2 border-t border-white/5 pt-3 md:gap-3 md:pt-4">
                 <div className={cn("w-2 h-2 rounded-full shadow-[0_0_10px] shrink-0", isOpenNow ? "bg-emerald-500 shadow-emerald-500 animate-pulse" : "bg-rose-500 shadow-rose-500")} />
-                <span className={cn("text-[9px] md:text-[10px] font-black uppercase tracking-[0.15em] md:tracking-[0.2em] truncate", isOpenNow ? "text-emerald-500" : "text-rose-500")}>
+                <span className={cn("text-[9px] font-black uppercase leading-relaxed tracking-[0.14em] md:text-[10px]", isOpenNow ? "text-emerald-500" : "text-rose-500")}>
                   {isOpenNow
                     ? "Estamos abertos"
                     : nextOpeningLabel === "Sem próximos horários"
@@ -290,7 +291,7 @@ export function Footer({ settings: providedSettings }: FooterProps) {
         </div>
 
         {/* Bottom Bar */}
-        <div className="pt-5 md:pt-12 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-3 md:gap-8">
+        <div className="flex flex-col items-center justify-between gap-3 border-t border-white/5 pt-5 md:flex-row md:gap-8 md:pr-24 md:pt-6">
           <p className="notranslate text-[8px] md:text-[10px] font-black text-slate-600 uppercase tracking-[0.4em] md:tracking-[0.5em] text-center md:text-left" translate="no">
             © {currentYear} {settings?.storeName || 'FOOD SYSTEM'}. TODOS OS DIREITOS RESERVADOS.
           </p>
