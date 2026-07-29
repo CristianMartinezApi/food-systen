@@ -86,6 +86,7 @@ const handleError = async (response: Response, endpoint: string) => {
   // Para outros erros, preservar campos extras da resposta (ex: openOrdersCount, requiresForce)
   const errorData = await response.json().catch(() => ({}));
   const err = new Error(errorData.error || 'Erro na requisição') as any;
+  err.status = response.status;
   Object.assign(err, errorData);
   throw err;
 };

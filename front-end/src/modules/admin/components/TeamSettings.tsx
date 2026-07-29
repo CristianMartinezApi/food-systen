@@ -121,7 +121,7 @@ export default function TeamSettings() {
                 </div>
                 <button
                     onClick={() => setShowAddModal(true)}
-                    className="h-12 px-6 bg-slate-950 text-white rounded-2xl font-bold text-xs uppercase tracking-widest flex items-center gap-2 hover:bg-indigo-600 transition-all active:scale-95 shadow-lg shadow-slate-200"
+                    className="team-add-member-button flex h-12 items-center gap-2 rounded-md bg-slate-950 px-6 text-xs font-bold uppercase tracking-widest text-white transition-all hover:bg-emerald-600 active:scale-95"
                 >
                     <UserPlus size={18} />
                     ADICIONAR MEMBRO

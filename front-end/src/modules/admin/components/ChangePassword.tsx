@@ -122,10 +122,10 @@ export default function ChangePassword() {
 
   if (!showForm) {
     return (
-      <div className="settings-panel settings-panel--security rounded-3xl bg-linear-to-br from-slate-50 to-slate-100 border border-slate-200 p-6 md:p-8">
+      <div className="settings-panel settings-panel--security account-security-card rounded-3xl p-6 md:p-8">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center">
+            <div className="account-security-icon w-12 h-12 rounded-2xl flex items-center justify-center">
               <Lock size={24} />
             </div>
             <div>
@@ -137,7 +137,7 @@ export default function ChangePassword() {
         
         <button
           onClick={() => setShowForm(true)}
-          className="w-full h-12 bg-slate-900 text-white rounded-xl font-black uppercase tracking-tight hover:bg-black transition-all flex items-center justify-center gap-2"
+          className="account-security-primary-action w-full h-12 rounded-xl font-black uppercase tracking-tight transition-all flex items-center justify-center gap-2"
         >
           <Lock size={18} />
           Alterar Senha
@@ -149,7 +149,7 @@ export default function ChangePassword() {
   const allRequirementsMet = passwordRequirements.every((req) => req.met);
 
   return (
-    <div className="settings-panel settings-panel--security rounded-3xl bg-white border border-slate-200 p-6 md:p-8 shadow-sm">
+    <div className="settings-panel settings-panel--security account-security-card rounded-3xl p-6 md:p-8">
       <div className="flex items-center justify-between mb-6">
         <div>
           <h3 className="font-black text-slate-900 uppercase tracking-tight text-lg">Alterar Senha</h3>
@@ -235,7 +235,7 @@ export default function ChangePassword() {
 
         {/* Requisitos de Senha */}
         {formData.newPassword && (
-          <div className="rounded-2xl bg-slate-50 border border-slate-200 p-4">
+          <div className="account-security-requirements rounded-2xl p-4">
             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">
               Requisitos de Segurança
             </p>
@@ -257,8 +257,8 @@ export default function ChangePassword() {
         )}
 
         {/* Aviso de Segurança */}
-        <div className="rounded-2xl bg-blue-50 border border-blue-200 p-4">
-          <p className="text-sm text-blue-900 font-medium">
+        <div className="account-security-notice rounded-2xl p-4">
+          <p className="text-sm font-medium">
             ℹ️ Por segurança, você será desconectado após alterar a senha e precisará fazer login novamente.
           </p>
         </div>
@@ -268,14 +268,14 @@ export default function ChangePassword() {
           <button
             type="button"
             onClick={() => setShowForm(false)}
-            className="flex-1 h-12 bg-slate-100 text-slate-900 rounded-xl font-black uppercase tracking-tight hover:bg-slate-200 transition-all"
+            className="account-security-secondary-action flex-1 h-12 rounded-xl font-black uppercase tracking-tight transition-all"
           >
             Cancelar
           </button>
           <button
             type="submit"
             disabled={isLoading || !allRequirementsMet || formData.currentPassword !== formData.currentPassword}
-            className="flex-1 h-12 bg-primary text-white rounded-xl font-black uppercase tracking-tight hover:bg-primary/90 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="account-security-primary-action flex-1 h-12 rounded-xl font-black uppercase tracking-tight transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isLoading ? <Loader2 className="animate-spin" size={18} /> : <Lock size={18} />}
             Alterar Senha

@@ -831,7 +831,7 @@ export default function OrdersPage({ isCompact = false, onOrdersChange }: { isCo
     }, []);
 
     return (
-        <div className={cn("space-y-3", !isCompact && "ops-workspace max-w-full")}>
+        <div className={cn("space-y-3", !isCompact && "ops-workspace orders-theme max-w-full")}>
             {!isCompact && (
                 <AdminPageHeader
                     eyebrow="Operação"
@@ -1047,7 +1047,7 @@ export default function OrdersPage({ isCompact = false, onOrdersChange }: { isCo
                                     transition={{ delay: idx * 0.02 }}
                                     key={order.id}
                                     className={cn(
-                                        "group flex flex-col overflow-hidden rounded-md border bg-white transition-colors",
+                                        "order-operation-card group flex flex-col overflow-hidden rounded-md border bg-white transition-colors",
                                         order.status === "PENDING" ? "border-rose-100 shadow-sm shadow-rose-500/5 ring-1 ring-rose-50" : "border-slate-100 hover:border-slate-300",
                                         isCritical && "bg-rose-50/30",
                                         isCompact ? "aspect-auto" : "min-h-[320px]"

@@ -99,6 +99,7 @@ export default function Profile() {
   const [phone, setPhone] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
   const [accessHistory, setAccessHistory] = useState<AccessEntry[]>([]);
+  const [showAllAccesses, setShowAllAccesses] = useState(false);
   const [editingEmail, setEditingEmail] = useState(false);
   const [newEmail, setNewEmail] = useState("");
   const [emailPassword, setEmailPassword] = useState("");
@@ -118,6 +119,8 @@ export default function Profile() {
       .map((part) => part[0]?.toUpperCase())
       .join("");
   }, [profile?.name]);
+
+  const visibleAccessHistory = showAllAccesses ? accessHistory : accessHistory.slice(0, 3);
 
   const loadProfile = async () => {
     try {
@@ -316,8 +319,8 @@ export default function Profile() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-5xl space-y-5">
-      <header className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm md:p-7">
+    <div className="ops-workspace profile-workspace mx-auto w-full max-w-6xl space-y-4">
+      <header className="profile-identity-card rounded-md border bg-white p-5 shadow-sm md:p-6">
         <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
           <div className="relative h-20 w-20 shrink-0">
             <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-3xl bg-slate-950 text-xl font-black tracking-widest text-white">
@@ -372,7 +375,7 @@ export default function Profile() {
       </header>
 
       <div className="grid gap-5 lg:grid-cols-[1.35fr_0.65fr]">
-        <form onSubmit={saveProfile} className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm md:p-7">
+        <form onSubmit={saveProfile} className="profile-card rounded-md border bg-white p-5 shadow-sm md:p-6">
           <div className="mb-6 flex items-center gap-3">
             <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10 text-primary">
               <User size={21} />
@@ -507,7 +510,7 @@ export default function Profile() {
         </form>
 
         <div className="space-y-5">
-          <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+          <section className="profile-card rounded-md border bg-white p-5 shadow-sm">
             <div className="flex items-center gap-3">
               <Building2 size={20} className="text-primary" />
               <div>
@@ -518,7 +521,7 @@ export default function Profile() {
             {profile.restaurant?.slug && <p className="mt-3 text-xs text-slate-500">Loja: /{profile.restaurant.slug}</p>}
           </section>
 
-          <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+          <section className="profile-card profile-security-summary rounded-md border bg-white p-5 shadow-sm">
             <div className="flex items-start gap-3">
               <ShieldCheck size={20} className="mt-0.5 text-emerald-600" />
               <div>
@@ -542,15 +545,22 @@ export default function Profile() {
         </div>
       </div>
 
-      <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm md:p-7">
-        <div className="mb-5 flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-100 text-slate-700">
-            <History size={21} />
+      <section className="profile-card profile-access-card rounded-md border bg-white p-5 shadow-sm md:p-6">
+        <div className="mb-5 flex items-center justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-slate-100 text-slate-700">
+              <History size={21} />
+            </div>
+            <div className="min-w-0">
+              <h2 className="font-black text-slate-950">Acessos recentes</h2>
+              <p className="text-xs text-slate-500">Últimos logins registrados nesta conta.</p>
+            </div>
           </div>
-          <div>
-            <h2 className="font-black text-slate-950">Acessos recentes</h2>
-            <p className="text-xs text-slate-500">Últimos logins registrados nesta conta.</p>
-          </div>
+          {accessHistory.length > 0 && (
+            <span className="shrink-0 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[9px] font-black uppercase tracking-wider text-slate-500">
+              {accessHistory.length} registrado{accessHistory.length === 1 ? "" : "s"}
+            </span>
+          )}
         </div>
         {accessHistory.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-5 text-sm text-slate-500">
@@ -558,7 +568,7 @@ export default function Profile() {
           </div>
         ) : (
           <div className="divide-y divide-slate-100">
-            {accessHistory.map((access, index) => (
+            {visibleAccessHistory.map((access, index) => (
               <div key={access.id} className="flex items-start gap-3 py-4 first:pt-0 last:pb-0">
                 <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-500">
                   <Laptop size={17} />
@@ -576,6 +586,20 @@ export default function Profile() {
                 </div>
               </div>
             ))}
+            {accessHistory.length > 3 && (
+              <div className="pt-4">
+                <button
+                  type="button"
+                  onClick={() => setShowAllAccesses((current) => !current)}
+                  className="account-access-toggle inline-flex h-10 w-full items-center justify-center rounded-xl border px-4 text-[10px] font-black uppercase tracking-wider transition"
+                  aria-expanded={showAllAccesses}
+                >
+                  {showAllAccesses
+                    ? "Recolher acessos"
+                    : `Ver mais ${accessHistory.length - 3} acesso${accessHistory.length - 3 === 1 ? "" : "s"}`}
+                </button>
+              </div>
+            )}
           </div>
         )}
       </section>

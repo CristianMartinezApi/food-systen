@@ -48,7 +48,7 @@ export default function CategoriesPage() {
   };
 
   return (
-    <div className="ops-workspace space-y-3">
+    <div className="ops-workspace categories-theme space-y-3">
       <div className="categories-hero">
         <AdminPageHeader
           eyebrow="Cardápio"
@@ -77,9 +77,9 @@ export default function CategoriesPage() {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left">
-              <thead>
-                <tr className="border-b border-slate-50 bg-slate-50/50">
+            <table className="categories-table w-full min-w-[720px] text-left">
+              <thead className="categories-table-head">
+                <tr>
                   <th className="px-5 py-3 text-xs font-semibold text-slate-500">Ordem</th>
                   <th className="px-5 py-3 text-xs font-semibold text-slate-500">Categoria</th>
                   <th className="px-5 py-3 text-xs font-semibold text-slate-500">Produtos</th>
@@ -96,7 +96,7 @@ export default function CategoriesPage() {
                       animate={{ opacity: 1 }}
                       exit={{ opacity: 0 }}
                       key={cat.id} 
-                      className="categories-row border-b border-slate-50 last:border-0 hover:bg-slate-50 transition-colors group"
+                      className="categories-row group border-b last:border-0 transition-colors"
                     >
                       <td className="px-5 py-4">
                         <div className="flex items-center gap-4">

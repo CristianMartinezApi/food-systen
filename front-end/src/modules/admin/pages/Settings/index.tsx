@@ -29,7 +29,6 @@ import toast from "react-hot-toast";
 import { createDefaultOperatingHours, getNextOpeningLabel, isRestaurantOpenNow, normalizeOperatingHours, validateOperatingHours } from "../../../../shared/utils/schedule";
 import { sendToWhatsApp } from "../../../../shared/utils/whatsapp";
 import { SAAS_SUPPORT_PHONE } from "../../../../core/config/support";
-import ChangePassword from "../../components/ChangePassword";
 import PixSettings from "../../components/PixSettings";
 import PrinterSettings from "../../components/PrinterSettings";
 import TeamSettings from "../../components/TeamSettings";
@@ -1027,7 +1026,7 @@ export default function SettingsPage() {
                                         const daySchedule = operatingHours[day.key];
 
                                         return (
-                                            <div key={day.key} className="rounded-2xl border border-slate-50 bg-slate-50/50 p-4 space-y-4">
+                                            <div key={day.key} className="settings-hours-day space-y-4 rounded-md border p-4">
                                                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                                                     <div>
                                                         <span className="text-xs font-black uppercase tracking-widest text-slate-600">{day.label}</span>
@@ -1052,7 +1051,7 @@ export default function SettingsPage() {
 
                                                 <div className="space-y-3">
                                                     {daySchedule.shifts.map((shift, shiftIndex) => (
-                                                        <div key={shiftIndex} className="flex flex-col md:flex-row md:items-center gap-3">
+                                                        <div key={shiftIndex} className="settings-hours-shift flex flex-col gap-3 md:flex-row md:items-center">
                                                             <input
                                                                 type="time"
                                                                 value={shift.open || ""}
@@ -1158,9 +1157,6 @@ export default function SettingsPage() {
                             </p>
                         </div>
 
-                        {/* Componente de Segurança - Mudança de Senha */}
-                        <ChangePassword />
-
                         {/* Configuração PIX */}
                         <div id="settings-payments" className="scroll-mt-20">
                             <PixSettings />
@@ -1173,8 +1169,8 @@ export default function SettingsPage() {
                     <PrinterSettings />
                 </div>
 
-                <div className="sticky bottom-3 md:bottom-4 z-40 mt-6">
-                    <div className="rounded-2xl border border-slate-200 bg-white/95 backdrop-blur-md shadow-xl px-3 py-3 sm:px-4 sm:py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div className="settings-save-dock sticky bottom-3 z-40 mt-6 md:bottom-4">
+                    <div className="settings-save-bar flex flex-col gap-3 rounded-md border px-3 py-3 shadow-xl backdrop-blur-md sm:flex-row sm:items-center sm:justify-between sm:px-4 sm:py-4">
                         <p className={cn("text-xs font-semibold", hasUnsavedChanges ? "text-amber-700" : "text-slate-600") }>
                             {hasUnsavedChanges
                                 ? "Há alterações não salvas. Clique em salvar para publicar no sistema."

@@ -239,7 +239,7 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="ops-workspace space-y-4">
+    <div className="ops-workspace dashboard-theme space-y-4">
       <div className="ops-panel relative overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(14,165,233,0.12),transparent_30%),linear-gradient(135deg,rgba(15,23,42,0.02),transparent_45%)]" />
         <div className="relative grid items-center gap-4 p-4 sm:p-5 xl:grid-cols-[1.1fr_0.9fr]">

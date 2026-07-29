@@ -64,7 +64,7 @@ export default function ProductsPage() {
   };
 
   return (
-    <div className="ops-workspace space-y-3">
+    <div className="ops-workspace products-theme space-y-3">
       <div className="products-hero">
         <AdminPageHeader
           eyebrow="Cardápio"
@@ -142,8 +142,9 @@ export default function ProductsPage() {
                     
                     {/* Floating Category Tag */}
                     <div className="absolute top-3 left-3 sm:top-8 sm:left-8">
-                        <span className="bg-white/95 backdrop-blur-md px-3 sm:px-6 py-1.5 sm:py-2.5 rounded-xl sm:rounded-2xl text-[10px] font-body font-bold uppercase tracking-[0.2em] text-slate-950 shadow-2xl border border-white/50 flex items-center gap-2 sm:gap-3">
-                          <div className="w-1.5 h-1.5 rounded-full bg-primary" /> {product.category?.name || "CURADORIA"}
+                        <span className="product-category-tag flex items-center gap-2 rounded-md border px-3 py-2 text-[10px] font-bold uppercase tracking-[0.16em] shadow-xl backdrop-blur-md sm:gap-3 sm:px-4">
+                          <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                          <span className="max-w-44 truncate">{product.category?.name || "Sem categoria"}</span>
                         </span>
                         {isPromotional && (
                           <div className="mt-2 sm:mt-3 inline-flex items-center gap-2 rounded-xl sm:rounded-2xl bg-rose-500 px-3 sm:px-4 py-1.5 sm:py-2 text-[10px] font-black uppercase tracking-widest text-white shadow-xl shadow-rose-500/20">

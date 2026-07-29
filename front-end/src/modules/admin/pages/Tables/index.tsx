@@ -34,7 +34,7 @@ export default function TablesPage() {
     const occupiedCount = tables.filter(t => t.isOccupied).length;
 
     return (
-        <div className="ops-workspace space-y-3">
+        <div className="ops-workspace tables-theme space-y-3">
             <AdminPageHeader
                 eyebrow="Atendimento"
                 title="Gestão de mesas"
@@ -58,7 +58,7 @@ export default function TablesPage() {
                                 router.push(`/admin/caixa?table=${table.tableNumber}`);
                             }}
                             className={cn(
-                                "group relative flex h-32 flex-col overflow-hidden rounded-md border p-3 text-left transition-colors",
+                                "table-operation-card group relative flex h-32 flex-col overflow-hidden rounded-md border p-3 text-left transition-colors",
                                 table.isOccupied 
                                     ? "bg-amber-50 border-amber-200"
                                     : "bg-white border-slate-300 hover:border-emerald-400"

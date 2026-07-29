@@ -1219,7 +1219,7 @@ export default function CashierPage({
     }
 
     return (
-        <div ref={rootRef} className={cn("space-y-3", !isSidebar && "ops-workspace max-w-full")}>
+        <div ref={rootRef} className={cn("space-y-3", !isSidebar && "ops-workspace cashier-theme max-w-full")}>
             {!isSidebar && (
                 <section className="ops-panel">
                     <div className="flex flex-col gap-3 border-b border-slate-200 px-4 py-3 md:flex-row md:items-center md:justify-between">

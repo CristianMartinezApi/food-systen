@@ -122,7 +122,7 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="ops-workspace space-y-3">
+    <div className="ops-workspace dashboard-theme space-y-3">
       <div>
         <AdminPageHeader
           eyebrow="Operação da loja"
@@ -166,7 +166,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <div className="grid overflow-hidden rounded-md border border-slate-300 bg-white sm:grid-cols-2 xl:grid-cols-4 xl:divide-x xl:divide-slate-200">
+      <div className="dashboard-kpi-grid grid overflow-hidden rounded-md border border-slate-300 bg-white sm:grid-cols-2 xl:grid-cols-4 xl:divide-x xl:divide-slate-200">
         <StatCard
           title="Faturamento de hoje"
           value={formatCurrency(stats?.today?.sales || 0)}
@@ -516,7 +516,7 @@ function StatCard({ title, value, trend, trendTone, icon: Icon }: any) {
 
   return (
     <motion.div
-      className="relative bg-white p-4"
+      className="dashboard-kpi-card relative bg-white p-4"
     >
       <div>
         <div className="mb-2 flex items-center justify-between">
