@@ -144,7 +144,7 @@ export default function PixSettings() {
                 </div>
                 <div>
                     <h3 className="font-display font-bold text-slate-950 text-lg">Pagamento PIX</h3>
-                    <p className="text-xs text-slate-500 mt-0.5">Configure onde os pagamentos da loja serão recebidos.</p>
+                    <p className="text-xs text-slate-500 mt-0.5">Os pagamentos são enviados diretamente para a conta vinculada à chave da loja.</p>
                 </div>
                 <span className={cn(
                     "ml-auto inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-bold uppercase tracking-wider",
@@ -284,9 +284,10 @@ export default function PixSettings() {
             )}
 
             {!isEditing && (
-                <p className="mt-4 text-xs leading-relaxed text-slate-500">
-                    Desativar o PIX não apaga a chave. Para removê-la dos dados da loja, use “Excluir chave”.
-                </p>
+                <div className="mt-4 space-y-1 text-xs leading-relaxed text-slate-500">
+                    <p>A confirmação do pagamento é manual; o sistema não usa gateway nem webhook bancário.</p>
+                    <p>Desativar o PIX não apaga a chave. Para removê-la dos dados da loja, use “Excluir chave”.</p>
+                </div>
             )}
         </section>
     );

@@ -251,6 +251,12 @@ INITIAL_SUPERADMIN_PASSWORD=DEFINA_UMA_SENHA_FORTE_UNICA
 INITIAL_ADMIN_PASSWORD=DEFINA_OUTRA_SENHA_FORTE_UNICA
 ```
 
+## PIX direto
+
+Cada loja cadastra sua própria chave PIX no painel administrativo. O QR Code e o código Copia e Cola enviam o pagamento diretamente para a conta vinculada à chave, sem EFI, gateway ou webhook. A confirmação do recebimento é manual.
+
+Consulte [PIX direto por chave da loja](docs/pix-direto.md) para configuração, operação e validação.
+
 ## 🐛 Troubleshooting
 
 ### Containers não iniciando

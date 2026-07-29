@@ -272,7 +272,7 @@ model Settings {
   deliveryRadius Float?     @default(5)
   restaurant     Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
   
-  // PIX - chave do lojista para receber pagamentos (credenciais Efi são centralizadas)
+  // PIX direto - chave do lojista para receber pagamentos sem gateway ou webhook
   pixEnabled     Boolean   @default(false)
   pixKey         String?   // chave PIX do lojista (CPF, CNPJ, email, celular ou aleatória)
 

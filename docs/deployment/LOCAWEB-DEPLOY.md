@@ -113,6 +113,8 @@ AUDIT_RETENTION_ENABLED=true
 AUDIT_RETENTION_DAYS=90
 ```
 
+Cada loja cadastra a própria chave no painel administrativo, recebe o pagamento diretamente na conta vinculada e confirma o recebimento manualmente. Consulte [PIX direto por chave da loja](../pix-direto.md).
+
 ### 3.2 Frontend - Criar `.env.local`
 
 ```bash

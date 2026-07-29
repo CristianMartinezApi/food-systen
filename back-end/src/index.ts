@@ -7318,7 +7318,7 @@ apiRouter.put('/pix/settings', authMiddleware, tenantMiddleware, async (req: Aut
   }
 });
 
-// Obter status das credenciais PIX do lojista
+// Obter a configuração da chave PIX do lojista
 apiRouter.get('/pix/settings', authMiddleware, tenantMiddleware, async (req: AuthRequest & TenantRequest, res) => {
   try {
     const s = await prisma.settings.findUnique({ where: { restaurantId: req.restaurant!.id } });

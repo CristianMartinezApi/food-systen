@@ -31,6 +31,8 @@ INITIAL_SUPERADMIN_PASSWORD=senha_inicial_forte
 INITIAL_ADMIN_PASSWORD=senha_inicial_forte
 ```
 
+O PIX funciona diretamente pela chave cadastrada por cada loja. Não configure credenciais EFI ou webhook bancário. Consulte [PIX direto por chave da loja](pix-direto.md).
+
 ## Passo a passo
 
 1. Atualize a VPS:

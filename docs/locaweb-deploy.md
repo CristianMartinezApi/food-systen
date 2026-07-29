@@ -27,6 +27,8 @@ INITIAL_SUPERADMIN_PASSWORD=senha_inicial_forte
 INITIAL_ADMIN_PASSWORD=senha_inicial_forte
 ```
 
+O PIX funciona diretamente pela chave cadastrada por cada loja. Não configure credenciais EFI ou webhook bancário. Consulte [PIX direto por chave da loja](pix-direto.md).
+
 Se você usar `www`, mantenha os dois domínios nas URLs públicas e em `ALLOWED_ORIGINS`.
 
 ## Subida inicial
