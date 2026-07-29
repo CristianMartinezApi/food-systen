@@ -129,8 +129,8 @@ export function Footer({ settings: providedSettings }: FooterProps) {
         <div className="absolute top-0 left-[15%] w-px h-64 bg-linear-to-b from-white/5 to-transparent hidden md:block" />
         <div className="absolute top-0 right-[15%] w-px h-64 bg-linear-to-b from-white/5 to-transparent hidden md:block" />
 
-        <div className="relative z-10 mx-auto w-full max-w-[1440px] px-4 md:px-8 lg:px-10 xl:px-12">
-          <div className="mb-8 grid grid-cols-1 gap-8 md:mb-12 md:grid-cols-2 md:gap-10 lg:grid-cols-[1.05fr_0.65fr_1.2fr_1fr] lg:gap-10 xl:gap-14">
+        <div className="relative z-10 mx-auto w-full px-4 md:px-8 lg:px-12 xl:px-16">
+          <div className="mb-8 grid grid-cols-1 gap-8 md:mb-12 md:grid-cols-2 md:gap-10 lg:grid-cols-[1.05fr_0.7fr_1.15fr_1fr] lg:gap-12 xl:gap-16">
 
           {/* Brand & Manifesto */}
           <div className="space-y-4 md:space-y-6">
@@ -140,7 +140,8 @@ export function Footer({ settings: providedSettings }: FooterProps) {
               </div>
               <div className="min-w-0">
                 <h3 className="notranslate text-heading-3 md:text-heading-2 font-display font-bold text-white tracking-tight leading-none uppercase truncate" translate="no">
-                  {settings?.storeName?.split(' ')[0] || "FOOD"}<span className="text-primary">{settings?.storeName?.split(' ')[1] || "SYSTEM"}</span>
+                  {settings?.storeName?.split(' ')[0] || "FOOD"}{" "}
+                  <span className="text-primary">{settings?.storeName?.split(' ').slice(1).join(' ') || "SYSTEM"}</span>
                 </h3>
                 <p className="text-[10px] md:text-label font-body font-medium text-slate-500 uppercase tracking-[0.2em] md:tracking-[0.3em] mt-1 md:mt-2">ALTA GASTRONOMIA</p>
               </div>
