@@ -211,6 +211,8 @@ Os containers são iniciados com seeding automático para facilitar o ambiente l
 
 ## 🚀 Deployment
 
+Para concluir a automação com segurança, siga o [guia de configuração pendente de CI/CD](docs/ci-cd-configuracao-pendente.md).
+
 Recomendação atual: **VPS com Docker + Nginx + HTTPS**.
 
 Se você for usar a VPS da Locaweb, siga este guia: [docs/locaweb-deploy.md](docs/locaweb-deploy.md)
