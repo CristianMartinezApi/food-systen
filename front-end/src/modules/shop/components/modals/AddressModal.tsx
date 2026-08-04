@@ -93,7 +93,7 @@ export function AddressModal({ isOpen, onClose }: AddressModalProps) {
           >
             <div className="flex items-center justify-between mb-6 md:mb-8 shrink-0">
               <div className="flex items-center gap-3 min-w-0">
-                <div className="w-11 h-11 md:w-12 md:h-12 bg-primary/10 rounded-2xl flex items-center justify-center text-primary shrink-0">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary md:h-12 md:w-12 md:rounded-2xl">
                   <MapPin size={20} className="md:size-6" />
                 </div>
                 <div className="min-w-0">
@@ -118,7 +118,7 @@ export function AddressModal({ isOpen, onClose }: AddressModalProps) {
                     onChange={(e) => setCep(e.target.value)}
                     onBlur={handleCepBlur}
                     placeholder="00000-000"
-                    className="w-full h-12 md:h-14 bg-slate-50 border border-slate-200 rounded-2xl focus:bg-slate-50 focus:ring-4 focus:ring-primary/10 focus:border-primary/20 transition-all font-bold text-slate-700 outline-none px-5 md:px-6"
+                    className="h-12 w-full rounded-lg border border-slate-200 bg-slate-50 px-5 font-bold text-slate-700 outline-none transition-colors focus:border-primary/20 focus:bg-slate-50 md:h-14 md:rounded-2xl md:px-6 md:focus:ring-4 md:focus:ring-primary/10"
                   />
                   {isSearching && (
                     <div className="absolute right-4 top-1/2 -translate-y-1/2">
@@ -146,7 +146,7 @@ export function AddressModal({ isOpen, onClose }: AddressModalProps) {
 
               <button
                 onClick={handleSave}
-                className="h-14 md:h-16 w-full bg-slate-900 text-white rounded-2xl font-black flex items-center justify-center gap-3 mt-2 md:mt-4 shadow-xl shadow-slate-900/10 hover:bg-black transition-all uppercase tracking-widest text-[10px] md:text-sm shrink-0"
+                className="mt-2 flex h-14 w-full shrink-0 items-center justify-center gap-3 rounded-lg bg-slate-900 text-[10px] font-black uppercase tracking-widest text-white shadow-lg shadow-slate-900/10 transition-colors hover:bg-black md:mt-4 md:h-16 md:rounded-2xl md:text-sm md:shadow-xl"
               >
                 SALVAR ENDEREÇO
               </button>
@@ -166,7 +166,7 @@ function InputLabel({ label, value, onChange, placeholder }: any) {
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="w-full h-14 bg-slate-50 border border-slate-200 rounded-2xl focus:bg-slate-50 focus:ring-4 focus:ring-primary/10 focus:border-primary/20 transition-all font-bold text-slate-700 outline-none px-6"
+        className="h-14 w-full rounded-lg border border-slate-200 bg-slate-50 px-6 font-bold text-slate-700 outline-none transition-colors focus:border-primary/20 focus:bg-slate-50 md:rounded-2xl md:focus:ring-4 md:focus:ring-primary/10"
       />
     </div>
   );

@@ -147,7 +147,7 @@ export function Footer({ settings: providedSettings }: FooterProps) {
               </div>
             </div>
             <p className="text-[10px] md:text-label font-body font-medium leading-relaxed text-slate-400 max-w-xs uppercase tracking-[0.08em] opacity-80 decoration-primary decoration-1">
-              {settings?.description || "Experiência gastronômica premium no conforto da sua casa. Qualidade impecável em cada detalhe."}
+              {settings?.description || "Consulte o cardápio, escolha seus produtos e faça seu pedido online."}
             </p>
             {socialLinks.length > 0 && (
               <div className="flex flex-wrap gap-2.5 pt-2">
@@ -281,10 +281,10 @@ export function Footer({ settings: providedSettings }: FooterProps) {
                 <div className={cn("w-2 h-2 rounded-full shadow-[0_0_10px] shrink-0", isOpenNow ? "bg-emerald-500 shadow-emerald-500 animate-pulse" : "bg-rose-500 shadow-rose-500")} />
                 <span className={cn("text-[9px] font-black uppercase leading-relaxed tracking-[0.14em] md:text-[10px]", isOpenNow ? "text-emerald-500" : "text-rose-500")}>
                   {isOpenNow
-                    ? "Estamos abertos"
+                    ? "Loja aberta agora"
                     : nextOpeningLabel === "Sem próximos horários"
-                      ? "Fechados · Sem horário disponível"
-                      : `Fechados · Abre ${nextOpeningLabel}`}
+                      ? "Loja fechada · Sem horário disponível"
+                      : `Loja fechada · Abre ${nextOpeningLabel}`}
                 </span>
               </div>
             </div>

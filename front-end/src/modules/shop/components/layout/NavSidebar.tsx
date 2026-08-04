@@ -129,7 +129,7 @@ export function NavSidebar({ isOpen, onClose, categories, settings, activeCatego
                     <MapPin size={18} />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="text-[9px] md:text-[10px] font-black text-slate-300 uppercase tracking-[0.22em] mb-1">Sua localização</p>
+                    <p className="text-[9px] md:text-[10px] font-black text-slate-300 uppercase tracking-[0.22em] mb-1">Endereço de entrega</p>
                     <p className="text-label md:text-body-strong font-body text-white truncate uppercase tracking-tighter">
                       {address ? `${address.street}, ${address.number}` : "Configurar endereço"}
                     </p>
@@ -145,7 +145,7 @@ export function NavSidebar({ isOpen, onClose, categories, settings, activeCatego
             <div className="flex-1 overflow-y-auto px-5 py-5 md:p-10 space-y-7 md:space-y-10 no-scrollbar">
 
               <div className="space-y-4">
-                <h3 className="px-1 text-[10px] font-black text-slate-300 uppercase tracking-[0.24em]">Menu</h3>
+                <h3 className="px-1 text-[10px] font-black text-slate-300 uppercase tracking-[0.24em]">Navegação</h3>
                 <div className="grid grid-cols-1 gap-3">
                   <Link
                     href={`/${slug}/orders`}
@@ -164,7 +164,7 @@ export function NavSidebar({ isOpen, onClose, categories, settings, activeCatego
                     )}
                   >
                     <Compass size={17} className={activeCategory === 'all' ? "text-primary" : "text-slate-300"} />
-                    <span className="flex-1 text-left">Menu completo</span>
+                    <span className="flex-1 text-left">Cardápio completo</span>
                   </button>
                   {categories.map((cat: any) => (
                     <button

@@ -16,11 +16,7 @@ import {
   MapPin,
   CreditCard,
   Phone,
-  History,
-  LayoutGrid,
-  ReceiptText,
-  Search,
-  ShoppingCart
+  History
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { socket } from "../../../core/config/socket";
@@ -30,6 +26,8 @@ import { Footer } from "../components/layout/Footer";
 import { CartSidebar } from "../components/cart/CartSidebar";
 import { useCartStore } from "../../../core/stores/useCartStore";
 import { useHasHydrated } from "../../../core/hooks/useHasHydrated";
+import { MobileShopNavigation } from "../components/layout/MobileShopNavigation";
+import { MobileCartBar } from "../components/layout/MobileCartBar";
 
 const FINAL_ORDER_STATUSES = new Set(["DELIVERED", "RETIRED", "CANCELLED"]);
 const isActiveOrder = (order: any) => !FINAL_ORDER_STATUSES.has(String(order?.status || ""));
@@ -43,8 +41,9 @@ export default function CustomerOrdersPage() {
   const [expandedOrderId, setExpandedOrderId] = useState<number | null>(null);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const hasHydrated = useHasHydrated();
-  const { getTotalItems } = useCartStore() as any;
+  const { getTotalItems, getSubtotal } = useCartStore() as any;
   const totalItems = hasHydrated ? getTotalItems() : 0;
+  const cartSubtotal = hasHydrated ? getSubtotal() : 0;
 
   const normalizePhone = (value?: string) => (value || "").replace(/\D/g, "");
 
@@ -137,7 +136,7 @@ export default function CustomerOrdersPage() {
     switch (status) {
       case 'PENDING': return { label: 'Aguardando confirmação', icon: <Clock size={16} />, color: 'text-amber-600', bg: 'bg-amber-50', progress: 20 };
       case 'CONFIRMED': return { label: 'Confirmado', icon: <CheckCircle2 size={16} />, color: 'text-emerald-500', bg: 'bg-emerald-50', progress: 40 };
-      case 'PREPARING': return { label: 'Em Preparo', icon: <Package size={16} />, color: 'text-blue-500', bg: 'bg-blue-50', progress: 60 };
+      case 'PREPARING': return { label: 'Em preparo', icon: <Package size={16} />, color: 'text-blue-500', bg: 'bg-blue-50', progress: 60 };
       case 'READY': return {
         label: getOrderType(address) === "PICKUP" ? 'Pronto para retirada' : 'Pronto para entrega',
         icon: <ShoppingBag size={16} />,
@@ -145,10 +144,10 @@ export default function CustomerOrdersPage() {
         bg: 'bg-orange-50',
         progress: 80
       };
-      case 'OUT_FOR_DELIVERY': return { label: 'Em Rota de Entrega', icon: <Bike size={16} className="animate-bounce" />, color: 'text-indigo-500', bg: 'bg-indigo-50', progress: 90 };
+      case 'OUT_FOR_DELIVERY': return { label: 'Em rota de entrega', icon: <Bike size={16} className="animate-bounce" />, color: 'text-indigo-500', bg: 'bg-indigo-50', progress: 90 };
       case 'DELIVERED': return { label: 'Entregue', icon: <CheckCircle2 size={16} />, color: 'text-emerald-500', bg: 'bg-emerald-50', progress: 100 };
-      case 'RETIRED': return { label: 'Entregue no Balcao', icon: <CheckCircle2 size={16} />, color: 'text-emerald-500', bg: 'bg-emerald-50', progress: 100 };
-      case 'CANCELLED': return { label: 'Pedido Cancelado', icon: <XCircle size={16} />, color: 'text-rose-500', bg: 'bg-rose-50', progress: 0 };
+      case 'RETIRED': return { label: 'Entregue no balcão', icon: <CheckCircle2 size={16} />, color: 'text-emerald-500', bg: 'bg-emerald-50', progress: 100 };
+      case 'CANCELLED': return { label: 'Pedido cancelado', icon: <XCircle size={16} />, color: 'text-rose-500', bg: 'bg-rose-50', progress: 0 };
       default: return { label: status, icon: <Clock size={16} />, color: 'text-slate-500', bg: 'bg-slate-50', progress: 0 };
     }
   };
@@ -201,8 +200,8 @@ export default function CustomerOrdersPage() {
 
   const getPaymentLabel = (method?: string) => {
     if (method === "PIX") return "Pix";
-    if (method === "CREDIT") return "Credito";
-    if (method === "DEBIT") return "Debito";
+    if (method === "CREDIT") return "Crédito";
+    if (method === "DEBIT") return "Débito";
     if (method === "CARD") return "Cartao";
     if (method === "CASH") return "Dinheiro";
     return method || "Nao informado";
@@ -245,7 +244,7 @@ export default function CustomerOrdersPage() {
 
       const composed = parts.join(", ").trim();
       if (composed) return composed;
-      return "Endereco nao informado";
+      return "Endereço não informado";
     }
 
     return String(address);
@@ -269,14 +268,14 @@ export default function CustomerOrdersPage() {
       {/* Header Premium */}
       <header className="fixed inset-x-0 top-0 bg-slate-100/90 backdrop-blur-2xl border-b border-slate-200 z-50 py-3 md:py-6 shadow-[0_10px_30px_rgba(15,23,42,0.08)]">
         <div className="container mx-auto px-4 md:px-6 flex items-center justify-between gap-3">
-          <Link href={`/${slug}`} className="w-11 h-11 md:w-12 md:h-12 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400 hover:text-slate-900 hover:bg-slate-100 transition-all shrink-0">
+          <Link href={`/${slug}`} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-slate-50 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-900 md:h-12 md:w-12 md:rounded-2xl">
             <ArrowLeft size={20} className="md:size-6" />
           </Link>
           <div className="text-center min-w-0 flex-1">
             <h1 className="text-lg md:text-heading-2 font-display text-slate-900 uppercase tracking-tighter leading-none mb-1 truncate">Acompanhar pedidos</h1>
             <p className="text-[10px] md:text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em] truncate">Status atualizado em tempo real</p>
           </div>
-          <div className="w-11 h-11 md:w-12 md:h-12 rounded-2xl bg-slate-950 flex items-center justify-center text-primary shadow-lg shadow-slate-950/20 shrink-0">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-slate-950 text-primary shadow-lg shadow-slate-950/20 md:h-12 md:w-12 md:rounded-2xl">
             <History size={18} className="md:size-5" />
           </div>
         </div>
@@ -292,11 +291,11 @@ export default function CustomerOrdersPage() {
               </div>
             </div>
             <div className="space-y-3">
-              <h2 className="text-heading-2 md:text-heading-1 font-display text-slate-900 uppercase tracking-tight">Cesto de Histórico Vazio</h2>
+              <h2 className="text-heading-2 md:text-heading-1 font-display text-slate-900 uppercase tracking-tight">Você ainda não fez pedidos</h2>
               <p className="text-sm md:text-slate-500 font-body font-medium max-w-xs mx-auto">Você precisa realizar seu primeiro pedido para ver o histórico aqui.</p>
             </div>
-            <Link href={`/${slug}`} className="h-14 md:h-16 px-8 md:px-10 bg-slate-950 text-white rounded-2xl font-body font-medium flex items-center gap-3 shadow-2xl shadow-slate-950/20 hover:scale-105 active:scale-95 transition-all uppercase tracking-[0.06em] text-[10px] md:text-label">
-              Explorar Cardápio <ChevronRight size={18} />
+            <Link href={`/${slug}`} className="flex h-14 items-center gap-3 rounded-lg bg-slate-950 px-8 font-body text-[10px] font-medium uppercase tracking-[0.06em] text-white shadow-lg shadow-slate-950/20 transition-colors hover:bg-black md:h-16 md:rounded-2xl md:px-10 md:text-label md:shadow-2xl">
+              Ver cardápio <ChevronRight size={18} />
             </Link>
           </div>
         ) : loading ? (
@@ -362,7 +361,7 @@ export default function CustomerOrdersPage() {
                             <span className="text-sm md:text-numeric font-mono text-primary tracking-tight">{formatCurrency(order.total)}</span>
                           </div>
                           <div className="flex flex-col md:col-span-2">
-                            <span className="text-[10px] md:text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em] mb-1">SABORES</span>
+                            <span className="text-[10px] md:text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em] mb-1">ITENS</span>
                             <p className="text-sm md:text-body font-body text-slate-600 truncate uppercase tracking-tight">
                               {(Array.isArray(order.items) ? order.items : []).map((i: any) => `${i?.quantity ?? 0}x ${getItemDisplayName(i)}`).join(", ")}
                             </p>
@@ -484,37 +483,8 @@ export default function CustomerOrdersPage() {
         )}
       </main>
 
-      <nav
-        aria-label="Navegação da loja"
-        className="fixed inset-x-0 bottom-0 z-70 min-h-16 border-t border-slate-300 bg-white/95 px-1 pb-[max(0.25rem,env(safe-area-inset-bottom))] pt-1 shadow-[0_-8px_24px_rgba(15,23,42,0.08)] backdrop-blur md:hidden"
-      >
-        <div className="grid grid-cols-4 gap-1">
-          <Link href={`/${slug}`} className="flex min-w-0 flex-col items-center justify-center gap-1 px-1 py-2 text-[10px] font-semibold text-slate-500">
-            <span className="grid h-7 w-9 place-items-center rounded-md"><LayoutGrid size={17} /></span>
-            <span className="w-full truncate text-center">Cardápio</span>
-          </Link>
-          <Link href={`/${slug}?search=1#menu-section`} className="flex min-w-0 flex-col items-center justify-center gap-1 px-1 py-2 text-[10px] font-semibold text-slate-500">
-            <span className="grid h-7 w-9 place-items-center rounded-md"><Search size={17} /></span>
-            <span className="w-full truncate text-center">Buscar</span>
-          </Link>
-          <div className="flex min-w-0 flex-col items-center justify-center gap-1 px-1 py-2 text-[10px] font-semibold text-slate-950">
-            <span className="grid h-7 w-9 place-items-center rounded-md bg-slate-950 text-white"><ReceiptText size={17} /></span>
-            <span className="w-full truncate text-center">Pedidos</span>
-          </div>
-          <button
-            onClick={() => setIsCartOpen(true)}
-            className="relative flex min-w-0 flex-col items-center justify-center gap-1 px-1 py-2 text-[10px] font-semibold text-slate-500"
-          >
-            <span className="grid h-7 w-9 place-items-center rounded-md"><ShoppingCart size={17} /></span>
-            <span className="w-full truncate text-center">Cesta</span>
-            {totalItems > 0 && (
-              <span className="absolute right-[calc(50%-1.6rem)] top-0 flex min-w-4.5 h-4.5 items-center justify-center rounded-full bg-rose-600 px-1 text-[8px] font-black text-white">
-                {totalItems > 99 ? "99+" : totalItems}
-              </span>
-            )}
-          </button>
-        </div>
-      </nav>
+      <MobileCartBar itemCount={totalItems} subtotal={cartSubtotal} onOpen={() => setIsCartOpen(true)} />
+      <MobileShopNavigation slug={slug} active="orders" />
 
       <CartSidebar isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />
       <Footer />

@@ -1,6 +1,6 @@
 "use client";
 
-import { ShoppingCart, Menu, Search, MapPin, ChevronRight, Utensils, LayoutGrid, ReceiptText, X } from "lucide-react";
+import { ShoppingCart, Menu, Search, MapPin, ChevronRight, Utensils, X } from "lucide-react";
 import { useCartStore } from "../../../../core/stores/useCartStore";
 import { useLocationStore } from "../../../../core/stores/useLocationStore";
 import { useHasHydrated } from "../../../../core/hooks/useHasHydrated";
@@ -13,6 +13,8 @@ import Link from "next/link";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { getNextOpeningLabel, isRestaurantOpenNow } from "../../../../shared/utils/schedule";
+import { MobileShopNavigation } from "./MobileShopNavigation";
+import { MobileCartBar } from "./MobileCartBar";
 
 interface HeaderProps {
   onOpenMenu?: () => void;
@@ -23,9 +25,10 @@ interface HeaderProps {
 
 export function Header({ onOpenMenu, settings, searchTerm, onSearchChange }: HeaderProps) {
   const hasHydrated = useHasHydrated();
-  const { getTotalItems, syncTenantCart } = useCartStore() as any;
+  const { getTotalItems, getSubtotal, syncTenantCart } = useCartStore() as any;
   const { address } = useLocationStore();
   const totalItems = hasHydrated ? getTotalItems() : 0;
+  const cartSubtotal = hasHydrated ? getSubtotal() : 0;
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
   const [slug, setSlug] = useState<string>("");
@@ -40,9 +43,25 @@ export function Header({ onOpenMenu, settings, searchTerm, onSearchChange }: Hea
       setIsMobileSearchOpen(true);
     }
     syncTenantCart();
-    const handleScroll = () => setIsScrolled(window.scrollY > 20);
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
+    const desktopQuery = window.matchMedia("(min-width: 768px)");
+    const handleDesktopScroll = () => setIsScrolled(window.scrollY > 20);
+    const configureHeaderBehavior = () => {
+      window.removeEventListener("scroll", handleDesktopScroll);
+
+      if (desktopQuery.matches) {
+        handleDesktopScroll();
+        window.addEventListener("scroll", handleDesktopScroll, { passive: true });
+        return;
+      }
+      setIsScrolled(false);
+    };
+
+    configureHeaderBehavior();
+    desktopQuery.addEventListener("change", configureHeaderBehavior);
+    return () => {
+      window.removeEventListener("scroll", handleDesktopScroll);
+      desktopQuery.removeEventListener("change", configureHeaderBehavior);
+    };
   }, [syncTenantCart]);
 
   useEffect(() => {
@@ -78,7 +97,7 @@ export function Header({ onOpenMenu, settings, searchTerm, onSearchChange }: Hea
       : `Fechada agora · Abre ${nextOpeningLabel}`;
   const desktopStatusLabel = isOpenNow ? "Aberta · Aceitando pedidos" : closedStatusLabel;
   const mobileStatusLabel = isOpenNow
-    ? "Aberta"
+    ? "Aberta agora"
     : settings?.isOpen && settings?.hasCashierSession === false
       ? "Aguardando caixa"
       : nextOpeningLabel === "Sem próximos horários"
@@ -88,7 +107,7 @@ export function Header({ onOpenMenu, settings, searchTerm, onSearchChange }: Hea
   const cartButton = (
     <button
       onClick={() => setIsCartOpen(true)}
-      aria-label="Abrir cesto"
+      aria-label="Abrir carrinho"
       className="fixed bottom-5 right-4 md:bottom-8 md:right-8 z-70 w-12 h-12 md:w-16 md:h-16 bg-rose-600 text-white rounded-full hidden md:flex items-center justify-center hover:bg-rose-700 hover:scale-105 active:scale-95 transition-all duration-300 shadow-2xl shadow-rose-900/35 ring-2 ring-white/70"
     >
       <div className="relative">
@@ -108,36 +127,9 @@ export function Header({ onOpenMenu, settings, searchTerm, onSearchChange }: Hea
     </button>
   );
 
-  const mobileNavigation = (
-    <nav
-      aria-label="Navegação da loja"
-      className="fixed inset-x-0 bottom-0 z-70 min-h-16 border-t border-slate-300 bg-white/95 px-1 pb-[max(0.25rem,env(safe-area-inset-bottom))] pt-1 shadow-[0_-8px_24px_rgba(15,23,42,0.08)] backdrop-blur md:hidden"
-    >
-      <div className="grid grid-cols-4 gap-1">
-        <Link href={`/${slug}`} className="flex min-w-0 flex-col items-center justify-center gap-1 px-1 py-2 text-[10px] font-semibold text-slate-950">
-          <span className="grid h-7 w-9 place-items-center rounded-md bg-slate-950 text-white"><LayoutGrid size={17} /></span>
-          <span className="w-full truncate text-center">Cardápio</span>
-        </Link>
-        <button onClick={() => setIsMobileSearchOpen(true)} className="flex min-w-0 flex-col items-center justify-center gap-1 px-1 py-2 text-[10px] font-semibold text-slate-500">
-          <span className="grid h-7 w-9 place-items-center rounded-md"><Search size={17} /></span>
-          <span className="w-full truncate text-center">Buscar</span>
-        </button>
-        <Link href={`/${slug}/orders`} className="flex min-w-0 flex-col items-center justify-center gap-1 px-1 py-2 text-[10px] font-semibold text-slate-500">
-          <span className="grid h-7 w-9 place-items-center rounded-md"><ReceiptText size={17} /></span>
-          <span className="w-full truncate text-center">Pedidos</span>
-        </Link>
-        <button onClick={() => setIsCartOpen(true)} className="relative flex min-w-0 flex-col items-center justify-center gap-1 px-1 py-2 text-[10px] font-semibold text-slate-500">
-          <span className="grid h-7 w-9 place-items-center rounded-md"><ShoppingCart size={17} /></span>
-          <span className="w-full truncate text-center">Cesta</span>
-          {totalItems > 0 && (
-            <span className="absolute right-[calc(50%-1.6rem)] top-0 flex min-w-4.5 h-4.5 items-center justify-center rounded-full bg-rose-600 px-1 text-[8px] font-black text-white">
-              {totalItems > 99 ? "99+" : totalItems}
-            </span>
-          )}
-        </button>
-      </div>
-    </nav>
-  );
+  const mobileNavigation = <MobileShopNavigation slug={slug} active="menu" onSearch={() => setIsMobileSearchOpen(true)} />;
+
+  const mobileCartBar = <MobileCartBar itemCount={totalItems} subtotal={cartSubtotal} onOpen={() => setIsCartOpen(true)} />;
 
   const mobileSearch = (
     <AnimatePresence>
@@ -156,7 +148,8 @@ export function Header({ onOpenMenu, settings, searchTerm, onSearchChange }: Hea
             initial={{ y: 24, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 24, opacity: 0 }}
-            className="fixed inset-x-0 bottom-16 z-81 border-t border-slate-200 bg-white p-4 shadow-[0_-16px_40px_rgba(15,23,42,0.18)] md:hidden"
+            className="fixed inset-x-0 z-81 border-t border-slate-200 bg-white p-4 shadow-[0_-16px_40px_rgba(15,23,42,0.18)] md:hidden"
+            style={{ bottom: "calc(3.5rem + env(safe-area-inset-bottom))" }}
           >
             <div className="mx-auto flex max-w-xl items-center gap-2">
               <div className="relative flex-1">
@@ -188,21 +181,21 @@ export function Header({ onOpenMenu, settings, searchTerm, onSearchChange }: Hea
     <>
       <header
         className={cn(
-          "fixed inset-x-0 top-0 z-50 transition-all duration-500 border-b",
+          "fixed inset-x-0 top-0 z-50 border-b border-slate-700 bg-slate-900 py-2 shadow-[0_4px_14px_rgba(2,6,23,0.2)] md:transition-[background-color,border-color,box-shadow] md:duration-200",
           isScrolled
-            ? "py-2 md:py-4 bg-slate-900/98 md:bg-slate-800/95 border-slate-700 backdrop-blur-md shadow-[0_6px_18px_rgba(2,6,23,0.22)] md:shadow-[0_12px_30px_rgba(2,6,23,0.32)]"
-            : "py-2 md:py-5 bg-slate-900 md:bg-slate-800/98 border-slate-700 shadow-[0_4px_14px_rgba(2,6,23,0.2)] md:shadow-[0_10px_24px_rgba(2,6,23,0.28)]"
+            ? "md:py-4 md:bg-slate-800/95 md:backdrop-blur-md md:shadow-[0_12px_30px_rgba(2,6,23,0.32)]"
+            : "md:py-5 md:bg-slate-800/98 md:shadow-[0_10px_24px_rgba(2,6,23,0.28)]"
         )}
       >
         <div className="w-full px-3 md:px-5 lg:px-7 xl:px-8">
-          <div className="flex items-center justify-between gap-3 md:gap-6 lg:grid lg:grid-cols-[1fr_auto_1fr] lg:items-center lg:gap-8">
+          <div className="relative flex items-center justify-between gap-3 md:gap-6 lg:grid lg:grid-cols-[1fr_auto_1fr] lg:items-center lg:gap-8">
 
             {/* Logo Section */}
             <div className="flex items-center gap-2 md:gap-5 min-w-0 lg:justify-self-start">
-              <Link href={`/${slug}`} className="flex items-center gap-2.5 md:gap-4 group min-w-0">
-                <div className="w-9 h-9 md:w-14 md:h-14 bg-slate-800 md:bg-slate-900 rounded-md md:rounded-2xl flex items-center justify-center shadow-sm md:shadow-xl md:shadow-black/30 ring-1 ring-white/10 md:group-hover:rotate-3 transition-all duration-300 shrink-0">
+              <Link href={`/${slug}`} className="hidden min-w-0 items-center gap-4 group md:flex">
+                <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full bg-slate-900 shadow-lg ring-1 ring-white/15 transition-all duration-300 shrink-0 md:h-14 md:w-14 md:rounded-2xl md:shadow-xl md:shadow-black/30 md:group-hover:rotate-3">
                   {settings?.logo ? (
-                    <img src={settings.logo} alt={`Logo ${storeNameRaw}`} className="w-full h-full object-cover rounded-md md:rounded-2xl" />
+                    <img src={settings.logo} alt={`Logo ${storeNameRaw}`} className="h-full w-full rounded-full object-cover md:rounded-2xl" />
                   ) : (
                     <Utensils className="text-primary group-hover:scale-110 transition-transform duration-500" size={18} />
                   )}
@@ -246,7 +239,7 @@ export function Header({ onOpenMenu, settings, searchTerm, onSearchChange }: Hea
             </div>
 
             {/* Right Section: Actions */}
-            <div className="flex items-center gap-2 md:gap-4 lg:gap-4 xl:gap-5 shrink-0 justify-end lg:justify-self-end">
+            <div className="flex min-w-0 flex-1 items-center justify-end gap-2 md:flex-none md:gap-4 lg:justify-self-end lg:gap-4 xl:gap-5">
               {/* Search Bar - Aesthetic version */}
               <div className="hidden xl:flex relative items-center group">
                 <Search className="absolute left-4 md:left-5 text-slate-300 group-focus-within:text-primary transition-colors duration-300" size={18} />
@@ -261,19 +254,24 @@ export function Header({ onOpenMenu, settings, searchTerm, onSearchChange }: Hea
               <button
                 type="button"
                 onClick={() => setIsAddressModalOpen(true)}
-                aria-label="Alterar localização"
-                className="grid size-10 place-items-center border border-slate-700 bg-slate-800 text-slate-200 transition-colors active:bg-slate-700 md:hidden"
+                aria-label={`Alterar endereço de entrega. Endereço atual: ${displayAddress}`}
+                className="flex h-10 min-w-0 flex-1 items-center gap-2 rounded-lg border border-slate-700 bg-slate-800 px-3 text-left text-slate-100 transition-colors active:bg-slate-700 md:hidden"
               >
-                <MapPin size={17} />
+                <MapPin size={16} className="shrink-0 text-primary" />
+                <span className="min-w-0">
+                  <span className="block text-[8px] font-bold uppercase tracking-[0.12em] text-slate-300">Entregar em</span>
+                  <span className="block truncate text-[10px] font-semibold text-white">{displayAddress}</span>
+                </span>
               </button>
 
               {/* Mobile Menu Toggle */}
               <button
                 onClick={onOpenMenu}
                 aria-label="Abrir mais opções"
-                className="w-10 h-10 md:w-12 md:h-12 xl:w-14 xl:h-14 bg-slate-800 md:bg-slate-700/70 border border-slate-700 md:border-slate-600 rounded-none md:rounded-2xl flex items-center justify-center text-slate-100 md:shadow-sm md:shadow-black/20 hover:bg-slate-700 hover:border-slate-500 active:scale-95 transition-all duration-200"
+                className="flex h-10 shrink-0 items-center justify-center gap-2 rounded-lg border border-slate-700 bg-slate-800 px-3 text-slate-100 transition-colors active:bg-slate-700 md:h-12 md:w-12 md:rounded-2xl md:border-slate-600 md:bg-slate-700/70 md:px-0 md:shadow-sm md:shadow-black/20 md:hover:border-slate-500 md:hover:bg-slate-700 xl:h-14 xl:w-14"
               >
                 <Menu size={16} className="md:size-5 lg:size-6" />
+                <span className="text-[9px] font-bold uppercase tracking-[0.08em] md:hidden">Menu</span>
               </button>
             </div>
           </div>
@@ -282,6 +280,7 @@ export function Header({ onOpenMenu, settings, searchTerm, onSearchChange }: Hea
 
       {hasHydrated ? createPortal(cartButton, document.body) : null}
       {hasHydrated ? createPortal(mobileNavigation, document.body) : null}
+      {hasHydrated ? createPortal(mobileCartBar, document.body) : null}
       {hasHydrated ? createPortal(mobileSearch, document.body) : null}
 
       <CartSidebar isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />

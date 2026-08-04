@@ -587,7 +587,7 @@ export default function Checkout() {
         </div>
 
         <h2 className="text-heading-2 font-display font-bold text-slate-950 uppercase tracking-tight mb-4 text-center">
-          Sua Cesta está Vazia
+          Seu carrinho está vazio
         </h2>
         <p className="text-label font-body font-medium text-slate-400 uppercase tracking-widest mb-12 text-center max-w-xs leading-relaxed">
           Adicione itens ao seu pedido para continuar.
@@ -597,7 +597,7 @@ export default function Checkout() {
           onClick={() => router.push(`/${slug}`)}
           className="h-14 px-8 bg-slate-950 text-white rounded-2xl font-body font-bold flex items-center justify-center gap-3 shadow-2xl shadow-slate-950/20 hover:bg-black active:scale-[0.98] transition-all uppercase tracking-widest text-label"
         >
-          EXPLORAR MENU <ChevronRight size={20} />
+          Ver cardápio <ChevronRight size={20} />
         </button>
       </div>
     );
@@ -627,8 +627,8 @@ export default function Checkout() {
   const paymentMethodLabels: Record<CheckoutPaymentMethod, string> = {
     PIX: "Pix",
     CASH: "Dinheiro",
-    CREDIT: "Credito",
-    DEBIT: "Debito",
+    CREDIT: "Crédito",
+    DEBIT: "Débito",
   };
   const selectedPaymentLabel = paymentMethodLabels[formData.paymentMethod];
   const reviewPaymentMethodLabel = deliveryMode === "DINE_IN" ? "A definir no local" : selectedPaymentLabel;
@@ -644,9 +644,9 @@ export default function Checkout() {
     ? "Atendimento imediato"
     : `${estimatedDeliveryMinutes} min`;
   const successAddressLabel = deliveryMode === "DELIVERY"
-    ? `${formData.street || "Endereco"}, ${formData.number || "s/n"}`
+    ? `${formData.street || "Endereço"}, ${formData.number || "s/n"}`
     : deliveryMode === "PICKUP"
-      ? "Retirada no balcao"
+      ? "Retirada no balcão"
       : "Consumo na unidade";
 
   return (
@@ -753,22 +753,22 @@ export default function Checkout() {
                       active={deliveryMode === 'DELIVERY'}
                       onClick={() => setDeliveryMode('DELIVERY')}
                       icon={<Bike size={24} />}
-                      title="Delivery"
-                      description={`Receba com agilidade • ${formatCurrency(settings?.deliveryFee || 0)}`}
+                      title="Entrega"
+                      description={`Receba no seu endereço • ${formatCurrency(settings?.deliveryFee || 0)}`}
                     />
                     <SelectOption
                       active={deliveryMode === 'PICKUP'}
                       onClick={() => setDeliveryMode('PICKUP')}
                       icon={<Store size={24} />}
                       title="Retirada"
-                      description="Retirada rápida em nossa unidade"
+                      description="Retire seu pedido no estabelecimento"
                     />
                     <SelectOption
                       active={deliveryMode === 'DINE_IN'}
                       onClick={() => setDeliveryMode('DINE_IN')}
                       icon={<UtensilsCrossed size={24} />}
-                      title="No Local"
-                      description="Experiência completa em nossa casa"
+                      title="Consumir no local"
+                      description="Faça o pedido para consumir no estabelecimento"
                     />
                   </div>
 
@@ -776,7 +776,7 @@ export default function Checkout() {
                     onClick={handleNext}
                     className="hidden lg:flex h-14 md:h-20 w-full bg-slate-950 text-white rounded-xl md:rounded-2xl font-body font-bold items-center justify-center gap-4 mt-8 md:mt-12 shadow-2xl shadow-slate-950/20 hover:bg-slate-900 transition-all text-label tracking-widest uppercase group"
                   >
-                    AVANÇAR PARA IDENTIFICAÇÃO <ChevronRight size={20} className="group-hover:translate-x-1 transition-transform" />
+                    Informar meus dados <ChevronRight size={20} className="group-hover:translate-x-1 transition-transform" />
                   </button>
                 </motion.div>
               )}
@@ -842,7 +842,7 @@ export default function Checkout() {
                       <>Validando Distância... <Loader2 className="animate-spin" /></>
                     ) : (
                       <>
-                        {deliveryMode === "DINE_IN" ? "REVISAR PEDIDO" : "CONTINUAR PARA ENTREGA"} <ChevronRight size={20} className="group-hover:translate-x-1 transition-transform" />
+                        {deliveryMode === "DINE_IN" ? "Revisar pedido" : "Informar endereço"} <ChevronRight size={20} className="group-hover:translate-x-1 transition-transform" />
                       </>
                     )}
                   </button>
@@ -911,7 +911,7 @@ export default function Checkout() {
                     onClick={handleNext}
                     className="hidden lg:flex h-14 md:h-20 w-full bg-slate-950 text-white rounded-xl md:rounded-2xl font-body font-bold items-center justify-center gap-4 mt-8 md:mt-12 shadow-2xl shadow-slate-950/20 hover:bg-slate-900 transition-all text-label tracking-widest uppercase group"
                   >
-                    CONTINUAR PARA PAGAMENTO <ChevronRight size={20} className="group-hover:translate-x-1 transition-transform" />
+                    Escolher pagamento <ChevronRight size={20} className="group-hover:translate-x-1 transition-transform" />
                   </button>
                 </motion.div>
               )}
@@ -1291,7 +1291,7 @@ export default function Checkout() {
                         Falar com a loja
                       </button>
                       <Link href={`/${slug}`} className="h-14 md:h-16 flex items-center justify-center bg-slate-50 border border-slate-200 text-slate-500 rounded-2xl font-body font-bold hover:bg-slate-100 transition-all uppercase tracking-widest text-label">
-                        VOLTAR AO MENU
+                        Voltar ao cardápio
                       </Link>
                     </div>
                   </div>
@@ -1305,7 +1305,7 @@ export default function Checkout() {
             <div className="lg:col-span-1 pb-28 lg:pb-0">
               <div className="bg-slate-50 rounded-xl md:rounded-2xl border border-slate-200 p-10 shadow-[0_20px_50px_rgba(15,23,42,0.12)] sticky top-32">
                 <h3 className="font-display font-bold text-heading-3 text-slate-950 uppercase tracking-tight mb-8 flex items-center justify-between">
-                  Sua Cesta <span className="text-label font-body font-bold bg-slate-100 px-3 py-1.5 rounded-xl text-slate-500 uppercase tracking-widest text-[10px]">{items.length} ITENS</span>
+                  Seu carrinho <span className="text-label font-body font-bold bg-slate-100 px-3 py-1.5 rounded-xl text-slate-500 uppercase tracking-widest text-[10px]">{items.length} ITENS</span>
                 </h3>
 
                 <Link 
@@ -1390,8 +1390,8 @@ export default function Checkout() {
       </main>
 
       {shouldShowMobileCheckoutBar && (
-        <div className="lg:hidden fixed bottom-2 left-3 right-3 z-50">
-          <div className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 shadow-xl shadow-slate-300/30 flex items-center justify-between gap-2" style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 6px)" }}>
+        <div className="fixed inset-x-0 bottom-0 z-50 lg:hidden">
+          <div className="flex items-center justify-between gap-2 border-t border-slate-200 bg-white px-4 py-2.5 shadow-[0_-6px_18px_rgba(15,23,42,0.1)]" style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 10px)" }}>
             <div>
               <p className="text-[9px] text-slate-400 uppercase">Total</p>
               <p className="text-base font-bold text-primary leading-tight">{formatCurrency(total)}</p>
@@ -1411,16 +1411,16 @@ export default function Checkout() {
                       : "bg-slate-950 text-white"
                   )}
                 >
-                  {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : "CONFIRMAR"}
+                  {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : "Confirmar pedido"}
                 </button>
               ) : (
                 <button onClick={handleNext} className="h-10 px-4 rounded-lg font-body font-bold text-xs bg-slate-950 text-white shadow-2xl">
                   {(() => {
-                    if (step === 'mode') return 'AVANÇAR';
-                    if (step === 'customer') return deliveryMode === 'DELIVERY' ? 'CONTINUAR' : 'REVISAR';
-                    if (step === 'address') return 'CONTINUAR';
-                    if (step === 'payment') return 'REVISAR';
-                    return 'AVANÇAR';
+                    if (step === 'mode') return 'Informar meus dados';
+                    if (step === 'customer') return deliveryMode === 'DELIVERY' ? 'Informar endereço' : 'Revisar pedido';
+                    if (step === 'address') return 'Escolher pagamento';
+                    if (step === 'payment') return 'Revisar pedido';
+                    return 'Continuar';
                   })()}
                 </button>
               )}

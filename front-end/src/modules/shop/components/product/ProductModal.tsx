@@ -203,7 +203,7 @@ const updateGuidedOptionQuantity = (group: any, option: any, delta: number) => {
 
         // Validar se tem tamanhos e nenhum foi selecionado
         if (product?.sizes && product.sizes.length > 0 && !selectedSize) {
-            alert("Por favor, selecione um tamanho para continuar!");
+            alert("Selecione um tamanho para continuar.");
             return;
         }
 
@@ -308,11 +308,11 @@ const updateGuidedOptionQuantity = (group: any, option: any, delta: number) => {
                         animate={{ y: 0, opacity: 1 }}
                         exit={{ y: "100%", opacity: 0 }}
                         transition={{ type: "spring", damping: 25, stiffness: 200 }}
-                        className="bg-slate-100 w-full max-w-none md:max-w-6xl h-[92dvh] md:h-[min(90vh,900px)] rounded-t-2xl md:rounded-3xl overflow-hidden shadow-[0_-15px_60px_rgba(15,23,42,0.15)] md:shadow-[0_35px_80px_rgba(15,23,42,0.28)] relative z-10 flex flex-col md:flex-row"
+                        className="relative z-10 flex h-[92dvh] w-full max-w-none flex-col overflow-hidden rounded-none bg-slate-100 shadow-[0_-15px_60px_rgba(15,23,42,0.15)] md:h-[min(90vh,900px)] md:max-w-6xl md:flex-row md:rounded-3xl md:shadow-[0_35px_80px_rgba(15,23,42,0.28)]"
                     >
                         <button
                             onClick={handleRequestClose}
-                            className="absolute top-4 md:top-8 right-4 md:right-8 z-50 w-10 h-10 md:w-14 md:h-14 bg-white/90 md:bg-slate-100/95 backdrop-blur-xl rounded-full md:rounded-2xl flex items-center justify-center text-slate-900 shadow-xl border border-slate-200/50 hover:bg-slate-950 hover:text-white transition-all duration-500 active:scale-90 group"
+                            className="absolute right-4 top-4 z-50 flex h-10 w-10 items-center justify-center rounded-lg border border-slate-200/50 bg-white/95 text-slate-900 shadow-lg transition-colors hover:bg-slate-950 hover:text-white md:right-8 md:top-8 md:h-14 md:w-14 md:rounded-2xl md:bg-slate-100/95 md:shadow-xl"
                         >
                             <X size={18} className="md:size-6 group-hover:rotate-90 transition-transform duration-500" />
                         </button>
@@ -430,7 +430,7 @@ const updateGuidedOptionQuantity = (group: any, option: any, delta: number) => {
                                                     const maxSelections = Number(group.maxSelections ?? 1);
                                                     const isValid = selected.length >= minSelections && selected.length <= maxSelections;
                                                     return (
-                                                        <div key={groupId} className="rounded-2xl border-2 border-slate-100 bg-white p-4 space-y-4">
+                                                        <div key={groupId} className="space-y-4 rounded-xl border-2 border-slate-100 bg-white p-4">
                                                             <div className="flex items-center gap-3 pb-3 border-b border-slate-100">
                                                                 <div className="w-7 h-7 rounded-full bg-rose-600 text-white flex items-center justify-center font-black text-xs">
                                                                     {idx + 1}
@@ -653,12 +653,12 @@ const updateGuidedOptionQuantity = (group: any, option: any, delta: number) => {
                                             value={observations}
                                             onChange={(e) => setObservations(e.target.value)}
                                             placeholder="Ex: Sem cebola, carne bem passada..."
-                                            className="w-full h-24 p-5 bg-slate-50 border border-slate-50 rounded-2xl focus:bg-white focus:border-rose-500/20 transition-all font-bold text-slate-950 text-[12px] outline-none placeholder:text-slate-300 resize-none uppercase"
+                                            className="h-24 w-full resize-none rounded-xl border border-slate-200 bg-slate-50 p-5 text-[12px] font-bold uppercase text-slate-950 outline-none transition-colors placeholder:text-slate-300 focus:border-rose-500/20 focus:bg-white"
                                         />
                                     </section>
 
                                     {/* Resumo de Preço */}
-                                    <section className="rounded-2xl border-2 border-slate-100 bg-linear-to-br from-slate-50 to-white p-5 space-y-3">
+                                    <section className="space-y-3 rounded-xl border-2 border-slate-100 bg-linear-to-br from-slate-50 to-white p-5">
                                         <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 mb-4">Resumo do Preço</p>
                                         
                                         <div className="space-y-2 text-sm">
@@ -760,14 +760,9 @@ const updateGuidedOptionQuantity = (group: any, option: any, delta: number) => {
                                         added ? "bg-emerald-500 text-white" : (isOutOfStock ? "bg-slate-400 cursor-not-allowed" : "bg-rose-600 text-white shadow-2xl shadow-rose-900/10")
                                     )}
                                 >
-                                    <div className="flex flex-col items-start leading-none relative z-10 text-left">
-                                        <span className="text-[8px] font-black uppercase tracking-widest opacity-80 mb-0.5">
-                                            {added ? "Item" : "Adicionar"}
-                                        </span>
-                                        <span className="text-[11px] font-black uppercase tracking-tighter">
-                                            {added ? "Adicionado" : (isOutOfStock ? "Esgotado" : (editIndex !== null ? "Atualizar" : "No Carrinho"))}
-                                        </span>
-                                    </div>
+                                    <span className="relative z-10 text-left text-[11px] font-black uppercase tracking-tight">
+                                        {added ? "Adicionado" : (isOutOfStock ? "Produto indisponível" : (editIndex !== null ? "Atualizar item" : "Adicionar ao carrinho"))}
+                                    </span>
                                     
                                     <div className="flex items-center gap-3 relative z-10">
                                         <div className="h-5 w-px bg-white/20" />

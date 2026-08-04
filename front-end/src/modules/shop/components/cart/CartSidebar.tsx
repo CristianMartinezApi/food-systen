@@ -81,13 +81,13 @@ export function CartSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
             transition={{ type: "spring", damping: 30, stiffness: 300 }}
             className={cn(
               "fixed right-0 top-0 bottom-0 w-full max-w-lg bg-slate-100 z-111 shadow-[0_0_50px_rgba(15,23,42,0.28)] flex flex-col overflow-hidden",
-              "rounded-t-3xl md:rounded-none h-dvh md:h-auto"
+              "rounded-none h-dvh md:h-auto"
             )}
           >
             {/* Header del Carrello con Estetica Moderna */}
             <div className="px-4 py-3 md:p-8 border-b border-slate-200 flex items-center justify-between bg-slate-100/90 backdrop-blur-xl sticky top-0 z-10">
               <div className="flex items-center gap-3 md:gap-5 min-w-0">
-                <div className="w-11 h-11 md:w-14 md:h-14 bg-rose-600 rounded-2xl flex items-center justify-center text-white shadow-xl shadow-rose-900/20 group cursor-default shrink-0">
+                <div className="flex h-11 w-11 shrink-0 cursor-default items-center justify-center rounded-lg bg-rose-600 text-white shadow-lg shadow-rose-900/20 group md:h-14 md:w-14 md:rounded-2xl md:shadow-xl">
                   <ShoppingCart size={22} className="md:group-hover:rotate-12 transition-transform duration-500" />
                 </div>
                 <div>
@@ -100,7 +100,7 @@ export function CartSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
               </div>
               <button
                 onClick={onClose}
-                className="w-10 h-10 md:w-12 md:h-12 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-300 md:hover:text-slate-950 md:hover:bg-slate-100 md:hover:shadow-lg transition-all duration-500 md:hover:rotate-90 shrink-0"
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-slate-50 text-slate-400 transition-colors md:h-12 md:w-12 md:rounded-2xl md:hover:bg-slate-100 md:hover:text-slate-950"
               >
                 <X size={20} className="md:size-6" />
               </button>
@@ -118,13 +118,13 @@ export function CartSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
                   </div>
                   <div className="space-y-3">
                     <h4 className="text-heading-3 md:text-heading-2 font-display font-bold text-slate-950 uppercase tracking-tight">Carrinho Vazio</h4>
-                    <p className="text-[10px] md:text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em] max-w-50 mx-auto leading-relaxed">Sua próxima experiência inesquecível começa com um clique.</p>
+                    <p className="text-[10px] md:text-label font-body font-medium text-slate-400 uppercase tracking-[0.06em] max-w-50 mx-auto leading-relaxed">Adicione um produto do cardápio para começar seu pedido.</p>
                   </div>
                   <button
                     onClick={onClose}
-                    className="px-7 py-3.5 md:px-9 md:py-4 bg-slate-950 text-white rounded-2xl text-[10px] md:text-label font-body font-medium uppercase tracking-[0.06em] md:hover:bg-primary md:hover:scale-105 active:scale-95 transition-all duration-500 shadow-lg shadow-slate-950/10"
+                    className="rounded-lg bg-slate-950 px-7 py-3.5 font-body text-[10px] font-medium uppercase tracking-[0.06em] text-white shadow-lg shadow-slate-950/10 transition-colors active:bg-black md:rounded-2xl md:px-9 md:py-4 md:text-label md:hover:bg-primary"
                   >
-                    Ver Cardápio Premium
+                    Ver cardápio
                   </button>
                 </div>
               ) : (
@@ -236,7 +236,7 @@ export function CartSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
                   onClick={onClose}
                   className="h-12 md:h-14 w-full bg-rose-600 text-white rounded-lg md:rounded-xl font-body font-bold uppercase tracking-widest text-[10px] md:text-label flex items-center justify-center gap-3 shadow-xl shadow-rose-900/25 md:hover:bg-rose-700 active:scale-[0.98] transition-all duration-300 group overflow-hidden relative"
                 >
-                  <span className="relative z-10 font-body font-bold">Iniciar Finalização</span>
+                  <span className="relative z-10 font-body font-bold">Continuar para entrega</span>
                   <ArrowRight size={18} className="relative z-10 md:group-hover:translate-x-3 transition-transform duration-500" />
                   <div className="absolute inset-0 bg-linear-to-r from-transparent via-white/10 to-transparent -translate-x-full md:group-hover:translate-x-full transition-transform duration-1000" />
                 </Link>

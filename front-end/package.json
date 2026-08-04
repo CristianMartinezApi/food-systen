@@ -7,7 +7,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "test:shop-ui": "node --test tests/shop-ui.test.mjs",
+    "verify:shop-ui": "npm run test:shop-ui && tsc --noEmit"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.4.0",

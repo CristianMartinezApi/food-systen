@@ -102,8 +102,14 @@ export default function Home() {
   const heroTitleLine1 = settings?.bannerTitleLine1 || "Sabor que";
   const heroTitleLine2 = settings?.bannerTitleLine2 || "Transforma";
   const heroDescription = settings?.bannerDescription || settings?.bio || "Experiência gastronômica executiva com ingredientes selecionados e preparo artesanal.";
-  const heroCtaLabel = settings?.bannerCtaLabel || "Explorar Menu";
+  const heroCtaLabel = settings?.bannerCtaLabel || "Ver cardápio";
   const heroImage = settings?.bannerImage || "https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=1200&q=70";
+  const isStoreOpen = settings?.isOpen === true && settings?.hasCashierSession !== false;
+  const storeStatusLabel = isStoreOpen
+    ? "Aberta agora"
+    : settings?.isOpen && settings?.hasCashierSession === false
+      ? "Aguardando abertura"
+      : "Fechada agora";
 
   if (hasStoreLoadError) {
     return (
@@ -217,23 +223,23 @@ export default function Home() {
           onCategorySelect={setActiveCategory}
         />
 
-        <main className="flex-1 container mx-auto px-4 md:px-6 pt-0 pb-6 md:pb-12 space-y-8 md:space-y-24">
-          <section className="relative mt-0">
+        <main className="flex-1 container mx-auto space-y-4 px-4 pb-6 pt-14 md:space-y-24 md:px-6 md:pb-12 md:pt-0">
+          <section id="store-identity" className="relative mt-0">
             <div className="relative left-1/2 w-dvw max-w-none -translate-x-1/2">
-              <div className="home-hero-art relative overflow-hidden shadow-[0_18px_42px_rgba(0,0,0,0.2)] md:shadow-[0_30px_80px_rgba(0,0,0,0.24)] min-h-[240px] sm:min-h-[280px] md:min-h-150 flex items-center">
-                <div className="absolute inset-0 z-0">
+              <div className="home-hero-art relative flex min-h-[184px] flex-col overflow-hidden bg-white shadow-[0_12px_28px_rgba(0,0,0,0.18)] md:min-h-150 md:items-center md:justify-center md:bg-transparent md:shadow-[0_30px_80px_rgba(0,0,0,0.24)]">
+                <div className="absolute inset-x-0 top-0 z-0 h-32 md:inset-0 md:h-full">
                   <img
                     src={heroImage}
                     className="w-full h-full object-cover object-center"
-                    alt={settings?.storeName || "Fundo Gourmet"}
+                    alt={`Banner de ${settings?.storeName || "Food System"}`}
                     loading="eager"
                     decoding="async"
                   />
-                  <div className="absolute inset-0 bg-linear-to-b from-black/50 via-black/30 to-black/60 md:bg-none md:[background:linear-gradient(to_right,rgba(15,23,42,0.6),rgba(15,23,42,0.3),transparent)]" />
+                  <div className="absolute inset-0 bg-linear-to-b from-black/20 to-black/45 md:[background:linear-gradient(to_right,rgba(15,23,42,0.6),rgba(15,23,42,0.3),transparent)]" />
                 </div>
 
-                <div className="relative z-10 p-5 pt-16 md:pt-12 md:p-12 max-w-2xl space-y-2 md:space-y-5">
-                  <div>
+                <div className="relative z-10 mt-32 w-full max-w-2xl px-4 md:mt-0 md:p-12">
+                  <div className="hidden md:block">
                     <div className="home-hero-badge inline-flex items-center mb-3 md:mb-6 ml-0.5 md:ml-1">
                       <div className="bg-primary/25 backdrop-blur-xl border border-primary/35 px-3 md:px-4 py-1 md:py-1.5 rounded-full inline-flex items-center gap-2 md:gap-2.5 shadow-lg shadow-primary/15">
                         <Flame size={11} className="md:size-4.5 text-primary fill-primary animate-pulse" />
@@ -254,7 +260,7 @@ export default function Home() {
                     </p>
                   </div>
 
-                  <div className="home-hero-actions hidden md:flex flex-col sm:flex-row items-center gap-2 md:gap-6 pt-2 md:pt-4">
+                  <div className="home-hero-actions hidden flex-col items-center gap-2 pt-2 sm:flex-row md:flex md:gap-6 md:pt-4">
                     <Button
                       size="lg"
                       className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-white rounded-xl md:rounded-2xl px-4 md:px-10 h-12 md:h-16 text-[10px] md:text-sm font-black uppercase tracking-widest shadow-xl shadow-primary/20 group"
@@ -267,24 +273,89 @@ export default function Home() {
                       <ArrowRight size={18} className="ml-2 group-hover:translate-x-1 transition-transform" />
                     </Button>
                   </div>
+
+                  <div className="relative flex min-h-14 items-center md:hidden">
+                    <div className="min-w-0 flex-1 pl-17 py-2">
+                      <div className="absolute -top-7 left-0 grid size-14 place-items-center overflow-hidden rounded-full border-[3px] border-white bg-slate-900 text-primary shadow-lg ring-1 ring-slate-200/70">
+                        {settings?.logo ? (
+                          <img src={settings.logo} alt={`Logo ${settings?.storeName || "da loja"}`} className="h-full w-full object-cover" />
+                        ) : (
+                          <Utensils size={22} />
+                        )}
+                      </div>
+                      <div className="min-w-0">
+                        <p
+                          className="notranslate truncate text-[15px] font-extrabold uppercase leading-tight tracking-[0.01em] text-slate-950"
+                          translate="no"
+                        >
+                          {settings?.storeName || "Food System"}
+                        </p>
+                        <div className="mt-1 flex min-w-0 items-center gap-1.5 text-[10px]">
+                          <span className={cn("size-1.5 rounded-full", isStoreOpen ? "bg-emerald-500" : "bg-rose-500")} />
+                          <span className={cn("shrink-0 font-bold", isStoreOpen ? "text-emerald-700" : "text-rose-700")}>{storeStatusLabel}</span>
+                          <span className="text-slate-300">•</span>
+                          <span className="min-w-0 truncate font-medium text-slate-500">
+                            {settings?.deliveryEtaMinutes || 35} min
+                            {Number(settings?.deliveryFee) > 0
+                              ? ` · ${Number(settings.deliveryFee).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}`
+                              : " · Grátis"}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
           </section>
 
+          <section aria-labelledby="categories-title" className="space-y-3 md:space-y-5">
+            <h2 id="categories-title" className="text-sm font-black uppercase tracking-tight text-slate-950 md:text-lg">
+              Categorias
+            </h2>
+            <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 no-scrollbar md:mx-0 md:flex-wrap md:px-0">
+              <button
+                type="button"
+                onClick={() => setActiveCategory("all")}
+                className={cn(
+                  "h-9 shrink-0 rounded-md border px-4 text-[11px] font-bold transition-colors md:h-10 md:text-xs",
+                  activeCategory === "all"
+                    ? "border-slate-950 bg-slate-950 text-white"
+                    : "border-slate-200 bg-white text-slate-600 hover:border-slate-400"
+                )}
+              >
+                Todos
+              </button>
+              {categories?.map((cat: any) => (
+                <button
+                  type="button"
+                  key={cat.id}
+                  onClick={() => setActiveCategory(cat.id)}
+                  className={cn(
+                    "h-9 shrink-0 rounded-md border px-4 text-[11px] font-bold transition-colors md:h-10 md:text-xs",
+                    activeCategory === cat.id
+                      ? "border-primary bg-primary text-white"
+                      : "border-slate-200 bg-white text-slate-600 hover:border-slate-400"
+                  )}
+                >
+                  {cat.name}
+                </button>
+              ))}
+            </div>
+          </section>
+
           {highlightedProducts.length > 0 && activeCategory === "all" && !searchTerm.trim() && (
-            <section className="space-y-3 md:space-y-8">
+            <section className="space-y-3 md:space-y-5">
               <div className="flex items-end justify-between gap-4">
                 <div>
-                  <p className="text-[9px] md:text-[10px] uppercase tracking-[0.18em] text-primary font-black">Escolhas rápidas</p>
+                  <p className="text-[9px] md:text-[10px] uppercase tracking-[0.18em] text-primary font-black">Os favoritos da loja</p>
                   <h2 className="mt-1 text-lg md:text-heading-2 font-display font-bold text-slate-950 uppercase tracking-tight">Mais pedidos</h2>
                 </div>
-                <span className="text-[10px] font-semibold text-slate-400 md:hidden">Deslize para ver</span>
               </div>
 
-              <div className="flex gap-2.5 overflow-x-auto pb-2 md:grid md:grid-cols-2 xl:grid-cols-3 md:gap-5 md:overflow-visible snap-x snap-mandatory no-scrollbar">
+              <div className="-mx-4 flex gap-2.5 overflow-x-auto px-4 pb-2 no-scrollbar md:mx-0 md:grid md:grid-cols-4 md:gap-4 md:overflow-visible md:px-0">
                 {highlightedProducts.slice(0, 4).map((product: any) => (
-                  <div key={product.id} className="min-w-[78vw] max-w-[340px] sm:min-w-[52vw] md:min-w-0 md:max-w-none snap-start">
+                  <div key={product.id} className="w-32 shrink-0 md:w-auto">
                     <HighlightProductCard product={product} />
                   </div>
                 ))}
@@ -292,46 +363,15 @@ export default function Home() {
             </section>
           )}
 
-          <div className="h-px w-full bg-slate-200/60 my-6 md:my-10" />
-
           <section id="menu-section" className="mt-4 md:mt-8">
             <div className="space-y-6 md:space-y-8">
-              <div className="contents xl:flex xl:items-end xl:justify-between xl:gap-6">
+              <div>
                 <div className="home-section-heading space-y-1 md:space-y-2 shrink-0">
-                  <p className="text-[9px] md:text-[10px] uppercase tracking-[0.24em] text-primary font-black">Vitrine da casa</p>
-                  <h2 className="text-2xl md:text-heading-2 font-display font-bold text-slate-950 uppercase tracking-tight">Nosso Cardápio</h2>
+                  <p className="text-[9px] md:text-[10px] uppercase tracking-[0.24em] text-primary font-black">Escolha o que deseja pedir</p>
+                  <h2 className="text-2xl md:text-heading-2 font-display font-bold text-slate-950 uppercase tracking-tight">Cardápio</h2>
                   <div className="h-1 md:h-1.5 w-24 bg-primary rounded-full" />
                 </div>
 
-                <div className="sticky top-[56px] z-40 flex items-center gap-3 overflow-x-auto border-y border-slate-200 bg-slate-50/95 py-1.5 pb-1 backdrop-blur no-scrollbar -mx-4 px-4 scroll-smooth w-auto max-w-[calc(100%+2rem)] md:static md:z-auto md:gap-8 md:border-0 md:bg-transparent md:py-0 md:pb-1 md:mx-0 md:px-0 md:max-w-full xl:pb-0 xl:justify-end">
-                  <button
-                    onClick={() => setActiveCategory("all")}
-                    className={cn(
-                      "home-category-chip shrink-0",
-                      "h-auto py-2 pb-3 px-2 md:px-0.5 rounded-none text-[10px] md:text-sm font-black uppercase tracking-[0.06em] md:tracking-tight transition-all whitespace-nowrap border-b-2",
-                      activeCategory === "all"
-                        ? "border-primary text-slate-950"
-                        : "border-transparent text-slate-600 hover:text-slate-800"
-                    )}
-                  >
-                    Todos
-                  </button>
-                  {categories?.map((cat: any) => (
-                    <button
-                      key={cat.id}
-                      onClick={() => setActiveCategory(cat.id)}
-                      className={cn(
-                        "home-category-chip shrink-0",
-                        "h-auto py-2 pb-3 px-2 md:px-0.5 rounded-none text-[10px] md:text-sm font-black uppercase tracking-[0.06em] md:tracking-tight transition-all whitespace-nowrap border-b-2",
-                        activeCategory === cat.id
-                          ? "border-primary text-slate-950"
-                          : "border-transparent text-slate-600 hover:text-slate-800"
-                      )}
-                    >
-                      {cat.name}
-                    </button>
-                  ))}
-                </div>
               </div>
 
               <p className="text-[11px] font-semibold text-slate-500">

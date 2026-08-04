@@ -50,7 +50,7 @@ export function ProductCard({ product }: ProductCardProps) {
       <article
         onClick={() => !isOutOfStock && setIsModalOpen(true)}
         className={cn(
-          "flex min-h-32 overflow-hidden border border-slate-200 bg-white md:hidden",
+          "flex min-h-32 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm md:hidden",
           isOutOfStock ? "cursor-not-allowed opacity-60 grayscale" : "cursor-pointer"
         )}
       >
@@ -102,10 +102,11 @@ export function ProductCard({ product }: ProductCardProps) {
               type="button"
               disabled={isOutOfStock}
               onClick={handleAddToCart}
-              aria-label={`Adicionar ${product.name}`}
-              className="grid size-10 shrink-0 place-items-center bg-slate-950 text-white disabled:bg-slate-300"
+              aria-label={product.sizes && product.sizes.length > 1 ? `Escolher opções de ${product.name}` : `Adicionar ${product.name} ao carrinho`}
+              className="flex h-10 shrink-0 items-center gap-1.5 rounded-lg bg-slate-950 px-3 text-[10px] font-bold text-white disabled:bg-slate-300"
             >
-              <Plus size={18} />
+              <Plus size={15} />
+              {product.sizes && product.sizes.length > 1 ? "Escolher opções" : "Adicionar"}
             </button>
           </div>
         </div>
@@ -150,7 +151,7 @@ export function ProductCard({ product }: ProductCardProps) {
         <div className="p-4 md:p-6 space-y-3 md:space-y-4">
           <div className="space-y-1">
             <span className="text-label font-body font-medium text-primary uppercase tracking-[0.06em] leading-none">
-              {product.category?.name || "SIGNATURE"}
+              {product.category?.name || "Cardápio"}
             </span>
             <h3 className="font-display font-bold text-xl md:text-heading-2 text-slate-950 leading-none tracking-tighter uppercase [text-shadow:0_1px_0_rgba(148,163,184,0.55)] transition-colors">
               {product.name}
@@ -172,6 +173,7 @@ export function ProductCard({ product }: ProductCardProps) {
             <motion.button
               whileTap={{ scale: 0.9 }}
               onClick={handleAddToCart}
+              aria-label={product.sizes && product.sizes.length > 1 ? `Escolher opções de ${product.name}` : `Adicionar ${product.name} ao carrinho`}
               className="bg-slate-950 text-white w-12 h-12 md:w-16 md:h-16 rounded-lg md:rounded-xl flex items-center justify-center hover:bg-primary transition-all duration-500 border border-slate-900 shadow-[0_10px_28px_rgba(15,23,42,0.35)] group/btn relative"
             >
               <Plus size={20} className="md:size-6 group-hover/btn:rotate-90 transition-transform duration-500" />
