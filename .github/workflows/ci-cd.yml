@@ -39,6 +39,14 @@ jobs:
         working-directory: front-end
         run: npm ci
 
+      - name: Testar interface da loja
+        working-directory: front-end
+        run: npm run test:shop-ui
+
+      - name: Validar TypeScript do frontend
+        working-directory: front-end
+        run: npx tsc --noEmit
+
       - name: Compilar frontend
         working-directory: front-end
         run: npm run build
@@ -55,21 +63,13 @@ jobs:
         working-directory: back-end
         run: npm run build
 
-      - name: Testar horários
+      - name: Testar backend
         working-directory: back-end
-        run: npm run test:hours
-
-      - name: Testar caixa
-        working-directory: back-end
-        run: npm run test:cashier
-
-      - name: Testar provisionamento do superadmin
-        working-directory: back-end
-        run: npm run test:seed
+        run: npm test
 
   deploy:
     name: Publicar na VPS
-    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
     needs: validate
     runs-on: ubuntu-latest
     timeout-minutes: 30

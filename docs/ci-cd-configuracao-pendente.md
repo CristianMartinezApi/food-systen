@@ -17,7 +17,7 @@ Este documento registra o que ainda precisa ser configurado no GitHub e na VPS p
 - O acesso SSH do GitHub Actions à VPS ainda não foi configurado.
 - O primeiro deploy com os novos scripts ainda não foi homologado manualmente.
 
-O workflow atual tenta publicar em todo `push` para `main`. Enquanto os Secrets não existirem, o job de deploy deverá falhar antes de acessar a VPS. Isso não altera a produção.
+O CI valida pull requests e pushes para `main`, mas o deploy está temporariamente restrito a execuções manuais (`workflow_dispatch`).
 
 ## Estratégia recomendada
 
@@ -351,8 +351,8 @@ Se houver problema de dados, não improvise rollback de migration. Interrompa a 
 
 ### GitHub
 
-- [ ] Atualizar o CI para executar `test:shop-ui` e `npm test`.
-- [ ] Deixar o primeiro deploy somente manual.
+- [x] Atualizar o CI para executar `test:shop-ui` e `npm test`.
+- [x] Deixar o primeiro deploy somente manual.
 - [ ] Criar environment `production`.
 - [ ] Configurar required reviewer.
 - [ ] Adicionar os cinco Secrets de SSH.
@@ -360,17 +360,17 @@ Se houver problema de dados, não improvise rollback de migration. Interrompa a 
 
 ### VPS
 
-- [ ] Confirmar Docker, Compose, Git, Nginx e Certbot.
-- [ ] Confirmar projeto em `/root/food-systen`.
-- [ ] Confirmar `git pull --ff-only` sem interação.
-- [ ] Criar chave exclusiva do GitHub Actions.
-- [ ] Adicionar chave pública em `authorized_keys`.
-- [ ] Revisar `.env` e permissões.
-- [ ] Executar `deploy/preflight.sh`.
-- [ ] Executar `deploy/deploy.sh` manualmente.
-- [ ] Confirmar backup criado e validado.
-- [ ] Confirmar migrations.
-- [ ] Validar containers, logs e health check.
+- [x] Confirmar Docker, Compose, Git, Nginx e Certbot.
+- [x] Confirmar projeto em `/root/food-systen`.
+- [x] Confirmar `git pull --ff-only` sem interação.
+- [x] Criar chave exclusiva do GitHub Actions.
+- [x] Adicionar chave pública em `authorized_keys`.
+- [x] Revisar `.env` e permissões.
+- [x] Executar `deploy/preflight.sh`.
+- [x] Executar `deploy/deploy.sh` manualmente.
+- [x] Confirmar backup criado e validado.
+- [x] Confirmar migrations.
+- [x] Validar containers, logs e health check.
 - [ ] Homologar os fluxos críticos.
 
 ### Automação
