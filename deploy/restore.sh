@@ -1,104 +1,88 @@
-#!/bin/bash
+#!/usr/bin/env bash
+set -euo pipefail
 
-# 🔄 SCRIPT DE RESTORE DE BACKUP
-# Use APENAS em emergência!
-# Uso: ./restore.sh backup_20260707_143022.sql.gz
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+COMPOSE_FILE="${REPO_ROOT}/deploy/docker-compose.vps.yml"
+ENV_FILE="${REPO_ROOT}/.env"
+BACKUP_DIR="${BACKUP_DIR:-${REPO_ROOT}/backups}"
 
-set -e
+usage() {
+  echo "Uso: $0 <arquivo.dump>"
+  echo "Backups disponíveis em ${BACKUP_DIR}:"
+  find "${BACKUP_DIR}" -maxdepth 1 -type f -name 'food-systen_*.dump' -printf '  %f\n' 2>/dev/null || true
+}
 
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-NC='\033[0m'
-
-if [ $# -eq 0 ]; then
-  echo -e "${RED}❌ Uso: $0 <backup_file>${NC}"
-  echo -e "\n${YELLOW}Backups disponíveis:${NC}"
-  ls -lh /home/food-systen/backups/
+if [[ $# -ne 1 ]]; then
+  usage
   exit 1
 fi
 
-BACKUP_FILE="$1"
-BACKUP_DIR="/home/food-systen/backups"
-FULL_PATH="$BACKUP_DIR/$BACKUP_FILE"
-
-if [ ! -f "$FULL_PATH" ]; then
-  echo -e "${RED}❌ Arquivo não encontrado: $FULL_PATH${NC}"
+if [[ ! -f "${ENV_FILE}" ]]; then
+  echo "Erro: ${ENV_FILE} não encontrado."
   exit 1
 fi
 
-DB_USER="${POSTGRES_USER:-food_user}"
-DB_NAME="${POSTGRES_DB:-food_db}"
+backup_name="$(basename -- "$1")"
+if [[ "$1" != "${backup_name}" || "${backup_name}" != food-systen_*.dump ]]; then
+  echo "Erro: informe somente o nome de um backup food-systen_*.dump."
+  exit 1
+fi
 
-echo -e "${RED}🚨 ATENÇÃO: VOCÊ ESTÁ PRESTES A RESTAURAR UM BACKUP!${NC}"
-echo -e "${YELLOW}Este processo pode levar alguns minutos.${NC}\n"
+backup_file="${BACKUP_DIR}/${backup_name}"
+if [[ ! -f "${backup_file}" ]]; then
+  echo "Erro: backup não encontrado: ${backup_file}"
+  exit 1
+fi
 
-echo "Arquivo: $FULL_PATH"
-echo "Tamanho: $(du -h "$FULL_PATH" | cut -f1)"
-echo -e "\n${RED}⚠️  TODOS OS DADOS ATUAIS SERÃO PERDIDOS!${NC}"
+set -a
+# shellcheck disable=SC1090
+source <(sed $'1s/^\xEF\xBB\xBF//; s/\r$//' "${ENV_FILE}")
+set +a
 
-# Confirmar ação
-read -p "Digite 'RESTAURAR' para confirmar: " confirmation
+: "${POSTGRES_USER:?POSTGRES_USER não definido}"
+: "${POSTGRES_DB:?POSTGRES_DB não definido}"
 
-if [ "$confirmation" != "RESTAURAR" ]; then
-  echo -e "${YELLOW}✓ Operação cancelada${NC}"
+cd "${REPO_ROOT}"
+docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" config --quiet
+
+echo "ATENÇÃO: a restauração substituirá os dados atuais de ${POSTGRES_DB}."
+echo "Backup: ${backup_file}"
+read -r -p "Digite RESTAURAR para confirmar: " confirmation
+if [[ "${confirmation}" != "RESTAURAR" ]]; then
+  echo "Restauração cancelada."
   exit 0
 fi
 
-echo -e "\n${YELLOW}📋 Iniciando restore...${NC}"
+echo "Parando aplicação e mantendo o PostgreSQL disponível..."
+docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" stop frontend backend
+docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" up -d db
 
-# Parar containers
-echo -e "${YELLOW}⏳ Parando containers...${NC}"
-docker compose -f docker-compose.prod.yml down
+echo "Validando o arquivo de backup..."
+docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" exec -T db \
+  pg_restore --list < "${backup_file}" >/dev/null
 
-# Extrair backup se estiver comprimido
-EXTRACT_FILE="$FULL_PATH"
-if [[ "$FULL_PATH" == *.gz ]]; then
-  echo -e "${YELLOW}⏳ Descompactando backup...${NC}"
-  EXTRACT_FILE="${FULL_PATH%.gz}"
-  gunzip -c "$FULL_PATH" > "$EXTRACT_FILE"
-fi
+echo "Restaurando o banco de dados..."
+docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" exec -T db \
+  psql --username "${POSTGRES_USER}" --dbname postgres --set ON_ERROR_STOP=1 \
+  --set "target_db=${POSTGRES_DB}" \
+  --command "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = :'target_db' AND pid <> pg_backend_pid();"
 
-# Iniciar apenas o banco de dados
-echo -e "${YELLOW}⏳ Iniciando banco de dados...${NC}"
-docker compose -f docker-compose.prod.yml up -d db
-sleep 5
+docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" exec -T db \
+  pg_restore --clean --if-exists --no-owner --no-privileges --exit-on-error \
+  --username "${POSTGRES_USER}" --dbname "${POSTGRES_DB}" < "${backup_file}"
 
-# Restaurar backup
-echo -e "${YELLOW}⏳ Restaurando dados do backup...${NC}"
+echo "Reiniciando a aplicação..."
+docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" up -d --remove-orphans
 
-if docker compose -f docker-compose.prod.yml exec -T db psql \
-  -U "$DB_USER" \
-  -d "$DB_NAME" \
-  < "$EXTRACT_FILE"; then
-  
-  echo -e "${GREEN}✅ Dados restaurados com sucesso!${NC}"
-  
-else
-  echo -e "${RED}❌ ERRO ao restaurar backup${NC}"
-  exit 1
-fi
+for attempt in $(seq 1 30); do
+  if curl --fail --silent http://127.0.0.1:8000/health/ready >/dev/null; then
+    echo "Restauração concluída e backend saudável."
+    docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" ps
+    exit 0
+  fi
+  sleep 2
+done
 
-# Limpar arquivo extraído se foi descompactado
-if [[ "$FULL_PATH" == *.gz ]]; then
-  rm -f "$EXTRACT_FILE"
-fi
-
-# Reiniciar todos os containers
-echo -e "${YELLOW}⏳ Reiniciando todos os containers...${NC}"
-docker compose -f docker-compose.prod.yml up -d
-
-echo -e "\n${GREEN}✅ RESTORE CONCLUÍDO COM SUCESSO!${NC}"
-echo -e "${YELLOW}🕐 Backup restaurado: $BACKUP_FILE${NC}"
-
-# Aguardar inicialização
-echo -e "${YELLOW}⏳ Aguardando inicialização dos serviços...${NC}"
-sleep 10
-
-# Validar
-docker compose ps
-
-echo -e "\n${GREEN}✨ Sistema pronto!${NC}"
-echo -e "${YELLOW}Verifique os dados em: http://seu-dominio.com.br${NC}"
-
-exit 0
+echo "Erro: os dados foram restaurados, mas o backend não ficou pronto."
+docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" logs --tail=100 backend
+exit 1
