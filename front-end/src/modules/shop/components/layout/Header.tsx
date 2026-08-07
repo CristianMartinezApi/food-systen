@@ -41,6 +41,9 @@ export function Header({ onOpenMenu, settings, searchTerm, onSearchChange }: Hea
     setSlug(tenantSlug);
     if (new URLSearchParams(window.location.search).get("search") === "1") {
       setIsMobileSearchOpen(true);
+      const cleanUrl = new URL(window.location.href);
+      cleanUrl.searchParams.delete("search");
+      window.history.replaceState(window.history.state, "", `${cleanUrl.pathname}${cleanUrl.search}${cleanUrl.hash}`);
     }
     syncTenantCart();
     const desktopQuery = window.matchMedia("(min-width: 768px)");
