@@ -1,12 +1,11 @@
 name: CI/CD
 
+# GitHub Actions temporariamente bloqueado por cobrança na conta.
+# Enquanto o bloqueio existir, mantenha somente o acionamento manual para evitar
+# uma execução com falha (e e-mail de alerta) a cada push na main.
+# Para reativar, restaure os gatilhos `pull_request` e `push` documentados em
+# docs/ci-cd-configuracao-pendente.md.
 on:
-  pull_request:
-    branches:
-      - main
-  push:
-    branches:
-      - main
   workflow_dispatch:
 
 concurrency:

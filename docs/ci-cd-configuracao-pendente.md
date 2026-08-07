@@ -13,11 +13,31 @@ Este documento registra o que ainda precisa ser configurado no GitHub e na VPS p
 - Script principal de publicação: `deploy/deploy.sh`.
 - Compose de produção: `deploy/docker-compose.vps.yml`.
 - O código do CI/CD já está no GitHub.
+- O GitHub Actions está temporariamente indisponível por uma pendência de cobrança da conta.
+- Os gatilhos automáticos de `push` e `pull_request` estão desativados para evitar falhas e notificações em cada envio para a `main`.
+- O workflow permanece visível e configurado com `workflow_dispatch`, mas sua execução manual também pode ser recusada enquanto o bloqueio de cobrança existir.
 - Os Secrets do GitHub ainda não foram configurados.
 - O acesso SSH do GitHub Actions à VPS ainda não foi configurado.
 - O primeiro deploy com os novos scripts ainda não foi homologado manualmente.
 
-O workflow atual tenta publicar em todo `push` para `main`. Enquanto os Secrets não existirem, o job de deploy deverá falhar antes de acessar a VPS. Isso não altera a produção.
+Enquanto o GitHub Actions estiver bloqueado, pushes para `main` não executam validação nem deploy. Publicações necessárias devem seguir o processo manual e seguro na VPS descrito neste documento.
+
+### Reativação após regularizar a cobrança
+
+Depois de confirmar que o GitHub Actions voltou a aceitar execuções, restaure o início de `.github/workflows/ci-cd.yml` para:
+
+```yaml
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+```
+
+Primeiro execute o workflow manualmente e confirme que `validate` passa. Só então faça um push de teste na `main` para validar o acionamento automático e o deploy.
 
 ## Estratégia recomendada
 
