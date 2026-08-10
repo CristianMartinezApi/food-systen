@@ -29,7 +29,7 @@ import { useHasHydrated } from "../../../core/hooks/useHasHydrated";
 import { MobileShopNavigation } from "../components/layout/MobileShopNavigation";
 import { MobileCartBar } from "../components/layout/MobileCartBar";
 
-const FINAL_ORDER_STATUSES = new Set(["DELIVERED", "RETIRED", "CANCELLED"]);
+const FINAL_ORDER_STATUSES = new Set(["DELIVERED", "RETIRED", "CANCELLED", "REFUNDED"]);
 const isActiveOrder = (order: any) => !FINAL_ORDER_STATUSES.has(String(order?.status || ""));
 
 export default function CustomerOrdersPage() {
@@ -148,6 +148,7 @@ export default function CustomerOrdersPage() {
       case 'DELIVERED': return { label: 'Entregue', icon: <CheckCircle2 size={16} />, color: 'text-emerald-500', bg: 'bg-emerald-50', progress: 100 };
       case 'RETIRED': return { label: 'Entregue no balcão', icon: <CheckCircle2 size={16} />, color: 'text-emerald-500', bg: 'bg-emerald-50', progress: 100 };
       case 'CANCELLED': return { label: 'Pedido cancelado', icon: <XCircle size={16} />, color: 'text-rose-500', bg: 'bg-rose-50', progress: 0 };
+      case 'REFUNDED': return { label: 'Pedido estornado', icon: <XCircle size={16} />, color: 'text-rose-500', bg: 'bg-rose-50', progress: 0 };
       default: return { label: status, icon: <Clock size={16} />, color: 'text-slate-500', bg: 'bg-slate-50', progress: 0 };
     }
   };

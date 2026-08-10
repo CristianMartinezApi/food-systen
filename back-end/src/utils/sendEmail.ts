@@ -1,4 +1,5 @@
 import { Resend } from 'resend';
+import type { OrderStatusEmailCopy } from './order-notifications';
 
 const getResendClient = () => {
   const apiKey = process.env.RESEND_API_KEY;
@@ -227,6 +228,92 @@ export function getExpiredCashSessionEmail(restaurantName: string, sessionId: nu
           </p>
         </div>
       </body>
+    </html>
+  `;
+}
+
+export function getOrderConfirmationEmail(params: {
+  restaurantName: string;
+  customerName: string;
+  orderId: number | string;
+  trackingUrl: string;
+}): string {
+  const { restaurantName, customerName, orderId, trackingUrl } = params;
+  return `
+    <!DOCTYPE html>
+    <html lang="pt-BR">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    </head>
+    <body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f0f2f5;">
+      <div style="max-width: 600px; margin: 20px auto; background: white; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); overflow: hidden;">
+        <div style="background: linear-gradient(135deg, #059669 0%, #047857 100%); color: white; padding: 30px 20px; text-align: center;">
+          <h1 style="margin: 0 0 10px 0; font-size: 28px; font-weight: bold;">✅ Pedido recebido!</h1>
+          <p style="margin: 0; font-size: 16px; opacity: 0.9;">Pedido #${orderId} em ${restaurantName}</p>
+        </div>
+        <div style="padding: 30px 20px;">
+          <p style="margin: 0 0 20px 0; color: #1f2937; font-size: 16px;">
+            Olá, ${customerName}.
+          </p>
+          <p style="margin: 0 0 25px 0; color: #374151; font-size: 15px; line-height: 1.6;">
+            Recebemos seu pedido em <strong>${restaurantName}</strong>. Você vai receber um novo e-mail a cada
+            atualização de status, e também pode acompanhar tudo em tempo real pelo link abaixo.
+          </p>
+          <div style="text-align: center; margin-bottom: 30px;">
+            <a href="${trackingUrl}" style="display: inline-block; background-color: #059669; color: white; padding: 14px 32px; border-radius: 6px; text-decoration: none; font-weight: 600; font-size: 16px;">
+              Acompanhar pedido
+            </a>
+          </div>
+          <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 20px 0;">
+          <div style="background: #f9fafb; padding: 15px; border-radius: 4px; text-align: center;">
+            <p style="margin: 0; color: #9ca3af; font-size: 12px;">
+              Se você não fez este pedido, ignore este e-mail.
+            </p>
+          </div>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+}
+
+export function getOrderStatusUpdateEmail(params: {
+  restaurantName: string;
+  customerName: string;
+  orderId: number | string;
+  trackingUrl: string;
+  copy: OrderStatusEmailCopy;
+}): string {
+  const { restaurantName, customerName, orderId, trackingUrl, copy } = params;
+  return `
+    <!DOCTYPE html>
+    <html lang="pt-BR">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    </head>
+    <body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f0f2f5;">
+      <div style="max-width: 600px; margin: 20px auto; background: white; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); overflow: hidden;">
+        <div style="background: ${copy.accentColor}; color: white; padding: 30px 20px; text-align: center;">
+          <h1 style="margin: 0 0 10px 0; font-size: 26px; font-weight: bold;">${copy.title}</h1>
+          <p style="margin: 0; font-size: 16px; opacity: 0.9;">Pedido #${orderId} em ${restaurantName}</p>
+        </div>
+        <div style="padding: 30px 20px;">
+          <p style="margin: 0 0 20px 0; color: #1f2937; font-size: 16px;">
+            Olá, ${customerName}.
+          </p>
+          <p style="margin: 0 0 25px 0; color: #374151; font-size: 15px; line-height: 1.6;">
+            ${copy.message}
+          </p>
+          <div style="text-align: center; margin-bottom: 30px;">
+            <a href="${trackingUrl}" style="display: inline-block; background-color: ${copy.accentColor}; color: white; padding: 14px 32px; border-radius: 6px; text-decoration: none; font-weight: 600; font-size: 16px;">
+              Acompanhar pedido
+            </a>
+          </div>
+        </div>
+      </div>
+    </body>
     </html>
   `;
 }

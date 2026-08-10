@@ -16,7 +16,8 @@ import { promises as fs } from 'fs';
 import path from 'path';
 import { getCashSessionDeadline, getNextOpeningLabel, isCashSessionExpired, isRestaurantOpenNow, normalizeOperatingHours, validateOperatingHours } from './utils/hours';
 import { validateGuidedSelections } from './utils/guided-assembly';
-import { sendEmail, getCashierReminderEmail, getCashierNeededEmail, getEmailVerificationEmail, getPasswordResetEmail, getExpiredCashSessionEmail } from './utils/sendEmail';
+import { sendEmail, getCashierReminderEmail, getCashierNeededEmail, getEmailVerificationEmail, getPasswordResetEmail, getExpiredCashSessionEmail, getOrderConfirmationEmail, getOrderStatusUpdateEmail } from './utils/sendEmail';
+import { getOrderStatusEmailCopy } from './utils/order-notifications';
 import { AUTH_COOKIE_NAME, clearAuthCookie, readCookie, setAuthCookie } from './utils/auth-cookie';
 import { calculateExpectedCash, canWithdrawCash } from './utils/cashier';
 import { computeItemUnitPrice, computeOrderSubtotal, OrderPricingError } from './utils/order-pricing';
@@ -4222,6 +4223,9 @@ app.post('/api/orders', orderCreationLimiter, async (req: TenantRequest, res) =>
 
   try {
     const { customerName, phone, address, paymentMethod, items, subtotal: clientSubtotal, deliveryFee: clientDeliveryFee, total: clientTotal, notes, cpf, changeFor, tableNumber, lat, lng } = req.body;
+    const customerEmail = typeof req.body?.email === 'string' && req.body.email.trim()
+      ? req.body.email.trim()
+      : null;
     const suppliedCustomerAccessToken = typeof req.body?.customerAccessToken === 'string'
       ? req.body.customerAccessToken.trim()
       : '';
@@ -4515,6 +4519,12 @@ app.post('/api/orders', orderCreationLimiter, async (req: TenantRequest, res) =>
 
         if (existingCustomer) {
           customerId = existingCustomer.id;
+          if (customerEmail && customerEmail !== existingCustomer.email) {
+            await tx.customer.update({
+              where: { id: existingCustomer.id },
+              data: { email: customerEmail },
+            });
+          }
           if (!existingCustomer.accessCredential) {
             issuedCustomerAccessToken = crypto.randomBytes(32).toString('hex');
             await tx.customerAccessCredential.create({
@@ -4537,6 +4547,7 @@ app.post('/api/orders', orderCreationLimiter, async (req: TenantRequest, res) =>
               restaurantId: req.restaurantId!,
               name: customerName || 'Cliente',
               phone: normalizedPhone,
+              email: customerEmail,
               accessCredential: {
                 create: {
                   restaurantId: req.restaurantId!,
@@ -4613,6 +4624,22 @@ app.post('/api/orders', orderCreationLimiter, async (req: TenantRequest, res) =>
 
     const { customerAccessToken: _customerAccessToken, ...socketOrder } = responseOrder;
     io.to(adminSocketRoom(req.restaurant!.slug)).emit(`new_order_${req.restaurant?.slug}`, socketOrder);
+
+    const confirmationEmail = order.customer?.email;
+    if (confirmationEmail) {
+      const trackingUrl = `${(process.env.FRONTEND_URL || 'http://localhost:3000').replace(/\/+$/, '')}/${req.restaurant?.slug}/orders`;
+      sendEmail({
+        to: confirmationEmail,
+        subject: `Pedido #${order.id} recebido`,
+        html: getOrderConfirmationEmail({
+          restaurantName: req.restaurant?.name || 'Loja',
+          customerName: order.customerName,
+          orderId: order.id,
+          trackingUrl,
+        }),
+      }).catch((err) => console.error(`Falha ao enviar e-mail de confirmação do pedido #${order.id}:`, err));
+    }
+
     res.status(201).json(responseOrder);
   } catch (error) {
     console.error('Error creating order:', error);
@@ -4918,6 +4945,9 @@ app.patch('/api/orders/:id', authMiddleware, async (req: AuthRequest, res) => {
           paymentMethod: (paymentMethod ? (paymentMethod as PaymentMethod) : undefined) as any,
           ...cashSessionUpdate,
         },
+        include: {
+          customer: { select: { email: true } },
+        },
       });
     });
 
@@ -4933,6 +4963,24 @@ app.patch('/api/orders/:id', authMiddleware, async (req: AuthRequest, res) => {
       io.to(customerSocketRoom(req.restaurantId!, updatedOrder.customerId))
         .emit(`order_status_updated_${req.restaurant?.slug}`, updatedOrder);
     }
+
+    const statusEmail = updatedOrder.customer?.email;
+    const statusEmailCopy = statusEmail ? getOrderStatusEmailCopy(nextStatus, orderMode, orderId) : null;
+    if (statusEmail && statusEmailCopy) {
+      const trackingUrl = `${(process.env.FRONTEND_URL || 'http://localhost:3000').replace(/\/+$/, '')}/${req.restaurant?.slug}/orders`;
+      sendEmail({
+        to: statusEmail,
+        subject: statusEmailCopy.subject,
+        html: getOrderStatusUpdateEmail({
+          restaurantName: req.restaurant?.name || 'Loja',
+          customerName: updatedOrder.customerName,
+          orderId,
+          trackingUrl,
+          copy: statusEmailCopy,
+        }),
+      }).catch((err) => console.error(`Falha ao enviar e-mail de status do pedido #${orderId}:`, err));
+    }
+
     res.json(updatedOrder);
   } catch (error) {
     console.error('Erro ao atualizar status do pedido:', error);

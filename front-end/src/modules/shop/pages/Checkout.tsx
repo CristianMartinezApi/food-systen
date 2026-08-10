@@ -510,6 +510,7 @@ export default function Checkout() {
         ) || undefined,
         customerName: formData.customerName,
         phone: formData.phone,
+        email: formData.email || undefined,
         address: {
           type: deliveryMode,
           details: deliveryMode === "DELIVERY" ? {
