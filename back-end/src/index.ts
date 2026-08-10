@@ -5,6 +5,7 @@ import dotenv from 'dotenv';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import type { OrderStatus, PaymentMethod } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 import { prisma } from './lib/prisma';
 import { tenantMiddleware, TenantRequest } from './middlewares/tenant.middleware';
 import { authMiddleware, AuthRequest } from './middlewares/auth.middleware';
@@ -18,6 +19,8 @@ import { validateGuidedSelections } from './utils/guided-assembly';
 import { sendEmail, getCashierReminderEmail, getCashierNeededEmail, getEmailVerificationEmail, getPasswordResetEmail, getExpiredCashSessionEmail } from './utils/sendEmail';
 import { AUTH_COOKIE_NAME, clearAuthCookie, readCookie, setAuthCookie } from './utils/auth-cookie';
 import { calculateExpectedCash, canWithdrawCash } from './utils/cashier';
+import { computeItemUnitPrice, computeOrderSubtotal, OrderPricingError } from './utils/order-pricing';
+import { calculateDistanceKm } from './utils/distance';
 
 dotenv.config();
 
@@ -349,7 +352,8 @@ const ORDER_STATUS_FLOW_BY_MODE: Record<OrderMode, Record<string, string[]>> = {
     CONFIRMED: ['PREPARING', 'CANCELLED'],
     PREPARING: ['OUT_FOR_DELIVERY', 'CANCELLED'],
     OUT_FOR_DELIVERY: ['DELIVERED', 'CANCELLED'],
-    DELIVERED: ['PAID', 'CANCELLED'], // confirmação de recebimento (ex: dinheiro na entrega)
+    // Pós-entrega não é mais "cancelável" — vira estorno formal (motivo + auditoria).
+    DELIVERED: ['PAID', 'REFUNDED'], // confirmação de recebimento (ex: dinheiro na entrega)
   },
   PICKUP: {
     PENDING: ['CONFIRMED', 'CANCELLED', 'PAID'],
@@ -357,8 +361,8 @@ const ORDER_STATUS_FLOW_BY_MODE: Record<OrderMode, Record<string, string[]>> = {
     CONFIRMED: ['PREPARING', 'CANCELLED', 'PAID'],
     PREPARING: ['READY', 'CANCELLED', 'PAID'],
     READY: ['RETIRED', 'CANCELLED', 'PAID'],
-    PAID: ['RETIRED', 'DELIVERED'],
-    RETIRED: ['PAID'],
+    PAID: ['RETIRED', 'DELIVERED', 'REFUNDED'],
+    RETIRED: ['PAID', 'REFUNDED'],
   },
   DINE_IN: {
     PENDING: ['OPEN', 'CONFIRMED', 'CANCELLED', 'PAID'],
@@ -366,8 +370,9 @@ const ORDER_STATUS_FLOW_BY_MODE: Record<OrderMode, Record<string, string[]>> = {
     CONFIRMED: ['PREPARING', 'CANCELLED', 'PAID'],
     PREPARING: ['DELIVERED', 'CANCELLED', 'PAID', 'READY'],
     READY: ['DELIVERED', 'PAID', 'CANCELLED'],
-    DELIVERED: ['PAID', 'CANCELLED'],
-    PAID: ['CANCELLED'], // removido ciclo PAID -> DELIVERED sem sentido
+    // Pós-entrega não é mais "cancelável" — vira estorno formal (motivo + auditoria).
+    DELIVERED: ['PAID', 'REFUNDED'],
+    PAID: ['REFUNDED'], // removido ciclo PAID -> DELIVERED sem sentido
   },
 };
 
@@ -816,6 +821,7 @@ async function createAudit(req: AuthRequest | any, action: string, subjectType: 
       data: {
         actorId: actorId || undefined,
         actorEmail: actorEmail || null,
+        restaurantId: req?.restaurantId || undefined,
         action,
         subjectType,
         subjectId: subjectId || undefined,
@@ -2513,7 +2519,7 @@ app.patch('/api/admin/users/:id', authMiddleware, async (req: AuthRequest, res) 
 // --- GERENCIAMENTO DE EQUIPE (LOJA) ---
 
 // Listar equipe do restaurante
-app.get('/api/team', authMiddleware, async (req: AuthRequest, res) => {
+app.get('/api/team', tenantMiddleware, authMiddleware, async (req: AuthRequest, res) => {
   if (!['OWNER', 'MANAGER'].includes(req.userRole!)) {
     return res.status(403).json({ error: 'Acesso restrito a Gerentes ou Donos' });
   }
@@ -2543,7 +2549,7 @@ app.get('/api/team', authMiddleware, async (req: AuthRequest, res) => {
 });
 
 // Adicionar membro à equipe
-app.post('/api/team', authMiddleware, async (req: AuthRequest, res) => {
+app.post('/api/team', tenantMiddleware, authMiddleware, async (req: AuthRequest, res) => {
   if (!['OWNER', 'MANAGER'].includes(req.userRole!)) {
     return res.status(403).json({ error: 'Acesso restrito a Gerentes ou Donos' });
   }
@@ -2597,7 +2603,7 @@ app.post('/api/team', authMiddleware, async (req: AuthRequest, res) => {
 });
 
 // Alterar cargo ou status de membro da equipe
-app.patch('/api/team/:id', authMiddleware, async (req: AuthRequest, res) => {
+app.patch('/api/team/:id', tenantMiddleware, authMiddleware, async (req: AuthRequest, res) => {
   if (!['OWNER', 'MANAGER'].includes(req.userRole!)) {
     return res.status(403).json({ error: 'Acesso restrito a Gerentes ou Donos' });
   }
@@ -2643,7 +2649,7 @@ app.patch('/api/team/:id', authMiddleware, async (req: AuthRequest, res) => {
 });
 
 // Remover membro da equipe (Apenas Owner)
-app.delete('/api/team/:id', authMiddleware, async (req: AuthRequest, res) => {
+app.delete('/api/team/:id', tenantMiddleware, authMiddleware, async (req: AuthRequest, res) => {
   if (req.userRole !== 'OWNER') {
     return res.status(403).json({ error: 'Acesso restrito ao proprietário' });
   }
@@ -4215,7 +4221,7 @@ app.post('/api/orders', orderCreationLimiter, async (req: TenantRequest, res) =>
     : '';
 
   try {
-    const { customerName, phone, address, paymentMethod, items, subtotal, deliveryFee, total, notes, cpf, changeFor, tableNumber } = req.body;
+    const { customerName, phone, address, paymentMethod, items, subtotal: clientSubtotal, deliveryFee: clientDeliveryFee, total: clientTotal, notes, cpf, changeFor, tableNumber, lat, lng } = req.body;
     const suppliedCustomerAccessToken = typeof req.body?.customerAccessToken === 'string'
       ? req.body.customerAccessToken.trim()
       : '';
@@ -4253,7 +4259,7 @@ app.post('/api/orders', orderCreationLimiter, async (req: TenantRequest, res) =>
         name: item.name,
         variation: item.variation,
         quantity: Number(item.quantity || 0),
-        price: Number(item.price || 0),
+        clientPrice: Number(item.price || 0),
         observations: item.observations,
         addons: item.addons,
         removals: item.removals,
@@ -4387,6 +4393,32 @@ app.post('/api/orders', orderCreationLimiter, async (req: TenantRequest, res) =>
     }
 
     let issuedCustomerAccessToken: string | null = null;
+    const orderMode = getOrderModeFromAddress(address);
+
+    if (
+      orderMode === 'DELIVERY' &&
+      req.restaurant?.latitude != null &&
+      req.restaurant?.longitude != null &&
+      settings?.deliveryRadius &&
+      Number.isFinite(Number(lat)) &&
+      Number.isFinite(Number(lng))
+    ) {
+      const distanceKm = calculateDistanceKm(
+        Number(req.restaurant.latitude),
+        Number(req.restaurant.longitude),
+        Number(lat),
+        Number(lng)
+      );
+      if (distanceKm > Number(settings.deliveryRadius)) {
+        return res.status(400).json({
+          error: `Endereço fora do raio de entrega (${Number(settings.deliveryRadius).toFixed(1)}km). Distância calculada: ${distanceKm.toFixed(1)}km.`,
+          code: 'OUTSIDE_DELIVERY_RADIUS',
+        });
+      }
+    }
+
+    const deliveryFeeAmount = orderMode === 'DELIVERY' ? Number(settings?.deliveryFee || 0) : 0;
+
     const order = await prisma.$transaction(async (tx) => {
       const productIds = [...new Set(normalizedItems.map((item: any) => item.productId))];
 
@@ -4401,38 +4433,50 @@ app.post('/api/orders', orderCreationLimiter, async (req: TenantRequest, res) =>
           trackStock: true,
           stockQuantity: true,
           categoryId: true,
+          price: true,
+          discountPercent: true,
+          sizes: true,
+          addons: true,
+          guidedAssemblyConfig: true,
+          usesGuidedAssembly: true,
         },
       });
 
       const productMap = new Map(products.map((product: any) => [product.id, product]));
 
+      let subtotal = 0;
+      const pricedItems: any[] = [];
+
       for (const item of normalizedItems) {
         const product = productMap.get(item.productId);
-
-        if (product) {
-          const productWithConfig = await tx.product.findUnique({
-            where: { id: product.id },
-            select: { id: true, categoryId: true, addons: true, guidedAssemblyConfig: true, usesGuidedAssembly: true }
-          });
-
-          const category = await tx.category.findUnique({
-            where: { id: productWithConfig?.categoryId },
-            select: { id: true, name: true, slug: true, guidedAssemblyConfig: true, typeMontagem: true }
-          }) as any;
-
-          if ((item.guidedAssemblySelections?.length || 0) > 0) {
-            const guidedGroups = getGuidedAssemblyGroups(productWithConfig, category);
-            const selections = normalizeGuidedAssemblySelections(item);
-
-            if (guidedGroups) {
-              validateGuidedSelections(guidedGroups, selections);
-            }
-          }
-        }
 
         if (!product) {
           throw new Error('PRODUCT_NOT_FOUND');
         }
+
+        const category = product.categoryId
+          ? ((await tx.category.findUnique({
+              where: { id: product.categoryId },
+              select: { id: true, name: true, slug: true, guidedAssemblyConfig: true, typeMontagem: true },
+            })) as any)
+          : null;
+
+        const guidedGroups = getGuidedAssemblyGroups(product, category);
+        const selections = item.guidedAssemblySelections || [];
+
+        if (selections.length > 0 && guidedGroups) {
+          validateGuidedSelections(guidedGroups, selections);
+        }
+
+        // Preço/total nunca vêm do cliente: recalculados aqui a partir do produto no banco.
+        const unitPrice = computeItemUnitPrice(product as any, item, guidedGroups as any);
+        if (Math.abs(unitPrice - item.clientPrice) > 0.01) {
+          console.warn(`[PriceMismatch] restaurantId=${req.restaurantId} productId=${item.productId} client=${item.clientPrice} server=${unitPrice}`);
+        }
+
+        const lineTotal = Number((unitPrice * item.quantity).toFixed(2));
+        subtotal = Number((subtotal + lineTotal).toFixed(2));
+        pricedItems.push({ ...item, price: unitPrice });
 
         if (product.trackStock) {
           const stockUpdated = await tx.product.updateMany({
@@ -4452,6 +4496,8 @@ app.post('/api/orders', orderCreationLimiter, async (req: TenantRequest, res) =>
           }
         }
       }
+
+      const computedTotal = Number((subtotal + deliveryFeeAmount).toFixed(2));
 
       let customerId: number | undefined;
       const normalizedPhone = typeof phone === 'string' ? phone.trim() : '';
@@ -4520,9 +4566,9 @@ app.post('/api/orders', orderCreationLimiter, async (req: TenantRequest, res) =>
         paymentMethod,
         cpf,
         changeFor,
-        subtotal: subtotal || (total - (deliveryFee || 0)),
-        deliveryFee: deliveryFee || 0,
-        total,
+        subtotal,
+        deliveryFee: deliveryFeeAmount,
+        total: computedTotal,
         notes,
         tableNumber: tableNumber ? Number(tableNumber) : null,
         restaurantId: req.restaurantId!,
@@ -4530,7 +4576,7 @@ app.post('/api/orders', orderCreationLimiter, async (req: TenantRequest, res) =>
         cashSessionId: activeSession ? activeSession.id : null,
         status: 'PENDING',
         items: {
-            create: normalizedItems.map((item: any) => ({
+            create: pricedItems.map((item: any) => ({
               productId: item.productId,
               name: item.name,
               variation: item.variation,
@@ -4549,6 +4595,11 @@ app.post('/api/orders', orderCreationLimiter, async (req: TenantRequest, res) =>
         },
       });
     });
+
+    const clientTotalNumber = Number(clientTotal);
+    if (Number.isFinite(clientTotalNumber) && Math.abs(clientTotalNumber - order.total) > 0.01) {
+      console.warn(`[PriceMismatch] restaurantId=${req.restaurantId} orderId=${order.id} clientSubtotal=${clientSubtotal} clientDeliveryFee=${clientDeliveryFee} clientTotal=${clientTotal} serverTotal=${order.total}`);
+    }
 
     const responseOrder = {
       ...order,
@@ -4581,6 +4632,10 @@ app.post('/api/orders', orderCreationLimiter, async (req: TenantRequest, res) =>
         res.setHeader('Idempotent-Replayed', 'true');
         return res.status(200).json(existingOrder);
       }
+    }
+
+    if (error instanceof OrderPricingError) {
+      return res.status(400).json({ error: error.message, code: error.code });
     }
 
     if (error instanceof Error) {
@@ -4663,16 +4718,37 @@ app.post('/api/orders/:id/items', authMiddleware, async (req: AuthRequest, res) 
       name: item.name,
       variation: item.variation,
       quantity: Number(item.quantity || 0),
-      price: Number(item.price || 0),
+      clientPrice: Number(item.price || 0),
       observations: item.observations,
       addons: item.addons,
       removals: item.removals,
     }));
 
+    if (normalizedItems.some((item: any) => !item.productId || item.quantity <= 0)) {
+      return res.status(400).json({ error: 'Itens inválidos.' });
+    }
+
     const result = await prisma.$transaction(async (tx) => {
+      const productIds = [...new Set(normalizedItems.map((item: any) => item.productId))];
+      const products = await tx.product.findMany({
+        where: { restaurantId: req.restaurantId!, id: { in: productIds } },
+        select: { id: true, price: true, discountPercent: true, sizes: true, addons: true },
+      });
+      const productMap = new Map(products.map((product: any) => [product.id, product]));
+
+      // Preço nunca vem do cliente aqui também — mesma regra do checkout público.
+      const pricedItems = normalizedItems.map((item: any) => {
+        const product = productMap.get(item.productId);
+        if (!product) {
+          throw new Error('PRODUCT_NOT_FOUND');
+        }
+        const { clientPrice, ...rest } = item;
+        return { ...rest, price: computeItemUnitPrice(product as any, item) };
+      });
+
       // Registrar os novos itens
       await tx.orderItem.createMany({
-        data: normalizedItems,
+        data: pricedItems,
       });
 
       // Recalcular totais do pedido
@@ -4703,6 +4779,12 @@ app.post('/api/orders/:id/items', authMiddleware, async (req: AuthRequest, res) 
     res.json(result);
   } catch (error) {
     console.error('Erro ao adicionar itens ao pedido:', error);
+    if (error instanceof OrderPricingError) {
+      return res.status(400).json({ error: error.message, code: error.code });
+    }
+    if (error instanceof Error && error.message === 'PRODUCT_NOT_FOUND') {
+      return res.status(400).json({ error: 'Um ou mais itens não existem mais.' });
+    }
     res.status(400).json({ error: 'Erro ao adicionar itens.' });
   }
 });
@@ -4716,6 +4798,8 @@ app.patch('/api/orders/:id', authMiddleware, async (req: AuthRequest, res) => {
 
     const nextStatus = String(req.body?.status || '').trim().toUpperCase();
     const paymentMethod = req.body?.paymentMethod ? String(req.body.paymentMethod).toUpperCase() : null;
+    const statusChangeReason = typeof req.body?.reason === 'string' ? req.body.reason.trim() : '';
+    const forcePixConfirm = Boolean(req.body?.forcePixConfirm);
 
     if (!nextStatus) {
       return res.status(400).json({ error: 'Status é obrigatório.' });
@@ -4729,6 +4813,16 @@ app.patch('/api/orders/:id', authMiddleware, async (req: AuthRequest, res) => {
       }
     }
 
+    // Estorno de pedido já concluído: exige motivo e perfil de gerente/administrador.
+    if (nextStatus === 'REFUNDED') {
+      if (!statusChangeReason) {
+        return res.status(400).json({ error: 'Informe o motivo do estorno.' });
+      }
+      if (!req.userRole || !SENSITIVE_SETTINGS_ROLES.has(req.userRole)) {
+        return res.status(403).json({ error: 'Estorno de pedido exige perfil de gerente ou administrador.' });
+      }
+    }
+
     const order = await prisma.order.findFirst({
       where: {
         id: orderId,
@@ -4738,6 +4832,8 @@ app.patch('/api/orders/:id', authMiddleware, async (req: AuthRequest, res) => {
         id: true,
         status: true,
         address: true,
+        paymentMethod: true,
+        pixConfirmedAt: true,
       },
     });
 
@@ -4752,7 +4848,7 @@ app.patch('/api/orders/:id', authMiddleware, async (req: AuthRequest, res) => {
       // Se for um pedido antigo (RETIRED ou DELIVERED) e estivermos tentando marcar como PAID,
       // abrimos uma exceção para permitir a liquidação financeira.
       const isForcePaid = nextStatus === 'PAID' && ['RETIRED', 'DELIVERED'].includes(order.status);
-      
+
       if (!isForcePaid) {
         return res.status(409).json({
           error: `Transição inválida para ${orderMode}.`,
@@ -4764,24 +4860,73 @@ app.patch('/api/orders/:id', authMiddleware, async (req: AuthRequest, res) => {
       }
     }
 
-    const updatedOrder = await prisma.order.update({
-      where: {
-        id: orderId,
-        restaurantId: req.restaurantId,
-      },
-      data: { 
-        status: nextStatus as OrderStatus,
-        paymentMethod: (paymentMethod ? (paymentMethod as PaymentMethod) : undefined) as any,
-        // Ao marcar como pago ou mudar status durante um turno, garante que o pedido se vincule ao caixa atual se ainda não tiver vínculo
-        ...(nextStatus === 'PAID' ? {
-          cashSessionId: await prisma.cashSession.findFirst({
-            where: { restaurantId: req.restaurantId, status: 'OPEN' },
-            orderBy: { openedAt: 'desc' },
-            select: { id: true }
-          }).then(s => s?.id || null)
-        } : {})
-      },
+    // PIX exige confirmação de recebimento antes de aceitar o pedido, salvo exceção
+    // auditada de gerente/administrador com motivo.
+    const movingIntoConfirmed = nextStatus === 'CONFIRMED' && ['PENDING', 'OPEN'].includes(order.status);
+    const pixConfirmOverride = forcePixConfirm && !!statusChangeReason && !!req.userRole && SENSITIVE_SETTINGS_ROLES.has(req.userRole);
+    if (movingIntoConfirmed && order.paymentMethod === 'PIX' && !order.pixConfirmedAt && !pixConfirmOverride) {
+      return res.status(409).json({
+        error: 'Confirme o recebimento do PIX antes de aceitar este pedido.',
+        code: 'PIX_NOT_CONFIRMED',
+      });
+    }
+
+    const isCancelling = nextStatus === 'CANCELLED' && order.status !== 'CANCELLED';
+
+    const updatedOrder = await prisma.$transaction(async (tx) => {
+      if (isCancelling) {
+        const items = await tx.orderItem.findMany({
+          where: { orderId },
+          select: { productId: true, quantity: true },
+        });
+
+        if (items.length > 0) {
+          const productIds = [...new Set(items.map((item) => item.productId))];
+          const trackedProducts = await tx.product.findMany({
+            where: { id: { in: productIds }, restaurantId: req.restaurantId!, trackStock: true },
+            select: { id: true },
+          });
+          const trackedIds = new Set(trackedProducts.map((product) => product.id));
+
+          for (const item of items) {
+            if (!trackedIds.has(item.productId)) continue;
+            await tx.product.updateMany({
+              where: { id: item.productId, restaurantId: req.restaurantId! },
+              data: { stockQuantity: { increment: item.quantity } },
+            });
+          }
+        }
+      }
+
+      const cashSessionUpdate = nextStatus === 'PAID'
+        ? {
+            cashSessionId: await tx.cashSession.findFirst({
+              where: { restaurantId: req.restaurantId, status: 'OPEN' },
+              orderBy: { openedAt: 'desc' },
+              select: { id: true },
+            }).then((s) => s?.id || null),
+          }
+        : {};
+
+      return tx.order.update({
+        where: {
+          id: orderId,
+          restaurantId: req.restaurantId,
+        },
+        data: {
+          status: nextStatus as OrderStatus,
+          paymentMethod: (paymentMethod ? (paymentMethod as PaymentMethod) : undefined) as any,
+          ...cashSessionUpdate,
+        },
+      });
     });
+
+    if (nextStatus === 'REFUNDED') {
+      await createAudit(req, 'refund_order', 'order', orderId, { reason: statusChangeReason, previousStatus: order.status });
+    }
+    if (pixConfirmOverride && movingIntoConfirmed) {
+      await createAudit(req, 'force_confirm_pix', 'order', orderId, { reason: statusChangeReason });
+    }
 
     io.to(adminSocketRoom(req.restaurant!.slug)).emit(`order_status_updated_${req.restaurant?.slug}`, updatedOrder);
     if (updatedOrder.customerId) {
@@ -4792,6 +4937,59 @@ app.patch('/api/orders/:id', authMiddleware, async (req: AuthRequest, res) => {
   } catch (error) {
     console.error('Erro ao atualizar status do pedido:', error);
     res.status(400).json({ error: 'Erro ao atualizar status do pedido.' });
+  }
+});
+
+// Confirma que o PIX de um pedido efetivamente caiu na conta da loja — sem isso,
+// o pedido não pode ser aceito (ver PIX_NOT_CONFIRMED em PATCH /api/orders/:id).
+app.post('/api/orders/:id/confirm-pix', authMiddleware, async (req: AuthRequest, res) => {
+  if (!ensureCashierPermission(req, res, CASHIER_OPERATION_ROLES, 'confirmar pagamento PIX')) {
+    return;
+  }
+
+  try {
+    const orderId = Number.parseInt(req.params.id, 10);
+    if (!Number.isInteger(orderId)) {
+      return res.status(400).json({ error: 'ID do pedido inválido.' });
+    }
+
+    const order = await prisma.order.findFirst({
+      where: { id: orderId, restaurantId: req.restaurantId },
+      select: { id: true, paymentMethod: true, pixConfirmedAt: true },
+    });
+
+    if (!order) {
+      return res.status(404).json({ error: 'Pedido não encontrado.' });
+    }
+
+    if (order.paymentMethod !== 'PIX') {
+      return res.status(400).json({ error: 'Este pedido não é PIX.' });
+    }
+
+    if (order.pixConfirmedAt) {
+      return res.json({ id: order.id, pixConfirmedAt: order.pixConfirmedAt });
+    }
+
+    const confirmingUser = req.userId
+      ? await prisma.user.findUnique({ where: { id: req.userId }, select: { name: true, email: true } })
+      : null;
+
+    const updated = await prisma.order.update({
+      where: { id: orderId, restaurantId: req.restaurantId },
+      data: {
+        pixConfirmedAt: new Date(),
+        pixConfirmedBy: confirmingUser?.name || confirmingUser?.email || null,
+      },
+    });
+
+    await createAudit(req, 'confirm_pix_payment', 'order', orderId, {});
+
+    io.to(adminSocketRoom(req.restaurant!.slug)).emit(`order_updated_${req.restaurant?.slug}`, updated);
+
+    res.json(updated);
+  } catch (error) {
+    console.error('Erro ao confirmar pagamento PIX:', error);
+    res.status(400).json({ error: 'Erro ao confirmar pagamento PIX.' });
   }
 });
 
@@ -5120,62 +5318,80 @@ app.post('/api/cashier/movements', authMiddleware, async (req: AuthRequest, res)
       });
     }
 
-    if (type === 'WITHDRAWAL') {
-      const [suppliesAgg, withdrawalsAgg, adjustmentsAgg, cashSalesAgg] = await Promise.all([
-        prisma.cashMovement.aggregate({
-          where: { cashSessionId: activeSession.id, type: 'SUPPLY', voidedAt: null },
-          _sum: { amount: true },
-        }),
-        prisma.cashMovement.aggregate({
-          where: { cashSessionId: activeSession.id, type: 'WITHDRAWAL', voidedAt: null },
-          _sum: { amount: true },
-        }),
-        prisma.cashMovement.aggregate({
-          where: { cashSessionId: activeSession.id, type: 'ADJUSTMENT', voidedAt: null },
-          _sum: { amount: true },
-        }),
-        prisma.order.aggregate({
-          where: {
-            restaurantId: req.restaurantId,
-            cashSessionId: activeSession.id,
-            status: { in: CASH_COUNTED_ORDER_STATUSES },
-            paymentMethod: 'CASH',
-          },
-          _sum: { total: true },
-        }),
-      ]);
-      const balance = {
-        openingAmount: activeSession.openingAmount,
-        supplies: Number(suppliesAgg._sum.amount || 0),
-        withdrawals: Number(withdrawalsAgg._sum.amount || 0),
-        adjustments: Number(adjustmentsAgg._sum.amount || 0),
-        cashSales: Number(cashSalesAgg._sum.total || 0),
-      };
-      const availableCash = calculateExpectedCash(balance);
+    // Checagem de saldo + criação do movimento na mesma transação serializável: evita que
+    // duas sangrias concorrentes leiam o mesmo saldo disponível e ambas passem na validação.
+    let movement;
+    try {
+      movement = await prisma.$transaction(async (tx) => {
+        if (type === 'WITHDRAWAL') {
+          const [suppliesAgg, withdrawalsAgg, adjustmentsAgg, cashSalesAgg] = await Promise.all([
+            tx.cashMovement.aggregate({
+              where: { cashSessionId: activeSession.id, type: 'SUPPLY', voidedAt: null },
+              _sum: { amount: true },
+            }),
+            tx.cashMovement.aggregate({
+              where: { cashSessionId: activeSession.id, type: 'WITHDRAWAL', voidedAt: null },
+              _sum: { amount: true },
+            }),
+            tx.cashMovement.aggregate({
+              where: { cashSessionId: activeSession.id, type: 'ADJUSTMENT', voidedAt: null },
+              _sum: { amount: true },
+            }),
+            tx.order.aggregate({
+              where: {
+                restaurantId: req.restaurantId,
+                cashSessionId: activeSession.id,
+                status: { in: CASH_COUNTED_ORDER_STATUSES },
+                paymentMethod: 'CASH',
+              },
+              _sum: { total: true },
+            }),
+          ]);
+          const balance = {
+            openingAmount: activeSession.openingAmount,
+            supplies: Number(suppliesAgg._sum.amount || 0),
+            withdrawals: Number(withdrawalsAgg._sum.amount || 0),
+            adjustments: Number(adjustmentsAgg._sum.amount || 0),
+            cashSales: Number(cashSalesAgg._sum.total || 0),
+          };
 
-      if (!canWithdrawCash(amount, balance)) {
+          if (!canWithdrawCash(amount, balance)) {
+            const availableCash = calculateExpectedCash(balance);
+            const insufficientBalanceError = new Error('INSUFFICIENT_CASH_BALANCE') as Error & { availableCash: number };
+            insufficientBalanceError.availableCash = availableCash;
+            throw insufficientBalanceError;
+          }
+        }
+
+        return tx.cashMovement.create({
+          data: {
+            cashSessionId: activeSession.id,
+            restaurantId: req.restaurantId!,
+            createdById: req.userId,
+            type: type as any,
+            amount,
+            reason,
+            notes,
+          },
+          include: {
+            createdBy: { select: { id: true, name: true, email: true } },
+          },
+        });
+      }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+    } catch (txError: any) {
+      if (txError instanceof Error && txError.message === 'INSUFFICIENT_CASH_BALANCE') {
+        const availableCash = Number((txError as any).availableCash) || 0;
         return res.status(409).json({
           error: `A sangria não pode superar o saldo disponível de ${availableCash.toFixed(2)}.`,
           code: 'INSUFFICIENT_CASH_BALANCE',
           availableCash,
         });
       }
+      if (txError?.code === 'P2034') {
+        return res.status(409).json({ error: 'Outro movimento de caixa foi registrado ao mesmo tempo. Tente novamente.' });
+      }
+      throw txError;
     }
-
-    const movement = await prisma.cashMovement.create({
-      data: {
-        cashSessionId: activeSession.id,
-        restaurantId: req.restaurantId!,
-        createdById: req.userId,
-        type: type as any,
-        amount,
-        reason,
-        notes,
-      },
-      include: {
-        createdBy: { select: { id: true, name: true, email: true } },
-      },
-    });
 
     await createAudit(req, 'create_cash_movement', 'cash_movement', movement.id, {
       type,
@@ -5220,57 +5436,85 @@ app.patch('/api/cashier/movements/:id/void', authMiddleware, async (req: AuthReq
       return res.status(409).json({ error: 'Não é possível estornar movimento de uma sessão fechada.' });
     }
 
-    if (movement.type === 'SUPPLY' || movement.type === 'ADJUSTMENT') {
-      const [suppliesAgg, withdrawalsAgg, adjustmentsAgg, cashSalesAgg] = await Promise.all([
-        prisma.cashMovement.aggregate({
-          where: { cashSessionId: movement.cashSessionId, type: 'SUPPLY', voidedAt: null },
-          _sum: { amount: true },
-        }),
-        prisma.cashMovement.aggregate({
-          where: { cashSessionId: movement.cashSessionId, type: 'WITHDRAWAL', voidedAt: null },
-          _sum: { amount: true },
-        }),
-        prisma.cashMovement.aggregate({
-          where: { cashSessionId: movement.cashSessionId, type: 'ADJUSTMENT', voidedAt: null },
-          _sum: { amount: true },
-        }),
-        prisma.order.aggregate({
-          where: {
-            restaurantId: req.restaurantId,
-            cashSessionId: movement.cashSessionId,
-            status: { in: CASH_COUNTED_ORDER_STATUSES },
-            paymentMethod: 'CASH',
+    // Mesma proteção do POST de movimentos: checagem de saldo + escrita na mesma
+    // transação serializável, e updateMany guardado por voidedAt: null evita estornar
+    // o mesmo movimento duas vezes em requisições concorrentes.
+    let voidedMovement;
+    try {
+      voidedMovement = await prisma.$transaction(async (tx) => {
+        if (movement.type === 'SUPPLY' || movement.type === 'ADJUSTMENT') {
+          const [suppliesAgg, withdrawalsAgg, adjustmentsAgg, cashSalesAgg] = await Promise.all([
+            tx.cashMovement.aggregate({
+              where: { cashSessionId: movement.cashSessionId, type: 'SUPPLY', voidedAt: null },
+              _sum: { amount: true },
+            }),
+            tx.cashMovement.aggregate({
+              where: { cashSessionId: movement.cashSessionId, type: 'WITHDRAWAL', voidedAt: null },
+              _sum: { amount: true },
+            }),
+            tx.cashMovement.aggregate({
+              where: { cashSessionId: movement.cashSessionId, type: 'ADJUSTMENT', voidedAt: null },
+              _sum: { amount: true },
+            }),
+            tx.order.aggregate({
+              where: {
+                restaurantId: req.restaurantId,
+                cashSessionId: movement.cashSessionId,
+                status: { in: CASH_COUNTED_ORDER_STATUSES },
+                paymentMethod: 'CASH',
+              },
+              _sum: { total: true },
+            }),
+          ]);
+          const projectedBalance = calculateExpectedCash({
+            openingAmount: movement.cashSession.openingAmount,
+            supplies: Number(suppliesAgg._sum.amount || 0) - (movement.type === 'SUPPLY' ? movement.amount : 0),
+            withdrawals: Number(withdrawalsAgg._sum.amount || 0),
+            adjustments: Number(adjustmentsAgg._sum.amount || 0) - (movement.type === 'ADJUSTMENT' ? movement.amount : 0),
+            cashSales: Number(cashSalesAgg._sum.total || 0),
+          });
+          if (projectedBalance < 0) {
+            throw new Error('NEGATIVE_CASH_BALANCE');
+          }
+        }
+
+        const voidResult = await tx.cashMovement.updateMany({
+          where: { id: movement.id, voidedAt: null },
+          data: {
+            voidedAt: new Date(),
+            voidedById: req.userId,
+            voidReason,
           },
-          _sum: { total: true },
-        }),
-      ]);
-      const projectedBalance = calculateExpectedCash({
-        openingAmount: movement.cashSession.openingAmount,
-        supplies: Number(suppliesAgg._sum.amount || 0) - (movement.type === 'SUPPLY' ? movement.amount : 0),
-        withdrawals: Number(withdrawalsAgg._sum.amount || 0),
-        adjustments: Number(adjustmentsAgg._sum.amount || 0) - (movement.type === 'ADJUSTMENT' ? movement.amount : 0),
-        cashSales: Number(cashSalesAgg._sum.total || 0),
-      });
-      if (projectedBalance < 0) {
+        });
+
+        if (voidResult.count === 0) {
+          throw new Error('ALREADY_VOIDED');
+        }
+
+        return tx.cashMovement.findUniqueOrThrow({
+          where: { id: movement.id },
+          include: {
+            createdBy: { select: { id: true, name: true, email: true } },
+            voidedBy: { select: { id: true, name: true, email: true } },
+          },
+        });
+      }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+    } catch (txError: any) {
+      if (txError instanceof Error && txError.message === 'NEGATIVE_CASH_BALANCE') {
         return res.status(409).json({
           error: 'O estorno deixaria o saldo do caixa negativo. Revise as sangrias realizadas primeiro.',
           code: 'NEGATIVE_CASH_BALANCE',
         });
       }
+      if (txError instanceof Error && txError.message === 'ALREADY_VOIDED') {
+        return res.status(409).json({ error: 'Este movimento já foi estornado.' });
+      }
+      if (txError?.code === 'P2034') {
+        return res.status(409).json({ error: 'Outro movimento de caixa foi registrado ao mesmo tempo. Tente novamente.' });
+      }
+      throw txError;
     }
 
-    const voidedMovement = await prisma.cashMovement.update({
-      where: { id: movement.id },
-      data: {
-        voidedAt: new Date(),
-        voidedById: req.userId,
-        voidReason,
-      },
-      include: {
-        createdBy: { select: { id: true, name: true, email: true } },
-        voidedBy: { select: { id: true, name: true, email: true } },
-      },
-    });
     await createAudit(req, 'void_cash_movement', 'cash_movement', movement.id, {
       cashSessionId: movement.cashSessionId,
       type: movement.type,
@@ -5732,8 +5976,10 @@ app.post('/api/cashier/session/close', authMiddleware, async (req: AuthRequest, 
       });
     }
 
-    const session = await prisma.cashSession.update({
-      where: { id: activeSession.id },
+    // updateMany + guarda de status evita que dois fechamentos concorrentes (ex.: duplo
+    // clique) apliquem a mesma sessão duas vezes e um sobrescreva o cálculo do outro.
+    const closeResult = await prisma.cashSession.updateMany({
+      where: { id: activeSession.id, status: 'OPEN' },
       data: {
         status: 'CLOSED',
         closedById: req.userId,
@@ -5746,6 +5992,14 @@ app.post('/api/cashier/session/close', authMiddleware, async (req: AuthRequest, 
         cashCountBreakdown: cashCountBreakdown ?? undefined,
         notes: notes || activeSession.notes,
       },
+    });
+
+    if (closeResult.count === 0) {
+      return res.status(409).json({ error: 'Esta sessão de caixa já foi fechada por outra requisição.' });
+    }
+
+    const session = await prisma.cashSession.findUniqueOrThrow({
+      where: { id: activeSession.id },
       include: {
         openedBy: { select: { id: true, name: true, email: true } },
         closedBy: { select: { id: true, name: true, email: true } },
@@ -6351,9 +6605,12 @@ app.get('/api/print-events/summary', authMiddleware, tenantMiddleware, async (re
         action: 'print_document',
         subjectType,
         subjectId: { in: ids },
-        actor: {
-          restaurantId: req.restaurantId,
-        },
+        // restaurantId direto cobre eventos novos; o join por actor é fallback para
+        // linhas anteriores à migration que introduziu a coluna.
+        OR: [
+          { restaurantId: req.restaurantId },
+          { restaurantId: null, actor: { restaurantId: req.restaurantId } },
+        ],
       },
       orderBy: { createdAt: 'desc' },
       include: {

@@ -28,9 +28,9 @@ Validar o modulo de caixa em fluxo real de operacao, cobrindo regras de negocio,
 
 ## Matriz de Permissoes (esperado)
 
-- OWNER: pode abrir, fechar, movimentar, venda direta, consultar historico e relatorio
-- MANAGER: pode abrir, fechar, movimentar, venda direta, consultar historico e relatorio
-- EMPLOYEE: pode movimentar, venda direta, consultar historico e relatorio; nao pode abrir/fechar
+- OWNER: pode abrir, fechar, movimentar (sangria/suprimento/ajuste), venda direta, consultar historico e relatorio
+- MANAGER: pode abrir, fechar, movimentar (sangria/suprimento/ajuste), venda direta, consultar historico e relatorio
+- EMPLOYEE: pode venda direta, consultar historico e relatorio; nao pode abrir/fechar nem registrar sangria/suprimento/ajuste (dinheiro saindo do caixa sem venda associada exige perfil CASHIER ou superior)
 
 ## Casos de Teste
 
@@ -61,18 +61,19 @@ Resultado esperado:
 - Apenas uma abertura com sucesso.
 - Segunda tentativa retorna conflito (409) informando sessao ja aberta.
 
-### CT-03 - Permissao: EMPLOYEE nao abre/fecha
+### CT-03 - Permissao: EMPLOYEE nao abre/fecha nem movimenta
 
 Passos:
 
 1. Login como EMPLOYEE.
 2. Tentar abrir caixa.
 3. Com sessao aberta por outro perfil, tentar fechar caixa.
+4. Com sessao aberta, tentar registrar sangria e suprimento.
 
 Resultado esperado:
 
-- API retorna 403 para abrir e fechar.
-- Operacoes permitidas para EMPLOYEE continuam funcionando.
+- API retorna 403 para abrir, fechar e para sangria/suprimento/ajuste.
+- Venda direta continua funcionando para EMPLOYEE.
 
 ### CT-04 - Movimento: valor obrigatorio > 0
 

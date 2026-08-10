@@ -279,6 +279,13 @@ model Settings {
   @@map("settings")
 }
 
+// A regra "no máximo 1 sessão OPEN por restaurante" é garantida por um índice único
+// PARCIAL no Postgres (`CREATE UNIQUE INDEX ... ON cash_sessions(restaurantId) WHERE
+// status='OPEN'`), criado nas migrations 20260617123000_enforce_single_open_cash_session
+// e 20260727150000_cashier_integrity_and_movement_void. O Prisma não tem como expressar
+// um índice único filtrado por WHERE no schema, então essa proteção NÃO aparece aqui —
+// não rode `prisma migrate dev`/`db push` contra produção, ou esse índice pode ser
+// removido silenciosamente por drift de schema.
 model CashSession {
   id               Int               @id @default(autoincrement())
   restaurantId     Int
@@ -405,21 +412,28 @@ enum PrintJobStatus {
 }
 
 model AuditLog {
-  id          Int      @id @default(autoincrement())
-  actorId     Int?
-  actorEmail  String?
-  action      String
-  subjectType String
-  subjectId   Int?
-  details     Json?
-  createdAt   DateTime @default(now())
+  id           Int      @id @default(autoincrement())
+  actorId      Int?
+  actorEmail   String?
+  // Snapshot da loja no momento do evento. Nullable e sem backfill de linhas antigas —
+  // preenchido a partir de createAudit() para todo evento novo. Ações legitimamente
+  // cross-tenant (SUPER_ADMIN) ficam null aqui de propósito.
+  restaurantId Int?
+  action       String
+  subjectType  String
+  subjectId    Int?
+  details      Json?
+  createdAt    DateTime @default(now())
 
-  actor User? @relation(fields: [actorId], references: [id], onDelete: Cascade)
+  // SetNull (não Cascade): excluir um usuário não pode apagar o histórico de auditoria
+  // que ele gerou — actorEmail já guarda um snapshot do e-mail para o caso de actor nulo.
+  actor User? @relation(fields: [actorId], references: [id], onDelete: SetNull)
 
   @@index([actorId])
   @@index([createdAt])
   @@index([subjectType, createdAt])
   @@index([action, createdAt])
+  @@index([restaurantId, createdAt])
   @@map("audit_logs")
 }
 

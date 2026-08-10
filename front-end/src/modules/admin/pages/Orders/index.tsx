@@ -504,9 +504,26 @@ export default function OrdersPage({ isCompact = false, onOrdersChange }: { isCo
 
             await fetchOrders();
             return true;
-        } catch (error) {
+        } catch (error: any) {
             console.error("Erro ao atualizar status:", error);
-            toast.error("Erro ao atualizar status do pedido");
+            toast.error(error?.message || "Erro ao atualizar status do pedido");
+            return false;
+        }
+    };
+
+    const confirmPixPayment = async (orderId: number) => {
+        try {
+            await api.post(`/orders/${orderId}/confirm-pix`, {});
+            setOrders((prev) => prev.map((order) => (
+                Number(order.id) === Number(orderId)
+                    ? { ...order, pixConfirmedAt: new Date().toISOString() }
+                    : order
+            )));
+            toast.success("PIX confirmado. Já pode aceitar o pedido.");
+            return true;
+        } catch (error: any) {
+            console.error("Erro ao confirmar PIX:", error);
+            toast.error(error?.message || "Erro ao confirmar PIX.");
             return false;
         }
     };
@@ -1034,6 +1051,9 @@ export default function OrdersPage({ isCompact = false, onOrdersChange }: { isCo
                                 const statusBadge = getStatusBadge(order);
                                 const primaryAction = getPrimaryAction(order);
                                 const showCancelButton = canCancelOrder(order.status);
+                                const needsPixConfirmation = String(order.paymentMethod || "").toUpperCase() === "PIX"
+                                    && !order.pixConfirmedAt
+                                    && ["PENDING", "OPEN"].includes(order.status);
                                 const createdAt = new Date(order.createdAt);
                                 const minutesAgo = Math.floor((Date.now() - createdAt.getTime()) / 60000);
                                 const isCritical = minutesAgo > 15 && ["PENDING", "CONFIRMED"].includes(order.status);
@@ -1136,7 +1156,15 @@ export default function OrdersPage({ isCompact = false, onOrdersChange }: { isCo
                                         </div>
 
                                         <div className="flex items-center gap-2 pt-2 border-t border-slate-50">
-                                            {primaryAction && (
+                                            {needsPixConfirmation ? (
+                                                <button
+                                                    onClick={() => confirmPixPayment(order.id)}
+                                                    className="flex-1 h-9 bg-emerald-600 text-white rounded-xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-emerald-700 transition-all active:scale-95 shadow-md shadow-emerald-600/20"
+                                                    title="Confirme que o PIX caiu na conta da loja antes de aceitar o pedido"
+                                                >
+                                                    Confirmar PIX Recebido
+                                                </button>
+                                            ) : primaryAction && (
                                                 <button
                                                     onClick={async () => {
                                                         const success = await updateStatus(order.id, primaryAction.nextStatus);

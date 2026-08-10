@@ -243,6 +243,7 @@ export default function Checkout() {
   }, [isPixAvailable, formData.paymentMethod]);
 
   const [isDistanceValidating, setIsDistanceValidating] = useState(false);
+  const [deliveryCoords, setDeliveryCoords] = useState<{ lat: number; lng: number } | null>(null);
 
   const handleValidateDistance = async () => {
     setIsDistanceValidating(true);
@@ -275,10 +276,14 @@ export default function Checkout() {
           return;
         }
 
+        // Guardamos as coordenadas validadas para enviar junto do pedido — o backend
+        // recalcula essa mesma distância antes de aceitar o pedido.
+        setDeliveryCoords({ lat: customerLat, lng: customerLng });
         setStep("payment");
       } else {
         // Se não conseguir geocodificar, permite passar mas avisa o lojista
         console.warn("Não foi possível validar a distância exata.");
+        setDeliveryCoords(null);
         setStep("payment");
       }
     } catch (error) {
@@ -517,6 +522,8 @@ export default function Checkout() {
             reference: formData.reference
           } : (deliveryMode === "PICKUP" ? "Retirada no Balcão" : "Consumo no Local")
         },
+        lat: deliveryMode === "DELIVERY" ? deliveryCoords?.lat : undefined,
+        lng: deliveryMode === "DELIVERY" ? deliveryCoords?.lng : undefined,
         paymentMethod: deliveryMode === "DINE_IN" ? "CASH" : formData.paymentMethod,
         changeFor: (formData.paymentMethod === 'CASH' && formData.needsChange && formData.changeFor) 
           ? String(parseMoneyInput(formData.changeFor)) 
