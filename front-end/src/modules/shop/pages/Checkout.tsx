@@ -41,6 +41,7 @@ import toast from "react-hot-toast";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import PixPayment from "../components/payment/PixPayment";
+import { NotifyMeButton } from "../components/NotifyMeButton";
 import { shopErrorToastOptions, shopSuccessToastOptions } from "../utils/toast";
 
 gsap.registerPlugin(ScrollTrigger);
@@ -1289,6 +1290,8 @@ export default function Checkout() {
                       Acompanhar pedido
                       <ChevronRight size={18} />
                     </Link>
+
+                    <NotifyMeButton className="h-14 md:h-16 flex items-center justify-center gap-2 bg-white border border-slate-200 text-slate-700 rounded-2xl font-body font-bold hover:bg-slate-50 transition-all uppercase tracking-widest text-label disabled:opacity-60" />
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
                       <button

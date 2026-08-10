@@ -28,6 +28,7 @@ import { useCartStore } from "../../../core/stores/useCartStore";
 import { useHasHydrated } from "../../../core/hooks/useHasHydrated";
 import { MobileShopNavigation } from "../components/layout/MobileShopNavigation";
 import { MobileCartBar } from "../components/layout/MobileCartBar";
+import { NotifyMeButton } from "../components/NotifyMeButton";
 
 const FINAL_ORDER_STATUSES = new Set(["DELIVERED", "RETIRED", "CANCELLED", "REFUNDED"]);
 const isActiveOrder = (order: any) => !FINAL_ORDER_STATUSES.has(String(order?.status || ""));
@@ -325,6 +326,8 @@ export default function CustomerOrdersPage() {
                 {orders.length} PEDIDOS
               </span>
             </div>
+
+            <NotifyMeButton className="h-12 px-5 flex items-center justify-center gap-2 bg-white border border-slate-200 text-slate-700 rounded-xl font-body font-bold hover:bg-slate-50 transition-all uppercase tracking-widest text-[10px] disabled:opacity-60" />
 
             <div className="grid grid-cols-1 gap-4 md:gap-6">
               {displayedOrders.map((order, idx) => {

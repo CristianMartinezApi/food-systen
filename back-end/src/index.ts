@@ -16,10 +16,11 @@ import { promises as fs } from 'fs';
 import path from 'path';
 import { getCashSessionDeadline, getNextOpeningLabel, isCashSessionExpired, isRestaurantOpenNow, normalizeOperatingHours, validateOperatingHours } from './utils/hours';
 import { validateGuidedSelections } from './utils/guided-assembly';
-import { sendEmail, getCashierReminderEmail, getCashierNeededEmail, getEmailVerificationEmail, getPasswordResetEmail, getExpiredCashSessionEmail, getOrderConfirmationEmail, getOrderStatusUpdateEmail } from './utils/sendEmail';
-import { getOrderStatusEmailCopy } from './utils/order-notifications';
+import { sendEmail, getCashierReminderEmail, getCashierNeededEmail, getEmailVerificationEmail, getPasswordResetEmail, getExpiredCashSessionEmail } from './utils/sendEmail';
 import { AUTH_COOKIE_NAME, clearAuthCookie, readCookie, setAuthCookie } from './utils/auth-cookie';
 import { calculateExpectedCash, canWithdrawCash } from './utils/cashier';
+import { getOrderReceivedNotificationCopy, getOrderStatusNotificationCopy } from './utils/order-notifications';
+import { sendPushToCustomer } from './services/PushService';
 import { computeItemUnitPrice, computeOrderSubtotal, OrderPricingError } from './utils/order-pricing';
 import { calculateDistanceKm } from './utils/distance';
 
@@ -4155,6 +4156,80 @@ app.get('/api/customer/orders/:phone', async (req: TenantRequest, res) => {
   }
 });
 
+// Inscrição de push web do cliente — mesma verificação de identidade (phone +
+// accessToken) usada em GET /api/customer/orders/:phone, não é um auth novo.
+app.post('/api/push/subscribe', async (req: TenantRequest, res) => {
+  try {
+    const phone = typeof req.body?.phone === 'string' ? req.body.phone.trim() : '';
+    const accessToken = typeof req.body?.accessToken === 'string' ? req.body.accessToken.trim() : '';
+    const subscription = req.body?.subscription;
+    const endpoint = typeof subscription?.endpoint === 'string' ? subscription.endpoint : '';
+    const p256dh = typeof subscription?.keys?.p256dh === 'string' ? subscription.keys.p256dh : '';
+    const auth = typeof subscription?.keys?.auth === 'string' ? subscription.keys.auth : '';
+
+    if (!/^[a-f0-9]{64}$/i.test(accessToken)) {
+      return res.status(403).json({ error: 'Acesso não autorizado.' });
+    }
+    if (!endpoint || !p256dh || !auth) {
+      return res.status(400).json({ error: 'Inscrição de push inválida.' });
+    }
+
+    const accessTokenHash = crypto.createHash('sha256').update(accessToken).digest('hex');
+    const customer = await prisma.customer.findFirst({
+      where: {
+        restaurantId: req.restaurantId!,
+        phone,
+        accessCredential: { tokenHash: accessTokenHash },
+      },
+      select: { id: true },
+    });
+
+    if (!customer) {
+      return res.status(403).json({ error: 'Acesso não autorizado.' });
+    }
+
+    await prisma.pushSubscription.upsert({
+      where: { endpoint },
+      create: {
+        restaurantId: req.restaurantId!,
+        customerId: customer.id,
+        endpoint,
+        p256dh,
+        auth,
+      },
+      update: {
+        restaurantId: req.restaurantId!,
+        customerId: customer.id,
+        p256dh,
+        auth,
+      },
+    });
+
+    res.status(201).json({ subscribed: true });
+  } catch (error) {
+    console.error('Erro ao registrar inscrição de push:', error);
+    res.status(500).json({ error: 'Erro ao ativar notificações.' });
+  }
+});
+
+app.post('/api/push/unsubscribe', async (req: TenantRequest, res) => {
+  try {
+    const endpoint = typeof req.body?.endpoint === 'string' ? req.body.endpoint : '';
+    if (!endpoint) {
+      return res.status(400).json({ error: 'Endpoint inválido.' });
+    }
+
+    await prisma.pushSubscription.deleteMany({
+      where: { endpoint, restaurantId: req.restaurantId! },
+    });
+
+    res.json({ subscribed: false });
+  } catch (error) {
+    console.error('Erro ao remover inscrição de push:', error);
+    res.status(500).json({ error: 'Erro ao desativar notificações.' });
+  }
+});
+
 app.get('/api/orders', authMiddleware, async (req: AuthRequest, res) => {
   const { filter } = req.query;
   
@@ -4625,19 +4700,9 @@ app.post('/api/orders', orderCreationLimiter, async (req: TenantRequest, res) =>
     const { customerAccessToken: _customerAccessToken, ...socketOrder } = responseOrder;
     io.to(adminSocketRoom(req.restaurant!.slug)).emit(`new_order_${req.restaurant?.slug}`, socketOrder);
 
-    const confirmationEmail = order.customer?.email;
-    if (confirmationEmail) {
-      const trackingUrl = `${(process.env.FRONTEND_URL || 'http://localhost:3000').replace(/\/+$/, '')}/${req.restaurant?.slug}/orders`;
-      sendEmail({
-        to: confirmationEmail,
-        subject: `Pedido #${order.id} recebido`,
-        html: getOrderConfirmationEmail({
-          restaurantName: req.restaurant?.name || 'Loja',
-          customerName: order.customerName,
-          orderId: order.id,
-          trackingUrl,
-        }),
-      }).catch((err) => console.error(`Falha ao enviar e-mail de confirmação do pedido #${order.id}:`, err));
+    if (order.customerId) {
+      sendPushToCustomer(req.restaurantId!, order.customerId, getOrderReceivedNotificationCopy(order.id))
+        .catch((err) => console.error(`Falha ao enviar push de pedido recebido #${order.id}:`, err));
     }
 
     res.status(201).json(responseOrder);
@@ -4945,9 +5010,6 @@ app.patch('/api/orders/:id', authMiddleware, async (req: AuthRequest, res) => {
           paymentMethod: (paymentMethod ? (paymentMethod as PaymentMethod) : undefined) as any,
           ...cashSessionUpdate,
         },
-        include: {
-          customer: { select: { email: true } },
-        },
       });
     });
 
@@ -4962,23 +5024,12 @@ app.patch('/api/orders/:id', authMiddleware, async (req: AuthRequest, res) => {
     if (updatedOrder.customerId) {
       io.to(customerSocketRoom(req.restaurantId!, updatedOrder.customerId))
         .emit(`order_status_updated_${req.restaurant?.slug}`, updatedOrder);
-    }
 
-    const statusEmail = updatedOrder.customer?.email;
-    const statusEmailCopy = statusEmail ? getOrderStatusEmailCopy(nextStatus, orderMode, orderId) : null;
-    if (statusEmail && statusEmailCopy) {
-      const trackingUrl = `${(process.env.FRONTEND_URL || 'http://localhost:3000').replace(/\/+$/, '')}/${req.restaurant?.slug}/orders`;
-      sendEmail({
-        to: statusEmail,
-        subject: statusEmailCopy.subject,
-        html: getOrderStatusUpdateEmail({
-          restaurantName: req.restaurant?.name || 'Loja',
-          customerName: updatedOrder.customerName,
-          orderId,
-          trackingUrl,
-          copy: statusEmailCopy,
-        }),
-      }).catch((err) => console.error(`Falha ao enviar e-mail de status do pedido #${orderId}:`, err));
+      const statusNotificationCopy = getOrderStatusNotificationCopy(nextStatus, orderMode, orderId);
+      if (statusNotificationCopy) {
+        sendPushToCustomer(req.restaurantId!, updatedOrder.customerId, statusNotificationCopy)
+          .catch((err) => console.error(`Falha ao enviar push de status do pedido #${orderId}:`, err));
+      }
     }
 
     res.json(updatedOrder);

@@ -49,6 +49,7 @@ model Restaurant {
   provisioningLogs   ProvisioningLog[]
   printDevices       PrintDevice[]
   printJobs          PrintJob[]
+  pushSubscriptions  PushSubscription[]
   
   // PIX Configuration for Dynamic QR Codes
   pixKey             String?
@@ -114,6 +115,7 @@ model Customer {
   restaurant   Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
   orders       Order[]
   accessCredential CustomerAccessCredential?
+  pushSubscriptions PushSubscription[]
 
   @@index([restaurantId])
   @@map("customers")
@@ -131,6 +133,24 @@ model CustomerAccessCredential {
 
   @@index([restaurantId, tokenHash])
   @@map("customer_access_credentials")
+}
+
+// Inscrição de push web (navegador) de um cliente para acompanhar o status do próprio
+// pedido. Vinculada ao mesmo par phone+accessToken já usado em
+// GET /api/customer/orders/:phone — não é um mecanismo de auth novo.
+model PushSubscription {
+  id           Int      @id @default(autoincrement())
+  restaurantId Int
+  customerId   Int
+  endpoint     String   @unique
+  p256dh       String
+  auth         String
+  createdAt    DateTime @default(now())
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  customer     Customer   @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([restaurantId, customerId])
+  @@map("push_subscriptions")
 }
 
 model Category {
