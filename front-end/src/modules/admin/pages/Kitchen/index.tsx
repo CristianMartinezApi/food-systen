@@ -5,6 +5,7 @@ import { CheckCircle2, Clock, Flame, Loader2, UtensilsCrossed } from "lucide-rea
 import { api } from "../../../../core/config/api";
 import { socket } from "../../../../core/config/socket";
 import { getTenantSlug } from "../../../../shared/utils/tenant";
+import { getOrderMode, getNextStatusAfterPreparing, type OrderMode } from "../../../../shared/utils/orderStatus";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { AdminPageHeader } from "../../components/layout/AdminPageHeader";
@@ -12,28 +13,11 @@ import { AdminPageHeader } from "../../components/layout/AdminPageHeader";
 const READY_COLUMN_WINDOW_MS = 15 * 60 * 1000;
 const READY_STATUSES = ["READY", "OUT_FOR_DELIVERY", "DELIVERED", "RETIRED"];
 
-type OrderMode = "DELIVERY" | "PICKUP" | "DINE_IN";
-
 const MODE_LABEL: Record<OrderMode, string> = {
     DELIVERY: "Entrega",
     PICKUP: "Retirada",
     DINE_IN: "Mesa",
 };
-
-function getOrderMode(order: any): OrderMode {
-    const type = order?.address?.type;
-    if (type === "PICKUP") return "PICKUP";
-    if (type === "DINE_IN") return "DINE_IN";
-    return "DELIVERY";
-}
-
-// Mesmo mapeamento de Orders/index.tsx:getPrimaryAction para o status PREPARING —
-// não é uma regra nova, só replicada aqui para não acoplar os dois módulos de página.
-function getNextStatusAfterPreparing(mode: OrderMode): string {
-    if (mode === "PICKUP") return "READY";
-    if (mode === "DINE_IN") return "DELIVERED";
-    return "OUT_FOR_DELIVERY";
-}
 
 function formatItemDetails(value: any): string[] {
     if (!value) return [];

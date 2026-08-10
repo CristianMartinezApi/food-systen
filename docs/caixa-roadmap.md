@@ -40,7 +40,11 @@ Transformar o painel administrativo em um caixa completo para operação diária
 
 ### Fase 3 - Caixa Escalavel
 
-- KDS por etapa (cozinha/expedicao/balcao).
+- [x] KDS single-station (`/admin/cozinha`): kanban Confirmados/Em preparo/Prontos,
+  tempo real via socket, alerta sonoro de pedido novo. Reaproveita os mesmos
+  endpoints de pedidos (`GET /orders`, `PATCH /orders/:id`), sem rota nova.
+- [ ] KDS por etapa (cozinha/expedicao/balcao) — multi-estacao ainda nao implementado;
+  hoje existe uma unica tela de cozinha, sem separacao por posto fisico.
 - SLA por etapa e gargalos operacionais.
 - Integracoes externas (fiscal/ERP/TEF) conforme estrategia.
 

@@ -11,6 +11,7 @@ import {
 import { api } from "../../../../core/config/api";
 import { socket } from "../../../../core/config/socket";
 import { getTenantSlug } from "../../../../shared/utils/tenant";
+import { getOrderMode, getNextStatusAfterPreparing } from "../../../../shared/utils/orderStatus";
 import { formatCurrency, cn } from "../../../../shared/utils";
 import { formatDistanceToNow } from "date-fns";
 import toast from "react-hot-toast";
@@ -51,13 +52,6 @@ export default function OrdersPage({ isCompact = false, onOrdersChange }: { isCo
     const originalTitleRef = useRef<string>("Pedidos");
     const titleBlinkIntervalRef = useRef<number | null>(null);
     const titleBlinkTimeoutRef = useRef<number | null>(null);
-
-    const getOrderMode = (order: any): "DELIVERY" | "PICKUP" | "DINE_IN" => {
-        const type = order?.address?.type;
-        if (type === "PICKUP") return "PICKUP";
-        if (type === "DINE_IN") return "DINE_IN";
-        return "DELIVERY";
-    };
 
     const isCompletedOrder = (order: any) => {
         if (COMPLETED_STATUSES.includes(order.status)) return true;
@@ -125,10 +119,14 @@ export default function OrdersPage({ isCompact = false, onOrdersChange }: { isCo
         }
 
         if (order.status === "PREPARING") {
+            // nextStatus vem do util compartilhado (mesma fonte que a tela de Cozinha usa) —
+            // só o rótulo/estilo por modalidade é decidido aqui.
+            const nextStatus = getNextStatusAfterPreparing(mode);
+
             if (mode === "PICKUP") {
                 return {
                     label: "Pronto p/ Retirada",
-                    nextStatus: "READY",
+                    nextStatus,
                     className: "h-9 px-4 bg-orange-500 text-white rounded-lg font-body font-bold text-[10px] uppercase tracking-widest shadow-md shadow-orange-500/20 hover:bg-orange-600 transition-all active:scale-95 flex-1"
                 };
             }
@@ -136,14 +134,14 @@ export default function OrdersPage({ isCompact = false, onOrdersChange }: { isCo
             if (mode === "DELIVERY") {
                 return {
                     label: "Saiu p/ Entrega",
-                    nextStatus: "OUT_FOR_DELIVERY",
+                    nextStatus,
                     className: "h-9 px-4 bg-indigo-500 text-white rounded-lg font-body font-bold text-[10px] uppercase tracking-widest shadow-md shadow-indigo-500/20 hover:bg-indigo-600 transition-all active:scale-95 flex-1"
                 };
             }
 
             return {
                 label: "Finalizar",
-                nextStatus: "DELIVERED",
+                nextStatus,
                 className: "h-9 px-4 bg-emerald-500 text-white rounded-lg font-body font-bold text-[10px] uppercase tracking-widest shadow-md shadow-emerald-500/20 hover:bg-emerald-600 transition-all active:scale-95 flex-1"
             };
         }
