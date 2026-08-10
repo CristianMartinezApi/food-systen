@@ -19,7 +19,8 @@ import {
   Grid3X3,
   Utensils,
   BarChart3,
-  Menu
+  Menu,
+  ChefHat
 } from "lucide-react";
 import { cn, normalizeAssetUrl } from "../../../../shared/utils";
 import { motion, AnimatePresence } from "framer-motion";
@@ -425,6 +426,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
     { icon: ShieldCheck, label: "Turno", path: "/admin/operacao" },
     { icon: Grid3X3, label: "Mesas", path: "/admin/tables" },
     { icon: Utensils, label: "Garçom", path: "/admin/garcom" },
+    { icon: ChefHat, label: "Cozinha", path: "/admin/cozinha" },
     { icon: Wallet, label: "Sessão de Caixa", path: "/admin/caixa" },
     { icon: BarChart3, label: "Relatórios", path: "/admin/relatorios" },
     { icon: ShoppingBag, label: "Pedidos", path: "/admin/orders" },
@@ -437,6 +439,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
   if (userRole === 'EMPLOYEE') {
     menuItems = [
       { icon: Utensils, label: "Garçom", path: "/admin/garcom" },
+      { icon: ChefHat, label: "Cozinha", path: "/admin/cozinha" },
     ];
   }
 
@@ -447,6 +450,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
       { icon: Utensils, label: "Garçom", path: "/admin/garcom" },
       { icon: Wallet, label: "Sessão de Caixa", path: "/admin/caixa" },
       { icon: ShoppingBag, label: "Pedidos", path: "/admin/orders" },
+      { icon: ChefHat, label: "Cozinha", path: "/admin/cozinha" },
     ];
   }
 
