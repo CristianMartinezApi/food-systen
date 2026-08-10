@@ -20,7 +20,9 @@ import {
   Utensils,
   BarChart3,
   Menu,
-  ChefHat
+  ChefHat,
+  Layers,
+  Ticket
 } from "lucide-react";
 import { cn, normalizeAssetUrl } from "../../../../shared/utils";
 import { motion, AnimatePresence } from "framer-motion";
@@ -432,6 +434,8 @@ export function AdminLayout({ children }: AdminLayoutProps) {
     { icon: ShoppingBag, label: "Pedidos", path: "/admin/orders" },
     { icon: Tags, label: "Categorias", path: "/admin/categories" },
     { icon: Package, label: "Produtos", path: "/admin/products" },
+    { icon: Layers, label: "Combos", path: "/admin/combos" },
+    { icon: Ticket, label: "Cupons", path: "/admin/cupons" },
     { icon: Settings, label: "Configurações", path: "/admin/settings" },
   ];
 

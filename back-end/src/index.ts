@@ -23,6 +23,7 @@ import { getOrderReceivedNotificationCopy, getOrderStatusNotificationCopy } from
 import { sendPushToCustomer } from './services/PushService';
 import { computeItemUnitPrice, computeOrderSubtotal, OrderPricingError } from './utils/order-pricing';
 import { calculateDistanceKm } from './utils/distance';
+import { computeCouponDiscount, normalizeCouponCode, CouponValidationError } from './utils/coupon-pricing';
 
 dotenv.config();
 
@@ -3971,6 +3972,7 @@ app.get('/api/products', async (req: TenantRequest, res) => {
         sizes: true,
         usesGuidedAssembly: true,
         guidedAssemblyConfig: true,
+        isCombo: true,
       }
     });
     writePublicStoreCache('products', req.restaurantId, products);
@@ -4111,6 +4113,304 @@ app.delete('/api/products/:id', authMiddleware, async (req: AuthRequest, res) =>
   } catch (error) {
     console.error('Error deleting product:', error);
     res.status(400).json({ error: 'Erro ao excluir produto.' });
+  }
+});
+
+// Combos — um Product com isCombo=true, composto pelos itens em combo_items.
+// Aparece no cardápio e no carrinho igual a um produto simples (mesmo preço único,
+// sem tamanho/adicional); a única diferença de tratamento fica na baixa de estoque
+// dos componentes na criação do pedido (ver POST /api/orders).
+app.get('/api/combos', authMiddleware, async (req: AuthRequest, res) => {
+  try {
+    const combos = await prisma.product.findMany({
+      where: { restaurantId: req.restaurantId, isCombo: true },
+      orderBy: { name: 'asc' },
+      include: {
+        comboItems: {
+          include: {
+            componentProduct: { select: { id: true, name: true, price: true, image: true } },
+          },
+        },
+      },
+    });
+    res.json(combos);
+  } catch (error) {
+    console.error('Error listing combos:', error);
+    res.status(500).json({ error: 'Erro ao buscar combos.' });
+  }
+});
+
+function normalizeComboItemsInput(rawItems: any): Array<{ productId: number; quantity: number }> {
+  if (!Array.isArray(rawItems)) return [];
+  return rawItems
+    .map((item: any) => ({
+      productId: Number(item?.productId),
+      quantity: Math.max(1, Number(item?.quantity) || 1),
+    }))
+    .filter((item) => Number.isInteger(item.productId) && item.productId > 0);
+}
+
+app.post('/api/combos', authMiddleware, async (req: AuthRequest, res) => {
+  try {
+    const { name, description, price, image, categoryId, isActive } = req.body;
+    const items = normalizeComboItemsInput(req.body?.items);
+
+    if (!name || !categoryId || !Number.isFinite(Number(price)) || Number(price) <= 0) {
+      return res.status(400).json({ error: 'Informe nome, categoria e preço válidos para o combo.' });
+    }
+    if (items.length === 0) {
+      return res.status(400).json({ error: 'Informe ao menos 1 produto componente do combo.' });
+    }
+
+    const componentIds = [...new Set(items.map((item) => item.productId))];
+    const components = await prisma.product.findMany({
+      where: { id: { in: componentIds }, restaurantId: req.restaurantId!, isCombo: false },
+      select: { id: true },
+    });
+    if (components.length !== componentIds.length) {
+      return res.status(400).json({ error: 'Um ou mais produtos do combo são inválidos.' });
+    }
+
+    const combo = await prisma.product.create({
+      data: {
+        restaurantId: req.restaurantId!,
+        categoryId: parseInt(categoryId),
+        name: String(name).toUpperCase().trim(),
+        description: description || null,
+        price: Number(price),
+        image: image || null,
+        isActive: isActive !== false,
+        isCombo: true,
+        trackStock: false,
+        comboItems: {
+          create: items.map((item) => ({ componentProductId: item.productId, quantity: item.quantity })),
+        },
+      },
+      include: {
+        comboItems: { include: { componentProduct: { select: { id: true, name: true, price: true, image: true } } } },
+      },
+    });
+
+    invalidatePublicStoreCache(req.restaurantId);
+    res.status(201).json(combo);
+  } catch (error) {
+    console.error('Error creating combo:', error);
+    res.status(400).json({ error: 'Erro ao criar combo.' });
+  }
+});
+
+app.patch('/api/combos/:id', authMiddleware, async (req: AuthRequest, res) => {
+  try {
+    const comboId = Number.parseInt(req.params.id, 10);
+    const existing = await prisma.product.findFirst({
+      where: { id: comboId, restaurantId: req.restaurantId, isCombo: true },
+      select: { id: true },
+    });
+    if (!existing) {
+      return res.status(404).json({ error: 'Combo não encontrado.' });
+    }
+
+    const { name, description, price, image, categoryId, isActive } = req.body;
+    const updateData: any = {};
+    if (name !== undefined) updateData.name = String(name).toUpperCase().trim();
+    if (description !== undefined) updateData.description = description || null;
+    if (price !== undefined) updateData.price = Number(price);
+    if (image !== undefined) updateData.image = image || null;
+    if (categoryId !== undefined) updateData.categoryId = parseInt(categoryId);
+    if (isActive !== undefined) updateData.isActive = Boolean(isActive);
+
+    const items = req.body?.items !== undefined ? normalizeComboItemsInput(req.body.items) : null;
+    if (items) {
+      if (items.length === 0) {
+        return res.status(400).json({ error: 'Informe ao menos 1 produto componente do combo.' });
+      }
+      const componentIds = [...new Set(items.map((item) => item.productId))];
+      const components = await prisma.product.findMany({
+        where: { id: { in: componentIds }, restaurantId: req.restaurantId!, isCombo: false },
+        select: { id: true },
+      });
+      if (components.length !== componentIds.length) {
+        return res.status(400).json({ error: 'Um ou mais produtos do combo são inválidos.' });
+      }
+    }
+
+    const combo = await prisma.$transaction(async (tx) => {
+      if (items) {
+        await tx.comboItem.deleteMany({ where: { comboProductId: comboId } });
+        await tx.comboItem.createMany({
+          data: items.map((item) => ({ comboProductId: comboId, componentProductId: item.productId, quantity: item.quantity })),
+        });
+      }
+
+      return tx.product.update({
+        where: { id: comboId },
+        data: updateData,
+        include: {
+          comboItems: { include: { componentProduct: { select: { id: true, name: true, price: true, image: true } } } },
+        },
+      });
+    });
+
+    invalidatePublicStoreCache(req.restaurantId);
+    res.json(combo);
+  } catch (error) {
+    console.error('Error updating combo:', error);
+    res.status(400).json({ error: 'Erro ao atualizar combo.' });
+  }
+});
+
+app.delete('/api/combos/:id', authMiddleware, async (req: AuthRequest, res) => {
+  try {
+    const result = await prisma.product.deleteMany({
+      where: { id: parseInt(req.params.id), restaurantId: req.restaurantId, isCombo: true },
+    });
+    if (result.count === 0) {
+      return res.status(404).json({ error: 'Combo não encontrado.' });
+    }
+    invalidatePublicStoreCache(req.restaurantId);
+    res.status(204).send();
+  } catch (error) {
+    console.error('Error deleting combo:', error);
+    res.status(400).json({ error: 'Erro ao excluir combo.' });
+  }
+});
+
+// Cupons de desconto — gestão restrita a MANAGER+ (mesmo nível de permissão já usado
+// para ações que mexem com desconto/dinheiro, ex.: ajuste de caixa).
+app.get('/api/coupons', authMiddleware, async (req: AuthRequest, res) => {
+  if (!ensureSensitiveSettingsPermission(req, res, 'consultar cupons')) return;
+  try {
+    const coupons = await prisma.coupon.findMany({
+      where: { restaurantId: req.restaurantId },
+      orderBy: { createdAt: 'desc' },
+      include: { _count: { select: { redemptions: true } } },
+    });
+    res.json(coupons);
+  } catch (error) {
+    console.error('Error listing coupons:', error);
+    res.status(500).json({ error: 'Erro ao buscar cupons.' });
+  }
+});
+
+function parseCouponPayload(body: any) {
+  const type = String(body?.type || '').toUpperCase();
+  if (!['PERCENTAGE', 'FIXED', 'FREE_SHIPPING'].includes(type)) {
+    throw new Error('Tipo de cupom inválido.');
+  }
+  const value = type === 'FREE_SHIPPING' ? 0 : Number(body?.value);
+  if (type !== 'FREE_SHIPPING' && (!Number.isFinite(value) || value <= 0)) {
+    throw new Error('Informe um valor de desconto válido para o cupom.');
+  }
+  if (type === 'PERCENTAGE' && value > 100) {
+    throw new Error('Desconto percentual não pode passar de 100%.');
+  }
+
+  return {
+    code: normalizeCouponCode(body?.code),
+    type: type as 'PERCENTAGE' | 'FIXED' | 'FREE_SHIPPING',
+    value,
+    minOrderValue: body?.minOrderValue != null && body.minOrderValue !== '' ? Number(body.minOrderValue) : null,
+    maxUses: body?.maxUses != null && body.maxUses !== '' ? Number(body.maxUses) : null,
+    maxUsesPerCustomer: Number.isFinite(Number(body?.maxUsesPerCustomer)) && Number(body?.maxUsesPerCustomer) > 0
+      ? Number(body.maxUsesPerCustomer)
+      : 1,
+    expiresAt: body?.expiresAt ? new Date(body.expiresAt) : null,
+    isActive: body?.isActive !== false,
+  };
+}
+
+app.post('/api/coupons', authMiddleware, async (req: AuthRequest, res) => {
+  if (!ensureSensitiveSettingsPermission(req, res, 'criar cupons')) return;
+  try {
+    const data = parseCouponPayload(req.body);
+    if (!data.code) {
+      return res.status(400).json({ error: 'Informe o código do cupom.' });
+    }
+
+    const coupon = await prisma.coupon.create({ data: { ...data, restaurantId: req.restaurantId! } });
+    await createAudit(req, 'create_coupon', 'coupon', coupon.id, { code: coupon.code, type: coupon.type });
+    res.status(201).json(coupon);
+  } catch (error: any) {
+    if (error?.code === 'P2002') {
+      return res.status(409).json({ error: 'Já existe um cupom com esse código.' });
+    }
+    console.error('Error creating coupon:', error);
+    res.status(400).json({ error: error?.message || 'Erro ao criar cupom.' });
+  }
+});
+
+app.patch('/api/coupons/:id', authMiddleware, async (req: AuthRequest, res) => {
+  if (!ensureSensitiveSettingsPermission(req, res, 'editar cupons')) return;
+  try {
+    const couponId = Number.parseInt(req.params.id, 10);
+    const existing = await prisma.coupon.findFirst({ where: { id: couponId, restaurantId: req.restaurantId } });
+    if (!existing) {
+      return res.status(404).json({ error: 'Cupom não encontrado.' });
+    }
+
+    const data = parseCouponPayload({ ...existing, ...req.body });
+    if (!data.code) {
+      return res.status(400).json({ error: 'Informe o código do cupom.' });
+    }
+
+    const coupon = await prisma.coupon.update({ where: { id: couponId }, data });
+    await createAudit(req, 'update_coupon', 'coupon', coupon.id, { code: coupon.code });
+    res.json(coupon);
+  } catch (error: any) {
+    if (error?.code === 'P2002') {
+      return res.status(409).json({ error: 'Já existe um cupom com esse código.' });
+    }
+    console.error('Error updating coupon:', error);
+    res.status(400).json({ error: error?.message || 'Erro ao atualizar cupom.' });
+  }
+});
+
+app.delete('/api/coupons/:id', authMiddleware, async (req: AuthRequest, res) => {
+  if (!ensureSensitiveSettingsPermission(req, res, 'excluir cupons')) return;
+  try {
+    const result = await prisma.coupon.deleteMany({
+      where: { id: parseInt(req.params.id), restaurantId: req.restaurantId },
+    });
+    if (result.count === 0) {
+      return res.status(404).json({ error: 'Cupom não encontrado.' });
+    }
+    res.status(204).send();
+  } catch (error) {
+    console.error('Error deleting coupon:', error);
+    res.status(400).json({ error: 'Erro ao excluir cupom.' });
+  }
+});
+
+// Validação pública do cupom no checkout — só para feedback imediato em tela; o
+// valor cobrado de verdade é sempre recalculado de novo dentro de POST /api/orders.
+app.post('/api/coupons/validate', async (req: TenantRequest, res) => {
+  try {
+    const code = normalizeCouponCode(req.body?.code);
+    const phone = typeof req.body?.phone === 'string' ? req.body.phone.trim() : '';
+    const subtotal = Number(req.body?.subtotal);
+
+    if (!code || !Number.isFinite(subtotal) || subtotal <= 0) {
+      return res.status(400).json({ error: 'Informe o código do cupom e o subtotal do pedido.' });
+    }
+
+    const coupon = await prisma.coupon.findFirst({ where: { restaurantId: req.restaurantId, code } });
+    if (!coupon) {
+      return res.status(404).json({ error: 'Cupom não encontrado.' });
+    }
+
+    const [totalRedemptions, customerRedemptions] = await Promise.all([
+      prisma.couponRedemption.count({ where: { couponId: coupon.id } }),
+      phone ? prisma.couponRedemption.count({ where: { couponId: coupon.id, customerPhone: phone } }) : Promise.resolve(0),
+    ]);
+
+    const result = computeCouponDiscount(coupon, { subtotal, totalRedemptions, customerRedemptions });
+    res.json({ code: coupon.code, type: coupon.type, ...result });
+  } catch (error: any) {
+    if (error instanceof CouponValidationError) {
+      return res.status(400).json({ error: error.message, code: error.code });
+    }
+    console.error('Error validating coupon:', error);
+    res.status(500).json({ error: 'Erro ao validar cupom.' });
   }
 });
 
@@ -4301,6 +4601,7 @@ app.post('/api/orders', orderCreationLimiter, async (req: TenantRequest, res) =>
     const customerEmail = typeof req.body?.email === 'string' && req.body.email.trim()
       ? req.body.email.trim()
       : null;
+    const couponCode = normalizeCouponCode(req.body?.couponCode);
     const suppliedCustomerAccessToken = typeof req.body?.customerAccessToken === 'string'
       ? req.body.customerAccessToken.trim()
       : '';
@@ -4496,7 +4797,8 @@ app.post('/api/orders', orderCreationLimiter, async (req: TenantRequest, res) =>
       }
     }
 
-    const deliveryFeeAmount = orderMode === 'DELIVERY' ? Number(settings?.deliveryFee || 0) : 0;
+    const baseDeliveryFeeAmount = orderMode === 'DELIVERY' ? Number(settings?.deliveryFee || 0) : 0;
+    const couponPhone = typeof phone === 'string' ? phone.trim() : '';
 
     const order = await prisma.$transaction(async (tx) => {
       const productIds = [...new Set(normalizedItems.map((item: any) => item.productId))];
@@ -4518,6 +4820,13 @@ app.post('/api/orders', orderCreationLimiter, async (req: TenantRequest, res) =>
           addons: true,
           guidedAssemblyConfig: true,
           usesGuidedAssembly: true,
+          isCombo: true,
+          comboItems: {
+            select: {
+              quantity: true,
+              componentProduct: { select: { id: true, name: true, trackStock: true, stockQuantity: true } },
+            },
+          },
         },
       });
 
@@ -4531,6 +4840,13 @@ app.post('/api/orders', orderCreationLimiter, async (req: TenantRequest, res) =>
 
         if (!product) {
           throw new Error('PRODUCT_NOT_FOUND');
+        }
+
+        if (product.isCombo && Array.isArray(product.comboItems) && product.comboItems.length > 0) {
+          const comboContents = product.comboItems
+            .map((comboItem: any) => `${comboItem.quantity}x ${comboItem.componentProduct.name}`)
+            .join(', ');
+          item.observations = item.observations ? `${item.observations} | Combo: ${comboContents}` : `Combo: ${comboContents}`;
         }
 
         const category = product.categoryId
@@ -4557,7 +4873,28 @@ app.post('/api/orders', orderCreationLimiter, async (req: TenantRequest, res) =>
         subtotal = Number((subtotal + lineTotal).toFixed(2));
         pricedItems.push({ ...item, price: unitPrice });
 
-        if (product.trackStock) {
+        if (product.isCombo) {
+          // Combo não tem estoque próprio: baixa cada componente na quantidade do combo × quantidade pedida.
+          for (const comboItem of product.comboItems || []) {
+            if (!comboItem.componentProduct.trackStock) continue;
+            const requiredQuantity = comboItem.quantity * item.quantity;
+            const stockUpdated = await tx.product.updateMany({
+              where: {
+                id: comboItem.componentProduct.id,
+                restaurantId: req.restaurantId!,
+                trackStock: true,
+                stockQuantity: { gte: requiredQuantity },
+              },
+              data: {
+                stockQuantity: { decrement: requiredQuantity },
+              },
+            });
+
+            if (stockUpdated.count === 0) {
+              throw new Error(`OUT_OF_STOCK:${comboItem.componentProduct.name}`);
+            }
+          }
+        } else if (product.trackStock) {
           const stockUpdated = await tx.product.updateMany({
             where: {
               id: item.productId,
@@ -4576,7 +4913,28 @@ app.post('/api/orders', orderCreationLimiter, async (req: TenantRequest, res) =>
         }
       }
 
-      const computedTotal = Number((subtotal + deliveryFeeAmount).toFixed(2));
+      let deliveryFeeAmount = baseDeliveryFeeAmount;
+      let discountAmount = 0;
+      let resolvedCoupon: { id: number } | null = null;
+
+      if (couponCode) {
+        const coupon = await tx.coupon.findFirst({ where: { restaurantId: req.restaurantId!, code: couponCode } });
+        if (!coupon) {
+          throw new Error('COUPON_NOT_FOUND');
+        }
+        const [totalRedemptions, customerRedemptions] = await Promise.all([
+          tx.couponRedemption.count({ where: { couponId: coupon.id } }),
+          couponPhone ? tx.couponRedemption.count({ where: { couponId: coupon.id, customerPhone: couponPhone } }) : Promise.resolve(0),
+        ]);
+        const couponResult = computeCouponDiscount(coupon, { subtotal, totalRedemptions, customerRedemptions });
+        discountAmount = couponResult.discountAmount;
+        if (couponResult.freeShipping) {
+          deliveryFeeAmount = 0;
+        }
+        resolvedCoupon = coupon;
+      }
+
+      const computedTotal = Number((subtotal - discountAmount + deliveryFeeAmount).toFixed(2));
 
       let customerId: number | undefined;
       const normalizedPhone = typeof phone === 'string' ? phone.trim() : '';
@@ -4643,7 +5001,7 @@ app.post('/api/orders', orderCreationLimiter, async (req: TenantRequest, res) =>
       orderBy: { openedAt: 'desc' },
     });
 
-    return tx.order.create({
+    const createdOrder = await tx.order.create({
       data: {
         idempotencyKey: idempotencyKey || null,
         customerName,
@@ -4655,6 +5013,8 @@ app.post('/api/orders', orderCreationLimiter, async (req: TenantRequest, res) =>
         subtotal,
         deliveryFee: deliveryFeeAmount,
         total: computedTotal,
+        discountAmount,
+        couponId: resolvedCoupon?.id ?? null,
         notes,
         tableNumber: tableNumber ? Number(tableNumber) : null,
         restaurantId: req.restaurantId!,
@@ -4680,6 +5040,20 @@ app.post('/api/orders', orderCreationLimiter, async (req: TenantRequest, res) =>
           customer: true,
         },
       });
+
+      if (resolvedCoupon) {
+        await tx.couponRedemption.create({
+          data: {
+            couponId: resolvedCoupon.id,
+            restaurantId: req.restaurantId!,
+            orderId: createdOrder.id,
+            customerPhone: couponPhone,
+            discountAmount,
+          },
+        });
+      }
+
+      return createdOrder;
     });
 
     const clientTotalNumber = Number(clientTotal);
@@ -4730,6 +5104,10 @@ app.post('/api/orders', orderCreationLimiter, async (req: TenantRequest, res) =>
       return res.status(400).json({ error: error.message, code: error.code });
     }
 
+    if (error instanceof CouponValidationError) {
+      return res.status(400).json({ error: error.message, code: error.code });
+    }
+
     if (error instanceof Error) {
       if (error.message.startsWith('OUT_OF_STOCK:')) {
         const productName = error.message.split(':')[1] || 'produto';
@@ -4741,6 +5119,9 @@ app.post('/api/orders', orderCreationLimiter, async (req: TenantRequest, res) =>
       }
       if (error.message === 'CUSTOMER_ACCESS_DENIED') {
         return res.status(403).json({ error: 'Este telefone já está vinculado a outro acesso do cliente.' });
+      }
+      if (error.message === 'COUPON_NOT_FOUND') {
+        return res.status(400).json({ error: 'Cupom não encontrado.' });
       }
     }
 
@@ -5707,6 +6088,13 @@ app.post('/api/cashier/direct-sales', authMiddleware, async (req: AuthRequest, r
           discountPercent: true,
           trackStock: true,
           stockQuantity: true,
+          isCombo: true,
+          comboItems: {
+            select: {
+              quantity: true,
+              componentProduct: { select: { id: true, name: true, trackStock: true, stockQuantity: true } },
+            },
+          },
         },
       });
 
@@ -5724,6 +6112,14 @@ app.post('/api/cashier/direct-sales', authMiddleware, async (req: AuthRequest, r
           : 0;
         const finalUnitPrice = unitPrice + addonsTotal;
 
+        let observations = itemSnapshot.observations;
+        if (product.isCombo && Array.isArray(product.comboItems) && product.comboItems.length > 0) {
+          const comboContents = product.comboItems
+            .map((comboItem: any) => `${comboItem.quantity}x ${comboItem.componentProduct.name}`)
+            .join(', ');
+          observations = observations ? `${observations} | Combo: ${comboContents}` : `Combo: ${comboContents}`;
+        }
+
         return {
           productId: product.id,
           name: product.name,
@@ -5731,14 +6127,36 @@ app.post('/api/cashier/direct-sales', authMiddleware, async (req: AuthRequest, r
           price: finalUnitPrice,
           total: Number((finalUnitPrice * itemSnapshot.quantity).toFixed(2)),
           trackStock: Boolean(product.trackStock),
-          observations: itemSnapshot.observations,
+          isCombo: Boolean(product.isCombo),
+          comboItems: product.comboItems || [],
+          observations,
           addons: itemSnapshot.addons || [],
           removals: itemSnapshot.removals || [],
         };
       });
 
       for (const item of normalizedItems) {
-        if (item.trackStock) {
+        if (item.isCombo) {
+          for (const comboItem of item.comboItems) {
+            if (!comboItem.componentProduct.trackStock) continue;
+            const requiredQuantity = comboItem.quantity * item.quantity;
+            const stockUpdated = await tx.product.updateMany({
+              where: {
+                id: comboItem.componentProduct.id,
+                restaurantId: req.restaurantId!,
+                trackStock: true,
+                stockQuantity: { gte: requiredQuantity },
+              },
+              data: {
+                stockQuantity: { decrement: requiredQuantity },
+              },
+            });
+
+            if (stockUpdated.count === 0) {
+              throw new Error(`OUT_OF_STOCK:${comboItem.componentProduct.name}`);
+            }
+          }
+        } else if (item.trackStock) {
           const stockUpdated = await tx.product.updateMany({
             where: {
               id: item.productId,

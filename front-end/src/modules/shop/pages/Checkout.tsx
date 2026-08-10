@@ -149,10 +149,15 @@ export default function Checkout() {
   }, [hasHydrated, savedAddress]);
 
   const [deliveryMode, setDeliveryMode] = useState<DeliveryMode>("DELIVERY");
+  const [couponInput, setCouponInput] = useState("");
+  const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; type: string; discountAmount: number; freeShipping: boolean } | null>(null);
+  const [isCouponLoading, setIsCouponLoading] = useState(false);
 
   const subtotal = hasHydrated ? getSubtotal() : 0;
-  const deliveryFee = deliveryMode === "DELIVERY" ? (settings?.deliveryFee || 0) : 0;
-  const total = subtotal + deliveryFee;
+  const baseDeliveryFee = deliveryMode === "DELIVERY" ? (settings?.deliveryFee || 0) : 0;
+  const deliveryFee = appliedCoupon?.freeShipping ? 0 : baseDeliveryFee;
+  const discountAmount = appliedCoupon?.discountAmount || 0;
+  const total = Math.max(0, subtotal - discountAmount + deliveryFee);
   const minOrderValue = settings?.minOrderValue || 0;
   const isPixAvailable = Boolean(settings?.pixEnabled);
   const isBelowMinimum = subtotal < minOrderValue;
@@ -470,6 +475,33 @@ export default function Checkout() {
     else router.push(`/${slug}`);
   };
 
+  const handleApplyCoupon = async () => {
+    const code = couponInput.trim().toUpperCase();
+    if (!code) return;
+
+    setIsCouponLoading(true);
+    try {
+      const result = await api.post("/coupons/validate", { code, phone: formData.phone, subtotal });
+      setAppliedCoupon({
+        code: result.code,
+        type: result.type,
+        discountAmount: result.discountAmount || 0,
+        freeShipping: Boolean(result.freeShipping),
+      });
+      toast.success("Cupom aplicado!", shopSuccessToastOptions);
+    } catch (error: any) {
+      setAppliedCoupon(null);
+      toast.error(error.message || "Cupom inválido.", shopErrorToastOptions);
+    } finally {
+      setIsCouponLoading(false);
+    }
+  };
+
+  const handleRemoveCoupon = () => {
+    setAppliedCoupon(null);
+    setCouponInput("");
+  };
+
   const handleFinishOrder = async () => {
     if (submissionLockRef.current) return;
 
@@ -526,6 +558,7 @@ export default function Checkout() {
         },
         lat: deliveryMode === "DELIVERY" ? deliveryCoords?.lat : undefined,
         lng: deliveryMode === "DELIVERY" ? deliveryCoords?.lng : undefined,
+        couponCode: appliedCoupon?.code || undefined,
         paymentMethod: deliveryMode === "DINE_IN" ? "CASH" : formData.paymentMethod,
         changeFor: (formData.paymentMethod === 'CASH' && formData.needsChange && formData.changeFor) 
           ? String(parseMoneyInput(formData.changeFor)) 
@@ -1346,11 +1379,55 @@ export default function Checkout() {
                   ))}
                 </div>
 
-                <div className="space-y-4 pt-8 border-t border-slate-50">
+                <div className="pt-6 border-t border-slate-50">
+                  {appliedCoupon ? (
+                    <div className="flex items-center justify-between gap-2 rounded-lg md:rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3">
+                      <div className="min-w-0">
+                        <p className="font-mono font-bold text-emerald-700 text-label truncate">{appliedCoupon.code}</p>
+                        <p className="text-[9px] font-body font-medium text-emerald-600 uppercase tracking-widest">
+                          {appliedCoupon.freeShipping ? "Frete grátis aplicado" : "Cupom aplicado"}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleRemoveCoupon}
+                        className="text-[10px] font-body font-bold uppercase tracking-widest text-emerald-700 hover:text-emerald-900 shrink-0"
+                      >
+                        Remover
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <input
+                        value={couponInput}
+                        onChange={(e) => setCouponInput(e.target.value.toUpperCase())}
+                        placeholder="Cupom de desconto"
+                        className="flex-1 h-11 px-4 rounded-lg md:rounded-xl border border-slate-200 bg-slate-50 text-label font-mono font-bold uppercase tracking-widest text-slate-900 outline-none focus:border-primary/50"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleApplyCoupon}
+                        disabled={isCouponLoading || !couponInput.trim()}
+                        className="h-11 px-4 rounded-lg md:rounded-xl bg-slate-950 text-white text-[10px] font-body font-bold uppercase tracking-widest disabled:opacity-50 shrink-0"
+                      >
+                        {isCouponLoading ? "..." : "Aplicar"}
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                <div className="space-y-4 pt-6 border-t border-slate-50">
                   <div className="flex justify-between items-center">
                     <span className="font-body font-medium text-slate-400 uppercase text-label tracking-widest">Subtotal</span>
                     <span className="font-mono font-medium text-slate-950 tracking-tighter">{formatCurrency(subtotal)}</span>
                   </div>
+
+                  {discountAmount > 0 && (
+                    <div className="flex justify-between items-center">
+                      <span className="font-body font-medium text-emerald-600 uppercase text-label tracking-widest">Desconto</span>
+                      <span className="font-mono font-bold text-emerald-600 tracking-tighter">-{formatCurrency(discountAmount)}</span>
+                    </div>
+                  )}
 
                   <div className="flex justify-between items-center">
                     <span className="font-body font-medium text-slate-400 uppercase text-label tracking-widest">Taxa de entrega</span>

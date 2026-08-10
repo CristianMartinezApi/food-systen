@@ -50,7 +50,8 @@ model Restaurant {
   printDevices       PrintDevice[]
   printJobs          PrintJob[]
   pushSubscriptions  PushSubscription[]
-  
+  coupons            Coupon[]
+
   // PIX Configuration for Dynamic QR Codes
   pixKey             String?
   pixKeyType         String?    // 'cpf' | 'cnpj' | 'email' | 'phone' | 'random'
@@ -193,6 +194,11 @@ model Product {
   sizes        Json?
   usesGuidedAssembly Boolean @default(false)
   guidedAssemblyConfig Json?
+  // Combo: este Product representa um combo (preço único, sem estoque próprio) cujos
+  // componentes ficam em ComboItem — ver model ComboItem.
+  isCombo      Boolean     @default(false)
+  comboItems   ComboItem[] @relation("ComboToItems")
+  usedInCombos ComboItem[] @relation("ComboComponentOf")
   orderItems   OrderItem[]
   category     Category    @relation(fields: [categoryId], references: [id], onDelete: Cascade)
   restaurant   Restaurant  @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
@@ -201,6 +207,21 @@ model Product {
   @@index([restaurantId])
   @@index([categoryId])
   @@map("products")
+}
+
+// Composição de um combo: quais produtos (e em que quantidade) formam o Product
+// marcado com isCombo=true. componentProductId usa onDelete: Restrict de propósito —
+// evita apagar um produto que ainda compõe um combo sem querer.
+model ComboItem {
+  id                 Int     @id @default(autoincrement())
+  comboProductId     Int
+  componentProductId Int
+  quantity           Int     @default(1)
+  comboProduct       Product @relation("ComboToItems", fields: [comboProductId], references: [id], onDelete: Cascade)
+  componentProduct   Product @relation("ComboComponentOf", fields: [componentProductId], references: [id], onDelete: Restrict)
+
+  @@index([comboProductId])
+  @@map("combo_items")
 }
 
 model Order {
@@ -233,9 +254,16 @@ model Order {
   pixConfirmedAt DateTime?
   pixConfirmedBy String?
 
+  // Cupom de desconto — sempre recalculado/validado no backend na criação do pedido.
+  couponId         Int?
+  discountAmount   Float    @default(0)
+  coupon           Coupon?  @relation(fields: [couponId], references: [id], onDelete: SetNull)
+  couponRedemption CouponRedemption?
+
   @@index([restaurantId])
   @@index([customerId])
   @@index([cashSessionId])
+  @@index([couponId])
   @@unique([restaurantId, idempotencyKey])
   @@map("orders")
 }
@@ -259,6 +287,51 @@ model OrderItem {
   @@index([orderId])
   @@index([productId])
   @@map("order_items")
+}
+
+enum CouponType {
+  PERCENTAGE
+  FIXED
+  FREE_SHIPPING
+}
+
+model Coupon {
+  id                 Int        @id @default(autoincrement())
+  restaurantId       Int
+  code               String
+  type               CouponType
+  value              Float      @default(0) // percentual ou R$; ignorado em FREE_SHIPPING
+  minOrderValue      Float?
+  maxUses            Int?       // null = ilimitado
+  maxUsesPerCustomer Int        @default(1)
+  expiresAt          DateTime?
+  isActive           Boolean    @default(true)
+  createdAt          DateTime   @default(now())
+  updatedAt          DateTime   @updatedAt
+  restaurant         Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  redemptions        CouponRedemption[]
+  orders             Order[]
+
+  @@unique([restaurantId, code])
+  @@index([restaurantId])
+  @@map("coupons")
+}
+
+// Um resgate por pedido (orderId único) — junto com a contagem por customerPhone,
+// é o que impede o mesmo cupom de ser reaproveitado além do limite configurado.
+model CouponRedemption {
+  id             Int      @id @default(autoincrement())
+  couponId       Int
+  restaurantId   Int
+  orderId        Int      @unique
+  customerPhone  String
+  discountAmount Float
+  createdAt      DateTime @default(now())
+  coupon         Coupon   @relation(fields: [couponId], references: [id], onDelete: Cascade)
+  order          Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([couponId, customerPhone])
+  @@map("coupon_redemptions")
 }
 
 model Settings {
