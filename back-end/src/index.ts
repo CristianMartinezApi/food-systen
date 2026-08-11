@@ -1,4 +1,5 @@
-﻿import express from 'express';
+﻿import { Sentry } from './lib/sentry';
+import express from 'express';
 
 import cors from 'cors';
 import dotenv from 'dotenv';
@@ -8331,6 +8332,8 @@ apiRouter.post('/pix/charge/:orderId', pixLimiter, tenantMiddleware, async (req:
     res.status(500).json({ error: 'Erro ao gerar cobrança PIX. Verifique a configuração.' });
   }
 });
+
+Sentry.setupExpressErrorHandler(app);
 
 app.use((error: any, _req: express.Request, res: express.Response, next: express.NextFunction) => {
   if (error?.type === 'entity.too.large') {
