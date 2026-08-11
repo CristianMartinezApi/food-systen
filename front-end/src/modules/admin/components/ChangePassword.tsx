@@ -125,7 +125,7 @@ export default function ChangePassword() {
       <div className="settings-panel settings-panel--security account-security-card rounded-3xl p-6 md:p-8">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
-            <div className="account-security-icon w-12 h-12 rounded-2xl flex items-center justify-center">
+            <div className="account-security-icon w-12 h-12 rounded-2xl flex items-center justify-center bg-emerald-50 text-emerald-600">
               <Lock size={24} />
             </div>
             <div>
@@ -137,7 +137,7 @@ export default function ChangePassword() {
         
         <button
           onClick={() => setShowForm(true)}
-          className="account-security-primary-action w-full h-12 rounded-xl font-black uppercase tracking-tight transition-all flex items-center justify-center gap-2"
+          className="account-security-primary-action w-full h-12 rounded-xl font-black uppercase tracking-tight transition-all flex items-center justify-center gap-2 bg-slate-950 text-white hover:bg-emerald-600"
         >
           <Lock size={18} />
           Alterar Senha
@@ -235,7 +235,7 @@ export default function ChangePassword() {
 
         {/* Requisitos de Senha */}
         {formData.newPassword && (
-          <div className="account-security-requirements rounded-2xl p-4">
+          <div className="account-security-requirements rounded-2xl border border-slate-200 bg-slate-50 p-4">
             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">
               Requisitos de Segurança
             </p>
@@ -257,8 +257,8 @@ export default function ChangePassword() {
         )}
 
         {/* Aviso de Segurança */}
-        <div className="account-security-notice rounded-2xl p-4">
-          <p className="text-sm font-medium">
+        <div className="account-security-notice rounded-2xl border border-sky-100 bg-sky-50 p-4">
+          <p className="text-sm font-medium text-sky-700">
             ℹ️ Por segurança, você será desconectado após alterar a senha e precisará fazer login novamente.
           </p>
         </div>
@@ -268,14 +268,14 @@ export default function ChangePassword() {
           <button
             type="button"
             onClick={() => setShowForm(false)}
-            className="account-security-secondary-action flex-1 h-12 rounded-xl font-black uppercase tracking-tight transition-all"
+            className="account-security-secondary-action flex-1 h-12 rounded-xl border border-slate-200 bg-white text-slate-700 font-black uppercase tracking-tight transition-all hover:bg-slate-50"
           >
             Cancelar
           </button>
           <button
             type="submit"
             disabled={isLoading || !allRequirementsMet || formData.currentPassword !== formData.currentPassword}
-            className="account-security-primary-action flex-1 h-12 rounded-xl font-black uppercase tracking-tight transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="account-security-primary-action flex-1 h-12 rounded-xl font-black uppercase tracking-tight transition-all flex items-center justify-center gap-2 bg-slate-950 text-white hover:bg-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isLoading ? <Loader2 className="animate-spin" size={18} /> : <Lock size={18} />}
             Alterar Senha

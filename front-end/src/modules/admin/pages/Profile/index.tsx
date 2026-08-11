@@ -591,7 +591,7 @@ export default function Profile() {
                 <button
                   type="button"
                   onClick={() => setShowAllAccesses((current) => !current)}
-                  className="account-access-toggle inline-flex h-10 w-full items-center justify-center rounded-xl border px-4 text-[10px] font-black uppercase tracking-wider transition"
+                  className="account-access-toggle inline-flex h-10 w-full items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 px-4 text-[10px] font-black uppercase tracking-wider transition hover:bg-slate-50"
                   aria-expanded={showAllAccesses}
                 >
                   {showAllAccesses

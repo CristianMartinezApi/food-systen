@@ -36,8 +36,8 @@ export default function OnboardingPage() {
     }
   }, []);
 
-  const updateSlug = (name: string) => {
-    const slug = name
+  const normalizeSlug = (value: string) =>
+    value
       .toLowerCase()
       .normalize("NFD")
       .replace(/[\u0300-\u036f]/g, "")
@@ -45,7 +45,8 @@ export default function OnboardingPage() {
       .replace(/-+/g, "-")
       .replace(/^-|-$/g, "");
 
-    setFormData((prev) => ({ ...prev, restaurantName: name, slug }));
+  const updateSlug = (name: string) => {
+    setFormData((prev) => ({ ...prev, restaurantName: name, slug: normalizeSlug(name) }));
   };
 
   const formatCnpjInput = (value: string) => {
@@ -55,6 +56,20 @@ export default function OnboardingPage() {
       .replace(/^(\d{2})\.(\d{3})(\d)/, "$1.$2.$3")
       .replace(/\.(\d{3})(\d)/, ".$1/$2")
       .replace(/(\d{4})(\d)/, "$1-$2");
+  };
+
+  const formatPhoneInput = (value: string) => {
+    const digits = value.replace(/\D/g, "").slice(0, 11);
+    if (digits.length > 10) {
+      return digits.replace(/^(\d{2})(\d{5})(\d{4}).*/, "($1) $2-$3");
+    } else if (digits.length > 6) {
+      return digits.replace(/^(\d{2})(\d{4})(\d{0,4}).*/, "($1) $2-$3");
+    } else if (digits.length > 2) {
+      return digits.replace(/^(\d{2})(\d{0,5}).*/, "($1) $2");
+    } else if (digits.length > 0) {
+      return digits.replace(/^(\d{2}).*/, "($1");
+    }
+    return digits;
   };
 
   const handleCreateStore = async (e: React.FormEvent) => {
@@ -130,11 +145,11 @@ export default function OnboardingPage() {
 
           <div className="grid md:grid-cols-2 gap-4">
             <input value={formData.cnpj} onChange={(e) => setFormData({ ...formData, cnpj: formatCnpjInput(e.target.value) })} placeholder="CNPJ (opcional)" className="h-14 rounded-2xl bg-slate-50 border border-transparent focus:border-primary/20 px-5 outline-none font-medium" />
-            <input required value={formData.slug} onChange={(e) => setFormData({ ...formData, slug: e.target.value })} placeholder="slug-da-loja" className="h-14 rounded-2xl bg-slate-50 border border-transparent focus:border-primary/20 px-5 outline-none font-medium" />
+            <input required value={formData.slug} onChange={(e) => setFormData({ ...formData, slug: normalizeSlug(e.target.value) })} placeholder="slug-da-loja" className="h-14 rounded-2xl bg-slate-50 border border-transparent focus:border-primary/20 px-5 outline-none font-medium" />
           </div>
 
           <textarea value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} placeholder="Descrição da loja" rows={4} className="w-full rounded-2xl bg-slate-50 border border-transparent focus:border-primary/20 px-5 py-4 outline-none font-medium resize-none" />
-          <input value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} placeholder="Telefone da loja" className="h-14 w-full rounded-2xl bg-slate-50 border border-transparent focus:border-primary/20 px-5 outline-none font-medium" />
+          <input value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: formatPhoneInput(e.target.value) })} placeholder="Telefone da loja" className="h-14 w-full rounded-2xl bg-slate-50 border border-transparent focus:border-primary/20 px-5 outline-none font-medium" />
 
           <div className="rounded-[1.75rem] border border-slate-100 bg-white p-4 sm:p-5 space-y-4 shadow-sm">
             <div className="flex items-start gap-3">

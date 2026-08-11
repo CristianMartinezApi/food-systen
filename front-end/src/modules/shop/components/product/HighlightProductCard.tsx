@@ -25,13 +25,15 @@ export function HighlightProductCard({ product }: HighlightProductCardProps) {
         )}
       >
         <div className="relative h-20 w-full overflow-hidden bg-slate-100 md:h-24">
-          <img
-            src={product.image}
-            alt={product.name}
-            loading="lazy"
-            decoding="async"
-            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-          />
+          {product.image && (
+            <img
+              src={product.image}
+              alt={product.name}
+              loading="lazy"
+              decoding="async"
+              className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+            />
+          )}
 
           {isPromotional && (
             <div className="absolute left-1.5 top-1.5 bg-rose-600 px-1.5 py-0.5 text-[8px] font-black text-white">

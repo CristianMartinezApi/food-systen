@@ -205,7 +205,7 @@ function AuditContent() {
                 placeholder="Buscar ação ou email"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="h-full w-full bg-transparent outline-none font-body font-medium text-slate-600 text-[12px] sm:text-label uppercase tracking-[0.04em]"
+                className="h-full w-full bg-transparent outline-none font-body font-medium text-slate-600 text-[12px] sm:text-label"
               />
             </div>
 

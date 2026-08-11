@@ -156,7 +156,14 @@ export default function ReportsPage() {
             {summaryCards.map(([label, value], index) => (
               <div key={label} className="border-b border-r border-slate-200 p-4">
                 <p className="text-xs text-slate-500">{label}</p>
-                <p className={cn("mt-1 text-lg font-semibold tabular-nums", index === 5 && report.summary.cashDifference !== 0 ? "text-amber-700" : "text-slate-950")}>{value}</p>
+                <p className={cn(
+                  "mt-1 text-lg font-semibold tabular-nums",
+                  index === 5 && report.summary.cashDifference < 0
+                    ? "text-rose-700"
+                    : index === 5 && report.summary.cashDifference > 0
+                      ? "text-amber-700"
+                      : "text-slate-950"
+                )}>{value}</p>
               </div>
             ))}
           </section>
@@ -184,7 +191,7 @@ export default function ReportsPage() {
             <div className="overflow-x-auto">
               <table className="w-full min-w-[760px] text-sm">
                 <thead className="border-b border-slate-200 bg-slate-50 text-xs text-slate-500"><tr><th className="px-4 py-2 text-left">Sessão</th><th>Operador</th><th>Abertura</th><th>Fechamento</th><th className="px-4 text-right">Diferença</th></tr></thead>
-                <tbody className="divide-y divide-slate-200">{report.sessions.map((session: any) => <tr key={session.id}><td className="px-4 py-3 font-mono">#{session.id}</td><td className="text-center">{session.openedBy?.name || "—"}</td><td className="text-center">{new Date(session.openedAt).toLocaleString("pt-BR")}</td><td className="text-center">{session.closedAt ? new Date(session.closedAt).toLocaleString("pt-BR") : "Em aberto"}</td><td className="px-4 text-right font-semibold">{session.status === "CLOSED" ? formatCurrency(session.differenceAmount || 0) : "—"}</td></tr>)}</tbody>
+                <tbody className="divide-y divide-slate-200">{report.sessions.map((session: any) => <tr key={session.id}><td className="px-4 py-3 font-mono">#{session.id}</td><td className="text-center">{session.openedBy?.name || "—"}</td><td className="text-center">{new Date(session.openedAt).toLocaleString("pt-BR")}</td><td className="text-center">{session.closedAt ? new Date(session.closedAt).toLocaleString("pt-BR") : "Em aberto"}</td><td className={cn("px-4 text-right font-semibold", session.status === "CLOSED" && session.differenceAmount < 0 ? "text-rose-700" : session.status === "CLOSED" && session.differenceAmount > 0 ? "text-amber-700" : "")}>{session.status === "CLOSED" ? formatCurrency(session.differenceAmount || 0) : "—"}</td></tr>)}</tbody>
               </table>
             </div>
           </section>

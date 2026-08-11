@@ -24,6 +24,7 @@ import {
     Settings2
 } from "lucide-react";
 import { useSettings } from "../../../../core/hooks/useSettings";
+import { api } from "../../../../core/config/api";
 import { cn, normalizeMoneyInput, parseMoneyInput, toMoneyInputValue, formatMoneyInputRealtime } from "../../../../shared/utils";
 import toast from "react-hot-toast";
 import { createDefaultOperatingHours, getNextOpeningLabel, isRestaurantOpenNow, normalizeOperatingHours, validateOperatingHours } from "../../../../shared/utils/schedule";
@@ -55,6 +56,13 @@ export default function SettingsPage() {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const bannerFileInputRef = useRef<HTMLInputElement>(null);
     const hasInitializedFormRef = useRef(false);
+    const [hasPrinterConfigured, setHasPrinterConfigured] = useState(false);
+
+    useEffect(() => {
+        api.get("/print/settings")
+            .then((res: any) => setHasPrinterConfigured(Boolean(res?.device)))
+            .catch(() => setHasPrinterConfigured(false));
+    }, []);
     const openSupportChat = () => {
         sendToWhatsApp(
             SAAS_SUPPORT_PHONE,
@@ -400,13 +408,26 @@ export default function SettingsPage() {
             href: "#settings-hours",
             complete: Object.values(operatingHours).some((day) => day.enabled && day.shifts.length > 0),
         },
+        {
+            label: "PIX",
+            href: "#settings-payments",
+            complete: Boolean(settings?.pixKey),
+        },
+        {
+            label: "Impressão",
+            href: "#settings-printer",
+            complete: hasPrinterConfigured,
+        },
     ];
     const completedSetupSteps = setupChecks.filter((step) => step.complete).length;
     const setupProgress = Math.round((completedSetupSteps / setupChecks.length) * 100);
     const settingsNavigation = [
         { label: "Marca", href: "#settings-brand", icon: Palette },
+        { label: "Banner", href: "#settings-banner", icon: ImagePlus },
         { label: "Local e entrega", href: "#settings-location", icon: MapPin },
+        { label: "Entrega e valores", href: "#settings-delivery", icon: Truck },
         { label: "Operação", href: "#settings-hours", icon: Settings2 },
+        { label: "Redes sociais", href: "#settings-social", icon: Share2 },
         { label: "Equipe", href: "#settings-team", icon: Users },
         { label: "Pagamentos", href: "#settings-payments", icon: CreditCard },
         { label: "Impressão", href: "#settings-printer", icon: Printer },
@@ -614,7 +635,7 @@ export default function SettingsPage() {
                                     <input
                                         value={formData.storeName || ""}
                                         onChange={(e) => setFormData({ ...formData, storeName: e.target.value })}
-                                        className="w-full h-10 sm:h-12 md:h-16 px-4 sm:px-6 bg-slate-50 border-transparent focus:bg-white focus:ring-2 focus:ring-slate-950/5 rounded-2xl transition-all font-body font-bold text-slate-950 text-[12px] sm:text-label uppercase tracking-widest outline-none"
+                                        className="w-full h-10 sm:h-12 md:h-16 px-4 sm:px-6 bg-slate-50 border-transparent focus:bg-white focus:ring-2 focus:ring-slate-950/5 rounded-2xl transition-all font-body font-bold text-slate-950 text-[12px] sm:text-label outline-none"
                                     />
                                 </div>
 
@@ -626,7 +647,7 @@ export default function SettingsPage() {
                                             value={formData.phone || ""}
                                             onChange={handlePhoneChange}
                                             placeholder="(11) 99999-9999"
-                                            className="w-full h-10 sm:h-12 md:h-16 pl-12 sm:pl-16 pr-4 sm:pr-6 bg-slate-50 border-transparent focus:bg-white focus:ring-2 focus:ring-slate-950/5 rounded-2xl transition-all font-body font-bold text-slate-950 text-[12px] sm:text-label uppercase tracking-widest outline-none"
+                                            className="w-full h-10 sm:h-12 md:h-16 pl-12 sm:pl-16 pr-4 sm:pr-6 bg-slate-50 border-transparent focus:bg-white focus:ring-2 focus:ring-slate-950/5 rounded-2xl transition-all font-body font-bold text-slate-950 text-[12px] sm:text-label outline-none"
                                         />
                                     </div>
                                 </div>
@@ -637,7 +658,7 @@ export default function SettingsPage() {
                                         value={formData.corporateName || ""}
                                         onChange={(e) => setFormData({ ...formData, corporateName: e.target.value })}
                                         placeholder="Nome jurídico da empresa"
-                                        className="w-full h-10 sm:h-12 md:h-16 px-4 sm:px-6 bg-slate-50 border-transparent focus:bg-white focus:ring-2 focus:ring-slate-950/5 rounded-2xl transition-all font-body font-bold text-slate-950 text-[12px] sm:text-label uppercase tracking-widest outline-none"
+                                        className="w-full h-10 sm:h-12 md:h-16 px-4 sm:px-6 bg-slate-50 border-transparent focus:bg-white focus:ring-2 focus:ring-slate-950/5 rounded-2xl transition-all font-body font-bold text-slate-950 text-[12px] sm:text-label outline-none"
                                     />
                                 </div>
 
@@ -647,7 +668,7 @@ export default function SettingsPage() {
                                         value={formData.cnpj || ""}
                                         onChange={handleCnpjChange}
                                         placeholder="XX.XXX.XXX/XXXX-XX"
-                                        className="w-full h-10 sm:h-12 md:h-16 px-4 sm:px-6 bg-slate-50 border-transparent focus:bg-white focus:ring-2 focus:ring-slate-950/5 rounded-2xl transition-all font-body font-bold text-slate-950 text-[12px] sm:text-label uppercase tracking-widest outline-none"
+                                        className="w-full h-10 sm:h-12 md:h-16 px-4 sm:px-6 bg-slate-50 border-transparent focus:bg-white focus:ring-2 focus:ring-slate-950/5 rounded-2xl transition-all font-body font-bold text-slate-950 text-[12px] sm:text-label outline-none"
                                     />
                                 </div>
 
@@ -738,7 +759,7 @@ export default function SettingsPage() {
                                     <input
                                         value={formData.bannerBadge || ""}
                                         onChange={(e) => setFormData({ ...formData, bannerBadge: e.target.value })}
-                                        className="w-full h-10 sm:h-12 md:h-16 px-4 sm:px-6 bg-slate-50 border-transparent focus:bg-white focus:ring-2 focus:ring-slate-950/5 rounded-2xl transition-all font-body font-bold text-slate-950 text-[12px] sm:text-label uppercase tracking-widest outline-none"
+                                        className="w-full h-10 sm:h-12 md:h-16 px-4 sm:px-6 bg-slate-50 border-transparent focus:bg-white focus:ring-2 focus:ring-slate-950/5 rounded-2xl transition-all font-body font-bold text-slate-950 text-[12px] sm:text-label outline-none"
                                         placeholder="O mais desejado de 2024"
                                     />
                                 </div>
@@ -748,7 +769,7 @@ export default function SettingsPage() {
                                     <input
                                         value={formData.bannerTitleLine1 || ""}
                                         onChange={(e) => setFormData({ ...formData, bannerTitleLine1: e.target.value })}
-                                        className="w-full h-10 sm:h-12 md:h-16 px-4 sm:px-6 bg-slate-50 border-transparent focus:bg-white focus:ring-2 focus:ring-slate-950/5 rounded-2xl transition-all font-body font-bold text-slate-950 text-[12px] sm:text-label uppercase tracking-widest outline-none"
+                                        className="w-full h-10 sm:h-12 md:h-16 px-4 sm:px-6 bg-slate-50 border-transparent focus:bg-white focus:ring-2 focus:ring-slate-950/5 rounded-2xl transition-all font-body font-bold text-slate-950 text-[12px] sm:text-label outline-none"
                                         placeholder="Sabor que"
                                     />
                                 </div>
@@ -758,7 +779,7 @@ export default function SettingsPage() {
                                     <input
                                         value={formData.bannerTitleLine2 || ""}
                                         onChange={(e) => setFormData({ ...formData, bannerTitleLine2: e.target.value })}
-                                        className="w-full h-10 sm:h-12 md:h-16 px-4 sm:px-6 bg-slate-50 border-transparent focus:bg-white focus:ring-2 focus:ring-slate-950/5 rounded-2xl transition-all font-body font-bold text-slate-950 text-[12px] sm:text-label uppercase tracking-widest outline-none"
+                                        className="w-full h-10 sm:h-12 md:h-16 px-4 sm:px-6 bg-slate-50 border-transparent focus:bg-white focus:ring-2 focus:ring-slate-950/5 rounded-2xl transition-all font-body font-bold text-slate-950 text-[12px] sm:text-label outline-none"
                                         placeholder="Transforma"
                                     />
                                 </div>
@@ -778,7 +799,7 @@ export default function SettingsPage() {
                                     <input
                                         value={formData.bannerCtaLabel || ""}
                                         onChange={(e) => setFormData({ ...formData, bannerCtaLabel: e.target.value })}
-                                        className="w-full h-10 sm:h-12 md:h-16 px-4 sm:px-6 bg-slate-50 border-transparent focus:bg-white focus:ring-2 focus:ring-slate-950/5 rounded-2xl transition-all font-body font-bold text-slate-950 text-[12px] sm:text-label uppercase tracking-widest outline-none"
+                                        className="w-full h-10 sm:h-12 md:h-16 px-4 sm:px-6 bg-slate-50 border-transparent focus:bg-white focus:ring-2 focus:ring-slate-950/5 rounded-2xl transition-all font-body font-bold text-slate-950 text-[12px] sm:text-label outline-none"
                                         placeholder="Explorar Menu"
                                     />
                                 </div>
@@ -1170,7 +1191,7 @@ export default function SettingsPage() {
                 </div>
 
                 <div className="settings-save-dock sticky bottom-3 z-40 mt-6 md:bottom-4">
-                    <div className="settings-save-bar flex flex-col gap-3 rounded-md border px-3 py-3 shadow-xl backdrop-blur-md sm:flex-row sm:items-center sm:justify-between sm:px-4 sm:py-4">
+                    <div className="settings-save-bar flex flex-col gap-3 rounded-md border border-slate-200 bg-white/95 px-3 py-3 shadow-xl backdrop-blur-md sm:flex-row sm:items-center sm:justify-between sm:px-4 sm:py-4">
                         <p className={cn("text-xs font-semibold", hasUnsavedChanges ? "text-amber-700" : "text-slate-600") }>
                             {hasUnsavedChanges
                                 ? "Há alterações não salvas. Clique em salvar para publicar no sistema."

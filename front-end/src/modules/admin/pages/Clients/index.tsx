@@ -744,7 +744,7 @@ export default function ClientsPage() {
             <div className="grid gap-2 sm:gap-3 md:gap-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-[1.2fr_0.7fr_0.7fr_0.5fr_0.5fr_auto_auto] clients-filters">
               <div className="flex h-10 items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 focus-within:border-primary focus-within:bg-white sm:col-span-2 xl:col-span-1">
                 <Search size={18} className="text-slate-300" />
-                <input placeholder="Buscar nome ou email" value={search} onChange={(e) => setSearch(e.target.value)} className="h-full w-full bg-transparent outline-none font-body font-medium text-slate-600 text-[12px] sm:text-label uppercase tracking-[0.04em]" />
+                <input placeholder="Buscar nome ou email" value={search} onChange={(e) => setSearch(e.target.value)} className="h-full w-full bg-transparent outline-none font-body font-medium text-slate-600 text-[12px] sm:text-label" />
               </div>
               <div className="flex h-10 items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3">
                 <Filter size={18} className="text-slate-300" />
@@ -1063,7 +1063,12 @@ export default function ClientsPage() {
               <p className="text-[10px] sm:text-label font-body font-bold text-sky-500 uppercase tracking-[0.2em]">Lojas</p>
               <h2 className="text-xl sm:text-heading-2 font-display font-bold text-slate-950 uppercase tracking-tight">Sem cliente responsável</h2>
             </div>
-            <span className="rounded-md bg-sky-50 px-3 py-1.5 text-xs font-medium text-sky-700">{inconsistentStores.length}</span>
+            <div className="flex items-center gap-2">
+              <span className="rounded-md bg-slate-100 px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                Escopo: {inconsistencyScope === 'critical' ? 'Críticas' : 'Todas'}
+              </span>
+              <span className="rounded-md bg-sky-50 px-3 py-1.5 text-xs font-medium text-sky-700">{inconsistentStores.length}</span>
+            </div>
           </div>
           <div className="mt-4 space-y-2">
             {inconsistentStores.length === 0 ? (

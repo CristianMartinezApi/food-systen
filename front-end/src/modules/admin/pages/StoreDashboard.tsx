@@ -201,7 +201,7 @@ export default function Dashboard() {
               <h2 className="text-sm font-semibold text-slate-950">Fluxo de pedidos de hoje</h2>
               <p className="mt-1 text-xs text-slate-500">Quantidade em cada etapa da operação.</p>
             </div>
-            <Link href="/admin/orders" className="text-xs font-semibold text-slate-600 hover:text-slate-950">
+            <Link href="/admin/cozinha" className="text-xs font-semibold text-slate-600 hover:text-slate-950">
               Abrir cozinha
             </Link>
           </div>

@@ -35,10 +35,12 @@ export default function ProductsPage() {
     try {
       const data = await api.get('/products');
       const normalized = Array.isArray(data)
-        ? data.map((product: any) => ({
-            ...product,
-            image: normalizeAssetUrl(product?.image),
-          }))
+        ? data
+            .filter((product: any) => !product?.isCombo)
+            .map((product: any) => ({
+              ...product,
+              image: normalizeAssetUrl(product?.image),
+            }))
         : [];
       setProducts(normalized);
     } catch (error) {
@@ -142,8 +144,8 @@ export default function ProductsPage() {
                     
                     {/* Floating Category Tag */}
                     <div className="absolute top-3 left-3 sm:top-8 sm:left-8">
-                        <span className="product-category-tag flex items-center gap-2 rounded-md border px-3 py-2 text-[10px] font-bold uppercase tracking-[0.16em] shadow-xl backdrop-blur-md sm:gap-3 sm:px-4">
-                          <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                        <span className="flex items-center gap-1.5 rounded-md border border-slate-200 bg-white px-3 py-2 text-[10px] font-bold uppercase tracking-[0.16em] text-slate-700 shadow-md sm:gap-2 sm:px-4">
+                          <Tag size={11} className="text-slate-400" />
                           <span className="max-w-44 truncate">{product.category?.name || "Sem categoria"}</span>
                         </span>
                         {isPromotional && (

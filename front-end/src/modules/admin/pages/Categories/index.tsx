@@ -6,8 +6,7 @@ import {
   Loader2,
   Tags,
   CheckCircle2,
-  XCircle,
-  GripVertical
+  XCircle
 } from "lucide-react";
 import { api } from "../../../../core/config/api";
 import { motion, AnimatePresence } from "framer-motion";
@@ -99,10 +98,7 @@ export default function CategoriesPage() {
                       className="categories-row group border-b last:border-0 transition-colors"
                     >
                       <td className="px-5 py-4">
-                        <div className="flex items-center gap-4">
-                           <GripVertical size={16} className="text-slate-200 opacity-0 group-hover:opacity-100 transition-opacity" />
-                           <span className="font-mono font-medium text-slate-950">{(cat.order || idx + 1).toString().padStart(2, '0')}</span>
-                        </div>
+                        <span className="font-mono font-medium text-slate-950">{(cat.order || idx + 1).toString().padStart(2, '0')}</span>
                       </td>
                       <td className="px-5 py-4">
                         <span className="text-body-strong font-body font-bold text-slate-950 uppercase tracking-tight">{cat.name}</span>

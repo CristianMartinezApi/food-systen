@@ -55,13 +55,15 @@ export function ProductCard({ product }: ProductCardProps) {
         )}
       >
         <div className="relative w-30 shrink-0 bg-slate-100">
-          <img
-            src={product.image}
-            alt={product.name}
-            loading="lazy"
-            decoding="async"
-            className="h-full w-full object-cover"
-          />
+          {product.image && (
+            <img
+              src={product.image}
+              alt={product.name}
+              loading="lazy"
+              decoding="async"
+              className="h-full w-full object-cover"
+            />
+          )}
           {isPromotional && (
             <span className="absolute left-2 top-2 bg-rose-600 px-2 py-1 text-[9px] font-black text-white">
               -{discountPercent}%
@@ -124,13 +126,15 @@ export function ProductCard({ product }: ProductCardProps) {
         {!isOutOfStock && <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(239,68,68,0.14),transparent_34%),radial-gradient(circle_at_bottom_left,rgba(245,158,11,0.16),transparent_38%)] opacity-80 group-hover:opacity-100 transition-opacity duration-700" />}
 
         <div className="relative h-48 md:h-auto md:aspect-4/5 overflow-hidden rounded-lg md:rounded-2xl shadow-inner bg-amber-50">
-          <img
-            src={product.image}
-            alt={product.name}
-            loading="lazy"
-            decoding="async"
-            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000 ease-out"
-          />
+          {product.image && (
+            <img
+              src={product.image}
+              alt={product.name}
+              loading="lazy"
+              decoding="async"
+              className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000 ease-out"
+            />
+          )}
 
           {isOutOfStock && (
             <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center">

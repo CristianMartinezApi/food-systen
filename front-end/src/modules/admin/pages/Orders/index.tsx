@@ -79,9 +79,9 @@ export default function OrdersPage({ isCompact = false, onOrdersChange }: { isCo
         if (order.status === "OPEN") return { label: "Mesa Aberta", className: "bg-amber-50 text-amber-600 border-amber-100 animate-pulse" };
         if (order.status === "CONFIRMED") return { label: "Confirmado", className: "bg-sky-50 text-sky-700 border-sky-100" };
         if (order.status === "PAID") return { label: "Pago/Cozinha", className: "bg-emerald-50 text-emerald-700 border-emerald-100 font-black shadow-[0_0_8px_rgba(16,185,129,0.1)]" };
-        if (order.status === "PREPARING") return { label: "Preparo", className: "bg-blue-50 text-blue-600 border-blue-100" };
+        if (order.status === "PREPARING") return { label: "Preparo", className: "bg-orange-50 text-orange-600 border-orange-100" };
         if (order.status === "OUT_FOR_DELIVERY") return { label: "Em Rota", className: "bg-indigo-50 text-indigo-600 border-indigo-100" };
-        if (order.status === "READY") return { label: "Pronto", className: "bg-orange-50 text-orange-600 border-orange-100" };
+        if (order.status === "READY") return { label: "Pronto", className: "bg-emerald-50 text-emerald-600 border-emerald-100" };
         if (order.status === "DELIVERED") return { label: "Entregue", className: "bg-emerald-50 text-emerald-600 border-emerald-100" };
         if (order.status === "RETIRED") return { label: "Retirado", className: "bg-emerald-50 text-emerald-600 border-emerald-100" };
         if (order.status === "CANCELLED") return { label: "Cancelado", className: "bg-slate-50 text-slate-400 border-slate-100" };

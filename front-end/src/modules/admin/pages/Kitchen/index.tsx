@@ -123,7 +123,7 @@ function OrderCard({ order, action, note }: { order: any; action?: { label: stri
                             {addons.length > 0 ? <p className="text-xs font-semibold text-emerald-600">+ {addons.join(", ")}</p> : null}
                             {guided.length > 0 ? <p className="text-xs font-semibold text-emerald-600">{guided.join(" · ")}</p> : null}
                             {removals.length > 0 ? <p className="text-xs font-semibold text-rose-500">sem {removals.join(", ")}</p> : null}
-                            {item.observations ? <p className="text-xs italic text-slate-500">"{item.observations}"</p> : null}
+                            {item.observations ? <p className="text-xs italic text-slate-500">&quot;{item.observations}&quot;</p> : null}
                         </div>
                     );
                 })}

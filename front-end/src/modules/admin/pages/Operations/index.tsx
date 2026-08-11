@@ -99,7 +99,7 @@ export default function OperationsPage() {
       )}
 
       {/* ── LAYOUT DESKTOP: COMANDO CENTRAL ── */}
-      <div className="hidden lg:grid lg:grid-cols-[minmax(0,1fr)_24rem] gap-4 items-start">
+      <div className="hidden lg:grid lg:grid-cols-[minmax(0,1.35fr)_minmax(26rem,1fr)] gap-4 items-start">
         <main className="space-y-4">
           <div className="flex items-center justify-between px-1">
             <div className="flex items-center gap-2">

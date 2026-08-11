@@ -8,7 +8,6 @@ import toast from "react-hot-toast";
 import { useSearchParams } from "next/navigation";
 import { PrintModeModal, type PrintMode } from "../../components/modals/PrintModeModal";
 import { ConfirmActionModal } from "../../components/modals/ConfirmActionModal";
-import { AdminPageHeader } from "../../components/layout/AdminPageHeader";
 
 const PRINT_MODE_STORAGE_KEY = "@FoodSystem:printMode";
 const DEFAULT_CASH_DIFFERENCE_NOTE_THRESHOLD = 5;
@@ -1293,19 +1292,6 @@ export default function CashierPage({
                 </section>
             )}
 
-            {false && !isSidebar && (
-                <AdminPageHeader
-                    eyebrow="Financeiro operacional"
-                    title="Sessão de caixa"
-                    description="Abertura, fechamento, movimentos e histórico das sessões."
-                    status={isHomologated ? (
-                        <span className="inline-flex items-center rounded-md border border-emerald-200 bg-emerald-50 px-2 py-1 text-[10px] font-semibold text-emerald-700">
-                            Terminal homologado
-                        </span>
-                    ) : undefined}
-                />
-            )}
-
             <section className={cn("grid overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm", isSidebar ? "grid-cols-2" : "hidden")}>
                 {cards.map((card: any) => (
                     <article key={card.label} className={cn(
@@ -1338,22 +1324,6 @@ export default function CashierPage({
                     </article>
                 ))}
             </section>
-
-            {!isSidebar && (session ? (
-                <section className="hidden">
-                    <div className="flex items-center gap-3">
-                        <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.6)]" />
-                        <span className="text-[11px] font-black uppercase tracking-[0.15em] text-emerald-800">Caixa Aberto — Sessão #{session.id}</span>
-                        <span className="hidden sm:inline text-[10px] font-bold text-emerald-600 uppercase">• Aberto às {new Date(session.openedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                    </div>
-                    <span className="text-[10px] font-bold text-emerald-700 uppercase tracking-widest shrink-0">{session.openedBy?.name || 'Sistema'}</span>
-                </section>
-            ) : (
-                <section className="hidden">
-                    <div className="w-2.5 h-2.5 rounded-full bg-amber-500" />
-                    <span className="text-[11px] font-black uppercase tracking-[0.15em] text-amber-800">Caixa Fechado — Abra uma sessão para iniciar a operação</span>
-                </section>
-            ))}
 
             <section className="ops-panel px-4">
                 <div className="flex gap-6 overflow-x-auto">
@@ -1701,18 +1671,18 @@ export default function CashierPage({
                                             )}
                                         </div>
 
-                                        {/* Pedidos Pendentes (Viagem e Mesas) */}
-                                        {pendingOrders.length > 0 && (
+                                        {/* Pedidos Pendentes (Viagem e Mesas) — a mesa selecionada tem seu próprio card logo abaixo */}
+                                        {pendingOrders.filter(order => order.id !== occupiedOrder?.id).length > 0 && (
                                             <div className="space-y-2">
                                                 <div className="flex items-center justify-between">
                                                     <p className="text-[10px] font-black uppercase tracking-widest text-emerald-700">Contas em Aberto (Mesa & Balcão)</p>
                                                     <span className="text-[9px] bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-bold">
-                                                        {pendingOrders.length} pendente(s)
+                                                        {pendingOrders.filter(order => order.id !== occupiedOrder?.id).length} pendente(s)
                                                     </span>
                                                 </div>
                                                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-                                                    {pendingOrders.map(order => (
-                                                        <button 
+                                                    {pendingOrders.filter(order => order.id !== occupiedOrder?.id).map(order => (
+                                                        <button
                                                             key={order.id}
                                                             onClick={() => setPaymentModalOrder(order)}
                                                             className="group relative p-3 bg-white border-2 border-emerald-100 text-emerald-800 rounded-2xl text-[10px] font-bold hover:border-emerald-500 hover:bg-emerald-50 transition-all flex flex-col items-start gap-1 shadow-sm active:scale-95"
@@ -1790,7 +1760,7 @@ export default function CashierPage({
                                         {directSaleTableNumber && (
                                             <div className={cn("rounded-2xl border border-emerald-200 bg-emerald-50 px-4 flex items-center justify-between", isSidebar ? "h-9" : "h-11")}>
                                                 <span className="text-[10px] font-black uppercase tracking-[0.12em] text-slate-600">Forma de Pagamento</span>
-                                                <span className="font-black text-emerald-700 text-[10px] uppercase">📝 Em Aberto (Mesa)</span>
+                                                <span className="font-black text-emerald-700 text-[10px] uppercase">Em Aberto (Mesa)</span>
                                             </div>
                                         )}
 
@@ -1837,7 +1807,7 @@ export default function CashierPage({
                                                 }}
                                                 className={cn("rounded-2xl border border-emerald-200 bg-white px-4 outline-none", isSidebar ? "h-9 text-[11px]" : "h-11")}
                                             >
-                                                <option value="">🛒 Selecionar produto...</option>
+                                                <option value="">Selecionar produto...</option>
                                                 {filteredDirectSaleProducts.map((product) => {
                                                     const finalPrice = Number((product.price * (1 - ((product.discountPercent || 0) / 100))).toFixed(2));
                                                     return (
@@ -2445,43 +2415,6 @@ export default function CashierPage({
                         </div>
                     </div>
                 </section>
-            )}
-
-            {!isSidebar && (
-                <footer className="hidden">
-                    <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
-                        <div className="min-w-0">
-                            <p className="text-[10px] font-black uppercase tracking-[0.24em] text-slate-300">Operação do caixa</p>
-                            <p className="mt-2 text-sm sm:text-base font-bold text-slate-950 uppercase tracking-tight truncate">
-                                {session ? `Sessão #${session.id} em andamento` : "Nenhuma sessão aberta no momento"}
-                            </p>
-                            <p className="mt-1 text-[11px] sm:text-label font-medium text-slate-400 uppercase tracking-[0.08em]">
-                                Gestão de abertura, fechamento, vendas e conferência financeira em tempo real.
-                            </p>
-                        </div>
-
-                        <div className="flex flex-wrap items-center gap-3">
-                            <div className="inline-flex items-center gap-2 rounded-full border border-slate-100 bg-slate-50 px-4 py-2">
-                                <span className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Modo</span>
-                                <span className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-950">{printModeLabel}</span>
-                            </div>
-                            <div className="inline-flex items-center gap-2 rounded-full border border-emerald-100 bg-emerald-50 px-4 py-2">
-                                <span className="h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_0_4px_rgba(16,185,129,0.12)]" />
-                                <span className="text-[10px] font-black uppercase tracking-[0.18em] text-emerald-700">
-                                    {session ? "Caixa ativo" : "Pronto para abrir"}
-                                </span>
-                            </div>
-                            <div className="inline-flex items-center gap-2 rounded-full border border-slate-100 bg-white px-4 py-2 shadow-sm">
-                                <span className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Movimentos</span>
-                                <span className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-950">{movements.length}</span>
-                            </div>
-                            <div className="inline-flex items-center gap-2 rounded-full border border-slate-100 bg-white px-4 py-2 shadow-sm">
-                                <span className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">Sessões</span>
-                                <span className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-950">{historyTotal}</span>
-                            </div>
-                        </div>
-                    </div>
-                </footer>
             )}
 
             <PrintModeModal

@@ -490,7 +490,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
   const storeUrl = typeof window !== 'undefined' ? `${window.location.origin}/${slug}` : '';
 
   return (
-    <div className="admin-operations-theme flex h-screen overflow-hidden">
+    <div className="flex h-screen overflow-hidden">
       {/* Sidebar administrativa com visual discreto */}
       <AnimatePresence>
         {isSidebarOpen && (
@@ -619,7 +619,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
       {/* Main Content Area */}
       <main className="admin-main flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
         {/* Header superior do sistema */}
-        <header className="admin-topbar sticky top-0 z-40 flex h-14 shrink-0 items-center justify-between px-4 lg:px-6">
+        <header className="admin-topbar sticky top-0 z-40 flex h-14 shrink-0 items-center justify-between border-b border-slate-200 bg-white/95 px-4 backdrop-blur lg:px-6">
           <div className="flex min-w-0 items-center gap-3 lg:gap-4">
             <button
               onClick={() => setIsSidebarOpen(true)}
@@ -889,7 +889,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
         </div>
 
         <nav
-          className="admin-mobile-nav fixed inset-x-0 bottom-0 z-50 grid min-h-16 px-1 pb-[max(0.25rem,env(safe-area-inset-bottom))] pt-1 backdrop-blur lg:hidden"
+          className="admin-mobile-nav fixed inset-x-0 bottom-0 z-50 grid min-h-16 border-t border-slate-200 bg-white/95 px-1 pb-[max(0.25rem,env(safe-area-inset-bottom))] pt-1 text-slate-500 shadow-[0_-10px_30px_rgba(0,0,0,0.08)] backdrop-blur lg:hidden"
           style={{ gridTemplateColumns: `repeat(${Math.min(mobilePrimaryItems.length + 1, 5)}, minmax(0, 1fr))` }}
           aria-label="Navegação administrativa móvel"
         >

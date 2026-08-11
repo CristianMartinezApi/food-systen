@@ -139,13 +139,15 @@ export function CartSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
                   >
                     <div className="flex gap-4 md:gap-6">
                       <div className="w-16 h-16 md:w-24 md:h-24 rounded-md md:rounded-lg overflow-hidden bg-slate-100 shrink-0 shadow-lg md:group-hover:rotate-3 transition-transform duration-500">
-                        <img
-                          src={item.image}
-                          alt={item.name}
-                          loading="lazy"
-                          decoding="async"
-                          className="w-full h-full object-cover md:group-hover:scale-110 transition-transform duration-1000"
-                        />
+                        {item.image && (
+                          <img
+                            src={item.image}
+                            alt={item.name}
+                            loading="lazy"
+                            decoding="async"
+                            className="w-full h-full object-cover md:group-hover:scale-110 transition-transform duration-1000"
+                          />
+                        )}
                       </div>
 
                       <div className="flex-1 space-y-1 pt-0.5 md:pt-1 min-w-0">
@@ -236,7 +238,7 @@ export function CartSidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () 
                   onClick={onClose}
                   className="h-12 md:h-14 w-full bg-rose-600 text-white rounded-lg md:rounded-xl font-body font-bold uppercase tracking-widest text-[10px] md:text-label flex items-center justify-center gap-3 shadow-xl shadow-rose-900/25 md:hover:bg-rose-700 active:scale-[0.98] transition-all duration-300 group overflow-hidden relative"
                 >
-                  <span className="relative z-10 font-body font-bold">Continuar para entrega</span>
+                  <span className="relative z-10 font-body font-bold">Continuar para o checkout</span>
                   <ArrowRight size={18} className="relative z-10 md:group-hover:translate-x-3 transition-transform duration-500" />
                   <div className="absolute inset-0 bg-linear-to-r from-transparent via-white/10 to-transparent -translate-x-full md:group-hover:translate-x-full transition-transform duration-1000" />
                 </Link>
