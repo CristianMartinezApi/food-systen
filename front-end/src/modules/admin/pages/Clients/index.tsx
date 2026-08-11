@@ -890,7 +890,17 @@ export default function ClientsPage() {
             ) : (
               sortedRestaurants.map((r) => {
                 const prov = (r.provisioningStatus || '').toString();
-                const provClass = prov === 'READY' ? 'bg-emerald-100 text-emerald-700' : prov === 'IN_PROGRESS' ? 'bg-sky-100 text-sky-700' : prov === 'DENIED' ? 'bg-rose-100 text-rose-700' : 'bg-amber-100 text-amber-700';
+                // Mesmo mapeamento de cor de Provisioning/index.tsx — PAUSED e PENDING
+                // eram indistinguíveis aqui (os dois caíam no mesmo âmbar).
+                const provClass = prov === 'READY'
+                  ? 'bg-emerald-100 text-emerald-700'
+                  : prov === 'IN_PROGRESS'
+                    ? 'bg-sky-100 text-sky-700'
+                    : prov === 'PAUSED'
+                      ? 'bg-amber-100 text-amber-700'
+                      : prov === 'DENIED'
+                        ? 'bg-rose-100 text-rose-700'
+                        : 'bg-slate-100 text-slate-600';
                 const usage = r.planUsage;
                 const usageClass = getPlanUsageBadgeClass(usage?.status);
                 const usageLabel = getPlanUsageLabel(usage?.status);

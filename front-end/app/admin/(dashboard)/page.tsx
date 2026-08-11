@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import StoreDashboard from "../../../src/modules/admin/pages/Dashboard";
-import SuperAdminDashboard from "../../../src/modules/admin/pages/Dashboard/index";
+import StoreDashboard from "../../../src/modules/admin/pages/StoreDashboard";
+import SuperAdminDashboard from "../../../src/modules/admin/pages/SuperAdminDashboard";
 
 export default function Page() {
   const [userRole, setUserRole] = useState<string | null>(null);
