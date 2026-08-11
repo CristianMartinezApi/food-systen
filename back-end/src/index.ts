@@ -5229,11 +5229,17 @@ app.post('/api/orders/:id/items', authMiddleware, async (req: AuthRequest, res) 
       const newSubtotal = allItems.reduce((acc, item) => acc + (item.price * item.quantity), 0);
       const newTotal = newSubtotal + (order.deliveryFee || 0);
 
+      // Pedido de mesa/balcão que a cozinha já tinha terminado (READY/saiu/entregue)
+      // mas cuja conta ainda não fechou: uma nova rodada de itens precisa voltar a
+      // aparecer na Cozinha, senão fica invisível pra sempre depois do primeiro round.
+      const needsKitchenAgain = ['READY', 'OUT_FOR_DELIVERY', 'DELIVERED', 'RETIRED'].includes(order.status);
+
       const updatedOrder = await tx.order.update({
         where: { id: orderId },
         data: {
           subtotal: newSubtotal,
           total: newTotal,
+          ...(needsKitchenAgain ? { status: 'CONFIRMED' as OrderStatus } : {}),
         },
         include: {
           items: true,

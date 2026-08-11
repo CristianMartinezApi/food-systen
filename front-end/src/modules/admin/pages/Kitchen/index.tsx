@@ -162,6 +162,22 @@ export default function KitchenPage() {
         }
     };
 
+    // Pedido lançado pelo Garçom/Caixa nasce como OPEN (mesa/balcão, aceito na hora
+    // do lançamento — sem gate de confirmação separado). Pra ele seguir pro preparo,
+    // primeiro passa por CONFIRMED (transição já existente) e só então PREPARING —
+    // os dois passos válidos encadeados num clique só, sem inventar transição nova.
+    const startPreparing = async (order: any) => {
+        try {
+            if (order.status === "OPEN") {
+                await api.patch(`/orders/${order.id}`, { status: "CONFIRMED" });
+            }
+            await api.patch(`/orders/${order.id}`, { status: "PREPARING" });
+            setOrders((prev) => prev.map((o) => (Number(o.id) === Number(order.id) ? { ...o, status: "PREPARING" } : o)));
+        } catch (error) {
+            console.error("Erro ao iniciar preparo:", error);
+        }
+    };
+
     useEffect(() => {
         fetchOrders();
         const slug = getTenantSlug();
@@ -190,7 +206,9 @@ export default function KitchenPage() {
         );
     }
 
-    const confirmedOrders = orders.filter((order) => order.status === "CONFIRMED");
+    // OPEN = pedido de mesa/balcão lançado pelo Garçom/Caixa, já aceito na hora do
+    // lançamento — entra direto na fila de "precisa cozinhar" junto com CONFIRMED.
+    const confirmedOrders = orders.filter((order) => order.status === "CONFIRMED" || order.status === "OPEN");
     const preparingOrders = orders.filter((order) => order.status === "PREPARING");
     const readyCutoff = Date.now() - READY_COLUMN_WINDOW_MS;
     const readyOrders = orders.filter((order) => {
@@ -214,7 +232,7 @@ export default function KitchenPage() {
                             <OrderCard
                                 key={order.id}
                                 order={order}
-                                action={{ label: "Iniciar preparo", onClick: () => advanceStatus(order.id, "PREPARING") }}
+                                action={{ label: "Iniciar preparo", onClick: () => startPreparing(order) }}
                             />
                         ))}
                     </div>
