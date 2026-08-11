@@ -69,7 +69,23 @@ function EmptyColumn({ label }: { label: string }) {
     );
 }
 
-function OrderCard({ order, action }: { order: any; action?: { label: string; onClick: () => void } }) {
+// Venda direta sem mesa e paga na hora (balcão, "enviar pra cozinha" ligado no Caixa)
+// nasce com status PAID — não existe etapa de preparo pra ela no fluxo (PAID não
+// avança pra PREPARING em nenhuma modalidade), então ela some do radar da Cozinha do
+// mesmo jeito que uma mesa aberta (OPEN) sumia antes da correção anterior. Mostra
+// como card informativo (sem botão de avançar) só enquanto está fresca — se já foi
+// atualizada depois de criada, é um pedido antigo que só chegou em PAID no fim da
+// jornada normal (retirada online paga, mesa fechada), não uma venda nova.
+function isFreshPaidQuickSale(order: any): boolean {
+    if (order.status !== "PAID" || order.tableNumber) return false;
+    const createdAt = order.createdAt ? new Date(order.createdAt).getTime() : 0;
+    const updatedAt = order.updatedAt ? new Date(order.updatedAt).getTime() : 0;
+    const untouchedSinceCreation = Math.abs(updatedAt - createdAt) < 2 * 60 * 1000;
+    const isRecent = Date.now() - createdAt < READY_COLUMN_WINDOW_MS;
+    return untouchedSinceCreation && isRecent;
+}
+
+function OrderCard({ order, action, note }: { order: any; action?: { label: string; onClick: () => void }; note?: string }) {
     const mode = getOrderMode(order);
     const createdAt = new Date(order.createdAt);
 
@@ -120,6 +136,8 @@ function OrderCard({ order, action }: { order: any; action?: { label: string; on
                 >
                     {action.label}
                 </button>
+            ) : note ? (
+                <p className="mt-4 text-center text-[11px] font-bold uppercase tracking-widest text-emerald-600">{note}</p>
             ) : null}
         </div>
     );
@@ -208,7 +226,11 @@ export default function KitchenPage() {
 
     // OPEN = pedido de mesa/balcão lançado pelo Garçom/Caixa, já aceito na hora do
     // lançamento — entra direto na fila de "precisa cozinhar" junto com CONFIRMED.
-    const confirmedOrders = orders.filter((order) => order.status === "CONFIRMED" || order.status === "OPEN");
+    // Venda direta paga na hora (sem mesa) entra também, mas só como informativo —
+    // ver isFreshPaidQuickSale.
+    const confirmedOrders = orders.filter(
+        (order) => order.status === "CONFIRMED" || order.status === "OPEN" || isFreshPaidQuickSale(order)
+    );
     const preparingOrders = orders.filter((order) => order.status === "PREPARING");
     const readyCutoff = Date.now() - READY_COLUMN_WINDOW_MS;
     const readyOrders = orders.filter((order) => {
@@ -229,11 +251,15 @@ export default function KitchenPage() {
                     <div className="space-y-3">
                         {confirmedOrders.length === 0 ? <EmptyColumn label="Nenhum pedido aguardando" /> : null}
                         {confirmedOrders.map((order) => (
-                            <OrderCard
-                                key={order.id}
-                                order={order}
-                                action={{ label: "Iniciar preparo", onClick: () => startPreparing(order) }}
-                            />
+                            order.status === "PAID" ? (
+                                <OrderCard key={order.id} order={order} note="Pago no balcão — sem etapa de preparo" />
+                            ) : (
+                                <OrderCard
+                                    key={order.id}
+                                    order={order}
+                                    action={{ label: "Iniciar preparo", onClick: () => startPreparing(order) }}
+                                />
+                            )
                         ))}
                     </div>
                 </div>
