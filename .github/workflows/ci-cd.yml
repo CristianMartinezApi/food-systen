@@ -38,6 +38,14 @@ jobs:
         working-directory: front-end
         run: npm ci
 
+      - name: Testar UI da loja
+        working-directory: front-end
+        run: npm run test:shop-ui
+
+      - name: Verificar tipos do frontend
+        working-directory: front-end
+        run: npx tsc --noEmit
+
       - name: Compilar frontend
         working-directory: front-end
         run: npm run build
@@ -50,21 +58,17 @@ jobs:
         working-directory: back-end
         run: npx prisma generate
 
+      - name: Verificar tipos do backend
+        working-directory: back-end
+        run: npx tsc --noEmit
+
       - name: Compilar backend
         working-directory: back-end
         run: npm run build
 
-      - name: Testar horários
+      - name: Testar backend
         working-directory: back-end
-        run: npm run test:hours
-
-      - name: Testar caixa
-        working-directory: back-end
-        run: npm run test:cashier
-
-      - name: Testar provisionamento do superadmin
-        working-directory: back-end
-        run: npm run test:seed
+        run: npm test
 
   deploy:
     name: Publicar na VPS

@@ -22,6 +22,33 @@ Este documento registra o que ainda precisa ser configurado no GitHub e na VPS p
 
 Enquanto o GitHub Actions estiver bloqueado, pushes para `main` não executam validação nem deploy. Publicações necessárias devem seguir o processo manual e seguro na VPS descrito neste documento.
 
+## Checklist de prontidão para clientes reais
+
+Avaliação feita em 2026-08-11. PIX permanece manual por decisão do lojista (chave
+direta da loja, confirmação manual do pagamento) — sem gateway, sem webhook,
+intencionalmente, para não intermediar valores de terceiros.
+
+- [x] Regras de negócio testadas (38 testes backend + 8 testes frontend, todos verdes).
+- [x] Pipeline de CI corrigido para rodar a suíte completa (`npm test` + `test:shop-ui`
+      + `tsc --noEmit` nos dois lados) em vez de só 3 suítes soltas.
+- [x] Monitoramento de erros com Sentry configurado nos dois lados (backend
+      `back-end/src/lib/sentry.ts`, frontend `instrumentation.ts` /
+      `instrumentation-client.ts` / `sentry.server.config.ts` / `sentry.edge.config.ts`).
+      DSNs já testados ponta a ponta (evento de teste chegou nos dois projetos do
+      Sentry) e confirmado que `NEXT_PUBLIC_SENTRY_DSN` é corretamente embutido no
+      bundle do navegador durante o build de produção (`front-end/Dockerfile` e
+      `deploy/docker-compose.vps.yml` repassam como build arg).
+      Falta só preencher `SENTRY_DSN` e `NEXT_PUBLIC_SENTRY_DSN` no `.env` real da VPS.
+- [ ] **Homologar o primeiro deploy manual na VPS** seguindo as Etapas 1–7 deste
+      documento — depende de acesso SSH à VPS e não pôde ser feito por um agente sem
+      esse acesso.
+- [ ] **Testar impressão térmica com hardware físico real** — só build/typecheck do
+      `printer-agent` foram verificados até agora; nunca foi testado com impressora
+      conectada de verdade.
+- [ ] Reativar o GitHub Actions (pendência de cobrança) e configurar os Secrets de
+      SSH (Etapa 8) para liberar deploy automático — opcional, o deploy manual já
+      funciona sem isso.
+
 ### Reativação após regularizar a cobrança
 
 Depois de confirmar que o GitHub Actions voltou a aceitar execuções, restaure o início de `.github/workflows/ci-cd.yml` para:
@@ -72,7 +99,7 @@ npm run build
 Estado esperado:
 
 - 8 testes de regressão da interface aprovados.
-- 14 testes do back-end aprovados.
+- 38 testes do back-end aprovados (cresceu desde a versão anterior deste documento; o `.github/workflows/ci-cd.yml` foi corrigido para rodar `npm test` completo em vez de só 3 suítes soltas — antes disso o CI não cobria cupom, preço, montagem guiada nem PIX).
 - TypeScript aprovado.
 - Build do front-end aprovado.
 - Build do back-end aprovado.
