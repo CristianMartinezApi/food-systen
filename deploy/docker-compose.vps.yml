@@ -12,6 +12,9 @@ services:
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
         NEXT_PUBLIC_SOCKET_URL: ${NEXT_PUBLIC_SOCKET_URL}
         NEXT_PUBLIC_SENTRY_DSN: ${NEXT_PUBLIC_SENTRY_DSN}
+        SENTRY_RELEASE: ${SENTRY_RELEASE:?SENTRY_RELEASE deve conter o SHA completo do Git}
+      secrets:
+        - sentry_auth_token
 
     restart: unless-stopped
 
@@ -22,6 +25,7 @@ services:
       - PORT=3000
       - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
       - NEXT_PUBLIC_SOCKET_URL=${NEXT_PUBLIC_SOCKET_URL}
+      - SENTRY_RELEASE=${SENTRY_RELEASE:?SENTRY_RELEASE deve conter o SHA completo do Git}
 
     depends_on:
       - backend
@@ -36,6 +40,10 @@ services:
     build:
       context: ../back-end
       dockerfile: Dockerfile
+      args:
+        SENTRY_RELEASE: ${SENTRY_RELEASE:?SENTRY_RELEASE deve conter o SHA completo do Git}
+      secrets:
+        - sentry_auth_token
 
     command: npm start
 
@@ -47,6 +55,9 @@ services:
     environment:
       - PORT=${PORT:-8000}
       - TZ=America/Sao_Paulo
+      - NODE_ENV=production
+      - SENTRY_DSN=${SENTRY_DSN}
+      - SENTRY_RELEASE=${SENTRY_RELEASE:?SENTRY_RELEASE deve conter o SHA completo do Git}
 
       # Usa diretamente o DATABASE_URL do .env
       - DATABASE_URL=${DATABASE_URL}
@@ -107,3 +118,7 @@ volumes:
 
   uploads_data:
     name: food-systen_uploads_data
+
+secrets:
+  sentry_auth_token:
+    environment: SENTRY_AUTH_TOKEN

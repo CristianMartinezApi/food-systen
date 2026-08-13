@@ -102,7 +102,7 @@ jobs:
             "cd /root/food-systen && \
              git pull --ff-only origin main && \
              test \"\$(git rev-parse HEAD)\" = \"$DEPLOY_COMMIT\" && \
-             flock -n /tmp/food-systen-deploy.lock bash deploy/deploy.sh"
+             SENTRY_RELEASE="$DEPLOY_COMMIT" flock -n /tmp/food-systen-deploy.lock bash deploy/deploy.sh"
 
       - name: Validar produção
         run: |

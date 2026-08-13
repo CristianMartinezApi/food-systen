@@ -1,12 +1,29 @@
 #!/usr/bin/env bash
 set -euo pipefail
+set +x
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ENV_FILE="${REPO_ROOT}/.env"
 COMPOSE_FILE="${REPO_ROOT}/deploy/docker-compose.vps.yml"
+PREFLIGHT_RELEASE="${SENTRY_RELEASE:-}"
+
+if [[ ! "${PREFLIGHT_RELEASE}" =~ ^[0-9a-fA-F]{40}$ ]]; then
+  echo "Erro: SENTRY_RELEASE deve ser o SHA Git completo de 40 caracteres hexadecimais."
+  exit 1
+fi
 
 if [[ ! -f "${ENV_FILE}" ]]; then
   echo "Erro: copie deploy/.env.production.example para .env e preencha os valores."
+  exit 1
+fi
+
+if grep -Eq '^[[:space:]]*(export[[:space:]]+)?SENTRY_AUTH_TOKEN=' "${ENV_FILE}"; then
+  echo "Erro: remova SENTRY_AUTH_TOKEN do .env de runtime e use .env.build-secrets."
+  exit 1
+fi
+
+if grep -Eq '^[[:space:]]*(export[[:space:]]+)?SENTRY_RELEASE=' "${ENV_FILE}"; then
+  echo "Erro: remova SENTRY_RELEASE do .env; o valor deve vir do commit do deploy."
   exit 1
 fi
 
@@ -14,6 +31,7 @@ set -a
 # shellcheck disable=SC1090
 source <(sed $'1s/^\xEF\xBB\xBF//; s/\r$//' "${ENV_FILE}")
 set +a
+export SENTRY_RELEASE="${PREFLIGHT_RELEASE}"
 
 required=(
   DATABASE_URL POSTGRES_USER POSTGRES_PASSWORD POSTGRES_DB JWT_SECRET
@@ -65,5 +83,15 @@ if ! [[ "${RATE_LIMIT_MAX:-300}" =~ ^[0-9]+$ ]] || (( ${RATE_LIMIT_MAX:-300} < 5
   exit 1
 fi
 
+preflight_had_sentry_token=true
+if [[ -z "${SENTRY_AUTH_TOKEN:-}" ]]; then
+  preflight_had_sentry_token=false
+  export SENTRY_AUTH_TOKEN="preflight-only-placeholder"
+fi
+
 docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" config --quiet
+
+if [[ "${preflight_had_sentry_token}" == false ]]; then
+  unset SENTRY_AUTH_TOKEN
+fi
 echo "Pré-validação de produção concluída."

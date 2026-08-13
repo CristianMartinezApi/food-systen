@@ -14,6 +14,7 @@ if (dsn) {
   Sentry.init({
     dsn,
     environment: process.env.NODE_ENV || 'development',
+    release: process.env.SENTRY_RELEASE,
     tracesSampleRate: 0.1,
   });
 
